@@ -1,31 +1,37 @@
 /**
- * 
+ * Copyright (c) Optum 2015 - All Rights Reserved.
  */
-package com.optum.fads.pgp.datarules.dto;
+package com.optum.fads.web.security.matcher;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import java.util.regex.Pattern;
 
-/**
- * @author sbiry
- *
- */
-@Data
-@AllArgsConstructor
-public class AccessLevel {
-	
-	private String moduleId;
-	private String moduleCode;
-	private String moduleName;
-	private String access;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+
+public class CsrfSecurityRequestMatcher implements RequestMatcher {
+
+	private final Pattern allowedMethods = Pattern.compile("^(GET|HEAD|TRACE|OPTIONS)$");
+	private final RegexRequestMatcher unprotectedMatcher = new RegexRequestMatcher("/login", null);
+
+	private AntPathRequestMatcher[] requestMatchers = { new AntPathRequestMatcher("/login"),
+			new AntPathRequestMatcher("/logout"), new AntPathRequestMatcher("/bower_components/**") };
+
+	@Override
+	public boolean matches(javax.servlet.http.HttpServletRequest request) {
+		if (allowedMethods.matcher(request.getMethod()).matches()) {
+			return false;
+		}
+		for (AntPathRequestMatcher rm : requestMatchers) {
+			if (rm.matches(request)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 }
-location: variable user of type com.optum.fads.pgp.datarules.dto.AppUser
-[ERROR] /C:/Users/sgupt664/fads-workspace/fads-monolithic-application/fads-monolithic-application/fads-pgp-datarules-api/src/main/java/com/optum/fads/pgp/datarules/controller/DataRulesController.java:[168,52] cannot find symbol
-[ERROR]   symbol:   method getModuleCode()
-[ERROR]   location: variable userAccessLevel of type com.optum.fads.pgp.datarules.dto.AccessLevel
-C:\Users\sgupt664\fads-workspace\fads-monolithic-application\fads-monolithic-application>mvn -v
-Apache Maven 3.9.9 (8e8579a9e76f7d015ee5ec7bfcdc97d260186937)
-Maven home: C:\Program Files\Maven\apache-maven-3.9.9
-Java version: 17.0.10, vendor: Eclipse Adoptium, runtime: C:\Program Files\Eclipse Adoptium\jdk-17.0.10.7-hotspot
-Default locale: en_US, platform encoding: Cp1252
-OS name: "windows 10", version: "10.0", arch: "amd64", family: "windows"
+
+[ERROR] /C:/Users/sgupt664/fads-workspace/fads-monolithic-application/fads-monolithic-application/fads-demo-web/src/main/java/com/optum/fads/web/security/matcher/CsrfSecurityRequestMatcher.java:[26,40] incompatible types: javax.servlet.http.HttpServletRequest cannot be converted to jakarta.servlet.http.HttpServletRequest
+[ERROR] -> [Help 1]
