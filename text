@@ -1,0 +1,103 @@
+package com.optum.fads.pgp.datarules.domain;
+
+import java.io.Serializable;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the SE_SUR_GRP database table.
+ * 
+ */
+@Entity
+@Data
+@Table(name="SE_SUR_GRP")
+public class SeSurGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_GRP_ID")
+	private long surGrpId;
+
+	@Column(name="SUR_GRP_NAME")
+	private String surGrpName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	//bi-directional many-to-one association to SeUsrGrp
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeUsrGrp> seUsrGrps;
+
+	public SeSurGrp() {
+	}
+
+	public long getSurGrpId() {
+		return this.surGrpId;
+	}
+
+	public void setSurGrpId(long surGrpId) {
+		this.surGrpId = surGrpId;
+	}
+
+	public String getSurGrpName() {
+		return this.surGrpName;
+	}
+
+	public void setSurGrpName(String surGrpName) {
+		this.surGrpName = surGrpName;
+	}
+
+	public List<SeSurGrpModAccess> getSeSurGrpModAccesses() {
+		return this.seSurGrpModAccesses;
+	}
+
+	public void setSeSurGrpModAccesses(List<SeSurGrpModAccess> seSurGrpModAccesses) {
+		this.seSurGrpModAccesses = seSurGrpModAccesses;
+	}
+
+	public SeSurGrpModAccess addSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().add(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurGrp(this);
+
+		return seSurGrpModAccess;
+	}
+
+	public SeSurGrpModAccess removeSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().remove(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurGrp(null);
+
+		return seSurGrpModAccess;
+	}
+
+	public List<SeUsrGrp> getSeUsrGrps() {
+		return this.seUsrGrps;
+	}
+
+	public void setSeUsrGrps(List<SeUsrGrp> seUsrGrps) {
+		this.seUsrGrps = seUsrGrps;
+	}
+
+	public SeUsrGrp addSeUsrGrp(SeUsrGrp seUsrGrp) {
+		getSeUsrGrps().add(seUsrGrp);
+		seUsrGrp.setSeSurGrp(this);
+
+		return seUsrGrp;
+	}
+
+	public SeUsrGrp removeSeUsrGrp(SeUsrGrp seUsrGrp) {
+		getSeUsrGrps().remove(seUsrGrp);
+		seUsrGrp.setSeSurGrp(null);
+
+		return seUsrGrp;
+	}
+
+}
