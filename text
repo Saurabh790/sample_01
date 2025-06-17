@@ -1,103 +1,219 @@
-package com.optum.fads.pgp.datarules.domain;
-
-import java.io.Serializable;
-import java.util.List;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-
-import lombok.Data;
-
-
-/**
- * The persistent class for the SE_SUR_GRP database table.
- * 
- */
-@Entity
-@Data
-@Table(name="SE_SUR_GRP")
-public class SeSurGrp implements Serializable {
-	private static final long serialVersionUID = 1L;
-
-	@Id
-	@Column(name="SUR_GRP_ID")
-	private long surGrpId;
-
-	@Column(name="SUR_GRP_NAME")
-	private String surGrpName;
-
-	//bi-directional many-to-one association to SeSurGrpModAccess
-	@OneToMany(mappedBy="seSurGrp")
-	private List<SeSurGrpModAccess> seSurGrpModAccesses;
-
-	//bi-directional many-to-one association to SeUsrGrp
-	@OneToMany(mappedBy="seSurGrp")
-	private List<SeUsrGrp> seUsrGrps;
-
-	public SeSurGrp() {
-	}
-
-	public long getSurGrpId() {
-		return this.surGrpId;
-	}
-
-	public void setSurGrpId(long surGrpId) {
-		this.surGrpId = surGrpId;
-	}
-
-	public String getSurGrpName() {
-		return this.surGrpName;
-	}
-
-	public void setSurGrpName(String surGrpName) {
-		this.surGrpName = surGrpName;
-	}
-
-	public List<SeSurGrpModAccess> getSeSurGrpModAccesses() {
-		return this.seSurGrpModAccesses;
-	}
-
-	public void setSeSurGrpModAccesses(List<SeSurGrpModAccess> seSurGrpModAccesses) {
-		this.seSurGrpModAccesses = seSurGrpModAccesses;
-	}
-
-	public SeSurGrpModAccess addSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
-		getSeSurGrpModAccesses().add(seSurGrpModAccess);
-		seSurGrpModAccess.setSeSurGrp(this);
-
-		return seSurGrpModAccess;
-	}
-
-	public SeSurGrpModAccess removeSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
-		getSeSurGrpModAccesses().remove(seSurGrpModAccess);
-		seSurGrpModAccess.setSeSurGrp(null);
-
-		return seSurGrpModAccess;
-	}
-
-	public List<SeUsrGrp> getSeUsrGrps() {
-		return this.seUsrGrps;
-	}
-
-	public void setSeUsrGrps(List<SeUsrGrp> seUsrGrps) {
-		this.seUsrGrps = seUsrGrps;
-	}
-
-	public SeUsrGrp addSeUsrGrp(SeUsrGrp seUsrGrp) {
-		getSeUsrGrps().add(seUsrGrp);
-		seUsrGrp.setSeSurGrp(this);
-
-		return seUsrGrp;
-	}
-
-	public SeUsrGrp removeSeUsrGrp(SeUsrGrp seUsrGrp) {
-		getSeUsrGrps().remove(seUsrGrp);
-		seUsrGrp.setSeSurGrp(null);
-
-		return seUsrGrp;
-	}
-
-}
+<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.7.17</version>
+    <relativePath/>
+    <!-- lookup parent from repository -->
+  </parent>
+  <groupId>com.optum.fads</groupId>
+  <artifactId>fads-monolithic-application</artifactId>
+  <packaging>pom</packaging>
+  <version>8.3.0-SNAPSHOT</version>
+  <properties>
+  <modelmapper.version>3.1.1</modelmapper.version>
+  <logback.encoder.version>7.4</logback.encoder.version>
+  <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+    <uitk.version>3.14.1</uitk.version>
+    <spring.boot.version>2.7.17</spring.boot.version>
+    <!-- spring.boot.version>2.5.6</spring.boot.version -->
+    <spring-cloud.version>2021.0.3</spring-cloud.version>
+    <spring-security-oauth2.version>2.5.2.RELEASE</spring-security-oauth2.version>
+    <spring-security-jwt.version>1.0.9.RELEASE</spring-security-jwt.version>
+    <spring.version>5.1.0.RELEASE</spring.version>
+    <hibernate.validator>5.4.1.Final</hibernate.validator>
+    <c3p0.version>0.9.5.2</c3p0.version>
+    <jackson.version>2.9.4</jackson.version>
+    <hibernate.version>6.4.4.Final</hibernate.version>
+    <servlet-api.version>3.1.0</servlet-api.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	<lombok.version>1.18.28</lombok.version>
+    <sonar.exlusions>
+			**/src/main/webapp/**,**/js/angular/**,**/js/angular-translate/**,**/js/google-code-prettify/**,**/js/jquery/**,**/js/lodash/**,**/src/main/webapp/webHelp/Content/*.*,**/src/main/webapp/webHelp/Content/Resources/**,**/src/main/webapp/uitk-core/js/ckeditor/**/*.js,**/src/main/webapp/uitk-core/js/ckeditor/**/*.css,**/src/main/webapp/uitk-core/js/ckeditor/**/*.html,**/src/main/webapp/uitk-core/js/polyfills/**,**/src/main/webapp/uitk-core/lib/**,src/main/webapp/app/**/*.js,**/src/main/webapp/app/**/*.js,**/src/main/webapp/uitk-core/lib/**/*,**/src/main/webapp/uitk/choropleth/**/*,**/bower_components/**</sonar.exlusions>
+  </properties>
+  <name>fads-monolithic-application</name>
+  <url>http://maven.apache.org</url>
+  <modules>
+    <module>fads-base</module>
+    <module>fads-casetracking</module>
+    <module>fads-demo-web</module>
+    <module>fads-pgp-datarules-api</module>
+  </modules>
+  <distributionManagement>
+    <repository>
+      <id>UHG-Releases</id>
+      <name>Local Repository for UHG Application Releases</name>
+      <url>https://repo1.uhc.com/artifactory/UHG-Releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>UHG-Snapshots</id>
+      <name>Local Repository for UHG Application Snapshots</name>
+      <url>https://repo1.uhc.com/artifactory/UHG-Snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.17.2</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring.boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-client</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-thymeleaf</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webflux</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-logging</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>jwks-rsa</artifactId>
+      <version>0.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.projectreactor.netty</groupId>
+      <artifactId>reactor-netty</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>javax.inject</groupId>
+      <artifactId>javax.inject</artifactId>
+      <version>1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt</artifactId>
+      <version>0.9.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-orm</artifactId>
+    </dependency>
+    <!--     <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-entitymanager</artifactId>
+            <version>${hibernate.version}</version>
+        </dependency>-->
+    <!-- Hibernate Validator -->
+    <!--  <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>${hibernate.validator}</version>
+        </dependency>-->
+    <!--
+		https://mvnrepository.com/artifact/org.springframework.security/spring-security-ldap -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-ldap</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-tomcat</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- <dependency> -->
+    <!-- <groupId>org.thymeleaf.extras</groupId> -->
+    <!-- <artifactId>thymeleaf-extras-springsecurity5</artifactId> -->
+    <!-- </dependency> -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.security.oauth</groupId>
+      <artifactId>spring-security-oauth2</artifactId>
+      <version>${spring-security-oauth2.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-ldap</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  
+   <build>
+   
+   <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+		
+   </build>
+</project>
