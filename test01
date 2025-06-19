@@ -20,6 +20,7 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import jakarta.persistence.EntityManagerFactory;
 
@@ -66,9 +67,8 @@ public class ServiceConfig implements InitializingBean {
         em.setPackagesToScan("com.optum.fads.authorization.api.domain", "com.optum.fads.pgp.datarules.domain");
         em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 
-        // Explicit Hibernate properties (required when not using Spring Boot auto-config)
         Properties jpaProperties = new Properties();
-        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.Oracle12cDialect");
+        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.OracleDialect");
         jpaProperties.put("hibernate.show_sql", false);
         jpaProperties.put("hibernate.format_sql", false);
         jpaProperties.put("hibernate.hbm2ddl.auto", "none");
@@ -83,7 +83,7 @@ public class ServiceConfig implements InitializingBean {
 
     @Primary
     @Bean(name = "txManagerSQL")
-    public PlatformTransactionManager txManagerSQL(EntityManagerFactory sqlEntityManagerFactory) {
+    public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory) {
         JpaTransactionManager txManager = new JpaTransactionManager();
         txManager.setEntityManagerFactory(sqlEntityManagerFactory);
         return txManager;
