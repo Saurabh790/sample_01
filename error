@@ -1,4 +1,8 @@
-
-2025-06-19T22:07:27.806+05:30 ERROR 8640 --- [datarules] [  restartedMain] o.s.boot.SpringApplication               : Application run failed
-
-org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'dataRulesController': Unsatisfied dependency expressed through field 'iDataRuleDataService': Error creating bean with name 'dataRuleDataService': Unsatisfied dependency expressed through field 'dataRulesRepository': Error creating bean with name 'dataRulesRepository' defined in com.optum.fads.pgp.datarules.repo.DataRulesRepository defined in @EnableJpaRepositories declared on ServiceConfig: Could not create query for public abstract java.util.List com.optum.fads.pgp.datarules.repo.DataRulesRepository.getMyAvailableDataRulesBySearchCritEsc(java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.util.List,org.springframework.data.domain.Pageable); Reason: Validation failed for query for method public abstract java.util.List com.optum.fads.pgp.datarules.repo.DataRulesRepository.getMyAvailableDataRulesBySearchCritEsc(java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.util.List,org.springframework.data.domain.Pageable)
+@Query(" FROM PrmDrDataRuleT pd  WHERE lower(pd.dataRuleName) like :dataruleName  ESCAPE '\\' "
+			+ "and (lower(pd.uiUserBaseCr.userFullName) like :createdBy or lower(pd.uiUserBaseCr.uiLastName) like :createdBy) "
+			+ "and (lower(pd.uiUserBaseUpd.userFullName) like :updatedBy or lower(pd.uiUserBaseUpd.uiLastName) like :updatedBy) " 
+			+ "and (lower(pd.uiUserBaseCr.uiSystemId) = :userSystemId or lower(pd.uiUserBaseUpd.uiSystemId) = :userSystemId)" 
+			+ " and pd.drId NOT IN :drIds")
+	List<PrmDrDataRuleT> getMyAvailableDataRulesBySearchCritEsc(@Param("dataruleName") String dataruleName,  
+			@Param("createdBy") String createdBy, @Param("updatedBy") String updatedBy,  @Param("userSystemId") String userSystemId,
+			@Param("drIds") List<Integer> drIds, Pageable pageRequest );
