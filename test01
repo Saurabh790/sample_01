@@ -3,6 +3,7 @@ package com.optum.fads.web.config;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Properties;
 
 import javax.sql.DataSource;
 
@@ -24,13 +25,13 @@ import jakarta.persistence.EntityManagerFactory;
 
 @Configuration
 @EnableTransactionManagement
-@ComponentScan(basePackages = { 
-    "com.optum.fads.authorization.api", 
+@ComponentScan(basePackages = {
+    "com.optum.fads.authorization.api",
     "com.optum.fads.pgp.datarules"
 })
 @EnableJpaRepositories(basePackages = {
-    "com.optum.fads.authorization.api.repo", 
-    "com.optum.fads.pgp.datarules.repository" 
+    "com.optum.fads.authorization.api.repo",
+    "com.optum.fads.pgp.datarules.repository"
 })
 public class ServiceConfig implements InitializingBean {
 
@@ -64,6 +65,19 @@ public class ServiceConfig implements InitializingBean {
         em.setDataSource(dataSource());
         em.setPackagesToScan("com.optum.fads.authorization.api.domain", "com.optum.fads.pgp.datarules.domain");
         em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+
+        // Explicit Hibernate properties (required when not using Spring Boot auto-config)
+        Properties jpaProperties = new Properties();
+        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.Oracle12cDialect");
+        jpaProperties.put("hibernate.show_sql", false);
+        jpaProperties.put("hibernate.format_sql", false);
+        jpaProperties.put("hibernate.hbm2ddl.auto", "none");
+        jpaProperties.put("hibernate.implicit_naming_strategy",
+                "org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl");
+        jpaProperties.put("hibernate.physical_naming_strategy",
+                "org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy");
+
+        em.setJpaProperties(jpaProperties);
         return em;
     }
 
@@ -81,15 +95,15 @@ public class ServiceConfig implements InitializingBean {
     }
 
     public void testConnection() {
-        System.out.println("Loaded DB URL: 05");
+        System.out.println("Loaded DB URL: " + url);
         try (Connection conn = dataSource().getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
             if (rs.next()) {
-                System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+                System.out.println("Connected to Oracle DB: " + rs.getString(1));
             }
         } catch (Exception e) {
-            System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+            System.err.println("Failed to connect to Oracle DB: " + e.getMessage());
         }
     }
 }
