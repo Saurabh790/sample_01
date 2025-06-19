@@ -1,95 +1,52 @@
-package com.optum.fads.web.config;
+server:
+  port: 8080
+  servlet:
+    contextPath: /datarules
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import jakarta.persistence.EntityManagerFactory;
-
-@Configuration
-@EnableTransactionManagement
-@ComponentScan(basePackages = { 
-    "com.optum.fads.authorization.api", 
-    "com.optum.fads.pgp.datarules" // include scanned beans from JAR
-})
-@EnableJpaRepositories(basePackages = {
-    "com.optum.fads.authorization.api.repo", 
-    "com.optum.fads.pgp.datarules.repository" // JPA repos from JAR
-})
-public class WebAppConfig implements InitializingBean {
-
-    @Value("${spring.datasource.url}")
-    private String url;
-
-    @Value("${spring.datasource.username}")
-    private String username;
-
-    @Value("${spring.datasource.password}")
-    private String password;
-
-    @Value("${spring.datasource.driver-class-name}")
-    private String driverClassName;
-
-    @Primary
-    @Bean
-    public DataSource dataSource() {
-        return DataSourceBuilder.create()
-            .driverClassName(driverClassName)
-            .url(url)
-            .username(username)
-            .password(password)
-            .build();
-    }
-
-    @Primary
-    @Bean(name = "sqlEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(dataSource());
-        em.setPackagesToScan("com.optum.fads.authorization.api.domain", "com.optum.fads.pgp.datarules.domain");
-        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-        return em;
-    }
-
-    @Primary
-    @Bean(name = "txManagerSQL")
-    public PlatformTransactionManager txManagerSQL(EntityManagerFactory sqlEntityManagerFactory) {
-        JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
-        return txManager;
-    }
-
-    @Override
-    public void afterPropertiesSet() throws Exception {
-        testConnection();
-    }
-
-    public void testConnection() {
-        System.out.println("Loaded DB URL: 05");
-        try (Connection conn = dataSource().getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
-            if (rs.next()) {
-                System.out.println(" Connected to Oracle DB: " + rs.getString(1));
-            }
-        } catch (Exception e) {
-            System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
-        }
-    }
-}
+spring: 
+  application:
+   name: datarules
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+       naming:
+            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: ${DB_URL}
+    userName: ${DB_USR}
+    password: ${DB_PWD}
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver  
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}    
+  security:
+    oauth2:
+     resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL}
+          jws-algorithms: ${JWS_ALG:RS256}
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
