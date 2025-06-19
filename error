@@ -1,23 +1,16 @@
-@Query(" FROM PrmDrDataRuleT pd  WHERE lower(pd.dataRuleName) like :dataruleName  ESCAPE '\\' "
-			+ "and (lower(pd.uiUserBaseCr.userFullName) like :createdBy or lower(pd.uiUserBaseCr.uiLastName) like :createdBy) "
-			+ "and (lower(pd.uiUserBaseUpd.userFullName) like :updatedBy or lower(pd.uiUserBaseUpd.uiLastName) like :updatedBy) " 
-			+ "and (lower(pd.uiUserBaseCr.uiSystemId) = :userSystemId or lower(pd.uiUserBaseUpd.uiSystemId) = :userSystemId)" 
-			+ " and pd.drId NOT IN :drIds")
-	List<PrmDrDataRuleT> getMyAvailableDataRulesBySearchCritEsc(@Param("dataruleName") String dataruleName,  
-			@Param("createdBy") String createdBy, @Param("updatedBy") String updatedBy,  @Param("userSystemId") String userSystemId,
-			@Param("drIds") List<Integer> drIds, Pageable pageRequest );
-
-
-
-
-org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'dataRulesController': Unsatisfied dependency expressed through field 'iDataRuleDataService': Error creating bean with name 'dataRuleDataService': Unsatisfied dependency expressed through field 'dataRulesRepository': Error creating bean with name 'dataRulesRepository' defined in com.optum.fads.pgp.datarules.repo.DataRulesRepository defined in @EnableJpaRepositories declared on ServiceConfig: Could not create query for public abstract java.util.List com.optum.fads.pgp.datarules.repo.DataRulesRepository.getMyAvailableDataRulesBySearchCritEsc(java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.util.List,org.springframework.data.domain.Pageable); Reason: Validation failed for query for method public abstract java.util.List com.optum.fads.pgp.datarules.repo.DataRulesRepository.getMyAvailableDataRulesBySearchCritEsc(java.lang.String,java.lang.String,java.lang.String,java.lang.String,java.util.List,org.springframework.data.domain.Pageable)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:787) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:145) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:508) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1419) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
+@Query(value = "SELECT * FROM PRM_DR_DATA_RULE_T pd " +
+               "WHERE LOWER(pd.DATA_RULE_NAME) LIKE :dataruleName ESCAPE '\\' " +
+               "AND (LOWER(pd.CREATED_BY_NAME) LIKE :createdBy OR LOWER(pd.CREATED_BY_LASTNAME) LIKE :createdBy) " +
+               "AND (LOWER(pd.UPDATED_BY_NAME) LIKE :updatedBy OR LOWER(pd.UPDATED_BY_LASTNAME) LIKE :updatedBy) " +
+               "AND (LOWER(pd.CREATED_BY_SYSTEM_ID) = :userSystemId OR LOWER(pd.UPDATED_BY_SYSTEM_ID) = :userSystemId) " +
+               "AND pd.DR_ID NOT IN (:drIds)",
+       countQuery = "SELECT count(*) FROM PRM_DR_DATA_RULE_T pd " +
+                    "WHERE LOWER(pd.DATA_RULE_NAME) LIKE :dataruleName ESCAPE '\\'",
+       nativeQuery = true)
+Page<PrmDrDataRuleT> getMyAvailableDataRulesBySearchCritEsc(
+    @Param("dataruleName") String dataruleName,
+    @Param("createdBy") String createdBy,
+    @Param("updatedBy") String updatedBy,
+    @Param("userSystemId") String userSystemId,
+    @Param("drIds") List<Integer> drIds,
+    Pageable pageable);
