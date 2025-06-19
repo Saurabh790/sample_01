@@ -1,43 +1,95 @@
-# Server configuration
-server.port=8080
-server.servlet.context-path=/datarules
+package com.optum.fads.web.config;
 
-# Custom quickstart config
-quickstart.generateOrderPeriod=10s
-quickstart.processOrderPeriod=30s
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
 
-# Spring application config
-spring.application.name=datarules
+import javax.sql.DataSource;
 
-# JPA & Hibernate
-spring.jpa.database-platform=org.hibernate.dialect.SQLServer2016Dialect
-spring.jpa.database=SQL_SERVER
-spring.jpa.show-sql=false
-spring.jpa.hibernate.naming.implicit-strategy=org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-# Datasource - SQL Server with HikariCP
-spring.datasource.type=com.zaxxer.hikari.HikariDataSource
-spring.datasource.url=${DB_URL}
-spring.datasource.username=${DB_USR}
-spring.datasource.password=${DB_PWD}
-spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
-spring.datasource.hikari.maximum-pool-size=${MAXIMUM_DB_POOL_SIZE:50}
-spring.datasource.hikari.minimum-idle=${MIN_POOL_IDLE:1}
-spring.datasource.hikari.connection-timeout=${DB_CONNECTION_TIMEOUT:60000}
-spring.datasource.hikari.idle-timeout=${DB_POOL_IDLE_TIMEOUT:60000}
-spring.datasource.hikari.leak-detection-threshold=${LEAK_DETETCTION_THRESHOLD:0}
+import jakarta.persistence.EntityManagerFactory;
 
-# OAuth2 JWT config
-spring.security.oauth2.resourceserver.jwt.jwk-set-uri=${JWKS_URL}
-spring.security.oauth2.resourceserver.jwt.jws-algorithms=${JWS_ALG:RS256}
+@Configuration
+@EnableTransactionManagement
+@ComponentScan(basePackages = { 
+    "com.optum.fads.authorization.api", 
+    "com.optum.fads.pgp.datarules"
+})
+@EnableJpaRepositories(basePackages = {
+    "com.optum.fads.authorization.api.repo", 
+    "com.optum.fads.pgp.datarules.repository" 
+})
+public class ServiceConfig implements InitializingBean {
 
-# Actuator & Prometheus
-management.endpoint.metrics.enabled=true
-management.endpoint.prometheus.enabled=true
-management.endpoints.web.exposure.include=health,info,prometheus
-management.prometheus.metrics.export.enabled=true
+    @Value("${spring.datasource.url}")
+    private String url;
 
-# Uncomment if you want to enable Hibernate SQL debug logging
-# logging.level.org.hibernate.SQL=DEBUG
-# logging.level.org.hibernate.type=TRACE
+    @Value("${spring.datasource.username}")
+    private String username;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
+    @Value("${spring.datasource.driver-class-name}")
+    private String driverClassName;
+
+    @Primary
+    @Bean
+    public DataSource dataSource() {
+        return DataSourceBuilder.create()
+            .driverClassName(driverClassName)
+            .url(url)
+            .username(username)
+            .password(password)
+            .build();
+    }
+
+    @Primary
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource());
+        em.setPackagesToScan("com.optum.fads.authorization.api.domain", "com.optum.fads.pgp.datarules.domain");
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        return em;
+    }
+
+    @Primary
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(EntityManagerFactory sqlEntityManagerFactory) {
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
+        return txManager;
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        testConnection();
+    }
+
+    public void testConnection() {
+        System.out.println("Loaded DB URL: 05");
+        try (Connection conn = dataSource().getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+            if (rs.next()) {
+                System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+            }
+        } catch (Exception e) {
+            System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+        }
+    }
+}
