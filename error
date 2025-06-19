@@ -1,338 +1,316 @@
-package com.optum.fads.authorization.api.service.impl;
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+/** 
+ *  The service contains methods to retrieve and update FADS Data Element data.
+ * 
+ * @author Anil Wagh
+ */
+package com.optum.fads.pgp.datarules.service.impl;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.optum.fads.authorization.api.domain.FadsModElemConfig;
-import com.optum.fads.authorization.api.domain.SeCaseGrp;
-import com.optum.fads.authorization.api.domain.SeCaseGrpModAccess;
-import com.optum.fads.authorization.api.domain.SeCaseGrpNodeAccess;
-import com.optum.fads.authorization.api.domain.SeFadsGrp;
-import com.optum.fads.authorization.api.domain.SeFadsGrpCompAccess;
-import com.optum.fads.authorization.api.domain.SeFadsGrpModAccess;
-import com.optum.fads.authorization.api.domain.SeSurGrp;
-import com.optum.fads.authorization.api.domain.SeSurGrpModAccess;
-import com.optum.fads.authorization.api.domain.UiUserBase;
-import com.optum.fads.authorization.api.dto.AccessLevel;
-import com.optum.fads.authorization.api.dto.AppUser;
-import com.optum.fads.authorization.api.dto.CaseModule;
-import com.optum.fads.authorization.api.dto.CaseNode;
-import com.optum.fads.authorization.api.dto.CaseRole;
-import com.optum.fads.authorization.api.dto.CaseTypeModule;
-import com.optum.fads.authorization.api.dto.FadsComponent;
-import com.optum.fads.authorization.api.dto.FadsModule;
-import com.optum.fads.authorization.api.dto.FadsModuleElement;
-import com.optum.fads.authorization.api.dto.FadsRole;
-import com.optum.fads.authorization.api.dto.ModuleAccess;
-import com.optum.fads.authorization.api.dto.Role;
-import com.optum.fads.authorization.api.dto.SurModule;
-import com.optum.fads.authorization.api.dto.SurRole;
-import com.optum.fads.authorization.api.repo.UserRepository;
-import com.optum.fads.authorization.api.service.FADSUserDetailsService;
+import com.optum.fads.pgp.datarules.common.constants.DataRuleConstants;
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.domain.PrmMbMasterT;
+import com.optum.fads.pgp.datarules.dto.DataElementDTO;
+import com.optum.fads.pgp.datarules.dto.DrCodeValueDTO;
+import com.optum.fads.pgp.datarules.dto.LUValueDTO;
+import com.optum.fads.pgp.datarules.exception.DataRulesApiException;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+import com.optum.fads.pgp.datarules.service.IDataElementDataService;
 
-@Service
-public class FADSUserDetailsServiceImpl implements FADSUserDetailsService {
+@Service("dataElementDataService")
+//@Slf4j
+public class DataElementDataService implements IDataElementDataService  {
 
+	private static final Logger logit = LoggerFactory
+			.getLogger(DataElementDataService.class);
+	
 	@Autowired
-	UserRepository userRepository;
-
-	@Override
-	@Transactional(readOnly = true)
-	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		Optional<UiUserBase> optional = userRepository.findByUiUserId(username);
-		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
-		AppUser user = new AppUser();
-		UiUserBase uiUserBase = optional.get();
-
-		user.setUserEmail(uiUserBase.getUiEMailAddress());
-		user.setUserId(uiUserBase.getUiUserId());
-		user.setUserSystemId(uiUserBase.getUiSystemId());
-		Role role = new Role();
-		role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
-		role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
-		Set<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
-
-		List<AccessLevel> accesses = new ArrayList<AccessLevel>();
-		surAccesses.forEach(surModuleAccess -> {
-			accesses.add(new AccessLevel(surModuleAccess.getId().getSurModuleId(),
-					ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
-					surModuleAccess.getSeSurModule().getSurModuleName(),
-					surModuleAccess.getSeSurAccess().getSurAccessId()));
-
-		});
-
-		role.setAllowedAccesses(accesses);
-		user.setRole(role);
-		
+    private DataRuleMBRepository dataRuleMBRepository;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
 
-        //FADS
-        SeFadsGrp seFadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
-        if (seFadsGrp != null) {
-            FadsRole fadsRole = new FadsRole();
-            fadsRole.setGroupId(seFadsGrp.getFadsGrpId());
-            fadsRole.setGroupName(seFadsGrp.getFadsGrpName());
-            Set<SeFadsGrpCompAccess> fadsGrpCompnts = seFadsGrp.getSeFadsGrpCompAccesses();
-            for (SeFadsGrpCompAccess seFadsGrpCompnt : fadsGrpCompnts) {
-                if (!seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId().equals("H")) {
-                    FadsComponent fadsComponent = new FadsComponent();
-                    fadsComponent.setComponentId(seFadsGrpCompnt.getId().getFadsCompId());
-                    fadsComponent.setComponentCd(seFadsGrpCompnt.getSeFadsComponent().getComponentCd());
-                    fadsComponent.setComponentName(seFadsGrpCompnt.getSeFadsComponent().getComponentName());
-					   fadsComponent.setComponentSeq(seFadsGrpCompnt.getSeFadsComponent().getComponentSeq());
-                    fadsComponent.setComponentAccess(seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId());
+	/**
+	 * this method will get the data element record data corresponding to Data Element ID  
+	 * 
+	 * Parameters - Data Element ID, selectedItemCds - code values not to be included
+	 */
+	 public DataElementDTO getdataelement(Integer dataElementId, List <String> selectedItemCds){
+			logit.info(" Obtain data element ID = {}", dataElementId );
+			List<Object[]> dataElementRS;
+			DataElementDTO dataElementDTO = null;
+			try {
+				dataElementRS = dataRuleMBRepository.retrieveDataElementById(dataElementId);
+				List<DataElementDTO> dataElementList = populateDataElementList(dataElementRS);
+				if (!dataElementList.isEmpty()) {
+					dataElementDTO = dataElementList.get(0);
+					if(dataElementDTO.getLuFlag()!=null && !dataElementDTO.getLuFlag().equals("0")) {
+						dataElementDTO.setAvailValues(getAvailableValues(dataElementDTO, selectedItemCds));
+					}     	
+				}
+			} catch (Exception e) {
+				throw new DataRulesApiException(DataRuleConstants.EXCEPTION_MESSAGE, e);
+			} 
+	        return dataElementDTO;
+		}
+	 /**
+	 * this method is called by findDataElementId routine, it fetches the available values 
+	 * 	corresponding to a selected data element (MB_LU_SQL from MB table provides these values)
+	 * 
+	 * When mbCtecFType is char and mbLuSql has SQL the valid values/Lu Values can be obtained from the SQL
+	 * 		The available values are stored in Data Element Bean rather than Data Rule Bean
+	 * Else to and from range values can be provided by the User
+	 * 
+	 * Parameters - None
+	 */
+	/* public List<DrCodeValueDTO>  getAvailableValues(DataElementDTO dataElementDTO, List <String> selectedItemCds ){
+		 logit.info(" Obtain avail values for Data ElementID {} ", dataElementDTO.getId()  );
+		int startQuotePos = dataElementDTO.getValueSQL().indexOf('\'');
+		int endQuotePos = dataElementDTO.getValueSQL().lastIndexOf('\'');
+		String valueId = dataElementDTO.getValueSQL().substring(startQuotePos+1,endQuotePos);
+		List<DmValidValueT> dmValidValueList = null;
+		List<DrCodeValueDTO> codeValueList = new ArrayList<>();
 
-                    Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
-                    List<SeFadsGrpModAccess> fadsFilterGrpMods = fadsGrpMods.stream().filter(
-                            p -> seFadsGrpCompnt.getId().getFadsCompId().equals(p.getSeFadsComponent().getComponentId()))
-                            .collect(Collectors.toList());
-                    for (SeFadsGrpModAccess fadsGrop : fadsFilterGrpMods) {
-                        if (!fadsGrop.getSeFadsAccess().getFadsAccessId().equals("H")) {
-                            FadsModule fadsModule = new FadsModule();
-                            fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
-                            fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
-                            fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
-							   fadsModule.setModuleSeq(fadsGrop.getSeFadsModule().getModuleSeq());
-                            fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
-
-                            List<FadsModElemConfig> elements = fadsGrop.getSeFadsModule().getFadsModElemConfigs().stream().filter(
-                                    ele -> ele.getSeFadsModule().getFadsModuleId().equals(fadsGrop.getId().getFadsModuleId()))
-                                    .collect(Collectors.toList());
-                            for (FadsModElemConfig fadsModConfig : elements) {
-                                boolean existElem = fadsModConfig.getSeFadsGrpElemNoAccesses().stream().anyMatch(
-										   s -> (s.getSeFadsGrp().getFadsGrpId().equals(seFadsGrp.getFadsGrpId())));
-								   		   //no need, get by it already: && (s.getId().getElementId().equals(modElement.getElementId()))
-								   if (!existElem) {
-									   FadsModuleElement modElement = new FadsModuleElement();
-									   modElement.setElementId(fadsModConfig.getElementId());
-									   modElement.setElementCd(fadsModConfig.getElementCd());
-									   modElement.setElementName(fadsModConfig.getElementName());
-									   modElement.setElementSeq(fadsModConfig.getElementSeq());
-									   fadsModule.getElements().add(modElement);
-                                }
-                            }
-                            Collections.sort((ArrayList<FadsModuleElement>) fadsModule.getElements(), (o1, o2) -> o1.getElementSeq() - o2.getElementSeq());
-                            fadsComponent.getModules().add(fadsModule);
-
-                            //TODO Delete after
-                            //fadsRole.getModulePermissions().add(fadsModule);
-                        }
-                    }
-                    Collections.sort((ArrayList<FadsModule>) fadsComponent.getModules(), (o1, o2) -> o1.getModuleSeq() - o2.getModuleSeq());
-                    fadsRole.getComponentPermissions().add(fadsComponent);
-                }
-            }
-            Collections.sort((ArrayList<FadsComponent>) fadsRole.getComponentPermissions(), (o1, o2) -> o1.getComponentSeq() - o2.getComponentSeq());
-
-
-/*
-            Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
-            for (SeFadsGrpModAccess fadsGrop : fadsGrpMods) {
-                FadsModule fadsModule = new FadsModule();
-                fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
-                fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
-                fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
-                fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
-                List<FadsModuleElement> moduleElements = new ArrayList<FadsModuleElement>();
-                if (fadsGrop.getSeFadsModule() != null && fadsGrop.getSeFadsAccess().getFadsAccessId() != null) {
-                    Set<FadsModElemConfig> fadsModElements = fadsGrop.getSeFadsModule().getFadsModElemConfigs();
-                    for (FadsModElemConfig fadsModConfig : fadsModElements) {
-                        FadsModuleElement modElement = new FadsModuleElement();
-                        modElement.setElementId(fadsModConfig.getElementId());
-                        modElement.setElementCd(fadsModConfig.getElementCd());
-                        modElement.setElementName(fadsModConfig.getElementName());
-*/
-             /*
-						 for(SeFadsGroupElemAccess fadsModElemAccess:fadsModConfig..getSeFadsModElemAccesses()) {
-							 if(fadsModElemAccess.getId().getFadsGrpId()==seFadsGrp.getFadsGrpId()) {
-								 modElement.setElementAccess(fadsModElemAccess.getSeFadsAccess().getFadsAccessId());
-							 }
-							 
-						 }*/
-/*
-                        moduleElements.add(modElement);
-                    }
-                }
-                fadsModule.setElements(moduleElements);
-                fadsRole.getModulePermissions().add(fadsModule);
-            }
+		logit.info("DM Value ID parm = {} ", valueId );
+		if (selectedItemCds.isEmpty()) {
+			dmValidValueList =  dataRuleMBRepository.retrieveValidValuesById(valueId );
+		} else {
+			dmValidValueList =  dataRuleMBRepository.retrieveAvailableValidValuesById(valueId, selectedItemCds );
+		}
+		for (DmValidValueT dmValidValue : dmValidValueList) {
+            DrCodeValueDTO codeValue = new DrCodeValueDTO();
+            codeValue.setCode(dmValidValue.getId().getrVvCd());
+            codeValue.setValue(dmValidValue.getrVvShortDescr());
+            codeValueList.add(codeValue);
+        }	
+		return codeValueList;
+	}
 */
 
-            role.setFadsRole(fadsRole);
+    public List<DrCodeValueDTO>  getAvailableValues(DataElementDTO dataElementDTO, List <String> selectedItemCds ){
+        logit.info(" Obtain avail values for Data ElementID {} ", dataElementDTO.getId()  );
+       String sql = dataElementDTO.getValueSQL();
+        List<DrCodeValueDTO> codeValueList = new ArrayList<>();
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+
+        for (Map row : rows) {
+            DrCodeValueDTO obj = new DrCodeValueDTO();
+            obj.setCode(((String) row.get("DATA_VALUE")));
+            obj.setValue((String) row.get("DATA_LABEL"));
+
+            codeValueList.add(obj);
         }
 
-	   //SUR
-	   SeSurGrp seSurGrp= uiUserBase.getSeUsrGrp().getSeSurGrp();
+        return codeValueList;
+    }
+    /**
+		 * this method fetches all the data element records from PrmMbMasterT (FadsLuValuesT)
+		 * 
+		 * Parameters - data source (All, Provider, Claim, Member - LU_LABEL in FADS_LU_VALUES_T for FIELD_ID =  DR_ELEMENT_CLASS)
+		 */
+	 
+	 public List<DataElementDTO> getDataElements(String dataSource){
 
-		   if(seSurGrp!=null){
-			   SurRole surRole=   new SurRole();
-			   surRole.setGroupId(seSurGrp.getSurGrpId());
-			   surRole.setGroupName(seSurGrp.getSurGrpName());
-			   Set<SeSurGrpModAccess> surGrops=  seSurGrp.getSeSurGrpModAccesses();
-
-			  for(SeSurGrpModAccess surGrop:surGrops){
-				  SurModule surModuleDto= new SurModule();
-				  surModuleDto.setModuleId(surGrop.getId().getSurModuleId().toString());
-				  surModuleDto.setModuleAccess(surGrop.getSeSurAccess().getSurAccessId());
-				  surRole.getModulePermissions().add(surModuleDto);
-			  }
-			  role.setSurRole(surRole);
-	         }
-
-		  //CaseTracking
-		  SeCaseGrp seCaseGrp= uiUserBase.getSeUsrGrp().getSeCaseGrp();
-		  if(seCaseGrp!=null){
-			  CaseRole caseRole=new CaseRole();
-			  caseRole.setGroupId(seCaseGrp.getCaseGrpId());
-			  caseRole.setGroupName(seCaseGrp.getCaseGrpName());
-			  Set<SeCaseGrpModAccess>seCaseGrpModAccesses= seCaseGrp.getSeCaseGrpModAccesses();
-			  List<CaseTypeModule> caseTypeModules= new ArrayList<CaseTypeModule>();
-			  Map<String,String> caseTypes = new HashMap<>();
-			  Map<String,List<CaseModule>> modulePermissions = new HashMap<>();
-			  for(SeCaseGrpModAccess caseGrop:seCaseGrpModAccesses){
-				  CaseModule caseModule = new  CaseModule();
-				  CaseTypeModule caseTypeModule = new CaseTypeModule();
-				  caseModule.setModuleId(caseGrop.getSeCaseModule().getCaseModuleId());
-				  caseModule.setModuleCd(caseGrop.getSeCaseModule().getCaseModuleCd());
-				  caseModule.setModuleName(caseGrop.getSeCaseModule().getCaseModuleName());
-				  caseModule.setModuleAccess(caseGrop.getSeCaseAccess().getAccessId());
-				  if(!modulePermissions.containsKey(caseGrop.getCaLuCaseTypeT().getTypeCd())){
-					  modulePermissions.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
-		            }
-				  modulePermissions.get(caseGrop.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
-				  caseTypes.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), caseGrop.getCaLuCaseTypeT().getTypeDesc());
-
-			  }
-			  for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
-				   //System.out.println(entry.getKey() + " = " + entry.getValue());
-				  CaseTypeModule caseTypeModule=new CaseTypeModule();
-				  caseTypeModule.setCaseTypeId(entry.getKey());
-				  caseTypeModule.setCaseTypeName(entry.getValue());
-				  caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
-				  caseTypeModules.add(caseTypeModule);
-
+			List<DataElementDTO> dataElementList;
+			List<Object[]>  dataElementRS;
+			try {
+				if (dataSource.equalsIgnoreCase(DataRuleConstants.ALL_STR)) {
+					dataElementRS = dataRuleMBRepository.retrieveDataElements();
+				} else {
+					dataElementRS = dataRuleMBRepository.retrieveDataElementsByDataSource(dataSource);
 				}
-			  caseRole.setCaseTypeModules(caseTypeModules);
-
-			   Set<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses=  seCaseGrp.getSeCaseGrpNodeAccesses();
-			   Collection<CaseNode> nodePermissions= new ArrayList<CaseNode>();
-			  for(SeCaseGrpNodeAccess seCaseGrpNode:seCaseGrpNodeAccesses){
-					  CaseNode caseNodeDto = new CaseNode();
-					  caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
-					  caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
-					  caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
-					  caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
-					  nodePermissions.add(caseNodeDto);
-
-
-			  }
-			  caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
-
-			  role.setCaseRole(caseRole);
-	   }
-
-
-		//userDto.setNodes(nodes);
-	 user.setRole(role);
-		return user;
-
-	}
-
+				if (dataElementRS.isEmpty()) {
+					throw new DataRulesApiException(DataRuleConstants.NO_DATA_FOUND_MSG);
+				}
+				dataElementList = populateDataElementList(dataElementRS);
+			} catch (Exception e) {
+				throw new DataRulesApiException(DataRuleConstants.EXCEPTION_MESSAGE, e);
+			} 
+	        return dataElementList;
+		}
 	
+	private List<DataElementDTO> populateDataElementList(List<Object[]> dataElementRS) {
+		 List<DataElementDTO> dataElementDataList = new ArrayList<>(); 
+			if (!dataElementRS.isEmpty()) {
+				for (Object[] dataElementData : dataElementRS) {	
+					DataElementDTO dataElementDTO = new DataElementDTO();
+					dataElementDTO.setId((int)dataElementData[0]); //mbCtecFid
+					dataElementDTO.setName((String)dataElementData[1]); //mbCustDatadesc
+					dataElementDTO.setDataType((String)dataElementData[2]); //mbCtecFtype
+					dataElementDTO.setLuFlag(String.valueOf(dataElementData[3])); //mbLuFlag
+					dataElementDTO.setValueSQL((String)dataElementData[4]); //mbLuSql
+					dataElementDTO.setDataSource((String)dataElementData[5]); //luLabel
+					dataElementDTO.setAvailValues(new ArrayList<>());
+					dataElementDataList.add(dataElementDTO);
+				}  
+	       } else {
+	    	   throw new DataRulesApiException(DataRuleConstants.NO_DATA_FOUND_MSG);
+			}
+		 return dataElementDataList;
+	 }
+	/**
+	 * this method fetches data element records from PrmMbMasterT corresponding to BA_ID in a Behavior Pattern 
+	 * 
+	 * Parameters - BA_ID
+	 */
+ 
+ public List<DataElementDTO> getBpTypeDataElements(String baId){
 
+		List<DataElementDTO> dataElementList;
+		List<PrmMbMasterT>  dataElementsRS;
+		String baIdLk = DataRuleConstants.PERCENT_STR + baId + DataRuleConstants.PERCENT_STR;
+		try {
+			
+			dataElementsRS = dataRuleMBRepository.retrieveBpTypeDataElements(baIdLk);
+			if (dataElementsRS.isEmpty()) {
+				throw new DataRulesApiException(DataRuleConstants.NO_DATA_FOUND_MSG);
+			}
+			dataElementList = populateBpDataElementList(dataElementsRS);
+		} catch (Exception e) {
+			throw new DataRulesApiException(DataRuleConstants.EXCEPTION_MESSAGE, e);
+		} 
+        return dataElementList;
+	}
+ 
+ private List<DataElementDTO> populateBpDataElementList(List<PrmMbMasterT> dataElementsRS) {
+	 List<DataElementDTO> dataElementDataList = new ArrayList<>(); 
+		if (!dataElementsRS.isEmpty()) {
+			for (PrmMbMasterT dataElementData : dataElementsRS) {	
+				DataElementDTO dataElementDTO = new DataElementDTO();
+				dataElementDTO.setId(dataElementData.getMbCtecFid()); // ID
+				dataElementDTO.setName(dataElementData.getMbCustDatadesc()); 
+				dataElementDataList.add(dataElementDTO);
+			}  
+       } else {
+    	   throw new DataRulesApiException(DataRuleConstants.NO_DATA_FOUND_MSG);
+		}
+	 return dataElementDataList;
+ }
+	/**
+	 * this method fetches all the data source element records (field ID = DR_ELEMENT_CLASS)  
+	 * 
+	 * Parameters - None
+	 */
+	public List<LUValueDTO> findAllDataSourceElements() {
+		 logit.info(" Obtain all data sources " );
+		 List<LUValueDTO> luValueList = new ArrayList<>();
+        try {
+       	 List<FadsLuValuesT> fadsLuValuesList = dataRuleMBRepository.retrieveDataSourceElements();
+            for(FadsLuValuesT fadsLuValue : fadsLuValuesList) {
+           	 LUValueDTO luv = new LUValueDTO();
+           	 if(DataRuleConstants.ZERO_STR.equals(fadsLuValue.getId().getLuValue())) {
+           		 luv.setLuValue("All");
+           		 luv.setLuLabel("All");
+           	 } else {
+           		 luv.setLuValue(fadsLuValue.getId().getLuValue());
+           		 luv.setLuLabel(fadsLuValue.getLuLabel());
+           	 }
+           	 luv.setFieldID(fadsLuValue.getId().getFieldId());
+           	 luv.setLuView(fadsLuValue.getLuView());
+           	 luv.setObjID(String.valueOf(fadsLuValue.getObjId()));
+           	 luv.setLuSeq(String.valueOf(fadsLuValue.getLuSeq()));
+                luValueList.add(luv);
+            }
+        }catch (Exception e) {
+				throw new DataRulesApiException(DataRuleConstants.EXCEPTION_MESSAGE, e);
+        }
+        return luValueList;
+    }
+	/**
+	 * this method fetches all the date elements 
+	 * 
+	 * Parameters - None
+	 */
+	public List<DataElementDTO> getAllDateElements() {
+		 logit.info(" Obtain the date elements " );
+		 List<DataElementDTO> dateElementsList;
+		 List<PrmMbMasterT>  dateElementsRS;
+		 String mbBpTypeLk = "%5%";
+       try {
+    	   dateElementsRS = dataRuleMBRepository.retrieveDateElements(mbBpTypeLk);
+    	   if (dateElementsRS.isEmpty()) {
+				throw new DataRulesApiException(DataRuleConstants.NO_DATA_FOUND_MSG);
+			}
+    	   dateElementsList = populateBpDataElementList(dateElementsRS);
+       }catch (Exception e) {
+				throw new DataRulesApiException(DataRuleConstants.EXCEPTION_MESSAGE, e);
+       }
+       return dateElementsList;
+   }
 }
 
+package com.optum.fads.pgp.datarules.repo;
 
+import java.util.List;
 
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-2025-06-19T21:17:21.235+05:30 DEBUG 6628 --- [datarules] [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : Application failed to start due to an exception
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.domain.PrmMbMasterT;
 
-org.springframework.beans.factory.NoSuchBeanDefinitionException: No bean named 'entityManagerFactory' available
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.getBeanDefinition(DefaultListableBeanFactory.java:895) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getMergedLocalBeanDefinition(AbstractBeanFactory.java:1320) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:300) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:682) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:509) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1335) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1165) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:562) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1685) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1434) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1443) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1353) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:784) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:145) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:508) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1419) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1443) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1353) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:784) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:145) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:508) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1419) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:975) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:962) ~[spring-context-6.1.5.jar:6.1.5]
-	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:624) ~[spring-context-6.1.5.jar:6.1.5]
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.2.4.jar:3.2.4]
-	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:754) ~[spring-boot-3.2.4.jar:3.2.4]
-	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:456) ~[spring-boot-3.2.4.jar:3.2.4]
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:334) ~[spring-boot-3.2.4.jar:3.2.4]
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354) ~[spring-boot-3.2.4.jar:3.2.4]
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1343) ~[spring-boot-3.2.4.jar:3.2.4]
-	at com.optum.fads.web.FADSWebApplication.main(FADSWebApplication.java:12) ~[classes/:na]
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
-	at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
-	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50) ~[spring-boot-devtools-3.2.4.jar:3.2.4]
-
-2025-06-19T21:17:21.237+05:30 ERROR 6628 --- [datarules] [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : 
+@Transactional
+@Repository
+public interface DataRuleMBRepository extends  JpaRepository <PrmMbMasterT, Integer>{
+		
+	@Query("SELECT p.mbCtecFid,p.mbCustDatadesc,p.mbCtecFtype,p.mbLuFlag,p.mbLuSql,f.luLabel  "
+			+ "FROM PrmMbMasterT p, FadsLuValuesT f WHERE p.drElementClass In (1,2,3,4) "
+			+ " AND p.mbCustFlag=1 AND Cast(p.drElementClass as text)=f.id.luValue AND f.id.fieldId = 'DR_ELEMENT_CLASS'"
+			+ " ORDER BY p.mbCustDatadesc ")
+	List<Object[]> retrieveDataElements();
+	
+	@Query("SELECT p.mbCtecFid,p.mbCustDatadesc,p.mbCtecFtype,p.mbLuFlag,p.mbLuSql,f.luLabel  "
+			+ "FROM PrmMbMasterT p, FadsLuValuesT f WHERE p.drElementClass In (1,2,3,4) "
+			+ " AND p.mbCustFlag=1 AND Cast(p.drElementClass as text)=f.id.luValue AND f.id.fieldId = 'DR_ELEMENT_CLASS'"
+			+ " AND f.luLabel = :dataSource ORDER BY p.mbCustDatadesc ")
+	List<Object[]> retrieveDataElementsByDataSource(@Param("dataSource") String dataSource);
+	
+	@Query("SELECT p.mbCtecFid,p.mbCustDatadesc,p.mbCtecFtype,p.mbLuFlag,p.mbLuSql,f.luLabel  "
+			+ "FROM PrmMbMasterT p, FadsLuValuesT f WHERE Cast(p.drElementClass as text)=f.id.luValue"
+			+ " AND f.id.fieldId = 'DR_ELEMENT_CLASS' AND p.mbCtecFid = :dataElementId")
+	List<Object[]> retrieveDataElementById(@Param("dataElementId") Integer dataElementId);
+	
+	@Query(" FROM FadsLuValuesT fl  where fl.id.fieldId = 'DR_ELEMENT_CLASS' and fl.luView='1' Order by fl.luSeq")
+	List<FadsLuValuesT>	retrieveDataSourceElements();
+	/*
+	@Query(" FROM DmValidValueT dv  WHERE dv.id.rVvId = :validValueId ORDER BY dv.id.rVvCd")
+	List<DmValidValueT> retrieveValidValuesById(@Param("validValueId") String validValueId );
+	
+	@Query(" FROM DmValidValueT dv  WHERE dv.id.rVvId = :validValueId AND "
+			+ "dv.id.rVvCd NOT IN :selectedItemCds ORDER BY dv.id.rVvCd")
+	List<DmValidValueT> retrieveAvailableValidValuesById(@Param("validValueId") String validValueId, 
+			@Param("selectedItemCds") List<String> selectedItemCds );*/
+	
+	@Query(" FROM FadsLuValuesT f  WHERE f.id.fieldId = :luValueId ORDER BY f.id.luValue")
+	List<FadsLuValuesT> retrieveLuValuesById(@Param("luValueId") String luValueId );
+	
+	@Query("FROM PrmMbMasterT p WHERE p.mbBpFlag = 1 AND p.mbBpType like :baId ORDER BY p.mbCustDatadesc")
+	List<PrmMbMasterT> retrieveBpTypeDataElements(@Param("baId") String baId);
+	
+	@Query("FROM PrmMbMasterT p WHERE p.mbBpFlag = 1 AND p.mbBpType like :mbBpTypeLk ORDER BY p.mbCustDatadesc")
+	List<PrmMbMasterT> retrieveDateElements(@Param("mbBpTypeLk") String mbBpTypeLk);
+	
+}
+:29:13.211+05:30 ERROR 2464 --- [datarules] [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : 
 
 ***************************
 APPLICATION FAILED TO START
@@ -340,7 +318,7 @@ APPLICATION FAILED TO START
 
 Description:
 
-Field userRepository in com.optum.fads.authorization.api.service.impl.FADSUserDetailsServiceImpl required a bean named 'entityManagerFactory' that could not be found.
+Field dataRuleMBRepository in com.optum.fads.pgp.datarules.service.impl.DataElementDataService required a bean of type 'com.optum.fads.pgp.datarules.repo.DataRuleMBRepository' that could not be found.
 
 The injection point has the following annotations:
 	- @org.springframework.beans.factory.annotation.Autowired(required=true)
@@ -348,5 +326,4 @@ The injection point has the following annotations:
 
 Action:
 
-Consider defining a bean named 'entityManagerFactory' in your configuration.
-
+Consider defining a bean of type 'com.optum.fads.pgp.datarules.repo.DataRuleMBRepository' in your configuration.
