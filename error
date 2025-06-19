@@ -1,17 +1,323 @@
+package com.optum.fads.authorization.api.service.impl;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.authorization.api.domain.FadsModElemConfig;
+import com.optum.fads.authorization.api.domain.SeCaseGrp;
+import com.optum.fads.authorization.api.domain.SeCaseGrpModAccess;
+import com.optum.fads.authorization.api.domain.SeCaseGrpNodeAccess;
+import com.optum.fads.authorization.api.domain.SeFadsGrp;
+import com.optum.fads.authorization.api.domain.SeFadsGrpCompAccess;
+import com.optum.fads.authorization.api.domain.SeFadsGrpModAccess;
+import com.optum.fads.authorization.api.domain.SeSurGrp;
+import com.optum.fads.authorization.api.domain.SeSurGrpModAccess;
+import com.optum.fads.authorization.api.domain.UiUserBase;
+import com.optum.fads.authorization.api.dto.AccessLevel;
+import com.optum.fads.authorization.api.dto.AppUser;
+import com.optum.fads.authorization.api.dto.CaseModule;
+import com.optum.fads.authorization.api.dto.CaseNode;
+import com.optum.fads.authorization.api.dto.CaseRole;
+import com.optum.fads.authorization.api.dto.CaseTypeModule;
+import com.optum.fads.authorization.api.dto.FadsComponent;
+import com.optum.fads.authorization.api.dto.FadsModule;
+import com.optum.fads.authorization.api.dto.FadsModuleElement;
+import com.optum.fads.authorization.api.dto.FadsRole;
+import com.optum.fads.authorization.api.dto.ModuleAccess;
+import com.optum.fads.authorization.api.dto.Role;
+import com.optum.fads.authorization.api.dto.SurModule;
+import com.optum.fads.authorization.api.dto.SurRole;
+import com.optum.fads.authorization.api.repo.UserRepository;
+import com.optum.fads.authorization.api.service.FADSUserDetailsService;
+
+@Service
+public class FADSUserDetailsServiceImpl implements FADSUserDetailsService {
+
+	@Autowired
+	UserRepository userRepository;
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		Optional<UiUserBase> optional = userRepository.findByUiUserId(username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+		AppUser user = new AppUser();
+		UiUserBase uiUserBase = optional.get();
+
+		user.setUserEmail(uiUserBase.getUiEMailAddress());
+		user.setUserId(uiUserBase.getUiUserId());
+		user.setUserSystemId(uiUserBase.getUiSystemId());
+		Role role = new Role();
+		role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
+		role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
+		Set<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
+
+		List<AccessLevel> accesses = new ArrayList<AccessLevel>();
+		surAccesses.forEach(surModuleAccess -> {
+			accesses.add(new AccessLevel(surModuleAccess.getId().getSurModuleId(),
+					ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+					surModuleAccess.getSeSurModule().getSurModuleName(),
+					surModuleAccess.getSeSurAccess().getSurAccessId()));
+
+		});
+
+		role.setAllowedAccesses(accesses);
+		user.setRole(role);
+		
 
 
-2025-06-19T18:40:00.903+05:30 ERROR 2704 --- [datarules] [  restartedMain] o.s.boot.SpringApplication               : Application run failed
+        //FADS
+        SeFadsGrp seFadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
+        if (seFadsGrp != null) {
+            FadsRole fadsRole = new FadsRole();
+            fadsRole.setGroupId(seFadsGrp.getFadsGrpId());
+            fadsRole.setGroupName(seFadsGrp.getFadsGrpName());
+            Set<SeFadsGrpCompAccess> fadsGrpCompnts = seFadsGrp.getSeFadsGrpCompAccesses();
+            for (SeFadsGrpCompAccess seFadsGrpCompnt : fadsGrpCompnts) {
+                if (!seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId().equals("H")) {
+                    FadsComponent fadsComponent = new FadsComponent();
+                    fadsComponent.setComponentId(seFadsGrpCompnt.getId().getFadsCompId());
+                    fadsComponent.setComponentCd(seFadsGrpCompnt.getSeFadsComponent().getComponentCd());
+                    fadsComponent.setComponentName(seFadsGrpCompnt.getSeFadsComponent().getComponentName());
+					   fadsComponent.setComponentSeq(seFadsGrpCompnt.getSeFadsComponent().getComponentSeq());
+                    fadsComponent.setComponentAccess(seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId());
 
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sqlEntityManagerFactory' defined in class path resource [com/optum/fads/web/config/ServiceConfig.class]: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to determine Dialect without JDBC metadata (please set 'jakarta.persistence.jdbc.url' for common cases or 'hibernate.dialect' when a custom Dialect implementation must be provided)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1786) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600) ~[spring-beans-6.1.5.jar:6.1.5]
+                    Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
+                    List<SeFadsGrpModAccess> fadsFilterGrpMods = fadsGrpMods.stream().filter(
+                            p -> seFadsGrpCompnt.getId().getFadsCompId().equals(p.getSeFadsComponent().getComponentId()))
+                            .collect(Collectors.toList());
+                    for (SeFadsGrpModAccess fadsGrop : fadsFilterGrpMods) {
+                        if (!fadsGrop.getSeFadsAccess().getFadsAccessId().equals("H")) {
+                            FadsModule fadsModule = new FadsModule();
+                            fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
+                            fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
+                            fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
+							   fadsModule.setModuleSeq(fadsGrop.getSeFadsModule().getModuleSeq());
+                            fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
+
+                            List<FadsModElemConfig> elements = fadsGrop.getSeFadsModule().getFadsModElemConfigs().stream().filter(
+                                    ele -> ele.getSeFadsModule().getFadsModuleId().equals(fadsGrop.getId().getFadsModuleId()))
+                                    .collect(Collectors.toList());
+                            for (FadsModElemConfig fadsModConfig : elements) {
+                                boolean existElem = fadsModConfig.getSeFadsGrpElemNoAccesses().stream().anyMatch(
+										   s -> (s.getSeFadsGrp().getFadsGrpId().equals(seFadsGrp.getFadsGrpId())));
+								   		   //no need, get by it already: && (s.getId().getElementId().equals(modElement.getElementId()))
+								   if (!existElem) {
+									   FadsModuleElement modElement = new FadsModuleElement();
+									   modElement.setElementId(fadsModConfig.getElementId());
+									   modElement.setElementCd(fadsModConfig.getElementCd());
+									   modElement.setElementName(fadsModConfig.getElementName());
+									   modElement.setElementSeq(fadsModConfig.getElementSeq());
+									   fadsModule.getElements().add(modElement);
+                                }
+                            }
+                            Collections.sort((ArrayList<FadsModuleElement>) fadsModule.getElements(), (o1, o2) -> o1.getElementSeq() - o2.getElementSeq());
+                            fadsComponent.getModules().add(fadsModule);
+
+                            //TODO Delete after
+                            //fadsRole.getModulePermissions().add(fadsModule);
+                        }
+                    }
+                    Collections.sort((ArrayList<FadsModule>) fadsComponent.getModules(), (o1, o2) -> o1.getModuleSeq() - o2.getModuleSeq());
+                    fadsRole.getComponentPermissions().add(fadsComponent);
+                }
+            }
+            Collections.sort((ArrayList<FadsComponent>) fadsRole.getComponentPermissions(), (o1, o2) -> o1.getComponentSeq() - o2.getComponentSeq());
+
+
+/*
+            Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
+            for (SeFadsGrpModAccess fadsGrop : fadsGrpMods) {
+                FadsModule fadsModule = new FadsModule();
+                fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
+                fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
+                fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
+                fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
+                List<FadsModuleElement> moduleElements = new ArrayList<FadsModuleElement>();
+                if (fadsGrop.getSeFadsModule() != null && fadsGrop.getSeFadsAccess().getFadsAccessId() != null) {
+                    Set<FadsModElemConfig> fadsModElements = fadsGrop.getSeFadsModule().getFadsModElemConfigs();
+                    for (FadsModElemConfig fadsModConfig : fadsModElements) {
+                        FadsModuleElement modElement = new FadsModuleElement();
+                        modElement.setElementId(fadsModConfig.getElementId());
+                        modElement.setElementCd(fadsModConfig.getElementCd());
+                        modElement.setElementName(fadsModConfig.getElementName());
+*/
+             /*
+						 for(SeFadsGroupElemAccess fadsModElemAccess:fadsModConfig..getSeFadsModElemAccesses()) {
+							 if(fadsModElemAccess.getId().getFadsGrpId()==seFadsGrp.getFadsGrpId()) {
+								 modElement.setElementAccess(fadsModElemAccess.getSeFadsAccess().getFadsAccessId());
+							 }
+							 
+						 }*/
+/*
+                        moduleElements.add(modElement);
+                    }
+                }
+                fadsModule.setElements(moduleElements);
+                fadsRole.getModulePermissions().add(fadsModule);
+            }
+*/
+
+            role.setFadsRole(fadsRole);
+        }
+
+	   //SUR
+	   SeSurGrp seSurGrp= uiUserBase.getSeUsrGrp().getSeSurGrp();
+
+		   if(seSurGrp!=null){
+			   SurRole surRole=   new SurRole();
+			   surRole.setGroupId(seSurGrp.getSurGrpId());
+			   surRole.setGroupName(seSurGrp.getSurGrpName());
+			   Set<SeSurGrpModAccess> surGrops=  seSurGrp.getSeSurGrpModAccesses();
+
+			  for(SeSurGrpModAccess surGrop:surGrops){
+				  SurModule surModuleDto= new SurModule();
+				  surModuleDto.setModuleId(surGrop.getId().getSurModuleId().toString());
+				  surModuleDto.setModuleAccess(surGrop.getSeSurAccess().getSurAccessId());
+				  surRole.getModulePermissions().add(surModuleDto);
+			  }
+			  role.setSurRole(surRole);
+	         }
+
+		  //CaseTracking
+		  SeCaseGrp seCaseGrp= uiUserBase.getSeUsrGrp().getSeCaseGrp();
+		  if(seCaseGrp!=null){
+			  CaseRole caseRole=new CaseRole();
+			  caseRole.setGroupId(seCaseGrp.getCaseGrpId());
+			  caseRole.setGroupName(seCaseGrp.getCaseGrpName());
+			  Set<SeCaseGrpModAccess>seCaseGrpModAccesses= seCaseGrp.getSeCaseGrpModAccesses();
+			  List<CaseTypeModule> caseTypeModules= new ArrayList<CaseTypeModule>();
+			  Map<String,String> caseTypes = new HashMap<>();
+			  Map<String,List<CaseModule>> modulePermissions = new HashMap<>();
+			  for(SeCaseGrpModAccess caseGrop:seCaseGrpModAccesses){
+				  CaseModule caseModule = new  CaseModule();
+				  CaseTypeModule caseTypeModule = new CaseTypeModule();
+				  caseModule.setModuleId(caseGrop.getSeCaseModule().getCaseModuleId());
+				  caseModule.setModuleCd(caseGrop.getSeCaseModule().getCaseModuleCd());
+				  caseModule.setModuleName(caseGrop.getSeCaseModule().getCaseModuleName());
+				  caseModule.setModuleAccess(caseGrop.getSeCaseAccess().getAccessId());
+				  if(!modulePermissions.containsKey(caseGrop.getCaLuCaseTypeT().getTypeCd())){
+					  modulePermissions.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
+		            }
+				  modulePermissions.get(caseGrop.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
+				  caseTypes.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), caseGrop.getCaLuCaseTypeT().getTypeDesc());
+
+			  }
+			  for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
+				   //System.out.println(entry.getKey() + " = " + entry.getValue());
+				  CaseTypeModule caseTypeModule=new CaseTypeModule();
+				  caseTypeModule.setCaseTypeId(entry.getKey());
+				  caseTypeModule.setCaseTypeName(entry.getValue());
+				  caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
+				  caseTypeModules.add(caseTypeModule);
+
+				}
+			  caseRole.setCaseTypeModules(caseTypeModules);
+
+			   Set<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses=  seCaseGrp.getSeCaseGrpNodeAccesses();
+			   Collection<CaseNode> nodePermissions= new ArrayList<CaseNode>();
+			  for(SeCaseGrpNodeAccess seCaseGrpNode:seCaseGrpNodeAccesses){
+					  CaseNode caseNodeDto = new CaseNode();
+					  caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
+					  caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
+					  caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
+					  caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
+					  nodePermissions.add(caseNodeDto);
+
+
+			  }
+			  caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
+
+			  role.setCaseRole(caseRole);
+	   }
+
+
+		//userDto.setNodes(nodes);
+	 user.setRole(role);
+		return user;
+
+	}
+
+	
+
+}
+
+
+
+
+2025-06-19T21:17:21.235+05:30 DEBUG 6628 --- [datarules] [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : Application failed to start due to an exception
+
+org.springframework.beans.factory.NoSuchBeanDefinitionException: No bean named 'entityManagerFactory' available
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.getBeanDefinition(DefaultListableBeanFactory.java:895) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getMergedLocalBeanDefinition(AbstractBeanFactory.java:1320) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:300) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.ConstructorResolver.resolveConstructorArguments(ConstructorResolver.java:682) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:509) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1335) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1165) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:562) ~[spring-beans-6.1.5.jar:6.1.5]
 	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
 	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
 	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
 	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
 	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
-	at org.springframework.context.support.AbstractApplicationContext.getBean(AbstractApplicationContext.java:1234) ~[spring-context-6.1.5.jar:6.1.5]
-	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:952) ~[spring-context-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveReference(BeanDefinitionValueResolver.java:365) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.BeanDefinitionValueResolver.resolveValueIfNecessary(BeanDefinitionValueResolver.java:135) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyPropertyValues(AbstractAutowireCapableBeanFactory.java:1685) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1434) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1443) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1353) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:784) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:145) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:508) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1419) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1443) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1353) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:784) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:145) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:508) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1419) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:975) ~[spring-beans-6.1.5.jar:6.1.5]
+	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:962) ~[spring-context-6.1.5.jar:6.1.5]
 	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:624) ~[spring-context-6.1.5.jar:6.1.5]
 	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.2.4.jar:3.2.4]
 	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:754) ~[spring-boot-3.2.4.jar:3.2.4]
@@ -25,111 +331,22 @@ org.springframework.beans.factory.BeanCreationException: Error creating bean wit
 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
 	at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
 	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50) ~[spring-boot-devtools-3.2.4.jar:3.2.4]
-Caused by: org.hibernate.service.spi.ServiceException: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to determine Dialect without JDBC metadata (please set 'jakarta.persistence.jdbc.url' for common cases or 'hibernate.dialect' when a custom Dialect implementation must be provided)
-	at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:276) ~[hibernate-core-6.4.4.Final.jar:6.4.4.Final]
+
+2025-06-19T21:17:21.237+05:30 ERROR 6628 --- [datarules] [  restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Field userRepository in com.optum.fads.authorization.api.service.impl.FADSUserDetailsServiceImpl required a bean named 'entityManagerFactory' that could not be found.
+
+The injection point has the following annotations:
+	- @org.springframework.beans.factory.annotation.Autowired(required=true)
 
 
+Action:
 
+Consider defining a bean named 'entityManagerFactory' in your configuration.
 
-app.version=${project.version}
-app.artifactId=${project.artifactId}
-app.build.date=${timestamp}
-spring.main.allow-circular-references=true
-#hibernate.dialect=org.hibernate.dialect.Oracle10gDialect
-hibernate.connection.driver_class=oracle.jdbc.driver.OracleDriver
-hibernate.format_sql=false
-hibernate.show_sql=false
-hibernate.generate_statistics=false
-hibernate.connection.datasource=java:comp/env/jdbc/efadsDB
-hibernate.jdbc.batch_size=50
-server.servlet.context-path=/fads
-
-
-spring.datasource.driver-class-name=oracle.jdbc.driver.OracleDriver
-spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/FREEPDB1
-#jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=njsdwoda1)(PORT=1521))(CONNECT_DATA=(SERVER = DEDICATED)(SERVICE_NAME = sdwsys))(Security=(ENCRYPTION_CLIENT=REQUIRED)(ENCRYPTION_TYPES_CLIENT=AES256)))
-spring.datasource.username=fads
-spring.datasource.password=Fads123
-
-
-
-
-hibernate.connection.driver_class=oracle.jdbc.OracleDriver
-
-hibernate.connection.url=jdbc:oracle:thin:@//wn000193163.ms.ds.uhc.com:1521/XEPDB1
-hibernate.connection.username=fads
-hibernate.connection.password=Fads123
-hibernate.dialect=org.hibernate.dialect.OracleDialect
-spring.jpa.database-platform=org.hibernate.dialect.Oracle12cDialect
-
-hibernate.format_sql=true
-hibernate.show_sql=true
-#hibernate.generate_statistics=false
-
-logo.url=/images/optum-fads-logo.png
-pdf.font=/fonts/arial.ttf
-pdf.fontbold=/fonts/arialbd.ttf
-
-
-#ldap, cognos
-#security.authentication.type=ldap
-security.authentication.type=activedirectory
-#security.authentication.type=opentoken
-#spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
-  
-security.authentication.enableSamlToken=false 
-security.enableSSOFilter=false
-#security.enableSSOFilter=false
-security.sessionTimeoutInMinutes=60
-
-windowsLogDirectoryLocation= ${catalina.base}/logs/
-
-ldap.url=ldap://ms.ds.uhc.com:389
-ldap.base=CN=Users,DC=ms,DC=ds,DC=uhc,DC=com
-ldap.userDn=CN=fadsldap
-ldap.password=F@ds2020
-ldap.searchFilter=(&(objectClass=user)(sAMAccountName={0}))
-
-ad.domain=ms.ds.uhc.com
-#ad.url=ldap://adc21060.ms.ds.uhc.com:389
-ad.url=ldap://ms.ds.uhc.com:389
-
-
-spring.mvc.view.prefix==/WEB-INF/jsp/
-spring.mvc.view.suffix=.jsp
-
-logging.level.org.springframework.context.annotation.ClassPathBeanDefinitionScanner=DEBUG
-logging.level.org.springframework.aop=DEBUG
-logging.level.org.springframework.transaction=DEBUG
-logging.level.org.springframework.orm.jpa=DEBUG
-logging.level.org.hibernate.SQL=DEBUG
-
-
-logging.level.org.springframework=DEBUG
-logging.level.org.springframework.web=DEBUG
-logging.level.org.springframework.web.servlet=DEBUG
-
-spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://aep-dev-idp.optum.com/idp/oauth2/ar_aep_dev/.well-known/jwks
-spring.security.oauth2.resourceserver.jwt.jws-algorithms=RS512
-
-
-
-
-# JPA & Hibernate
-#spring.jpa.database-platform=org.hibernate.dialect.SQLServer2016Dialect
-#spring.jpa.database=SQL_SERVER
-spring.jpa.show-sql=false
-spring.jpa.hibernate.naming.implicit-strategy=org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-
-# Datasource - SQL Server with HikariCP
-spring.datasource.type=com.zaxxer.hikari.HikariDataSource
-#spring.datasource.url=${DB_URL}
-#spring.datasource.username=${DB_USR}
-#spring.datasource.password=${DB_PWD}
-#spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
-#spring.datasource.hikari.maximum-pool-size=50
-#spring.datasource.hikari.minimum-idle=1
-#spring.datasource.hikari.connection-timeout=60000
-#spring.datasource.hikari.idle-timeout=60000
-#spring.datasource.hikari.leak-detection-threshold=0
