@@ -1,37 +1,186 @@
-/**
- * Copyright (c) Optum 2015 - All Rights Reserved.
- */
-package com.optum.fads.web.security.matcher;
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.optum.fads</groupId>
+		<artifactId>fads-monolithic-application</artifactId>
+		<version>9.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>fads-web</artifactId>
+	<name>fads-web</name>
 
-import java.util.regex.Pattern;
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
 
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.RegexRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 
-public class CsrfSecurityRequestMatcher implements RequestMatcher {
+    <dependencies>
+    
+	  <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-autherization</artifactId>
+            <version>${project.version}</version>
+       </dependency>
+       <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-pgp-datarules-api</artifactId>
+            <version>${project.version}</version>
+       </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-jasper</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>jakarta.servlet.jsp.jstl</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+            <version>3.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.web</groupId>
+            <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+        <!-- Spring LDAP Core -->
+        <dependency>
+            <groupId>org.springframework.ldap</groupId>
+            <artifactId>spring-ldap-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-ldap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-ldap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.2</version>
+        </dependency>
 
-	private final Pattern allowedMethods = Pattern.compile("^(GET|HEAD|TRACE|OPTIONS)$");
-	private final RegexRequestMatcher unprotectedMatcher = new RegexRequestMatcher("/login", null);
+        <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.14</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <version>2.6</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+	<dependency>
+			<groupId>com.oracle.database.jdbc</groupId>
+			<artifactId>ojdbc8</artifactId>
+			<version>19.8.0.0</version>
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+        </dependency>
 
-	private AntPathRequestMatcher[] requestMatchers = { new AntPathRequestMatcher("/login"),
-			new AntPathRequestMatcher("/logout"), new AntPathRequestMatcher("/bower_components/**") };
 
-	@Override
-	public boolean matches(javax.servlet.http.HttpServletRequest request) {
-		if (allowedMethods.matcher(request.getMethod()).matches()) {
-			return false;
-		}
-		for (AntPathRequestMatcher rm : requestMatchers) {
-			if (rm.matches(request)) {
-				return false;
-			}
-		}
+       
+    </dependencies>
 
-		return true;
-	}
 
-}
+<build>
+    <plugins>
 
-[ERROR] /C:/Users/sgupt664/fads-workspace/fads-monolithic-application/fads-monolithic-application/fads-demo-web/src/main/java/com/optum/fads/web/security/matcher/CsrfSecurityRequestMatcher.java:[26,40] incompatible types: javax.servlet.http.HttpServletRequest cannot be converted to jakarta.servlet.http.HttpServletRequest
-[ERROR] -> [Help 1]
+        <!-- Run npm install and build using exec-maven-plugin -->
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
+
+                <!-- Step 1: npm install -->
+                <execution>
+                    <id>npm-install</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <configuration>
+                        <executable>npm</executable>
+                        <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
+                        <arguments>
+                            <argument>install</argument>
+                            <argument>--legacy-peer-deps</argument> <!-- Optional: if needed -->
+                        </arguments>
+                    </configuration>
+                </execution>
+
+                <!-- Step 2: npm run build -->
+                <execution>
+                    <id>npm-run-build</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <configuration>
+                        <executable>npm</executable>
+                        <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
+                        <arguments>
+                            <argument>run</argument>
+                            <argument>build</argument>
+                        </arguments>
+                    </configuration>
+                </execution>
+
+            </executions>
+        </plugin>
+
+        <!-- Copy built React files into Spring Boot's webapp directory -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>3.3.0</version>
+            <executions>
+                <execution>
+                    <id>copy-react-files</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+                    <configuration>
+                        <outputDirectory>${project.basedir}/src/main/webapp/app/react</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>${project.basedir}/frontend/react-app/build</directory>
+                                <includes>
+                                    <include>**/*</include>
+                                </includes>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
+
+    </plugins>
+</build>
+
+</project>
