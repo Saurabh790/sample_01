@@ -2,3 +2,206 @@
 2025-06-19T18:28:52.520+05:30 ERROR 19668 --- [datarules] [  restartedMain] o.s.boot.SpringApplication               : Application run failed
 
 org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sqlEntityManagerFactory' defined in class path resource [com/optum/fads/web/config/ServiceConfig.class]: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to determine Dialect without JDBC metadata (please set 'jakarta.persistence.jdbc.url' for common cases or 'hibernate.dialect' when a custom Dialect implementation must be provided)
+
+
+
+package com.optum.fads.web.config;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.persistence.EntityManagerFactory;
+
+@Configuration
+@EnableTransactionManagement
+@ComponentScan(basePackages = { 
+    "com.optum.fads.authorization.api", 
+    "com.optum.fads.pgp.datarules"
+})
+@EnableJpaRepositories(basePackages = {
+    "com.optum.fads.authorization.api.repo", 
+    "com.optum.fads.pgp.datarules.repository" 
+})
+public class ServiceConfig implements InitializingBean {
+
+    @Value("${spring.datasource.url}")
+    private String url;
+
+    @Value("${spring.datasource.username}")
+    private String username;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
+    @Value("${spring.datasource.driver-class-name}")
+    private String driverClassName;
+
+    @Primary
+    @Bean
+    public DataSource dataSource() {
+        return DataSourceBuilder.create()
+            .driverClassName(driverClassName)
+            .url(url)
+            .username(username)
+            .password(password)
+            .build();
+    }
+
+    @Primary
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource());
+        em.setPackagesToScan("com.optum.fads.authorization.api.domain", "com.optum.fads.pgp.datarules.domain");
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        return em;
+    }
+
+    @Primary
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(EntityManagerFactory sqlEntityManagerFactory) {
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
+        return txManager;
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        testConnection();
+    }
+
+    public void testConnection() {
+        System.out.println("Loaded DB URL: 05");
+        try (Connection conn = dataSource().getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+            if (rs.next()) {
+                System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+            }
+        } catch (Exception e) {
+            System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+        }
+    }
+}
+
+
+
+app.version=${project.version}
+app.artifactId=${project.artifactId}
+app.build.date=${timestamp}
+spring.main.allow-circular-references=true
+#hibernate.dialect=org.hibernate.dialect.Oracle10gDialect
+hibernate.connection.driver_class=oracle.jdbc.driver.OracleDriver
+hibernate.format_sql=false
+hibernate.show_sql=false
+hibernate.generate_statistics=false
+hibernate.connection.datasource=java:comp/env/jdbc/efadsDB
+hibernate.jdbc.batch_size=50
+server.servlet.context-path=/fads
+
+
+spring.datasource.driver-class-name=oracle.jdbc.driver.OracleDriver
+spring.datasource.url=jdbc:oracle:thin:@//localhost:1521/FREEPDB1
+#jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=njsdwoda1)(PORT=1521))(CONNECT_DATA=(SERVER = DEDICATED)(SERVICE_NAME = sdwsys))(Security=(ENCRYPTION_CLIENT=REQUIRED)(ENCRYPTION_TYPES_CLIENT=AES256)))
+spring.datasource.username=fads
+spring.datasource.password=Fads123
+
+
+
+
+hibernate.connection.driver_class=oracle.jdbc.OracleDriver
+
+hibernate.connection.url=jdbc:oracle:thin:@//wn000193163.ms.ds.uhc.com:1521/XEPDB1
+hibernate.connection.username=fads
+hibernate.connection.password=Fads123
+hibernate.dialect=org.hibernate.dialect.OracleDialect
+
+hibernate.format_sql=true
+hibernate.show_sql=true
+#hibernate.generate_statistics=false
+
+logo.url=/images/optum-fads-logo.png
+pdf.font=/fonts/arial.ttf
+pdf.fontbold=/fonts/arialbd.ttf
+
+
+#ldap, cognos
+#security.authentication.type=ldap
+security.authentication.type=activedirectory
+#security.authentication.type=opentoken
+#spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+  
+security.authentication.enableSamlToken=false 
+security.enableSSOFilter=false
+#security.enableSSOFilter=false
+security.sessionTimeoutInMinutes=60
+
+windowsLogDirectoryLocation= ${catalina.base}/logs/
+
+ldap.url=ldap://ms.ds.uhc.com:389
+ldap.base=CN=Users,DC=ms,DC=ds,DC=uhc,DC=com
+ldap.userDn=CN=fadsldap
+ldap.password=F@ds2020
+ldap.searchFilter=(&(objectClass=user)(sAMAccountName={0}))
+
+ad.domain=ms.ds.uhc.com
+#ad.url=ldap://adc21060.ms.ds.uhc.com:389
+ad.url=ldap://ms.ds.uhc.com:389
+
+
+spring.mvc.view.prefix==/WEB-INF/jsp/
+spring.mvc.view.suffix=.jsp
+
+logging.level.org.springframework.context.annotation.ClassPathBeanDefinitionScanner=DEBUG
+logging.level.org.springframework.aop=DEBUG
+logging.level.org.springframework.transaction=DEBUG
+logging.level.org.springframework.orm.jpa=DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+
+
+logging.level.org.springframework=DEBUG
+logging.level.org.springframework.web=DEBUG
+logging.level.org.springframework.web.servlet=DEBUG
+
+spring.security.oauth2.resourceserver.jwt.jwk-set-uri=https://aep-dev-idp.optum.com/idp/oauth2/ar_aep_dev/.well-known/jwks
+spring.security.oauth2.resourceserver.jwt.jws-algorithms=RS512
+
+
+
+
+# JPA & Hibernate
+spring.jpa.database-platform=org.hibernate.dialect.SQLServer2016Dialect
+spring.jpa.database=SQL_SERVER
+spring.jpa.show-sql=false
+spring.jpa.hibernate.naming.implicit-strategy=org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
+# Datasource - SQL Server with HikariCP
+spring.datasource.type=com.zaxxer.hikari.HikariDataSource
+#spring.datasource.url=${DB_URL}
+#spring.datasource.username=${DB_USR}
+#spring.datasource.password=${DB_PWD}
+spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
+spring.datasource.hikari.maximum-pool-size=50
+spring.datasource.hikari.minimum-idle=1
+spring.datasource.hikari.connection-timeout=60000
+spring.datasource.hikari.idle-timeout=60000
+spring.datasource.hikari.leak-detection-threshold=0
+
