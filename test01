@@ -1,0 +1,176 @@
+package com.optum.fads.pgp.datarules.config;
+
+import javax.sql.DataSource;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.datarules")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.datarules" })
+public class ServiceConfig 
+{
+	@Bean(name = "fadsDataSource")
+	@ConfigurationProperties("spring.datasource")
+	public DataSource customDataSource() {
+		return DataSourceBuilder.create().build();
+	}
+	
+}
+
+
+package com.optum.fads.web.config;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.persistence.EntityManagerFactory;
+
+@Configuration
+@EnableTransactionManagement
+@ComponentScan(basePackages = { "com.optum.fads" })
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory", transactionManagerRef = "txManagerSQL", basePackages = {
+		"com.optum.fads.authorization.api.repo" })
+public class ServiceConfig implements InitializingBean
+
+{
+	
+	    @Value("${hibernate.connection.url}")
+	    private String url;
+
+	    @Value("${hibernate.connection.username}")
+	    private String username;
+	  
+	    @Value("${hibernate.connection.password}")
+	    private String password;
+
+	  
+	    @Value("${hibernate.connection.driver_class}")
+	    private String driverClassName;
+
+	
+	public void afterPropertiesSet() throws Exception {
+	    testConnection();
+	   }
+
+	@Primary
+	@Bean
+	public DataSource dataSource() {
+		DriverManagerDataSource ds = new DriverManagerDataSource();
+		ds.setDriverClassName(driverClassName);
+		ds.setUrl(url);
+		ds.setUsername(username);
+		ds.setPassword(password);
+		System.out.println("Loaded DB URL: 01");
+
+		return ds;
+
+	}
+	
+
+	@Primary
+	@Bean(name = "sqlEntityManagerFactory")
+	public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
+		{
+			LocalContainerEntityManagerFactoryBean em
+					= new LocalContainerEntityManagerFactoryBean();
+			em.setDataSource(dataSource());
+			em.setPackagesToScan(
+					new String[] { "com.optum.fads.authorization.api.domain" });
+			HibernateJpaVendorAdapter vendorAdapter
+				= new HibernateJpaVendorAdapter();
+			em.setJpaVendorAdapter(vendorAdapter);
+		return em;
+		}
+
+	@Primary
+	@Bean(name = "txManagerSQL")
+	public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
+		{
+			JpaTransactionManager txManager = new JpaTransactionManager();
+			txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+			return txManager;
+		}
+	/*
+
+	@Bean
+	public SessionFactory sessionFactory() {
+		System.out.println("Loaded DB URL: 02");
+		return new LocalSessionFactoryBuilder(dataSource())
+				.scanPackages("com.optum.fads.casetracking", "com.optum.fads.security.domain", "com.optum.fads.config",
+						"com.optum.fads.caseconfig", " com.optum.fads.security.domain",
+						"com.optum.fads.caseconfig.domain")
+				.addProperties(getHibernateProperties()).buildSessionFactory();
+	}
+
+	private Properties getHibernateProperties() {
+		Properties prop = new Properties();
+		prop.put("hibernate.dialect", environment.getRequiredProperty("hibernate.dialect"));
+		prop.put("hibernate.format_sql", environment.getRequiredProperty("hibernate.format_sql"));
+		prop.put("hibernate.show_sql", environment.getRequiredProperty("hibernate.show_sql"));
+		prop.put("hibernate.generate_statistics", environment.getRequiredProperty("hibernate.generate_statistics"));
+		System.out.println("Loaded DB URL: 03");
+		return prop;
+
+	}
+
+	@Bean
+	public PlatformTransactionManager txManager() {
+		System.out.println("Loaded DB URL: 04");
+		return new HibernateTransactionManager(sessionFactory());
+
+	}
+
+	public void testConnection() {
+		System.out.println("Loaded DB URL: 05");
+		try (Connection conn = dataSource().getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+			if (rs.next()) {
+				System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+			}
+		} catch (Exception e) {
+			System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+		}
+	}*/
+
+
+	
+
+public void testConnection() {
+	System.out.println("Loaded DB URL: 05");
+	try (Connection conn = dataSource().getConnection();
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+		if (rs.next()) {
+			System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+		}
+	} catch (Exception e) {
+		System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+	}
+}
+}
