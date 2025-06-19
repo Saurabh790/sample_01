@@ -1,52 +1,43 @@
-server:
-  port: 8080
-  servlet:
-    contextPath: /datarules
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
+# Server configuration
+server.port=8080
+server.servlet.context-path=/datarules
 
-spring: 
-  application:
-   name: datarules
-  jpa:
-    database-platform: org.hibernate.dialect.SQLServer2016Dialect
-    database: SQL_SERVER
-    show-sql: false
-    hibernate:
-       naming:
-            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    jdbcUrl: ${DB_URL}
-    userName: ${DB_USR}
-    password: ${DB_PWD}
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver  
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}    
-  security:
-    oauth2:
-     resourceserver:
-        jwt:
-          jwk-set-uri: ${JWKS_URL}
-          jws-algorithms: ${JWS_ALG:RS256}
-management:
-  endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
+# Custom quickstart config
+quickstart.generateOrderPeriod=10s
+quickstart.processOrderPeriod=30s
+
+# Spring application config
+spring.application.name=datarules
+
+# JPA & Hibernate
+spring.jpa.database-platform=org.hibernate.dialect.SQLServer2016Dialect
+spring.jpa.database=SQL_SERVER
+spring.jpa.show-sql=false
+spring.jpa.hibernate.naming.implicit-strategy=org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
+# Datasource - SQL Server with HikariCP
+spring.datasource.type=com.zaxxer.hikari.HikariDataSource
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USR}
+spring.datasource.password=${DB_PWD}
+spring.datasource.driver-class-name=com.microsoft.sqlserver.jdbc.SQLServerDriver
+spring.datasource.hikari.maximum-pool-size=${MAXIMUM_DB_POOL_SIZE:50}
+spring.datasource.hikari.minimum-idle=${MIN_POOL_IDLE:1}
+spring.datasource.hikari.connection-timeout=${DB_CONNECTION_TIMEOUT:60000}
+spring.datasource.hikari.idle-timeout=${DB_POOL_IDLE_TIMEOUT:60000}
+spring.datasource.hikari.leak-detection-threshold=${LEAK_DETETCTION_THRESHOLD:0}
+
+# OAuth2 JWT config
+spring.security.oauth2.resourceserver.jwt.jwk-set-uri=${JWKS_URL}
+spring.security.oauth2.resourceserver.jwt.jws-algorithms=${JWS_ALG:RS256}
+
+# Actuator & Prometheus
+management.endpoint.metrics.enabled=true
+management.endpoint.prometheus.enabled=true
+management.endpoints.web.exposure.include=health,info,prometheus
+management.prometheus.metrics.export.enabled=true
+
+# Uncomment if you want to enable Hibernate SQL debug logging
+# logging.level.org.hibernate.SQL=DEBUG
+# logging.level.org.hibernate.type=TRACE
