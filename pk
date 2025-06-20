@@ -1,46 +1,148 @@
 
-Description:
+    <plugins>
 
-Field dataRuleDetailMapper in com.optum.fads.pgp.datarules.service.impl.DataRuleDataService required a bean of type 'com.optum.fads.pgp.datarules.mapper.DataRuleDetailMapper' that could not be found.
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <executions>
 
-The injection point has the following annotations:
-	- @org.springframework.beans.factory.annotation.Autowired(required=true)
+                <execution>
+                    <id>npm-install</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <configuration>
+                        <executable>npm</executable>
+                        <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
+                        <arguments>
+                            <argument>install</argument>
+                            <argument>--legacy-peer-deps</argument>  Optional: if needed 
+                        </arguments>
+                    </configuration>
+                </execution>
 
+                <execution>
+                    <id>npm-run-build</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>exec</goal>
+                    </goals>
+                    <configuration>
+                        <executable>npm</executable>
+                        <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
+                        <arguments>
+                            <argument>run</argument>
+                            <argument>build</argument>
+                        </arguments>
+                    </configuration>
+                </execution>
 
-Action:
+            </executions>
+        </plugin>
 
-Consider defining a bean of type 'com.optum.fads.pgp.datarules.mapper.DataRuleDetailMapper' in your configuration.
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>3.3.0</version>
+            <executions>
+                <execution>
+                    <id>copy-react-files</id>
+                    <phase>generate-resources</phase>
+                    <goals>
+                        <goal>copy-resources</goal>
+                    </goals>
+                    <configuration>
+                        <outputDirectory>${project.basedir}/src/main/webapp/app/react</outputDirectory>
+                        <resources>
+                            <resource>
+                                <directory>${project.basedir}/frontend/react-app/build</directory>
+                                <includes>
+                                    <include>**/*</include>
+                                </includes>
+                            </resource>
+                        </resources>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
 
-
-
-
-
-/**
- * @author awagh
- *
- */
-package com.optum.fads.pgp.datarules.mapper;
-
-import org.mapstruct.*;
-import org.mapstruct.factory.Mappers;
-
-import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
-import com.optum.fads.pgp.datarules.dto.DataRuleDTO;
-
+    </plugins>
 	
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface DataRuleDetailMapper {
-	DataRuleDetailMapper INSTANCE = Mappers.getMapper(DataRuleDetailMapper.class);
-	@Mappings({ @Mapping(source = "drId", target = "dataRuleId"),
-	    @Mapping(source = "dataRuleName", target = "dataRuleName"),
-	    @Mapping(source = "prmMbMasterT.mbCtecFid" , target =  "dataElementId"),
-	    @Mapping(source = "prmDrLuOperatorT.operatorCd", target = "operator"),
-	    @Mapping(source = "uiUserBaseCr.uiSystemId", target = "createdBySystemId"),
-	    @Mapping(source = "uiUserBaseUpd.uiSystemId", target = "modifiedBySystemId")})
-	DataRuleDTO convertToDataRuleDTO(PrmDrDataRuleT prmDrDataRuleT);
+	
+	
+	ld>
+        <plugins>
+            <!-- Spring Boot Maven Plugin -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <!-- Execution for npm install (React) -->
+                    <execution>
+                        <id>npm-install</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>install</argument>
+                                <argument>--prefix</argument>
+                                <argument>frontend/react-app</argument>
+                                <argument>--legacy-peer-deps</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <!-- Execution for npm run build (React) -->
+                    <execution>
+                        <id>npm-run-build</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                                <argument>--prefix</argument>
+                                <argument>frontend/react-app</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
 
-	@InheritInverseConfiguration
-	PrmDrDataRuleT convertToPrmDrDataRuleT(DataRuleDTO dataRuleDTO);
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-react-files</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.basedir}/src/main/webapp/app/react</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/frontend/react-app/dist</directory>
+                                    <includes>
+                                        <include>**/*</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 
-}
+        </plugins>
+    </build>
