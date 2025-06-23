@@ -1,12 +1,14 @@
-
+<build>
     <plugins>
 
+        <!-- Run npm install and build using exec-maven-plugin -->
         <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
             <version>3.1.0</version>
             <executions>
 
+                <!-- Step 1: npm install -->
                 <execution>
                     <id>npm-install</id>
                     <phase>generate-resources</phase>
@@ -18,11 +20,12 @@
                         <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
                         <arguments>
                             <argument>install</argument>
-                            <argument>--legacy-peer-deps</argument>  Optional: if needed 
+                            <argument>--legacy-peer-deps</argument> <!-- Optional: if needed -->
                         </arguments>
                     </configuration>
                 </execution>
 
+                <!-- Step 2: npm run build -->
                 <execution>
                     <id>npm-run-build</id>
                     <phase>generate-resources</phase>
@@ -42,6 +45,7 @@
             </executions>
         </plugin>
 
+        <!-- Copy built React files into Spring Boot's webapp directory -->
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-resources-plugin</artifactId>
@@ -69,84 +73,10 @@
         </plugin>
 
     </plugins>
-	
-	
-	
-	ld>
-        <plugins>
-            <!-- Spring Boot Maven Plugin -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <executions>
-                    <!-- Execution for npm install (React) -->
-                    <execution>
-                        <id>npm-install</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>npm</executable>
-                            <arguments>
-                                <argument>install</argument>
-                                <argument>--prefix</argument>
-                                <argument>frontend/react-app</argument>
-                                <argument>--legacy-peer-deps</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                    <!-- Execution for npm run build (React) -->
-                    <execution>
-                        <id>npm-run-build</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>exec</goal>
-                        </goals>
-                        <configuration>
-                            <executable>npm</executable>
-                            <arguments>
-                                <argument>run</argument>
-                                <argument>build</argument>
-                                <argument>--prefix</argument>
-                                <argument>frontend/react-app</argument>
-                            </arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.0</version>
-                <executions>
-                    <execution>
-                        <id>copy-react-files</id>
-                        <phase>generate-resources</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.basedir}/src/main/webapp/app/react</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/frontend/react-app/dist</directory>
-                                    <includes>
-                                        <include>**/*</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-        </plugins>
-    </build>
-r A complete log of this run can be found in: C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-06-20T19_07_28_334Z-debug-0.log
+</build>
+npm error enoent This is related to npm not being able to find a file.
+npm error enoent
+npm error A complete log of this run can be found in: C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-06-23T15_30_43_998Z-debug-0.log
 [ERROR] Command execution failed.
 org.apache.commons.exec.ExecuteException: Process exited with an error: -4058 (Exit value: -4058)
     at org.apache.commons.exec.DefaultExecutor.executeInternal (DefaultExecutor.java:404)
@@ -184,4 +114,13 @@ org.apache.commons.exec.ExecuteException: Process exited with an error: -4058 (E
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  15.288 s
+[INFO] Total time:  4.940 s
+[INFO] Finished at: 2025-06-23T21:00:44+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.codehaus.mojo:exec-maven-plugin:3.1.0:exec (npm-install) on project fads-web: Command execution failed.: Process exited with an error: -4058 (Exit value: -4058) -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
