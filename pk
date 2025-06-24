@@ -83,3 +83,25 @@ public List<DataElementDTO> getDataElements(String dataSource){
 			+ " AND p.mbCustFlag=1 AND Cast(p.drElementClass as text)=f.id.luValue AND f.id.fieldId = 'DR_ELEMENT_CLASS'"
 			+ " AND f.luLabel = :dataSource ORDER BY p.mbCustDatadesc ")
 	List<Object[]> retrieveDataElementsByDataSource(@Param("dataSource") String dataSource);
+
+
+
+@Query("SELECT p.mbCtecFid, p.mbCustDatadesc, p.mbCtecFtype, p.mbLuFlag, p.mbLuSql, f.luLabel " +
+       "FROM PrmMbMasterT p, FadsLuValuesT f " +
+       "WHERE p.drElementClass IN (1,2,3,4) " +
+       "AND p.mbCustFlag = 1 " +
+       "AND TO_CHAR(p.drElementClass) = f.id.luValue " +  // ✅ Oracle-safe
+       "AND f.id.fieldId = 'DR_ELEMENT_CLASS' " +
+       "ORDER BY p.mbCustDatadesc")
+List<Object[]> retrieveDataElements();
+
+
+@Query("SELECT p.mbCtecFid, p.mbCustDatadesc, p.mbCtecFtype, p.mbLuFlag, p.mbLuSql, f.luLabel " +
+       "FROM PrmMbMasterT p, FadsLuValuesT f " +
+       "WHERE p.drElementClass IN (1,2,3,4) " +
+       "AND p.mbCustFlag = 1 " +
+       "AND TO_CHAR(p.drElementClass) = f.id.luValue " +  // ✅ Oracle-safe
+       "AND f.id.fieldId = 'DR_ELEMENT_CLASS' " +
+       "AND f.luLabel = :dataSource " +
+       "ORDER BY p.mbCustDatadesc")
+List<Object[]> retrieveDataElementsByDataSource(@Param("dataSource") String dataSource);
