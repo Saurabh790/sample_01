@@ -1,13 +1,20 @@
+# Root logger logs INFO and above to both RollingAppender and ERROR
+log4j.rootLogger=INFO, RollingAppender, ERROR
+
+# ERROR appender - logs only ERROR level
 log4j.appender.ERROR=org.apache.log4j.FileAppender
 log4j.appender.ERROR.File=error.log
+log4j.appender.ERROR.Threshold=ERROR
 log4j.appender.ERROR.layout=org.apache.log4j.PatternLayout
 log4j.appender.ERROR.layout.ConversionPattern=%d [%t] %-5p %c - %m%n
 
-log4j.rootLogger=ERROR, RollingAppender
-log4j.logger.com.optum.fads.web.config=INFO,ERROR
-log4j.logger.com.optum.fads.web.security=INFO,ERROR
+# RollingAppender - daily logs
 log4j.appender.RollingAppender=org.apache.log4j.DailyRollingFileAppender
-log4j.appender.RollingAppender.File=C:\Users\sgupt664\fads_dev\fads_sso.log
+log4j.appender.RollingAppender.File=C:\\Users\\sgupt664\\fads_dev\\fads_sso.log
 log4j.appender.RollingAppender.DatePattern='.'yyyy-MM-dd
 log4j.appender.RollingAppender.layout=org.apache.log4j.PatternLayout
 log4j.appender.RollingAppender.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %c{1} [%p] %m%n
+
+# Specific package log levels (if needed)
+log4j.logger.com.optum.fads.web.config=INFO
+log4j.logger.com.optum.fads.web.security=INFO
