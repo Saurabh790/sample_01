@@ -1,219 +1,39 @@
-<?xml version="1.0" encoding="UTF-8"?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>2.7.17</version>
-    <relativePath/>
-    <!-- lookup parent from repository -->
-  </parent>
-  <groupId>com.optum.fads</groupId>
-  <artifactId>fads-monolithic-application</artifactId>
-  <packaging>pom</packaging>
-  <version>8.3.0-SNAPSHOT</version>
-  <properties>
-  <modelmapper.version>3.1.1</modelmapper.version>
-  <logback.encoder.version>7.4</logback.encoder.version>
-  <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-    <uitk.version>3.14.1</uitk.version>
-    <spring.boot.version>2.7.17</spring.boot.version>
-    <!-- spring.boot.version>2.5.6</spring.boot.version -->
-    <spring-cloud.version>2021.0.3</spring-cloud.version>
-    <spring-security-oauth2.version>2.5.2.RELEASE</spring-security-oauth2.version>
-    <spring-security-jwt.version>1.0.9.RELEASE</spring-security-jwt.version>
-    <spring.version>5.1.0.RELEASE</spring.version>
-    <hibernate.validator>5.4.1.Final</hibernate.validator>
-    <c3p0.version>0.9.5.2</c3p0.version>
-    <jackson.version>2.9.4</jackson.version>
-    <hibernate.version>6.4.4.Final</hibernate.version>
-    <servlet-api.version>3.1.0</servlet-api.version>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	<lombok.version>1.18.28</lombok.version>
-    <sonar.exlusions>
-			**/src/main/webapp/**,**/js/angular/**,**/js/angular-translate/**,**/js/google-code-prettify/**,**/js/jquery/**,**/js/lodash/**,**/src/main/webapp/webHelp/Content/*.*,**/src/main/webapp/webHelp/Content/Resources/**,**/src/main/webapp/uitk-core/js/ckeditor/**/*.js,**/src/main/webapp/uitk-core/js/ckeditor/**/*.css,**/src/main/webapp/uitk-core/js/ckeditor/**/*.html,**/src/main/webapp/uitk-core/js/polyfills/**,**/src/main/webapp/uitk-core/lib/**,src/main/webapp/app/**/*.js,**/src/main/webapp/app/**/*.js,**/src/main/webapp/uitk-core/lib/**/*,**/src/main/webapp/uitk/choropleth/**/*,**/bower_components/**</sonar.exlusions>
-  </properties>
-  <name>fads-monolithic-application</name>
-  <url>http://maven.apache.org</url>
-  <modules>
-    <module>fads-base</module>
-    <module>fads-casetracking</module>
-    <module>fads-demo-web</module>
-    <module>fads-pgp-datarules-api</module>
-  </modules>
-  <distributionManagement>
-    <repository>
-      <id>UHG-Releases</id>
-      <name>Local Repository for UHG Application Releases</name>
-      <url>https://repo1.uhc.com/artifactory/UHG-Releases</url>
-    </repository>
-    <snapshotRepository>
-      <id>UHG-Snapshots</id>
-      <name>Local Repository for UHG Application Snapshots</name>
-      <url>https://repo1.uhc.com/artifactory/UHG-Snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-bom</artifactId>
-        <version>2.17.2</version>
-        <scope>import</scope>
-        <type>pom</type>
-      </dependency>
-      <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-dependencies</artifactId>
-        <version>${spring.boot.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>org.springframework.cloud</groupId>
-        <artifactId>spring-cloud-dependencies</artifactId>
-        <version>${spring-cloud.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-  <dependencies>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-client</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.springframework.boot</groupId>
-          <artifactId>spring-boot-starter-logging</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-thymeleaf</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-webflux</artifactId>
-      <exclusions>
-        <exclusion>
-          <groupId>org.springframework.boot</groupId>
-          <artifactId>spring-boot-starter-logging</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>com.auth0</groupId>
-      <artifactId>jwks-rsa</artifactId>
-      <version>0.9.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-mail</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.projectreactor.netty</groupId>
-      <artifactId>reactor-netty</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>javax.inject</groupId>
-      <artifactId>javax.inject</artifactId>
-      <version>1</version>
-    </dependency>
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt</artifactId>
-      <version>0.9.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-orm</artifactId>
-    </dependency>
-    <!--     <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-entitymanager</artifactId>
-            <version>${hibernate.version}</version>
-        </dependency>-->
-    <!-- Hibernate Validator -->
-    <!--  <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-validator</artifactId>
-            <version>${hibernate.validator}</version>
-        </dependency>-->
-    <!--
-		https://mvnrepository.com/artifact/org.springframework.security/spring-security-ldap -->
-    <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-ldap</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-redis</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-tomcat</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <!-- <dependency> -->
-    <!-- <groupId>org.thymeleaf.extras</groupId> -->
-    <!-- <artifactId>thymeleaf-extras-springsecurity5</artifactId> -->
-    <!-- </dependency> -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.security.oauth</groupId>
-      <artifactId>spring-security-oauth2</artifactId>
-      <version>${spring-security-oauth2.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-ldap</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-  
-   <build>
-   
-   <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-		
-   </build>
-</project>
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Set a Windows local path for logs -->
+    <property name="LOG_FILE" value="C:/Users/sgupt664/fads_dev/fads_sso.log" />
+
+    <!-- Rolling appender: rotates daily -->
+    <appender name="ROLLING"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Daily rollover -->
+            <fileNamePattern>C:/Users/sgupt664/fads_dev/fads_sso.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Optional console output -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root logger configuration -->
+    <root level="INFO">
+        <appender-ref ref="ROLLING"/>
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- Fine-grained logging levels -->
+    <logger name="org.springframework" level="DEBUG"/>
+    <logger name="org.springframework.web" level="DEBUG"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+
+</configuration>
