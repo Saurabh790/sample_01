@@ -1,16 +1,13 @@
-@Query(value = "SELECT * FROM PRM_DR_DATA_RULE_T pd " +
-               "WHERE LOWER(pd.DATA_RULE_NAME) LIKE :dataruleName ESCAPE '\\' " +
-               "AND (LOWER(pd.CREATED_BY_NAME) LIKE :createdBy OR LOWER(pd.CREATED_BY_LASTNAME) LIKE :createdBy) " +
-               "AND (LOWER(pd.UPDATED_BY_NAME) LIKE :updatedBy OR LOWER(pd.UPDATED_BY_LASTNAME) LIKE :updatedBy) " +
-               "AND (LOWER(pd.CREATED_BY_SYSTEM_ID) = :userSystemId OR LOWER(pd.UPDATED_BY_SYSTEM_ID) = :userSystemId) " +
-               "AND pd.DR_ID NOT IN (:drIds)",
-       countQuery = "SELECT count(*) FROM PRM_DR_DATA_RULE_T pd " +
-                    "WHERE LOWER(pd.DATA_RULE_NAME) LIKE :dataruleName ESCAPE '\\'",
-       nativeQuery = true)
-Page<PrmDrDataRuleT> getMyAvailableDataRulesBySearchCritEsc(
-    @Param("dataruleName") String dataruleName,
-    @Param("createdBy") String createdBy,
-    @Param("updatedBy") String updatedBy,
-    @Param("userSystemId") String userSystemId,
-    @Param("drIds") List<Integer> drIds,
-    Pageable pageable);
+log4j.appender.ERROR=org.apache.log4j.FileAppender
+log4j.appender.ERROR.File=error.log
+log4j.appender.ERROR.layout=org.apache.log4j.PatternLayout
+log4j.appender.ERROR.layout.ConversionPattern=%d [%t] %-5p %c - %m%n
+
+log4j.rootLogger=ERROR, RollingAppender
+log4j.logger.com.optum.fads.web.config=INFO,ERROR
+log4j.logger.com.optum.fads.web.security=INFO,ERROR
+log4j.appender.RollingAppender=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.RollingAppender.File=C:\Users\sgupt664\fads_dev\fads_sso.log
+log4j.appender.RollingAppender.DatePattern='.'yyyy-MM-dd
+log4j.appender.RollingAppender.layout=org.apache.log4j.PatternLayout
+log4j.appender.RollingAppender.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %c{1} [%p] %m%n
