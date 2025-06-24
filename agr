@@ -171,4 +171,20 @@ Remote Address
 [::1]:8080
 Referrer Policy
 strict-origin-when-cross-origin
-public ResponseEntity getDataElements(@RequestParam(name = "datasource") String datasource) {
+@GetMapping(value = "/getdataelementslist", headers="Accept=application/json")
+	public ResponseEntity getDataElements(@RequestParam(name = "datasource") String datasource) 
+	 
+	{   
+		List<DataElementDTO> dataElementList;
+		 try {
+			 dataElementList = iDataElementDataService.getDataElements(datasource);
+		 } catch (DataRulesApiException ex) {
+			 logit.error("Exception retrieving Data Elements: {}", ex.getMessage());
+	         return ResponseEntity.
+	           		status(HttpStatus.BAD_REQUEST)
+	           		.body(DataRuleConstants.EXCEPTION_MESSAGE);
+		    }		
+		return ResponseEntity
+		       .status(HttpStatus.OK)                 
+		       .body(dataElementList);
+	}
