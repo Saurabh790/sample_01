@@ -1,126 +1,85 @@
-<build>
-    <plugins>
+pmmt1_0.MB_CTEC_FID,pmmt1_0.MB_CUST_DATADESC,pmmt1_0.MB_CTEC_FTYPE,pmmt1_0.MB_LU_FLAG,pmmt1_0.MB_LU_SQL,flvt1_0.LU_LABEL from PRM_MB_MASTER_T pmmt1_0,FADS_LU_VALUES_T flvt1_0 where pmmt1_0.DR_ELEMENT_CLASS in (1,2,3,4) and pmmt1_0.MB_CUST_FLAG=1 and cast(pmmt1_0.DR_ELEMENT_CLASS as varchar2(32600 char))=flvt1_0.LU_VALUE and flvt1_0.FIELD_ID='DR_ELEMENT_CLASS' order by pmmt1_0.MB_CUST_DATADESC] [ORA-00910: specified length too long for its datatype
+] [n/a]; SQL [n/a]
+2025-06-24 22:12:22 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [text/plain, */*, application/json, application/*+json]
+2025-06-24 22:12:22 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing ["Exception occured "]
+2025-06-24 22:12:22 [http-nio-8080-exec-1] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-06-24 22:12:22 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy - Securing GET /datarules/getdataelementslist?datasource=all
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=0, roleName=Optum Admin, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@2febe9cc, surRole=com.optum.fads.authorization.api.dto.SurRole@447ca0ca, caseRole=com.optum.fads.authorization.api.dto.CaseRole@3c8f7b59, allowedAccesses=[AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=A), AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=A), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=49C934C29213ED60C1DB64A485839BB1], Granted Authorities=[]]]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy - Secured GET /datarules/getdataelementslist?datasource=all
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/datarules/getdataelementslist?datasource=all", parameters={masked}
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.optum.fads.pgp.datarules.controller.DataElementsController#getDataElements(String)
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-06-24 22:12:22 [http-nio-8080-exec-4] INFO  c.o.f.p.d.c.DataElementsController -  datasource  = all
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(711570968<open>)] for JPA transaction
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.orm.jpa.JpaTransactionManager - Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.retrieveDataElements]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.j.d.DriverManagerDataSource - Creating new JDBC DriverManager Connection to [jdbc:oracle:thin:@//wn000193163.ms.ds.uhc.com:1521/XEPDB1]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.orm.jpa.JpaTransactionManager - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@55d370c]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG org.hibernate.SQL - select pmmt1_0.MB_CTEC_FID,pmmt1_0.MB_CUST_DATADESC,pmmt1_0.MB_CTEC_FTYPE,pmmt1_0.MB_LU_FLAG,pmmt1_0.MB_LU_SQL,flvt1_0.LU_LABEL from PRM_MB_MASTER_T pmmt1_0,FADS_LU_VALUES_T flvt1_0 where pmmt1_0.DR_ELEMENT_CLASS in (1,2,3,4) and pmmt1_0.MB_CUST_FLAG=1 and cast(pmmt1_0.DR_ELEMENT_CLASS as varchar2(32600 char))=flvt1_0.LU_VALUE and flvt1_0.FIELD_ID='DR_ELEMENT_CLASS' order by pmmt1_0.MB_CUST_DATADESC
+2025-06-24 22:12:22 [http-nio-8080-exec-4] WARN  o.h.e.jdbc.spi.SqlExceptionHelper - SQL Error: 910, SQLState: 42000
+2025-06-24 22:12:22 [http-nio-8080-exec-4] ERROR o.h.e.jdbc.spi.SqlExceptionHelper - ORA-00910: specified length too long for its datatype
 
-        <!-- Run npm install and build using exec-maven-plugin -->
-        <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.orm.jpa.JpaTransactionManager - Initiating transaction rollback
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.orm.jpa.JpaTransactionManager - Rolling back JPA transaction on EntityManager [SessionImpl(711570968<open>)]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.orm.jpa.JpaTransactionManager - Not closing pre-bound JPA EntityManager after transaction
+2025-06-24 22:12:22 [http-nio-8080-exec-4] ERROR c.o.f.p.d.c.DataElementsController - Exception retrieving Data Elements: Exception occured JDBC exception executing SQL [select pmmt1_0.MB_CTEC_FID,pmmt1_0.MB_CUST_DATADESC,pmmt1_0.MB_CTEC_FTYPE,pmmt1_0.MB_LU_FLAG,pmmt1_0.MB_LU_SQL,flvt1_0.LU_LABEL from PRM_MB_MASTER_T pmmt1_0,FADS_LU_VALUES_T flvt1_0 where pmmt1_0.DR_ELEMENT_CLASS in (1,2,3,4) and pmmt1_0.MB_CUST_FLAG=1 and cast(pmmt1_0.DR_ELEMENT_CLASS as varchar2(32600 char))=flvt1_0.LU_VALUE and flvt1_0.FIELD_ID='DR_ELEMENT_CLASS' order by pmmt1_0.MB_CUST_DATADESC] [ORA-00910: specified length too long for its datatype
+] [n/a]; SQL [n/a]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [text/plain, */*, application/json, application/*+json]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing ["Exception occured "]
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-06-24 22:12:22 [http-nio-8080-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
 
-                <!-- Step 1: npm install -->
-                <execution>
-                    <id>npm-install</id>
-                    <phase>generate-resources</phase>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                    <configuration>
-                        <executable>npm</executable>
-                        <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
-                        <arguments>
-                            <argument>install</argument>
-                            <argument>--legacy-peer-deps</argument> <!-- Optional: if needed -->
-                        </arguments>
-                    </configuration>
-                </execution>
 
-                <!-- Step 2: npm run build -->
-                <execution>
-                    <id>npm-run-build</id>
-                    <phase>generate-resources</phase>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                    <configuration>
-                        <executable>npm</executable>
-                        <workingDirectory>${project.basedir}/frontend/react-app</workingDirectory>
-                        <arguments>
-                            <argument>run</argument>
-                            <argument>build</argument>
-                        </arguments>
-                    </configuration>
-                </execution>
 
-            </executions>
-        </plugin>
+@GetMapping(value = "/getdataelementslist")
+	public ResponseEntity getDataElements(@RequestParam(name = "datasource") String datasource) 
+	 
+	{   
+		logit.info(" datasource  = {}", datasource);
+		System.out.println("datasource+++++++++++++++++++ "+datasource);
+		List<DataElementDTO> dataElementList;
+		 try {
+			 dataElementList = iDataElementDataService.getDataElements(datasource);
+		 } catch (DataRulesApiException ex) {
+			 logit.error("Exception retrieving Data Elements: {}", ex.getMessage());
+	         return ResponseEntity.
+	           		status(HttpStatus.BAD_REQUEST)
+	           		.body(DataRuleConstants.EXCEPTION_MESSAGE);
+		    }		
+		return ResponseEntity
+		       .status(HttpStatus.OK)                 
+		       .body(dataElementList);
+	}
+public List<DataElementDTO> getDataElements(String dataSource){
 
-        <!-- Copy built React files into Spring Boot's webapp directory -->
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-resources-plugin</artifactId>
-            <version>3.3.0</version>
-            <executions>
-                <execution>
-                    <id>copy-react-files</id>
-                    <phase>generate-resources</phase>
-                    <goals>
-                        <goal>copy-resources</goal>
-                    </goals>
-                    <configuration>
-                        <outputDirectory>${project.basedir}/src/main/webapp/app/react</outputDirectory>
-                        <resources>
-                            <resource>
-                                <directory>${project.basedir}/frontend/react-app/build</directory>
-                                <includes>
-                                    <include>**/*</include>
-                                </includes>
-                            </resource>
-                        </resources>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
+			List<DataElementDTO> dataElementList;
+			List<Object[]>  dataElementRS;
+			try {
+				if (dataSource.equalsIgnoreCase(DataRuleConstants.ALL_STR)) {
+					dataElementRS = dataRuleMBRepository.retrieveDataElements();
+				} else {
+					dataElementRS = dataRuleMBRepository.retrieveDataElementsByDataSource(dataSource);
+				}
+				if (dataElementRS.isEmpty()) {
+					throw new DataRulesApiException(DataRuleConstants.NO_DATA_FOUND_MSG);
+				}
+				dataElementList = populateDataElementList(dataElementRS);
+			} catch (Exception e) {
+				throw new DataRulesApiException(DataRuleConstants.EXCEPTION_MESSAGE, e);
+			} 
+	        return dataElementList;
+		}
 
-    </plugins>
-</build>
-npm error enoent This is related to npm not being able to find a file.
-npm error enoent
-npm error A complete log of this run can be found in: C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-06-23T15_30_43_998Z-debug-0.log
-[ERROR] Command execution failed.
-org.apache.commons.exec.ExecuteException: Process exited with an error: -4058 (Exit value: -4058)
-    at org.apache.commons.exec.DefaultExecutor.executeInternal (DefaultExecutor.java:404)
-    at org.apache.commons.exec.DefaultExecutor.execute (DefaultExecutor.java:166)
-    at org.codehaus.mojo.exec.ExecMojo.executeCommandLine (ExecMojo.java:1000)
-    at org.codehaus.mojo.exec.ExecMojo.executeCommandLine (ExecMojo.java:947)
-    at org.codehaus.mojo.exec.ExecMojo.execute (ExecMojo.java:471)
-    at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo (DefaultBuildPluginManager.java:126)
-    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:328)
-    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
-    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
-    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
-    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
-    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
-    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
-    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
-    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
-    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
-    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
-    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
-    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
-    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
-    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
-    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
-    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
-    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
-    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0 (Native Method)
-    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke (NativeMethodAccessorImpl.java:77)
-    at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke (DelegatingMethodAccessorImpl.java:43)
-    at java.lang.reflect.Method.invoke (Method.java:568)
-    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
-    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
-    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
-    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  4.940 s
-[INFO] Finished at: 2025-06-23T21:00:44+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.codehaus.mojo:exec-maven-plugin:3.1.0:exec (npm-install) on project fads-web: Command execution failed.: Process exited with an error: -4058 (Exit value: -4058) -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+@Query("SELECT p.mbCtecFid,p.mbCustDatadesc,p.mbCtecFtype,p.mbLuFlag,p.mbLuSql,f.luLabel  "
+			+ "FROM PrmMbMasterT p, FadsLuValuesT f WHERE p.drElementClass In (1,2,3,4) "
+			+ " AND p.mbCustFlag=1 AND Cast(p.drElementClass as text)=f.id.luValue AND f.id.fieldId = 'DR_ELEMENT_CLASS'"
+			+ " ORDER BY p.mbCustDatadesc ")
+	List<Object[]> retrieveDataElements();
+
+
+@Query("SELECT p.mbCtecFid,p.mbCustDatadesc,p.mbCtecFtype,p.mbLuFlag,p.mbLuSql,f.luLabel  "
+			+ "FROM PrmMbMasterT p, FadsLuValuesT f WHERE p.drElementClass In (1,2,3,4) "
+			+ " AND p.mbCustFlag=1 AND Cast(p.drElementClass as text)=f.id.luValue AND f.id.fieldId = 'DR_ELEMENT_CLASS'"
+			+ " AND f.luLabel = :dataSource ORDER BY p.mbCustDatadesc ")
+	List<Object[]> retrieveDataElementsByDataSource(@Param("dataSource") String dataSource);
