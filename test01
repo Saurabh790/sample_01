@@ -20,6 +20,11 @@ Date createdDate = Date.from(
                  .atZone(ZoneId.systemDefault())
                  .toInstant()
 );
-ri.setCreateDate(createdDate);
-ri.setCreateDate(LocalDateTime.parse(reportItemDTO.getCreatedDate(), dateTimeFormatter));
-The method setCreateDate(Date) in the type PrmRiRptItemT is not applicable for the arguments (LocalDateTime)
+behaviorPatternDTO.setCreatedDate(formatDate( behaviorPatternData[5]));
+The method formatDate(LocalDateTime) in the type ReportItemDataService is not applicable for the arguments (Object)
+public String formatDate(LocalDateTime ldt) {
+		if (ldt == null)
+			return null;
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
+		return formatter.format(ldt);
+	}
