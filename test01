@@ -28,3 +28,12 @@ public String formatDate(LocalDateTime ldt) {
 		DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
 		return formatter.format(ldt);
 	}
+
+Object val = behaviorPatternData[5];
+LocalDateTime ldt = null;
+if (val instanceof java.sql.Timestamp) {
+    ldt = ((java.sql.Timestamp) val).toLocalDateTime();
+} else if (val instanceof LocalDateTime) {
+    ldt = (LocalDateTime) val;
+}
+behaviorPatternDTO.setCreatedDate(formatDate(ldt));
