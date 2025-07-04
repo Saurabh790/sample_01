@@ -1,9 +1,55 @@
-@Mappings({ @Mapping(source = "reportSectionId", target = "rsId"), 
+
+/**
+ * @author awagh
+ *
+ */
+package com.optum.fads.pgp.reportsection.api.mapper;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Mappings;
+import org.mapstruct.ReportingPolicy;
+import org.mapstruct.factory.Mappers;
+
+import com.optum.fads.pgp.datarules.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.datarules.domain.PrmRsRptSecT;
+import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
+
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface ReportGroupDetailMapper {
+	ReportGroupDetailMapper INSTANCE = Mappers.getMapper(ReportGroupDetailMapper.class);
+
+	@Mappings({ @Mapping(source = "reportItemId", target = "riId"), 
+			@Mapping(source = "reportItemName", target = "reportItemName"),
+			@Mapping(source = "calcFMT", target = "riCalcFmt"),
+			@Mapping(source = "minimumDenominator", target = "riMinimumDenom"),
+			@Mapping(source = "divideConstant", target = "constantDen"),
+			@Mapping(source = "multipleConstant", target = "constantNum"),
+			@Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
+			@Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId") })
+	PrmRiRptItemT convertToPrmRiRptItemT(ReportItemDTO reportItemDTO);
+	
+	@Mappings({ @Mapping(source = "reportSectionId", target = "rsId"), 
 			@Mapping(source = "reportSectionName", target = "reportSectionName"),
 			@Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
 			@Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId") })
 	PrmRsRptSecT convertToPrmRsRptSecT(ReportSectionDTO reportSectionDTO);
-public ReportSectionDTO() {};
+
+}
+package com.optum.fads.pgp.reportsection.api.dto;
+
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+@Data
+@AllArgsConstructor
+public class ReportSectionDTO {
+	
+	public ReportSectionDTO() {};
 	
 	private Integer reportSectionId;
     private String reportSectionName;
@@ -30,8 +76,13 @@ public ReportSectionDTO() {};
         this.reportItems = reportItems;
     }
 
+}
+package com.optum.fads.pgp.reportsection.api.dto;
 
-ublic class ReportItemDTO {
+import java.util.List;
+
+
+public class ReportItemDTO {
     private Integer reportItemId;
     private String reportItemName;
     private int calcFMT;
@@ -48,5 +99,143 @@ ublic class ReportItemDTO {
     private String modifiedDate; 
     private String createdBySystemId;
     private String modifiedBySystemId;   
+    
+    public Integer getReportItemId() {
+		return reportItemId;
+	}
 
-@Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE)
+	public void setReportItemId(Integer reportItemId) {
+		this.reportItemId = reportItemId;
+	}
+
+	public String getReportItemName() {
+    	if(reportItemName!=null){
+    		reportItemName=reportItemName.trim();
+    	}
+        return reportItemName;
+    }
+
+    public void setReportItemName(String reportItemName) {
+        this.reportItemName = reportItemName;
+    }
+
+    public int getCalcFMT() {
+        if(calcFMT==0){
+        	  return 3;
+        }
+        return calcFMT;
+    }
+
+    public void setCalcFMT(int calcFMT) {
+        this.calcFMT = calcFMT;
+    }
+
+    public Integer getMultipleConstant() {
+        return multipleConstant;
+    }
+
+    public void setMultipleConstant(Integer multipleConstant) {
+        this.multipleConstant = multipleConstant;
+    }
+
+    public Integer getDivideConstant() {
+        return divideConstant;
+    }
+
+    public void setDivideConstant(Integer divideConstant) {
+        this.divideConstant = divideConstant;
+    }
+
+    public Integer getMinimumDenominator() {
+        return minimumDenominator;
+    }
+
+    public void setMinimumDenominator(Integer minimumDenominator) {
+        this.minimumDenominator = minimumDenominator;
+    }
+
+	public List<BehaviorPatternDTO> getNumeratorBehaviorPatterns() {
+		return numeratorBehaviorPatterns;
+	}
+
+	public void setNumeratorBehaviorPatterns(List<BehaviorPatternDTO> numeratorBehaviorPatterns) {
+		this.numeratorBehaviorPatterns = numeratorBehaviorPatterns;
+	}
+
+	public List<BehaviorPatternDTO> getDenominatorBehaviorPatterns() {
+		return denominatorBehaviorPatterns;
+	}
+
+	public void setDenominatorBehaviorPatterns(List<BehaviorPatternDTO> denominatorBehaviorPatterns) {
+		this.denominatorBehaviorPatterns = denominatorBehaviorPatterns;
+	}
+
+	public String getRatioOf() {
+    	if(ratioOf!=null){
+    		ratioOf=ratioOf.trim();
+    	}
+        return ratioOf;
+    }
+
+    public void setRatioOf(String ratioOf) {
+        this.ratioOf = ratioOf;
+    }
+
+	public Integer getOrder() {
+		return order;
+	}
+
+	public void setOrder(Integer order) {
+		this.order = order;
+	}
+
+    public String getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(String createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	public String getCreatedDate() {
+		return createdDate;
+	}
+
+	public void setCreatedDate(String createdDate) {
+		this.createdDate = createdDate;
+	}
+
+	public String getModifiedBy() {
+		return modifiedBy;
+	}
+
+	public void setModifiedBy(String modifiedBy) {
+		this.modifiedBy = modifiedBy;
+	}
+
+	public String getModifiedDate() {
+		return modifiedDate;
+	}
+
+	public void setModifiedDate(String modifiedDate) {
+		this.modifiedDate = modifiedDate;
+	}
+
+	public String getCreatedBySystemId() {
+		return createdBySystemId;
+	}
+
+	public void setCreatedBySystemId(String createdBySystemId) {
+		this.createdBySystemId = createdBySystemId;
+	}
+	
+	public String getModifiedBySystemId() {
+		return modifiedBySystemId;
+	}
+
+	public void setModifiedBySystemId(String modifiedBySystemId) {
+		this.modifiedBySystemId = modifiedBySystemId;
+	}
+     
+}
+
