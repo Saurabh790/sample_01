@@ -1,12 +1,50 @@
-ROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[34,39] No property named "reportSectionId" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[35,43] No property named "reportSectionName" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[36,43] No property named "createdBySystemId" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[37,43] No property named "modifiedBySystemId" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] -> [Help 1]
-[ERROR]
-
 @Mappings({ @Mapping(source = "reportSectionId", target = "rsId"), 
 			@Mapping(source = "reportSectionName", target = "reportSectionName"),
 			@Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
 			@Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId") })
 	PrmRsRptSecT convertToPrmRsRptSecT(ReportSectionDTO reportSectionDTO);
+public ReportSectionDTO() {};
+	
+	private Integer reportSectionId;
+    private String reportSectionName;
+    private List<ReportItemDTO> reportItems;
+    private String createdBy;
+    private String createdDate;
+    private String modifiedBy;
+    private String modifiedDate;
+    private String createdBySystemId;
+    private String modifiedBySystemId;
+    
+    public List<ReportItemDTO> getReportItems() {
+        return reportItems;
+    }
+
+    public void add(ReportItemDTO reportItem) {
+        if(reportItems==null){
+        	reportItems=new ArrayList<>();
+        }
+        this.reportItems.add(reportItem);
+    }
+
+    public void setReportItems(List<ReportItemDTO> reportItems) {
+        this.reportItems = reportItems;
+    }
+
+
+ublic class ReportItemDTO {
+    private Integer reportItemId;
+    private String reportItemName;
+    private int calcFMT;
+    private Integer multipleConstant;
+    private Integer divideConstant;
+    private Integer minimumDenominator;
+    private List<BehaviorPatternDTO> numeratorBehaviorPatterns;
+    private List<BehaviorPatternDTO> denominatorBehaviorPatterns;
+	private String ratioOf;
+	private Integer order;
+    private String createdBy;
+    private String createdDate;
+    private String modifiedBy;
+    private String modifiedDate; 
+    private String createdBySystemId;
+    private String modifiedBySystemId;   
