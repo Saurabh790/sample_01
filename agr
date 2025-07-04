@@ -1,8 +1,3 @@
-logging.file.name=C:/Users/sgupt664/fads_dev/fads_sso.log
-logging.level.root=INFO
-logging.level.org.springframework=DEBUG
-logging.level.org.hibernate.SQL=DEBUG
-
 /*
 //***********************************************
 // Copyright UNITEDHEALTH GROUP CORPORATION 2018.
@@ -58,7 +53,7 @@ import com.optum.fads.pgp.reportsection.api.service.IReportSectionDataService;
  */
 @Component
 @RestController
-@RequestMapping("/reportgroup")
+@RequestMapping("/fads/reportgroup")
 @CrossOrigin
 public class ReportSectionController {
 
@@ -311,17 +306,477 @@ public class ReportSectionController {
 	}
 }
 
-eIpAddress=0:0:0:0:0:0:0:1, SessionId=9A90FA432C50B66BFF70D1FFE8EA0518]
-2025-07-04T11:26:48.963+05:30  WARN 17064 --- [nio-8080-exec-6] o.s.s.a.event.LoggerListener             : Authentication event InteractiveAuthenticationSuccessEvent: SG6234283; details: WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=9A90FA432C50B66BFF70D1FFE8EA0518]
-2025-07-04T11:27:06.462+05:30  WARN 17064 --- [nio-8080-exec-7] o.s.web.servlet.PageNotFound             : No mapping for GET /fads/reportgroup/getreportsections/
-2025-07-04T11:27:06.462+05:30  WARN 17064 --- [nio-8080-exec-7] o.s.web.servlet.PageNotFound             : No endpoint GET /fads/reportgroup/getreportsections/.
-2025-07-04T11:27:07.572+05:30  WARN 17064 --- [io-8080-exec-10] o.s.web.servlet.PageNotFound             : No mapping for GET /fads/reportgroup/getreportsections/
-2025-07-04T11:27:07.573+05:30  WARN 17064 --- [io-8080-exec-10] o.s.web.servlet.PageNotFound             : No endpoint GET /fads/reportgroup/getreportsections/.
-2025-07-04T11:27:09.601+05:30  WARN 17064 --- [nio-8080-exec-9] o.s.web.servlet.PageNotFound             : No mapping for GET /fads/reportgroup/getreportsections/
-2025-07-04T11:27:09.602+05:30  WARN 17064 --- [nio-8080-exec-9] o.s.web.servlet.PageNotFound             : No endpoint GET /fads/reportgroup/getreportsections/.
-2025-07-04T11:27:13.615+05:30  WARN 17064 --- [nio-8080-exec-2] o.s.web.servlet.PageNotFound             : No mapping for GET /fads/reportgroup/getreportsections/
-2025-07-04T11:27:13.616+05:30  WARN 17064 --- [nio-8080-exec-2] o.s.web.servlet.PageNotFound             : No endpoint GET /fads/reportgroup/getreportsections/.
-2025-07-04T11:28:55.236+05:30  WARN 17064 --- [nio-8080-exec-7] o.s.web.servlet.PageNotFound             : No mapping for GET /fads/reportgroup/getreportsections/
-2025-07-04T11:28:55.239+05:30  WARN 17064 --- [nio-8080-exec-7] o.s.web.servlet.PageNotFound             : No endpoint GET /fads/reportgroup/getreportsections/.
-2025-07-04T11:29:04.257+05:30  WARN 17064 --- [io-8080-exec-10] o.s.web.servlet.PageNotFound             : No mapping for GET /fads/getreportsections/
-2025-07-04T11:29:04.259+05:30  WARN 17064 --- [io-8080-exec-10] o.s.web.servlet.PageNotFound             : No endpoint GET /fads/getreportsections/.
+
+
+/**
+ * Copyright (c) Optum 2015 - All Rights Reserved.
+ */
+package com.optum.fads.web.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.ldap.core.support.LdapContextSource;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.event.LoggerListener;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
+import org.springframework.security.ldap.authentication.BindAuthenticator;
+import org.springframework.security.ldap.authentication.LdapAuthenticationProvider;
+import org.springframework.security.ldap.authentication.LdapAuthenticator;
+import org.springframework.security.ldap.authentication.ad.ActiveDirectoryLdapAuthenticationProvider;
+import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
+import org.springframework.security.ldap.userdetails.DefaultLdapAuthoritiesPopulator;
+import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+
+import com.optum.fads.authorization.api.service.FADSUserDetailsService;
+import com.optum.fads.web.security.authentication.FadsAuthenticationProvider;
+
+
+@Configuration
+@EnableWebSecurity
+@PropertySource("classpath:application.properties")
+public class SecurityConfig {
+	private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+	private static final String FORM_LOGIN_DEFAULT_FAILURE_URL = "/login?error=1";
+	private static final String FORM_LOGIN_USERNAME_PARAM = "username";
+	private static final String SECURITY_AUTH_TYPE_LDAP = "ldap";
+	private static final String SECURITY_AUTH_TYPE_AD = "activedirectory";
+	private static final String SECURITY_AUTH_TYPE_OPENTOKEN = "opentoken";
+	@Value("${ad.url}")
+	private String adUrl;
+
+	@Value("${ad.domain}")
+	private String adDomain;
+
+	@Value("#{'${security.authentication.type}'.trim()}")
+	private String authType;
+
+	@Value("${ldap.url}")
+	private String ldapUrl;
+
+	@Value("${ldap.base}")
+	private String ldapBase;
+
+	@Value("${ldap.userDn}")
+	private String ldapUser;
+
+	@Value("${ldap.password}")
+	private String ldapPassword;
+
+	@Value("${ldap.searchFilter}")
+	private String ldapSearchFilter;
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	}
+
+	@Bean
+	public LoggerListener loggerListener() {
+		return new LoggerListener();
+	}
+	@Autowired
+	private FADSUserDetailsService userDetailsService;
+	
+	@Bean
+	public SecurityFilterChain configure(final HttpSecurity http) throws Exception {
+		http.csrf(csrf -> csrf.disable());
+
+		http
+	    .authorizeHttpRequests(authz -> authz
+	        .requestMatchers(
+	            new AntPathRequestMatcher("/login"),
+	            new AntPathRequestMatcher("/WEB-INF/jsp/login.jsp"),
+	            new AntPathRequestMatcher("/css/**"),
+	            new AntPathRequestMatcher("/js/**"),
+	            new AntPathRequestMatcher("/sessionexpired"),
+	            new AntPathRequestMatcher("/signout"),
+	            new AntPathRequestMatcher("/static/**"),
+	            new AntPathRequestMatcher("/app/**"),
+	            new AntPathRequestMatcher("/bower_components/**"),
+	            new AntPathRequestMatcher("/images/**")
+	        ).permitAll()
+	        .anyRequest().authenticated()
+	    )
+	    .sessionManagement(session -> session
+	        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+	    )
+		.formLogin(form -> form
+	        .loginPage("/login")
+	        .loginProcessingUrl("/login")
+	        .usernameParameter("username")
+	        .passwordParameter("password")
+	        .defaultSuccessUrl("/", true)
+	        .failureUrl("/login?error=true")
+	        .permitAll()
+	    )
+	    .logout(logout -> logout
+	        .logoutUrl("/logout")
+	        .logoutSuccessUrl("/login?logout=true")
+		);//.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class);
+ 		if( authType.equalsIgnoreCase(SECURITY_AUTH_TYPE_AD)) {
+			logger.debug("Configuring Active Directory authentication provider for authType={}", authType);
+			http.authenticationProvider(
+					new FadsAuthenticationProvider(activeDirectoryLdapAuthenticationProvider(),userDetailsService)
+			);
+		} else if (authType.equalsIgnoreCase(SECURITY_AUTH_TYPE_LDAP)) {
+			http.authenticationProvider(
+					new FadsAuthenticationProvider(ldapAuthenticationProvider(),userDetailsService)
+			);
+		} else {
+			logger.warn("Unknown authentication type: {}", authType);
+		}
+
+        return http.build();
+    }
+
+	@Bean
+	public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+		AuthenticationManagerBuilder authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder.class);
+		if( authType.equalsIgnoreCase(SECURITY_AUTH_TYPE_AD)) {
+
+			logger.debug("Configuring Active Directory authentication provider for authType={}", authType);
+			authenticationManagerBuilder.authenticationProvider(activeDirectoryLdapAuthenticationProvider());
+		} else if (authType.equalsIgnoreCase(SECURITY_AUTH_TYPE_LDAP)) {
+
+			logger.debug("Configuring LDAP authentication provider for authType={}", authType);
+			authenticationManagerBuilder.authenticationProvider(ldapAuthenticationProvider());
+
+		}
+
+
+			return authenticationManagerBuilder.build();
+	}
+
+	@Bean
+	@ConditionalOnProperty( name = "security.authentication.type", havingValue =SECURITY_AUTH_TYPE_AD)
+	public ActiveDirectoryLdapAuthenticationProvider activeDirectoryLdapAuthenticationProvider() {
+		String domain = adDomain != null ? adDomain.trim() : "ms.ds.uhc.com";
+		String url = adUrl != null ? adUrl.trim() : "ldap://ms.ds.uhc.com:389";
+
+		ActiveDirectoryLdapAuthenticationProvider provider = new ActiveDirectoryLdapAuthenticationProvider(domain, url) ;
+
+		provider.setConvertSubErrorCodesToExceptions(true);
+		return provider;
+	}
+
+
+
+	@Bean
+	@ConditionalOnProperty( name = "security.authentication.type", havingValue=SECURITY_AUTH_TYPE_LDAP)
+	public LdapAuthenticator ldapAuthenticator() throws Exception {
+		BindAuthenticator authenticator = new BindAuthenticator(ldapContextSource());
+		authenticator.setUserSearch(userSearch());
+
+		return authenticator;
+	}
+
+	@Bean
+	@ConditionalOnProperty( name = "security.authentication.type", havingValue=SECURITY_AUTH_TYPE_LDAP)
+	public FilterBasedLdapUserSearch userSearch() throws Exception {
+		FilterBasedLdapUserSearch filterUserSearch= new FilterBasedLdapUserSearch(ldapBase,
+				ldapSearchFilter, ldapContextSource());
+		filterUserSearch.setSearchSubtree(true);
+
+		return filterUserSearch;
+	}
+
+	@Bean
+	@ConditionalOnProperty( name = "security.authentication.type", havingValue=SECURITY_AUTH_TYPE_LDAP)
+	public LdapAuthoritiesPopulator ldapAuthoritiesPopulator() throws Exception {
+
+		return new DefaultLdapAuthoritiesPopulator(ldapContextSource(), null);
+
+	}
+
+	@Bean
+	@ConditionalOnProperty( name = "security.authentication.type", havingValue=SECURITY_AUTH_TYPE_LDAP)
+	public LdapAuthenticationProvider ldapAuthenticationProvider() throws Exception {
+
+		return new LdapAuthenticationProvider(ldapAuthenticator());
+
+	}
+	@Bean
+	@ConditionalOnProperty( name = "security.authentication.type", havingValue=SECURITY_AUTH_TYPE_LDAP)
+	public LdapContextSource ldapContextSource() throws Exception {
+		LdapContextSource ldapContextSource =new DefaultSpringSecurityContextSource(ldapUrl);
+		ldapContextSource.setUserDn(ldapBase);
+		ldapContextSource.setPassword(ldapPassword);
+
+		ldapContextSource.afterPropertiesSet();
+
+		return ldapContextSource;
+	}
+
+
+}
+
+
+package com.optum.fads.web.config;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.persistence.EntityManagerFactory;
+
+@Configuration
+@EnableTransactionManagement
+@ComponentScan(basePackages = { "com.optum.fads" })
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory", 
+transactionManagerRef = "txManagerSQL",
+basePackages = {
+		"com.optum.fads.authorization.api.repo" ,
+		"com.optum.fads.pgp.datarules.repo",
+		"com.optum.fads.pgp.reportsection.api.repo",
+		"com.optum.fads.pgp.behavior.api.repo"})
+public class ServiceConfig implements InitializingBean
+
+{
+	
+	    @Value("${hibernate.connection.url}")
+	    private String url;
+
+	    @Value("${hibernate.connection.username}")
+	    private String username;
+	  
+	    @Value("${hibernate.connection.password}")
+	    private String password;
+
+	  
+	    @Value("${hibernate.connection.driver_class}")
+	    private String driverClassName;
+
+	
+	public void afterPropertiesSet() throws Exception {
+	    testConnection();
+	   }
+
+	@Primary
+	@Bean
+	public DataSource dataSource() {
+		DriverManagerDataSource ds = new DriverManagerDataSource();
+		ds.setDriverClassName(driverClassName);
+		ds.setUrl(url);
+		ds.setUsername(username);
+		ds.setPassword(password);
+		System.out.println("Loaded DB URL: 01");
+
+		return ds;
+
+	}
+	
+
+	@Primary
+	@Bean(name = "sqlEntityManagerFactory")
+	public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
+		{
+			LocalContainerEntityManagerFactoryBean em
+					= new LocalContainerEntityManagerFactoryBean();
+			em.setDataSource(dataSource());
+			em.setPackagesToScan(
+					new String[] { "com.optum.fads.authorization.api.domain",
+							"com.optum.fads.pgp.datarules.domain",
+							"com.optum.fads.pgp.reportsection.api.domain",
+							"com.optum.fads.pgp.behavior.api.domain"});
+			HibernateJpaVendorAdapter vendorAdapter
+				= new HibernateJpaVendorAdapter();
+			em.setJpaVendorAdapter(vendorAdapter);
+		return em;
+		}
+
+	@Primary
+	@Bean(name = "txManagerSQL")
+	public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
+		{
+			JpaTransactionManager txManager = new JpaTransactionManager();
+			txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+			return txManager;
+		}
+	/*
+
+	@Bean
+	public SessionFactory sessionFactory() {
+		System.out.println("Loaded DB URL: 02");
+		return new LocalSessionFactoryBuilder(dataSource())
+				.scanPackages("com.optum.fads.casetracking", "com.optum.fads.security.domain", "com.optum.fads.config",
+						"com.optum.fads.caseconfig", " com.optum.fads.security.domain",
+						"com.optum.fads.caseconfig.domain")
+				.addProperties(getHibernateProperties()).buildSessionFactory();
+	}
+
+	private Properties getHibernateProperties() {
+		Properties prop = new Properties();
+		prop.put("hibernate.dialect", environment.getRequiredProperty("hibernate.dialect"));
+		prop.put("hibernate.format_sql", environment.getRequiredProperty("hibernate.format_sql"));
+		prop.put("hibernate.show_sql", environment.getRequiredProperty("hibernate.show_sql"));
+		prop.put("hibernate.generate_statistics", environment.getRequiredProperty("hibernate.generate_statistics"));
+		System.out.println("Loaded DB URL: 03");
+		return prop;
+
+	}
+
+	@Bean
+	public PlatformTransactionManager txManager() {
+		System.out.println("Loaded DB URL: 04");
+		return new HibernateTransactionManager(sessionFactory());
+
+	}
+
+	public void testConnection() {
+		System.out.println("Loaded DB URL: 05");
+		try (Connection conn = dataSource().getConnection();
+				Statement stmt = conn.createStatement();
+				ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+			if (rs.next()) {
+				System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+			}
+		} catch (Exception e) {
+			System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+		}
+	}*/
+
+
+	
+
+public void testConnection() {
+	System.out.println("Loaded DB URL: 05");
+	try (Connection conn = dataSource().getConnection();
+			Statement stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+		if (rs.next()) {
+			System.out.println(" Connected to Oracle DB: " + rs.getString(1));
+		}
+	} catch (Exception e) {
+		System.err.println(" Failed to connect to Oracle DB: " + e.getMessage());
+	}
+}
+}
+
+
+
+
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy - Securing POST /activity
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy - Securing POST /activity
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.security.web.FilterChainProxy - Secured POST /activity
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - POST "/fads/activity", parameters={}
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.optum.fads.web.controllers.UserActivityController#createActivity(UserActivityDto, Principal)
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy - Secured POST /activity
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - POST "/fads/activity", parameters={}
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.optum.fads.web.controllers.UserActivityController#createActivity(UserActivityDto, Principal)
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [com.optum.fads.web.security.dto.UserActivityDto@571f89de]
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Read "application/json;charset=UTF-8" to [com.optum.fads.web.security.dto.UserActivityDto@239ab18b]
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [*/*]
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Using 'application/json', given [application/json, text/plain, */*] and supported [*/*]
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Nothing to write: null body
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestResponseBodyMethodProcessor - Nothing to write: null body
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:32 [http-nio-8080-exec-1] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2025-07-04 12:55:32 [http-nio-8080-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 200 OK
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy - Securing GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy - Secured GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:35 [http-nio-8080-exec-6] WARN  o.s.web.servlet.PageNotFound - No mapping for GET /fads/reportgroup/getreportsections/
+2025-07-04 12:55:35 [http-nio-8080-exec-6] WARN  o.s.web.servlet.PageNotFound - No endpoint GET /fads/reportgroup/getreportsections/.
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.servlet.NoHandlerFoundException: No endpoint GET /fads/reportgroup/getreportsections/.]
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 404 NOT_FOUND
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy - Securing GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.security.web.FilterChainProxy - Secured GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - "ERROR" dispatch for GET "/fads/error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController#error(HttpServletRequest)
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [application/json, application/*+json]
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing [{timestamp=Fri Jul 04 12:55:35 IST 2025, status=404, error=Not Found, trace=org.springframework.web. (truncated)...]
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:35 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Exiting from "ERROR" dispatch, status 404
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy - Securing GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy - Secured GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:36 [http-nio-8080-exec-10] WARN  o.s.web.servlet.PageNotFound - No mapping for GET /fads/reportgroup/getreportsections/
+2025-07-04 12:55:36 [http-nio-8080-exec-10] WARN  o.s.web.servlet.PageNotFound - No endpoint GET /fads/reportgroup/getreportsections/.
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.servlet.NoHandlerFoundException: No endpoint GET /fads/reportgroup/getreportsections/.]
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Completed 404 NOT_FOUND
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy - Securing GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy - Secured GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - "ERROR" dispatch for GET "/fads/error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController#error(HttpServletRequest)
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [application/json, application/*+json]
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing [{timestamp=Fri Jul 04 12:55:36 IST 2025, status=404, error=Not Found, trace=org.springframework.web. (truncated)...]
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:36 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Exiting from "ERROR" dispatch, status 404
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy - Securing GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy - Secured GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:38 [http-nio-8080-exec-7] WARN  o.s.web.servlet.PageNotFound - No mapping for GET /fads/reportgroup/getreportsections/
+2025-07-04 12:55:38 [http-nio-8080-exec-7] WARN  o.s.web.servlet.PageNotFound - No endpoint GET /fads/reportgroup/getreportsections/.
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.servlet.NoHandlerFoundException: No endpoint GET /fads/reportgroup/getreportsections/.]
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 404 NOT_FOUND
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy - Securing GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.security.web.FilterChainProxy - Secured GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - "ERROR" dispatch for GET "/fads/error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController#error(HttpServletRequest)
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [application/json, application/*+json]
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing [{timestamp=Fri Jul 04 12:55:38 IST 2025, status=404, error=Not Found, trace=org.springframework.web. (truncated)...]
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:38 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Exiting from "ERROR" dispatch, status 404
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy - Securing GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy - Secured GET /reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/reportgroup/getreportsections/?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:42 [http-nio-8080-exec-4] WARN  o.s.web.servlet.PageNotFound - No mapping for GET /fads/reportgroup/getreportsections/
+2025-07-04 12:55:42 [http-nio-8080-exec-4] WARN  o.s.web.servlet.PageNotFound - No endpoint GET /fads/reportgroup/getreportsections/.
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.s.DefaultHandlerExceptionResolver - Resolved [org.springframework.web.servlet.NoHandlerFoundException: No endpoint GET /fads/reportgroup/getreportsections/.]
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Completed 404 NOT_FOUND
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy - Securing GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=3, roleName=PI Investigator, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@6121dbd, pgpRole=PgpRole(groupId=3, roleName=PI Investigator, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), SurAccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), SurAccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@312e98b4, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=U), AccessLevel(moduleId=3, moduleCode=WIZARD, moduleName=SUR Wizard, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=U), AccessLevel(moduleId=4, moduleCode=HCM, moduleName=High Cost Members Parameters, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=646564A557171D6A102EA68858BABB17], Granted Authorities=[]]]
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.security.web.FilterChainProxy - Secured GET /error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - "ERROR" dispatch for GET "/fads/error?pageNumber=1&recordsPerPage=10&sortBy=reportSectionName&sortOrder=1", parameters={masked}
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to org.springframework.boot.autoconfigure.web.servlet.error.BasicErrorController#error(HttpServletRequest)
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [application/json, application/*+json]
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing [{timestamp=Fri Jul 04 12:55:42 IST 2025, status=404, error=Not Found, trace=org.springframework.web. (truncated)...]
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-07-04 12:55:42 [http-nio-8080-exec-4] DEBUG o.s.web.servlet.DispatcherServlet - Exiting from "ERROR" dispatch, status 404
