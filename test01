@@ -15,6 +15,11 @@ public String formatDate(LocalDateTime ldt) {
 	DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
 	return formatter.format(ldt);
 }
-
+Date createdDate = Date.from(
+    LocalDateTime.parse(reportItemDTO.getCreatedDate(), dateTimeFormatter)
+                 .atZone(ZoneId.systemDefault())
+                 .toInstant()
+);
+ri.setCreateDate(createdDate);
 ri.setCreateDate(LocalDateTime.parse(reportItemDTO.getCreatedDate(), dateTimeFormatter));
 The method setCreateDate(Date) in the type PrmRiRptItemT is not applicable for the arguments (LocalDateTime)
