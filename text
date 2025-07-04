@@ -1,1 +1,11 @@
 
+protected String formatLocalDate(Date date) {
+    if (date == null)
+        return null;
+    LocalDateTime ldt = date.toInstant()
+                             .atZone(ZoneId.systemDefault())
+                             .toLocalDateTime();
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A,
+                                                               Locale.ENGLISH);
+    return formatter.format(ldt);
+}
