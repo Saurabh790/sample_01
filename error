@@ -1,16 +1,12 @@
-  location: variable reportItemInd of type com.optum.fads.pgp.datarules.domain.PrmRiRptItemT
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/service/impl/ReportItemDataService.java:[535,88] incompatible types: java.time.LocalDateTime cannot be converted to java.util.Date
+ROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[34,39] No property named "reportSectionId" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[35,43] No property named "reportSectionName" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[36,43] No property named "createdBySystemId" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[37,43] No property named "modifiedBySystemId" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] -> [Help 1]
+[ERROR]
 
-
-// For LocalDateTime
-		protected String formatLocalDate(LocalDateTime dt) {
-			DateTimeFormatter dateTimeFormatter;
-			if (dt == null)
-				return null;
-			dateTimeFormatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A,
-					Locale.ENGLISH);
-			return dateTimeFormatter.format(dt);
-		}	
-		
-		
-		reportItemDTO.setCreatedDate(formatLocalDate(reportItemInd.getCreateDate()));
+@Mappings({ @Mapping(source = "reportSectionId", target = "rsId"), 
+			@Mapping(source = "reportSectionName", target = "reportSectionName"),
+			@Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
+			@Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId") })
+	PrmRsRptSecT convertToPrmRsRptSecT(ReportSectionDTO reportSectionDTO);
