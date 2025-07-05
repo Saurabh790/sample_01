@@ -11,3 +11,17 @@
 2025-07-05 16:55:22 [http-nio-8080-exec-6] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing ["Exception occured "]
 2025-07-05 16:55:22 [http-nio-8080-exec-6] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
 2025-07-05 16:55:22 [http-nio-8080-exec-6] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
+\
+
+
+private static final Logger log = LoggerFactory.getLogger(ReportSectionController.class);
+
+@GetMapping("/your-endpoint")
+public ResponseEntity<?> yourEndpointHandler() {
+    try {
+        // Your logic here
+    } catch (Exception ex) {
+        log.error("Exception occurred", ex); // ✅ Log full exception with stack trace
+        return ResponseEntity.badRequest().body("Exception occurred: " + ex.getMessage());
+    }
+}
