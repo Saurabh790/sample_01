@@ -1,175 +1,46 @@
+public class ReportItemDataService implements IReportItemDataService in this class its referring it with old pkg   'com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository'  and now its in com.optum.fads.pgp.datarules.repo.ReportItemsRepository
+why that is happening while running with mvn spring-boot:run
+
+below is the pom.xml of report module which is holding the data rule module 
+?xml version="1.0" encoding="UTF-8"?>
+<project
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0">
+		 <groupId>com.optum.fads</groupId>
+
+    <modelVersion>4.0.0</modelVersion>
+
+   <parent>
+        <groupId>com.optum.fads</groupId>
+		<artifactId>fads-monolithic-application</artifactId>
+		<version>9.0.0-SNAPSHOT</version>
+    </parent>
+    <artifactId>fads-pgp-reportsection-api</artifactId>
+	<name>fads-pgp-reportsection-api</name>
+
+    
 
 
+   <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
 
-2025-07-05 13:28:21 [restartedMain] DEBUG o.s.b.f.s.DefaultListableBeanFactory - Creating shared instance of singleton bean 'org.springframework.transaction.config.internalTransactionAdvisor'
-2025-07-05 13:28:21 [restartedMain] DEBUG o.s.b.f.s.DefaultListableBeanFactory - Creating shared instance of singleton bean 'org.springframework.transaction.annotation.ProxyTransactionManagementConfiguration'
-2025-07-05 13:28:21 [restartedMain] DEBUG o.s.b.f.s.DefaultListableBeanFactory - Bean creation exception on singleton FactoryBean type check: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'org.springframework.transaction.annotation.ProxyTransactionManagementConfiguration': No bean named 'org.springframework.context.annotation.ConfigurationClassPostProcessor.importRegistry' available
-2025-07-05 13:28:21 [restartedMain] DEBUG o.s.b.d.LoggingFailureAnalysisReporter - Application failed to start due to an exception
-org.springframework.beans.factory.NoSuchBeanDefinitionException: No qualifying bean of type 'com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository' available: expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {}
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.raiseNoMatchingBeanFound(DefaultListableBeanFactory.java:1880)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1406)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1353)
-	at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:904)
-	at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:782)
-	at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:237)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1355)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1192)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:562)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200)
-	at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1443)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1353)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:784)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767)
-	at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:145)
-	at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:508)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1419)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:599)
-	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326)
-	at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324)
-	at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200)
-	at org.springframework.beans.factory.support.DefaultListableBeanFactory.preInstantiateSingletons(DefaultListableBeanFactory.java:975)
-	at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:962)
-	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:624)
-	at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:754)
-	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:456)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:334)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354)
-	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1343)
-	at com.optum.fads.web.FADSWebApplication.main(FADSWebApplication.java:12)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
-2025-07-05 13:28:21 [restartedMain] ERROR o.s.b.d.LoggingFailureAnalysisReporter - 
+    
 
-***************************
-APPLICATION FAILED TO START
-***************************
-
-Description:
-
-Parameter 0 of constructor in com.optum.fads.pgp.reportsection.api.service.impl.ReportItemDataService required a bean of type 'com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository' that could not be found.
-
-The injection point has the following annotations:
-	- @org.springframework.beans.factory.annotation.Autowired(required=true)
-
-
-Action:
-
-Consider defining a bean of type 'com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository' in your configuration.
-
-
-
-
-
-
- * @author Anil Wagh
- */
-package com.optum.fads.pgp.reportsection.api.service.impl;
-
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-
-import com.optum.fads.authorization.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErDrRepository;
-import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
-import com.optum.fads.pgp.datarules.domain.FadsConfigT;
-import com.optum.fads.pgp.datarules.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.datarules.domain.PrmBpRiFormulaT;
-import com.optum.fads.pgp.datarules.domain.PrmBpRiFormulaTPK;
-import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
-import com.optum.fads.pgp.datarules.domain.PrmDrRangesT;
-import com.optum.fads.pgp.datarules.domain.PrmDrSingleValuesT;
-import com.optum.fads.pgp.datarules.domain.PrmErDrT;
-import com.optum.fads.pgp.datarules.domain.PrmRiRptItemT;
-import com.optum.fads.pgp.datarules.domain.PrmRsRiT;
-import com.optum.fads.pgp.datarules.domain.PrmRsRptSecT;
-import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
-import com.optum.fads.pgp.datarules.repo.FadsConfigRepository;
-import com.optum.fads.pgp.datarules.repo.ReportItemFormulasRepository;
-import com.optum.fads.pgp.datarules.repo.ReportItemsRepository;
-import com.optum.fads.pgp.datarules.repo.ReportSectionItemsRepository;
-import com.optum.fads.pgp.datarules.repo.ReportSectionsRepository;
-import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
-import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
-import com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO;
-import com.optum.fads.pgp.reportsection.api.dto.DataRuleDTO;
-import com.optum.fads.pgp.reportsection.api.dto.DrCodeValueDTO;
-import com.optum.fads.pgp.reportsection.api.dto.DrRangeValuesDTO;
-import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
-import com.optum.fads.pgp.reportsection.api.mapper.ReportGroupDetailMapper;
-import com.optum.fads.pgp.reportsection.api.service.IReportItemDataService;
-
-@Service("reportItemDataService")
-//@Slf4j
-public class ReportItemDataService implements IReportItemDataService {
-
-	private static final Logger logit = LoggerFactory.getLogger(ReportItemDataService.class);
-
-	@Autowired
-	private ReportItemsRepository reportItemsRepository;
-	@Autowired
-	private ReportItemFormulasRepository reportItemFormulasRepository;
-	@Autowired
-	private ReportSectionItemsRepository reportSectionItemsRepository;
-	@Autowired
-	private BehaviorPatternsRepository behaviorPatternsRepository;
-	@Autowired
-	private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
-	@Autowired
-	private DataRulesRepository dataRulesRepository;
-	@Autowired
-	private ReportSectionsRepository reportSectionsRepository;
-	@Autowired
-	private FadsConfigRepository fadsConfigRepository;
-	@Autowired
-	private ReportGroupDetailMapper reportGroupDetailMapper;
-	  @Autowired
-	    public ReportItemDataService(ReportItemsRepository reportItemsRepository,
-	    		ReportItemFormulasRepository reportItemFormulasRepository,
-	    		ReportSectionItemsRepository reportSectionItemsRepository,
-	    		BehaviorPatternsRepository behaviorPatternsRepository,
-	    		BehaviorPatternErDrRepository behaviorPatternErDrRepository,
-	    		DataRulesRepository dataRulesRepository,
-	    		ReportSectionsRepository reportSectionsRepository) {
-	        this.reportItemsRepository = reportItemsRepository;
-	        this.reportItemFormulasRepository = reportItemFormulasRepository;
-	        this.reportSectionItemsRepository = reportSectionItemsRepository;
-	        this.behaviorPatternsRepository = behaviorPatternsRepository;
-	        this.behaviorPatternErDrRepository = behaviorPatternErDrRepository;
-	        this.dataRulesRepository = dataRulesRepository;
-	        this.reportSectionsRepository = reportSectionsRepository;
-	    }
-
-	/**
-	 * this method will give all the Report Item records data or records per page
-	 * 
-	 * Parameters - ListTableParams (contains sort, filter conditions; page number,
-	 * page size)
-	 */
+    <dependencies>
+      
+	  <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-autherization</artifactId>
+            <version>${project.version}</version>
+       </dependency>
+	  
+	   <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-pgp-behavior-api</artifactId>
+            <version>${project.version}</version>
+       </dependency>
+			</project>
