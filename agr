@@ -67,3 +67,109 @@ Action:
 
 Consider defining a bean of type 'com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository' in your configuration.
 
+
+
+
+
+
+ * @author Anil Wagh
+ */
+package com.optum.fads.pgp.reportsection.api.service.impl;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+
+import com.optum.fads.authorization.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErDrRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
+import com.optum.fads.pgp.datarules.domain.FadsConfigT;
+import com.optum.fads.pgp.datarules.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.datarules.domain.PrmBpRiFormulaT;
+import com.optum.fads.pgp.datarules.domain.PrmBpRiFormulaTPK;
+import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
+import com.optum.fads.pgp.datarules.domain.PrmDrRangesT;
+import com.optum.fads.pgp.datarules.domain.PrmDrSingleValuesT;
+import com.optum.fads.pgp.datarules.domain.PrmErDrT;
+import com.optum.fads.pgp.datarules.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.datarules.domain.PrmRsRiT;
+import com.optum.fads.pgp.datarules.domain.PrmRsRptSecT;
+import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
+import com.optum.fads.pgp.datarules.repo.FadsConfigRepository;
+import com.optum.fads.pgp.datarules.repo.ReportItemFormulasRepository;
+import com.optum.fads.pgp.datarules.repo.ReportItemsRepository;
+import com.optum.fads.pgp.datarules.repo.ReportSectionItemsRepository;
+import com.optum.fads.pgp.datarules.repo.ReportSectionsRepository;
+import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
+import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
+import com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.reportsection.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.reportsection.api.dto.DrCodeValueDTO;
+import com.optum.fads.pgp.reportsection.api.dto.DrRangeValuesDTO;
+import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
+import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
+import com.optum.fads.pgp.reportsection.api.mapper.ReportGroupDetailMapper;
+import com.optum.fads.pgp.reportsection.api.service.IReportItemDataService;
+
+@Service("reportItemDataService")
+//@Slf4j
+public class ReportItemDataService implements IReportItemDataService {
+
+	private static final Logger logit = LoggerFactory.getLogger(ReportItemDataService.class);
+
+	@Autowired
+	private ReportItemsRepository reportItemsRepository;
+	@Autowired
+	private ReportItemFormulasRepository reportItemFormulasRepository;
+	@Autowired
+	private ReportSectionItemsRepository reportSectionItemsRepository;
+	@Autowired
+	private BehaviorPatternsRepository behaviorPatternsRepository;
+	@Autowired
+	private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+	@Autowired
+	private DataRulesRepository dataRulesRepository;
+	@Autowired
+	private ReportSectionsRepository reportSectionsRepository;
+	@Autowired
+	private FadsConfigRepository fadsConfigRepository;
+	@Autowired
+	private ReportGroupDetailMapper reportGroupDetailMapper;
+	  @Autowired
+	    public ReportItemDataService(ReportItemsRepository reportItemsRepository,
+	    		ReportItemFormulasRepository reportItemFormulasRepository,
+	    		ReportSectionItemsRepository reportSectionItemsRepository,
+	    		BehaviorPatternsRepository behaviorPatternsRepository,
+	    		BehaviorPatternErDrRepository behaviorPatternErDrRepository,
+	    		DataRulesRepository dataRulesRepository,
+	    		ReportSectionsRepository reportSectionsRepository) {
+	        this.reportItemsRepository = reportItemsRepository;
+	        this.reportItemFormulasRepository = reportItemFormulasRepository;
+	        this.reportSectionItemsRepository = reportSectionItemsRepository;
+	        this.behaviorPatternsRepository = behaviorPatternsRepository;
+	        this.behaviorPatternErDrRepository = behaviorPatternErDrRepository;
+	        this.dataRulesRepository = dataRulesRepository;
+	        this.reportSectionsRepository = reportSectionsRepository;
+	    }
+
+	/**
+	 * this method will give all the Report Item records data or records per page
+	 * 
+	 * Parameters - ListTableParams (contains sort, filter conditions; page number,
+	 * page size)
+	 */
