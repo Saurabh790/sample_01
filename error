@@ -3,24 +3,29 @@ protected String formatLocalDate(Date date) {
     
     if (date == null) return null;
 
-    logit.info("Date class: {}", date.getClass().getName());
+    try {
+        logit.info("Date class: {}", date.getClass().getName());
 
-    Instant instant;
+        Instant instant;
 
-    if (date instanceof java.sql.Date) {
-        // Convert java.sql.Date to java.time.Instant via LocalDate
-        java.sql.Date sqlDate = (java.sql.Date) date;
-        instant = sqlDate.toLocalDate()
-                         .atStartOfDay(ZoneId.systemDefault())
-                         .toInstant();
-    } else {
-        // Handle normal java.util.Date
-        instant = date.toInstant();
+        if (date instanceof java.sql.Date) {
+            java.sql.Date sqlDate = (java.sql.Date) date;
+            instant = sqlDate.toLocalDate()
+                             .atStartOfDay(ZoneId.systemDefault())
+                             .toInstant();
+        } else {
+            instant = date.toInstant();
+        }
+
+        LocalDateTime ldt = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A, Locale.ENGLISH);
+
+        String formatted = formatter.format(ldt);
+        logit.info("Formatted LocalDateTime: {}", formatted);
+        return formatted;
+
+    } catch (Exception e) {
+        logit.error("Exception while formatting date: {}", date, e); // <-- ✅ trace the root cause
+        throw new ReportSectionApiException("Error formatting date: " + date, e); // <-- optional rethrow
     }
-
-    LocalDateTime ldt = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A, Locale.ENGLISH);
-
-    logit.info("Formatted LocalDateTime: {}", formatter.format(ldt));
-    return formatter.format(ldt);
 }
