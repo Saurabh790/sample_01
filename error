@@ -1,35 +1,6 @@
 protected String formatLocalDate(Date date) {
-			logit.info("Total Report Section records after test formatLocalDate start 12 "+date);
-		    if (date == null)
-		        return null;
-		    logit.info("Total Report Section records after test formatLocalDate start 31 "+date.toInstant());
-		    logit.info("Total Report Section records after test formatLocalDate start ZoneId.systemDefault() "+ZoneId.systemDefault());
-		    
-		    logit.info("Total Report Section records after test formatLocalDate start 33 "+date.toInstant().atZone(ZoneId.systemDefault()));
-		    logit.info("Total Report Section records after test formatLocalDate start 34 "+date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
-		    
-		    LocalDateTime ldt = date.toInstant()
-		                             .atZone(ZoneId.systemDefault())
-		                             .toLocalDateTime();
-		    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A,
-		                                                               Locale.ENGLISH);
-		    logit.info("Total Report Section records after test formatLocalDate end 21 "+date);
-		    return formatter.format(ldt);
-		}		
-		
-		have put the logs its pring the this below line 
-		logit.info("Total Report Section records after test formatLocalDate start 12 "+date);
-		as below
-		2025-07-06 09:34:01 [http-nio-8080-exec-10] INFO  c.o.f.p.r.a.s.i.ReportItemDataService - Total Report Section records after test formatLocalDate start 12 2012-02-20
-2025-07-06 09:34:01 [http-nio-8080-exec-10] ERROR c.o.f.p.r.a.c.ReportSectionController - Exception occurred
-com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException: null
-	at com.optum.fads.pgp.reportsection.api.service.impl.ReportSectionDataService.getReportSectionById(ReportSectionDataService.java:306)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-
-
-protected String formatLocalDate(Date date) {
     logit.info("Total Report Section records after test formatLocalDate start 12 {}", date);
+    
     if (date == null) return null;
 
     logit.info("Date class: {}", date.getClass().getName());
@@ -37,20 +8,19 @@ protected String formatLocalDate(Date date) {
     Instant instant;
 
     if (date instanceof java.sql.Date) {
-        // convert manually
-        instant = date.toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant();
+        // Convert java.sql.Date to java.time.Instant via LocalDate
+        java.sql.Date sqlDate = (java.sql.Date) date;
+        instant = sqlDate.toLocalDate()
+                         .atStartOfDay(ZoneId.systemDefault())
+                         .toInstant();
     } else {
-        instant = date.toInstant(); // normal path
+        // Handle normal java.util.Date
+        instant = date.toInstant();
     }
 
     LocalDateTime ldt = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A, Locale.ENGLISH);
 
+    logit.info("Formatted LocalDateTime: {}", formatter.format(ldt));
     return formatter.format(ldt);
 }
-
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-	
-	getting above exception
-	please help me to fix the issue 
