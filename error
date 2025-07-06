@@ -1,255 +1,33 @@
-
-/**
- * @author awagh
- *
- */
-package com.optum.fads.pgp.reportsection.api.mapper;
-
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
-import org.mapstruct.ReportingPolicy;
-import org.mapstruct.factory.Mappers;
-
-import com.optum.fads.pgp.datarules.domain.PrmRiRptItemT;
-import com.optum.fads.pgp.datarules.domain.PrmRsRptSecT;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
-
-
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface ReportGroupDetailMapper {
-	ReportGroupDetailMapper INSTANCE = Mappers.getMapper(ReportGroupDetailMapper.class);
-
-	@Mappings({ @Mapping(source = "reportItemId", target = "riId"), 
-			@Mapping(source = "reportItemName", target = "reportItemName"),
-			@Mapping(source = "calcFMT", target = "riCalcFmt"),
-			@Mapping(source = "minimumDenominator", target = "riMinimumDenom"),
-			@Mapping(source = "divideConstant", target = "constantDen"),
-			@Mapping(source = "multipleConstant", target = "constantNum"),
-			@Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
-			@Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId") })
-	PrmRiRptItemT convertToPrmRiRptItemT(ReportItemDTO reportItemDTO);
+protected String formatLocalDate(Date date) {
+			logit.info("Total Report Section records after test formatLocalDate start 12 "+date);
+		    if (date == null)
+		        return null;
+		    logit.info("Total Report Section records after test formatLocalDate start 31 "+date.toInstant());
+		    logit.info("Total Report Section records after test formatLocalDate start ZoneId.systemDefault() "+ZoneId.systemDefault());
+		    
+		    logit.info("Total Report Section records after test formatLocalDate start 33 "+date.toInstant().atZone(ZoneId.systemDefault()));
+		    logit.info("Total Report Section records after test formatLocalDate start 34 "+date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
+		    
+		    LocalDateTime ldt = date.toInstant()
+		                             .atZone(ZoneId.systemDefault())
+		                             .toLocalDateTime();
+		    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A,
+		                                                               Locale.ENGLISH);
+		    logit.info("Total Report Section records after test formatLocalDate end 21 "+date);
+		    return formatter.format(ldt);
+		}		
+		
+		have put the logs its pring the this below line 
+		logit.info("Total Report Section records after test formatLocalDate start 12 "+date);
+		as below
+		2025-07-06 09:34:01 [http-nio-8080-exec-10] INFO  c.o.f.p.r.a.s.i.ReportItemDataService - Total Report Section records after test formatLocalDate start 12 2012-02-20
+2025-07-06 09:34:01 [http-nio-8080-exec-10] ERROR c.o.f.p.r.a.c.ReportSectionController - Exception occurred
+com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException: null
+	at com.optum.fads.pgp.reportsection.api.service.impl.ReportSectionDataService.getReportSectionById(ReportSectionDataService.java:306)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
 	
-	@Mappings({ @Mapping(source = "reportSectionId", target = "rsId"), 
-			@Mapping(source = "reportSectionName", target = "reportSectionName"),
-			@Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
-			@Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId") })
-	PrmRsRptSecT convertToPrmRsRptSecT(ReportSectionDTO reportSectionDTO);
-
-}
-package com.optum.fads.pgp.reportsection.api.dto;
-
-import java.util.ArrayList;
-import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-@Data
-@AllArgsConstructor
-public class ReportSectionDTO {
-	
-	public ReportSectionDTO() {};
-	
-	private Integer reportSectionId;
-    private String reportSectionName;
-    private List<ReportItemDTO> reportItems;
-    private String createdBy;
-    private String createdDate;
-    private String modifiedBy;
-    private String modifiedDate;
-    private String createdBySystemId;
-    private String modifiedBySystemId;
-    
-    public List<ReportItemDTO> getReportItems() {
-        return reportItems;
-    }
-
-    public void add(ReportItemDTO reportItem) {
-        if(reportItems==null){
-        	reportItems=new ArrayList<>();
-        }
-        this.reportItems.add(reportItem);
-    }
-
-    public void setReportItems(List<ReportItemDTO> reportItems) {
-        this.reportItems = reportItems;
-    }
-
-}
-package com.optum.fads.pgp.reportsection.api.dto;
-
-import java.util.List;
-
-
-public class ReportItemDTO {
-    private Integer reportItemId;
-    private String reportItemName;
-    private int calcFMT;
-    private Integer multipleConstant;
-    private Integer divideConstant;
-    private Integer minimumDenominator;
-    private List<BehaviorPatternDTO> numeratorBehaviorPatterns;
-    private List<BehaviorPatternDTO> denominatorBehaviorPatterns;
-	private String ratioOf;
-	private Integer order;
-    private String createdBy;
-    private String createdDate;
-    private String modifiedBy;
-    private String modifiedDate; 
-    private String createdBySystemId;
-    private String modifiedBySystemId;   
-    
-    public Integer getReportItemId() {
-		return reportItemId;
-	}
-
-	public void setReportItemId(Integer reportItemId) {
-		this.reportItemId = reportItemId;
-	}
-
-	public String getReportItemName() {
-    	if(reportItemName!=null){
-    		reportItemName=reportItemName.trim();
-    	}
-        return reportItemName;
-    }
-
-    public void setReportItemName(String reportItemName) {
-        this.reportItemName = reportItemName;
-    }
-
-    public int getCalcFMT() {
-        if(calcFMT==0){
-        	  return 3;
-        }
-        return calcFMT;
-    }
-
-    public void setCalcFMT(int calcFMT) {
-        this.calcFMT = calcFMT;
-    }
-
-    public Integer getMultipleConstant() {
-        return multipleConstant;
-    }
-
-    public void setMultipleConstant(Integer multipleConstant) {
-        this.multipleConstant = multipleConstant;
-    }
-
-    public Integer getDivideConstant() {
-        return divideConstant;
-    }
-
-    public void setDivideConstant(Integer divideConstant) {
-        this.divideConstant = divideConstant;
-    }
-
-    public Integer getMinimumDenominator() {
-        return minimumDenominator;
-    }
-
-    public void setMinimumDenominator(Integer minimumDenominator) {
-        this.minimumDenominator = minimumDenominator;
-    }
-
-	public List<BehaviorPatternDTO> getNumeratorBehaviorPatterns() {
-		return numeratorBehaviorPatterns;
-	}
-
-	public void setNumeratorBehaviorPatterns(List<BehaviorPatternDTO> numeratorBehaviorPatterns) {
-		this.numeratorBehaviorPatterns = numeratorBehaviorPatterns;
-	}
-
-	public List<BehaviorPatternDTO> getDenominatorBehaviorPatterns() {
-		return denominatorBehaviorPatterns;
-	}
-
-	public void setDenominatorBehaviorPatterns(List<BehaviorPatternDTO> denominatorBehaviorPatterns) {
-		this.denominatorBehaviorPatterns = denominatorBehaviorPatterns;
-	}
-
-	public String getRatioOf() {
-    	if(ratioOf!=null){
-    		ratioOf=ratioOf.trim();
-    	}
-        return ratioOf;
-    }
-
-    public void setRatioOf(String ratioOf) {
-        this.ratioOf = ratioOf;
-    }
-
-	public Integer getOrder() {
-		return order;
-	}
-
-	public void setOrder(Integer order) {
-		this.order = order;
-	}
-
-    public String getCreatedBy() {
-		return createdBy;
-	}
-
-	public void setCreatedBy(String createdBy) {
-		this.createdBy = createdBy;
-	}
-
-	public String getCreatedDate() {
-		return createdDate;
-	}
-
-	public void setCreatedDate(String createdDate) {
-		this.createdDate = createdDate;
-	}
-
-	public String getModifiedBy() {
-		return modifiedBy;
-	}
-
-	public void setModifiedBy(String modifiedBy) {
-		this.modifiedBy = modifiedBy;
-	}
-
-	public String getModifiedDate() {
-		return modifiedDate;
-	}
-
-	public void setModifiedDate(String modifiedDate) {
-		this.modifiedDate = modifiedDate;
-	}
-
-	public String getCreatedBySystemId() {
-		return createdBySystemId;
-	}
-
-	public void setCreatedBySystemId(String createdBySystemId) {
-		this.createdBySystemId = createdBySystemId;
-	}
-	
-	public String getModifiedBySystemId() {
-		return modifiedBySystemId;
-	}
-
-	public void setModifiedBySystemId(String modifiedBySystemId) {
-		this.modifiedBySystemId = modifiedBySystemId;
-	}
-     
-}
-
-
-@Mappings({
-    @Mapping(source = "reportSectionId", target = "rsId"),
-    @Mapping(source = "reportSectionName", target = "reportSectionName"),
-    @Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
-    @Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId")
-})
-PrmRsRptSecT convertToPrmRsRptSecT(ReportSectionDTO reportSectionDTO);
-
-RROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-pgp-reportsection-api: Compilation failure: Compilation failure:
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[36,31] No property named "reportSectionId" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[37,31] No property named "reportSectionName" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[38,31] No property named "createdBySystemId" exists in source parameter(s). Did you mean "reportItems"?
-[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[39,31] No property named "modifiedBySystemId" exists in source parameter(s). Did you mean "reportItems"?
+	getting above exception
+	please help me to fix the issue 
