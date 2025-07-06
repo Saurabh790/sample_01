@@ -26,6 +26,29 @@ com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException: null
 	at com.optum.fads.pgp.reportsection.api.service.impl.ReportSectionDataService.getReportSectionById(ReportSectionDataService.java:306)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+
+
+protected String formatLocalDate(Date date) {
+    logit.info("Total Report Section records after test formatLocalDate start 12 {}", date);
+    if (date == null) return null;
+
+    logit.info("Date class: {}", date.getClass().getName());
+
+    Instant instant;
+
+    if (date instanceof java.sql.Date) {
+        // convert manually
+        instant = date.toLocalDate().atStartOfDay(ZoneId.systemDefault()).toInstant();
+    } else {
+        instant = date.toInstant(); // normal path
+    }
+
+    LocalDateTime ldt = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A, Locale.ENGLISH);
+
+    return formatter.format(ldt);
+}
+
 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
 	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
 	
