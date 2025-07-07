@@ -1,57 +1,208 @@
-025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@47cce7d7]
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(743576480<open>)] for JPA transaction
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Participating in existing transaction
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG org.hibernate.SQL - select prrst1_0.RS_ID,prrst1_0.CREATE_DTE,prrst1_0.RS_NAME,prrst1_0.CREATE_USR,prrst1_0.UPDATE_USR,prrst1_0.UPDATE_DTE from PRM_RS_RPT_SEC_T prrst1_0 where prrst1_0.RS_ID=?
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG org.hibernate.SQL - select uub1_0.UI_SYSTEM_ID,sug1_0.UI_SYSTEM_ID,sug1_0.CASE_GRP_ID,sug1_0.FADS_GRP_ID,sug1_0.SUR_GRP_ID,uub1_0.UI_CREATED_BY,uub1_0.UI_CREATED_DT,uub1_0.UI_E_MAIL_ADDRESS,uub1_0.UI_FIRST_NAME,uub1_0.UI_LAST_NAME,uub1_0.UI_PHONE,uub1_0.UI_TERMINATED_BY,uub1_0.UI_TERMINATED_DT,uub1_0.UI_TITLE,uub1_0.UI_USER_ID,uub1_0.UI_USER_INACTIVE,uub1_0.UI_FIRST_NAME || ' ' || uub1_0.UI_LAST_NAME from UI_USER_BASE uub1_0 left join SE_USR_GRP sug1_0 on uub1_0.UI_SYSTEM_ID=sug1_0.UI_SYSTEM_ID where uub1_0.UI_SYSTEM_ID=?
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(743576480<open>)] for JPA transaction
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Participating in existing transaction
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Participating transaction failed - marking existing transaction as rollback-only
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Setting JPA transaction on EntityManager [SessionImpl(743576480<open>)] rollback-only
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Initiating transaction rollback
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Rolling back JPA transaction on EntityManager [SessionImpl(743576480<open>)]
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Not closing pre-bound JPA EntityManager after transaction
-2025-07-07 17:16:49 [http-nio-8080-exec-8] ERROR c.o.f.p.r.a.c.ReportSectionController - Exception occured 
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [text/plain, */*, application/json, application/*+json]
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing ["Exception occured "]
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
-2025-07-07 17:16:49 [http-nio-8080-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-pgp-reportsection-api: Compilation failure: Compilation failure:
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[36,31] No property named "reportSectionId" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[37,31] No property named "reportSectionName" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[38,31] No property named "createdBySystemId" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] /C:/Users/sgupt664/fads_dev_10/fads-monolithic-application/fads-pgp-reportsection-api/src/main/java/com/optum/fads/pgp/reportsection/api/mapper/ReportGroupDetailMapper.java:[39,31] No property named "modifiedBySystemId" exists in source parameter(s). Did you mean "reportItems"?
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
 
-@PutMapping(value = { "/updatereportsection/{reportSectionId}" })
-	public ResponseEntity<String> updateReportSection(@PathVariable Integer reportSectionId, @RequestBody ReportSectionDTO reportSectionDTO) {
-		String updReportSectionMessage;
-		String userAccess = "";
-		boolean userHasAccess = false;
-		try {
-			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
-					Locale.ENGLISH);
-			Authentication auth =  SecurityContextHolder.getContext().getAuthentication();
-			if (auth != null) {
-				AppUser user = (AppUser) auth.getPrincipal();
-				reportSectionDTO.setModifiedBySystemId(user.getUserSystemId());
-				List<com.optum.fads.authorization.api.dto.AccessLevel> userAccessLevels = user.getRole().getAllowedAccesses();
-				for (com.optum.fads.authorization.api.dto.AccessLevel userAccessLevel : userAccessLevels) {
-					if (userAccessLevel.getModuleCode().equals("STUDY")) {
-						userAccess = userAccessLevel.getAccess();
-						break;
-					}
-				}
-				if (userAccess.equals("A") || 
-						(userAccess.equals("B") && reportSectionDTO.getCreatedBySystemId().equals(user.getUserSystemId()))) {
-					userHasAccess = true;
-				}
-			}
-			if (userHasAccess) {
-				LocalDateTime currentLocalDate = LocalDateTime.now(iReportSectionDataService.getZoneId());
-				reportSectionDTO.setModifiedDate(dateTimeFormatter.format(currentLocalDate));
-				updReportSectionMessage = iReportSectionDataService.updateReportSection(reportSectionId, reportSectionDTO);
-				return ResponseEntity.status(HttpStatus.OK).body(updReportSectionMessage);
-			} else {
-				return new ResponseEntity<String>(ReportSectionConstants.NOT_AUTHORIZED, HttpStatus.FORBIDDEN);
-			}
-				
-		} catch (ReportSectionApiException ex) {
-			logit.error(ReportSectionConstants.EXCEPTION_MESSAGE, ex.getMessage());
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ReportSectionConstants.EXCEPTION_MESSAGE);
-		}
-		
+@Mappings({
+	    @Mapping(source = "reportSectionId", target = "rsId"),
+	    @Mapping(source = "reportSectionName", target = "reportSectionName"),
+	    @Mapping(source = "createdBySystemId", target = "uiUserBaseCr.uiSystemId"),
+	    @Mapping(source = "modifiedBySystemId", target = "uiUserBaseUpd.uiSystemId")
+	})
+	PrmRsRptSecT convertToPrmRsRptSecT(ReportSectionDTO reportSectionDTO);
+	
+	
+@Data
+@AllArgsConstructor
+public class ReportSectionDTO {
+	
+	public ReportSectionDTO() {};
+	
+	private Integer reportSectionId;
+    private String reportSectionName;
+    private List<ReportItemDTO> reportItems;
+    private String createdBy;
+    private String createdDate;
+    private String modifiedBy;
+    private String modifiedDate;
+    private String createdBySystemId;
+    private String modifiedBySystemId;
+    
+    public List<ReportItemDTO> getReportItems() {
+        return reportItems;
+    }
+
+    public void add(ReportItemDTO reportItem) {
+        if(reportItems==null){
+        	reportItems=new ArrayList<>();
+        }
+        this.reportItems.add(reportItem);
+    }
+
+    public void setReportItems(List<ReportItemDTO> reportItems) {
+        this.reportItems = reportItems;
+    }
+
+
+
+
+public class ReportItemDTO {
+    private Integer reportItemId;
+    private String reportItemName;
+    private int calcFMT;
+    private Integer multipleConstant;
+    private Integer divideConstant;
+    private Integer minimumDenominator;
+    private List<BehaviorPatternDTO> numeratorBehaviorPatterns;
+    private List<BehaviorPatternDTO> denominatorBehaviorPatterns;
+	private String ratioOf;
+	private Integer order;
+    private String createdBy;
+    private String createdDate;
+    private String modifiedBy;
+    private String modifiedDate; 
+    private String createdBySystemId;
+    private String modifiedBySystemId;   
+    
+    public Integer getReportItemId() {
+		return reportItemId;
 	}
+
+	public void setReportItemId(Integer reportItemId) {
+		this.reportItemId = reportItemId;
+	}
+
+	public String getReportItemName() {
+    	if(reportItemName!=null){
+    		reportItemName=reportItemName.trim();
+    	}
+        return reportItemName;
+    }
+
+    public void setReportItemName(String reportItemName) {
+        this.reportItemName = reportItemName;
+    }
+
+    public int getCalcFMT() {
+        if(calcFMT==0){
+        	  return 3;
+        }
+        return calcFMT;
+    }
+
+    public void setCalcFMT(int calcFMT) {
+        this.calcFMT = calcFMT;
+    }
+
+    public Integer getMultipleConstant() {
+        return multipleConstant;
+    }
+
+    public void setMultipleConstant(Integer multipleConstant) {
+        this.multipleConstant = multipleConstant;
+    }
+
+    public Integer getDivideConstant() {
+        return divideConstant;
+    }
+
+    public void setDivideConstant(Integer divideConstant) {
+        this.divideConstant = divideConstant;
+    }
+
+    public Integer getMinimumDenominator() {
+        return minimumDenominator;
+    }
+
+    public void setMinimumDenominator(Integer minimumDenominator) {
+        this.minimumDenominator = minimumDenominator;
+    }
+
+	public List<BehaviorPatternDTO> getNumeratorBehaviorPatterns() {
+		return numeratorBehaviorPatterns;
+	}
+
+	public void setNumeratorBehaviorPatterns(List<BehaviorPatternDTO> numeratorBehaviorPatterns) {
+		this.numeratorBehaviorPatterns = numeratorBehaviorPatterns;
+	}
+
+	public List<BehaviorPatternDTO> getDenominatorBehaviorPatterns() {
+		return denominatorBehaviorPatterns;
+	}
+
+	public void setDenominatorBehaviorPatterns(List<BehaviorPatternDTO> denominatorBehaviorPatterns) {
+		this.denominatorBehaviorPatterns = denominatorBehaviorPatterns;
+	}
+
+	public String getRatioOf() {
+    	if(ratioOf!=null){
+    		ratioOf=ratioOf.trim();
+    	}
+        return ratioOf;
+    }
+
+    public void setRatioOf(String ratioOf) {
+        this.ratioOf = ratioOf;
+    }
+
+	public Integer getOrder() {
+		return order;
+	}
+
+	public void setOrder(Integer order) {
+		this.order = order;
+	}
+
+    public String getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(String createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	public String getCreatedDate() {
+		return createdDate;
+	}
+
+	public void setCreatedDate(String createdDate) {
+		this.createdDate = createdDate;
+	}
+
+	public String getModifiedBy() {
+		return modifiedBy;
+	}
+
+	public void setModifiedBy(String modifiedBy) {
+		this.modifiedBy = modifiedBy;
+	}
+
+	public String getModifiedDate() {
+		return modifiedDate;
+	}
+
+	public void setModifiedDate(String modifiedDate) {
+		this.modifiedDate = modifiedDate;
+	}
+
+	public String getCreatedBySystemId() {
+		return createdBySystemId;
+	}
+
+	public void setCreatedBySystemId(String createdBySystemId) {
+		this.createdBySystemId = createdBySystemId;
+	}
+	
+	public String getModifiedBySystemId() {
+		return modifiedBySystemId;
+	}
+
+	public void setModifiedBySystemId(String modifiedBySystemId) {
+		this.modifiedBySystemId = modifiedBySystemId;
+	}
+     
