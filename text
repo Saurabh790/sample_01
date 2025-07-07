@@ -1,48 +1,33 @@
-@PutMapping(value = { "/updatereportsection/{reportSectionId}" })
-public ResponseEntity<String> updateReportSection(@PathVariable Integer reportSectionId,
-                                                  @RequestBody ReportSectionDTO reportSectionDTO) {
-    String updReportSectionMessage;
-    String userAccess = "";
-    boolean userHasAccess = false;
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE configuration SYSTEM "config/config.dtd" >
+<configuration version="7.1">
+  <matchRuntime id="engine1" threadCount="4" queueSize="10" serviceTimeout="10000" kernelLibName="libmatchKernelC" reqLogDbNrCols="20" reqLogDbParTempl="%name=%value">
+    <logging id="logging-1" maxBackups="6" rolloverParam="25" compression="NONE" append="Y" anonymizeMethod="OFF" rolloverMode="SIZE">
+      <log id="log-1" type="TRACE" level="TRACE" filepath="$TLLOGS/trace_match_service.log" rolloverMode="TIME" maxBackups="8" rolloverParam="yyyy-MM-dd" compression="NONE" append="Y"/>
+      <log id="log-2" type="LOG" level="INFO" filepath="$TLLOGS/log_match_service.log" rolloverMode="TIME" maxBackups="8" rolloverParam="yyyy-MM-dd" compression="NONE" append="Y"/>
+      <log id="log-3" type="SERVER" level="INFO" filepath="$TLLOGS/server_match_service.log" rolloverMode="TIME" maxBackups="8" rolloverParam="yyyy-MM-dd" compression="NONE" append="Y" consoleOutput="BOTH"/>
+      <log id="log-4" type="REQUESTS" level="INFO" filepath="$TLLOGS/log_match_requests.log" rolloverMode="TIME" maxBackups="8" rolloverParam="yyyy-MM-dd" compression="NONE" append="Y"/>
+    </logging>
+  </matchRuntime>
 
-    try {
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(
-                ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A, Locale.ENGLISH);
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+  <matchProject id="matchProject-1" encryptData="Y" dataEncryptionKey="Gugguck" maxHistoryDuration="30" title="Example" active="Y" rejectFiles="Y" testmode="N" maxErrors="0" clusterMode="MASTER_SLAVE" wildcardOperation="N" ekPartitionPrefixLength="100" autoSave="N" saveSchedule="0 0 22 10 1 ? *" nrFullSavepoints="0" ekPartitionCount="1000">
 
-        if (auth != null) {
-            AppUser user = (AppUser) auth.getPrincipal();
-            reportSectionDTO.setModifiedBySystemId(user.getUserSystemId());
+    <!-- ... All other configurations unchanged ... -->
 
-            List<com.optum.fads.authorization.api.dto.AccessLevel> userAccessLevels = user.getRole().getAllowedAccesses();
-            for (com.optum.fads.authorization.api.dto.AccessLevel userAccessLevel : userAccessLevels) {
-                if ("STUDY".equals(userAccessLevel.getModuleCode())) {
-                    userAccess = userAccessLevel.getAccess();
-                    break;
-                }
-            }
+    <matchProfile id="Search" totalScoreMode="ARITHMETIC_MEAN" maxResultCount="0" ruleCut="N" chooseMode="BEST_SCORE" name="Search">
+      <!-- ... Other matchProfileFields ... -->
 
-            if ("A".equals(userAccess) || 
-               ("B".equals(userAccess) && reportSectionDTO.getCreatedBySystemId().equals(user.getUserSystemId()))) {
-                userHasAccess = true;
-            }
-        }
+      <!-- Updated Name field to enhance flipped name matching -->
+      <matchProfileField id="matchProfileField-4" matchFieldRef="matchField-4" emptyScore="0" tokenMinScore="0" tokenScoreWeight="250" socketScore="0" enforceOrder="N" disorderedScore="100" tokenSubset="NONE" useRelevanceWeight="N" useAbbreviations="Y" abbreviationScore="60" phoneticUsage="NO_PHONETIC" compareMode="COMPAREHIGH"/>
 
-        if (userHasAccess) {
-            LocalDateTime currentLocalDate = LocalDateTime.now(iReportSectionDataService.getZoneId());
-            reportSectionDTO.setModifiedDate(dateTimeFormatter.format(currentLocalDate));
-            updReportSectionMessage = iReportSectionDataService.updateReportSection(reportSectionId, reportSectionDTO);
-            return ResponseEntity.status(HttpStatus.OK).body(updReportSectionMessage);
-        } else {
-            return new ResponseEntity<>(ReportSectionConstants.NOT_AUTHORIZED, HttpStatus.FORBIDDEN);
-        }
+      <matchRule id="matchRule-2" description="Vor-/Nachnamensdreher" enableConditions="Y" minTotalScore="0" maxTotalScore="100" ruleCut="N" name="rule2" maxResultPercentage="100">
+        <!-- ... Other matchRuleFields ... -->
 
-    } catch (ReportSectionApiException ex) {
-        logit.error(ReportSectionConstants.EXCEPTION_MESSAGE, ex); // ✅ log full stack trace
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ReportSectionConstants.EXCEPTION_MESSAGE);
+        <!-- Updated Name rule field to be used and scored -->
+        <matchRuleField id="matchRuleField-4" matchFieldRef="matchField-4" minScore="75" maxScore="100" weight="1" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/>
+      </matchRule>
+    </matchProfile>
 
-    } catch (Exception ex) {
-        logit.error("Unexpected exception occurred while updating report section", ex); // ✅ catch-all fallback
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Unexpected error occurred");
-    }
-}
+    <!-- ... All other input/output field mappings unchanged ... -->
+  </matchProject>
+</configuration>
