@@ -295,3 +295,40 @@
 	</matchProject>
 
 </configuration>
+private MultiValueMap<String, String> createQueryParams(IdvTransaction idvTransaction, TolerantRequest.Method method, String tolerantRequestId) {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("reqId", tolerantRequestId);
+
+        String regFirstName = idvTransaction.getRegistrationFirstName();
+        String regLastName = idvTransaction.getRegistrationLastName();
+		if (idvTransaction.getRegistrationFirstName().equalsIgnoreCase(idvTransaction.getLastName())
+				&& idvTransaction.getRegistrationLastName().equalsIgnoreCase(idvTransaction.getFirstName())) {
+			regFirstName = idvTransaction.getLastName();
+			regLastName = idvTransaction.getFirstName();
+			
+			log.info("in if condition matched case ");
+		}
+		log.info("regFirstName "+regFirstName);
+		log.info("regLastName "+regLastName);
+        switch (method) {
+            case CREATE_DATA_SET:
+                params.add("match.Key", tolerantRequestId);
+                params.add("GroupID", String.valueOf(idvTransaction.getId()));
+                params.add("firstName", regFirstName);
+                params.add("lastName", regLastName);
+                params.add("birthDate", getDateInJsonFormat(idvTransaction.getRegistrationBirthday()));
+                break;
+            case COMPARE_DATA_SET:
+                params.add("maxResultCount", "1");
+                params.add("resultMode", "2");
+                params.add("GroupID", String.valueOf(idvTransaction.getId()));
+                params.add("firstName", idvTransaction.getFirstName());
+                params.add("lastName", idvTransaction.getLastName());
+                params.add("birthDate", getDateInJsonFormat(idvTransaction.getBirthday()));
+                break;
+            default:
+                params.add("match.Key", tolerantRequestId);
+                break;
+        }
+        return params;
+    }
