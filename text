@@ -1,13 +1,15 @@
-[ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[70,68] No property named "drName" exists in source parameter(s). Did you mean "drId"?
+ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[65,107] Unknown property "cgType" in result type PeerGroup.PeerGroupBuilder. Did you mean "null"?
 
-@Mappings({ @Mapping(target = "dataRuleId", source = "drId"),
-			@Mapping(target = "dataRuleName", source = "drName") })
-	public DataRule toDayaTule(PrmDrDataRuleT prmDrDataRuleT);
-	
-	package com.optum.fads.pgp.datarules.domain;
+@Mappings({ @Mapping(target = "studyGroupId", source = "cgId"),
+			@Mapping(target = "studyGroupName", source = "studyGroupName"), @Mapping(target = "cgType", source = "cgType"),
+			@Mapping(target = "dataRules", source = "prmPgDrTs") })
+	public PeerGroup toStudyPeerGroup(PrmPgPeerGroupT prmPgPeerGroupT);
+
+
+package com.optum.fads.pgp.datarules.domain;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 import com.optum.fads.authorization.api.domain.UiUserBase;
@@ -19,94 +21,127 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
 
 /**
- * The persistent class for the PRM_DR_DATA_RULE_T database table.
+ * The persistent class for the PRM_PG_PEER_GROUP_T database table.
  * 
  */
 @Entity
-@Table(name="PRM_DR_DATA_RULE_T")
-public class PrmDrDataRuleT implements Serializable {
+@Table(name="PRM_PG_PEER_GROUP_T")
+public class PrmPgPeerGroupT implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@Column(name="DR_ID")
-	private Integer drId;
+	@Column(name="CG_ID")
+	private Integer cgId;
 
-	//@Temporal(TemporalType.DATE)
+	@Column(name="CG_LEVEL")
+	private String cgLevel;
+
+	@Column(name="CG_NAME")
+	private String studyGroupName;
+
+	@Column(name="CG_TYPE")
+	private String cgType;
+
+	@Temporal(TemporalType.DATE)
 	@Column(name="CREATE_DTE")
-	private LocalDateTime createDate;
+	private Date createDate;
 
-	@Column(name="DR_NAME")
-	private String dataRuleName;
-
-	//@Temporal(TemporalType.DATE)
+	@Temporal(TemporalType.DATE)
 	@Column(name="UPDATE_DTE")
-	private LocalDateTime updateDate;
+	private Date updateDate;
 
-	//bi-directional many-to-one association to UiUserBase
-	@ManyToOne
-	@JoinColumn(name="UPDATE_USR")
-	private UiUserBase uiUserBaseUpd;
+	//bi-directional many-to-one association to PrmPgDrT
+	@OneToMany(mappedBy="prmPgPeerGroupT")
+	private List<PrmPgDrT> prmPgDrTs;
 
 	//bi-directional many-to-one association to UiUserBase
 	@ManyToOne
 	@JoinColumn(name="CREATE_USR")
 	private UiUserBase uiUserBaseCr;
 
-	//bi-directional many-to-one association to PrmDrLuOperatorT
+	//bi-directional many-to-one association to UiUserBase
 	@ManyToOne
-	@JoinColumn(name="DR_OPERATOR")
-	private PrmDrLuOperatorT prmDrLuOperatorT;
+	@JoinColumn(name="UPDATE_USR")
+	private UiUserBase uiUserBaseUpd;
 
-	//bi-directional many-to-one association to PrmMbMasterT
-	@ManyToOne
-	@JoinColumn(name="MB_CTEC_FID")
-	private PrmMbMasterT prmMbMasterT;
 
-	//bi-directional many-to-one association to PrmDrRangesT
-	@OneToMany(mappedBy="prmDrDataRuleT")
-	private List<PrmDrRangesT> prmDrRangesTs;
-
-	//bi-directional many-to-one association to PrmDrSingleValuesT
-	@OneToMany(mappedBy="prmDrDataRuleT")
-	private List<PrmDrSingleValuesT> prmDrSingleValuesTs;
-
-	public Integer getDrId() {
-		return this.drId;
+	public Integer getCgId() {
+		return this.cgId;
 	}
 
-	public void setDrId(Integer drId) {
-		this.drId = drId;
+	public void setCgId(Integer cgId) {
+		this.cgId = cgId;
 	}
 
-	public LocalDateTime getCreateDate() {
+	public String getCgLevel() {
+		return this.cgLevel;
+	}
+
+	public void setCgLevel(String cgLevel) {
+		this.cgLevel = cgLevel;
+	}
+
+	public String getStudyGroupName() {
+		return studyGroupName;
+	}
+
+	public void setStudyGroupName(String studyGroupName) {
+		this.studyGroupName = studyGroupName;
+	}
+
+	public String getCgType() {
+		return this.cgType;
+	}
+
+	public void setCgType(String cgType) {
+		this.cgType = cgType;
+	}
+
+	public Date getCreateDate() {
 		return this.createDate;
 	}
 
-	public void setCreateDate(LocalDateTime createDate) {
+	public void setCreateDate(Date createDate) {
 		this.createDate = createDate;
 	}
 
-	public String getDataRuleName() {
-		return this.dataRuleName;
+	public Date getUpdateDate() {
+		return this.updateDate;
 	}
 
-	public void setDataRuleName(String dataRuleName) {
-		this.dataRuleName = dataRuleName;
-	}
-
-	public LocalDateTime getUpdateDate() {
-		return updateDate;
-	}
-
-	public void setUpdateDate(LocalDateTime updateDate) {
+	public void setUpdateDate(Date updateDate) {
 		this.updateDate = updateDate;
 	}
 
+	public List<PrmPgDrT> getPrmPgDrTs() {
+		return this.prmPgDrTs;
+	}
+
+	public void setPrmPgDrTs(List<PrmPgDrT> prmPgDrTs) {
+		this.prmPgDrTs = prmPgDrTs;
+	}
+
+	public PrmPgDrT addPrmPgDrT(PrmPgDrT prmPgDrT) {
+		getPrmPgDrTs().add(prmPgDrT);
+		prmPgDrT.setPrmPgPeerGroupT(this);
+
+		return prmPgDrT;
+	}
+
+	public PrmPgDrT removePrmPgDrT(PrmPgDrT prmPgDrT) {
+		getPrmPgDrTs().remove(prmPgDrT);
+		prmPgDrT.setPrmPgPeerGroupT(null);
+
+		return prmPgDrT;
+	}
+
 	public UiUserBase getUiUserBaseUpd() {
-		return uiUserBaseUpd;
+		return this.uiUserBaseUpd;
 	}
 
 	public void setUiUserBaseUpd(UiUserBase uiUserBaseUpd) {
@@ -114,71 +149,11 @@ public class PrmDrDataRuleT implements Serializable {
 	}
 
 	public UiUserBase getUiUserBaseCr() {
-		return uiUserBaseCr;
+		return this.uiUserBaseCr;
 	}
 
 	public void setUiUserBaseCr(UiUserBase uiUserBaseCr) {
 		this.uiUserBaseCr = uiUserBaseCr;
-	}
-
-	public PrmDrLuOperatorT getPrmDrLuOperatorT() {
-		return this.prmDrLuOperatorT;
-	}
-
-	public void setPrmDrLuOperatorT(PrmDrLuOperatorT prmDrLuOperatorT) {
-		this.prmDrLuOperatorT = prmDrLuOperatorT;
-	}
-
-	public PrmMbMasterT getPrmMbMasterT() {
-		return this.prmMbMasterT;
-	}
-
-	public void setPrmMbMasterT(PrmMbMasterT prmMbMasterT) {
-		this.prmMbMasterT = prmMbMasterT;
-	}
-
-	public List<PrmDrRangesT> getPrmDrRangesTs() {
-		return this.prmDrRangesTs;
-	}
-
-	public void setPrmDrRangesTs(List<PrmDrRangesT> prmDrRangesTs) {
-		this.prmDrRangesTs = prmDrRangesTs;
-	}
-
-	public PrmDrRangesT addPrmDrRangesT(PrmDrRangesT prmDrRangesT) {
-		getPrmDrRangesTs().add(prmDrRangesT);
-		prmDrRangesT.setPrmDrDataRuleT(this);
-
-		return prmDrRangesT;
-	}
-
-	public PrmDrRangesT removePrmDrRangesT(PrmDrRangesT prmDrRangesT) {
-		getPrmDrRangesTs().remove(prmDrRangesT);
-		prmDrRangesT.setPrmDrDataRuleT(null);
-
-		return prmDrRangesT;
-	}
-
-	public List<PrmDrSingleValuesT> getPrmDrSingleValuesTs() {
-		return this.prmDrSingleValuesTs;
-	}
-
-	public void setPrmDrSingleValuesTs(List<PrmDrSingleValuesT> prmDrSingleValuesTs) {
-		this.prmDrSingleValuesTs = prmDrSingleValuesTs;
-	}
-
-	public PrmDrSingleValuesT addPrmDrSingleValuesT(PrmDrSingleValuesT prmDrSingleValuesT) {
-		getPrmDrSingleValuesTs().add(prmDrSingleValuesT);
-		prmDrSingleValuesT.setPrmDrDataRuleT(this);
-
-		return prmDrSingleValuesT;
-	}
-
-	public PrmDrSingleValuesT removePrmDrSingleValuesT(PrmDrSingleValuesT prmDrSingleValuesT) {
-		getPrmDrSingleValuesTs().remove(prmDrSingleValuesT);
-		prmDrSingleValuesT.setPrmDrDataRuleT(null);
-
-		return prmDrSingleValuesT;
 	}
 
 }
