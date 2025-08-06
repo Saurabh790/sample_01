@@ -1,379 +1,164 @@
-package com.o2.pri.de.idvs.revalidation.regicheck;
+this is one class where error is coming 
+	ErROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-pgp-study-api: Compilation failure: Compilation failure:
+	[ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[66,65] No property named "prmDrDataRuleTs" exists in source parameter(s). Did you mean "prmPgDrTs"?
 
-import com.o2.pri.de.idvs.entity.IdvClientConfig;
-import com.o2.pri.de.idvs.entity.IdvHistoricConfig;
-import com.o2.pri.de.idvs.entity.IdvMethod;
-import com.o2.pri.de.idvs.entity.IdvTransaction;
-import com.o2.pri.de.idvs.model.IdVerificationMethodType;
-import com.o2.pri.de.idvs.repository.*;
-import com.o2.pri.de.idvs.service.impl.GeneralConfigurationService;
-import com.o2.pri.de.idvs.tolerant.Scores;
-import com.o2.pri.de.idvs.tolerant.TolerantResponse;
-import com.o2.pri.de.idvs.tolerant.TolerantRestClient;
-import com.o2.pri.de.idvs.tolerant.TolerantResult;
-import com.tef.openapi.idv.notify.tmf630.model.NotificationEvent;
 
-import lombok.SneakyThrows;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestTemplate;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+@Mappings({ @Mapping(target = "studyGroupId", source = "cgId"),
+			@Mapping(target = "studyGroupName", source = "studyGroupName"), @Mapping(target = "cgType", source = "cgType"),
+			@Mapping(target = "dataRules", source = "prmDrDataRuleTs") })
+	public PeerGroup toStudyPeerGroup(PrmPgPeerGroupT prmPgPeerGroupT);
 
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Calendar;
+
+package com.optum.fads.pgp.datarules.domain;
+
+import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
-@ActiveProfiles("test")
-@ExtendWith(MockitoExtension.class)
-class TolerantScoreDeciderTest {
 
-    @Spy
-    @InjectMocks
-    TolerantRestClient tolerantRestClient;
+import com.optum.fads.authorization.api.domain.UiUserBase;
 
-    @Mock
-    IdvClientConfigRepository idvClientConfigDao;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
-    @Mock
-    IdvHistoricConfigRepository historicConfigDao;
 
-    @Mock
-    IdvConfigRepository idvConfigRepo;
+/**
+ * The persistent class for the PRM_PG_PEER_GROUP_T database table.
+ * 
+ */
+@Entity
+@Table(name="PRM_PG_PEER_GROUP_T")
+public class PrmPgPeerGroupT implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-    @Mock
-    private IdvRulesRepository rulesDao;
+	@Id
+	@Column(name="CG_ID")
+	private Integer cgId;
 
-    @Mock
-    private IdvRulesConditionsRepository rulesConditionsDao;
+	@Column(name="CG_LEVEL")
+	private String cgLevel;
 
-    @Mock
-    private IdvBlackListRepository blackListDao;
+	@Column(name="CG_NAME")
+	private String studyGroupName;
 
-    @Mock
-    BlacklistEvaluator blacklistEvaluator;
+	@Column(name="CG_TYPE")
+	private String cgType;
 
-    @Spy
-    @InjectMocks
-    GeneralConfigurationService configurationService;
+	@Temporal(TemporalType.DATE)
+	@Column(name="CREATE_DTE")
+	private Date createDate;
 
-    @Mock
-    RestTemplate restTemplate;
+	@Temporal(TemporalType.DATE)
+	@Column(name="UPDATE_DTE")
+	private Date updateDate;
 
-    @InjectMocks
-    TolerantScoreDecider decider;
-    
-    @MockBean
-	KafkaProducer<String, NotificationEvent> producer;
+	//bi-directional many-to-one association to PrmPgDrT
+	@OneToMany(mappedBy="prmPgPeerGroupT")
+	private List<PrmPgDrT> prmPgDrTs;
 
-    @BeforeEach
-    public void setup() {
-        MockitoAnnotations.openMocks(this);
-    }
+	//bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name="CREATE_USR")
+	private UiUserBase uiUserBaseCr;
 
-    @Test
-    @SneakyThrows
-    void testTolerantDecide(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        transaction.setEqualityScoreOverall(15);
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(false);
-        transaction.setMethod(method);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        //when(blacklistEvaluator.checkIfBlacklisted(Mockito.anyLong())).thenReturn(true);
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(25);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
-    
-    @SneakyThrows
-    public void testTolerantDecide2(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        transaction.setEqualityScoreOverall(15);
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(false);
-        transaction.setMethod(method);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        List<TolerantResult> results =new ArrayList<>() ;
-        TolerantResult result=new TolerantResult();
-        result.setOverAllScore(15);
-        Scores score=new Scores();
-		result.setScores(score);
-		results.add(result);
-		tolerantResponse.setResults(results);
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        when(blacklistEvaluator.checkIfBlacklisted(Mockito.anyLong())).thenReturn(true);
+	//bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name="UPDATE_USR")
+	private UiUserBase uiUserBaseUpd;
 
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(5);
-        config.setRegistrationDataCheckUpperLimit(25);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
-    
-    @Test
-    @SneakyThrows
-    void testTolerantDecide1(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(true);
-        method.setMethodType(IdVerificationMethodType.EXT_EID_CAN_IDENT.value());
-        transaction.setMethod(method);
-        transaction.setEqualityScoreOverall(15);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        List<TolerantResult> results =new ArrayList<>() ;
-        TolerantResult result=new TolerantResult();
-        result.setOverAllScore(15);
-        Scores score=new Scores();
-		result.setScores(score);
-		results.add(result);
-		tolerantResponse.setResults(results);
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(5);
-        config.setRegistrationDataCheckUpperLimit(25);
-        config.setRegistrationDataViPiThreshold(22);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
-    
-    @Test
-    @SneakyThrows
-    void testTolerantDecide11(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(true);
-        method.setMethodType(IdVerificationMethodType.EXT_EID_CAN_IDENT.value());
-        transaction.setMethod(method);
-        transaction.setEqualityScoreOverall(100);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        List<TolerantResult> results =new ArrayList<>() ;
-        TolerantResult result=new TolerantResult();
-        result.setOverAllScore(100);
-        Scores score=new Scores();
-		result.setScores(score);
-		results.add(result);
-		tolerantResponse.setResults(results);
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(5);
-        config.setRegistrationDataCheckUpperLimit(25);
-        config.setRegistrationDataViPiThreshold(22);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
-    
-    @Test
-    @SneakyThrows
-    void testTolerantDecide12(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(true);
-        method.setMethodType(IdVerificationMethodType.POST_IDENT.value());
-        transaction.setMethod(method);
-        transaction.setEqualityScoreOverall(15);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        List<TolerantResult> results =new ArrayList<>() ;
-        TolerantResult result=new TolerantResult();
-        result.setOverAllScore(15);
-        Scores score=new Scores();
-		result.setScores(score);
-		results.add(result);
-		tolerantResponse.setResults(results);
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(5);
-        config.setRegistrationDataCheckUpperLimit(25);
-        config.setRegistrationDataViPiThreshold(22);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
-    
-    @Test
-    @SneakyThrows
-    void testTolerantDecide132(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(true);
-        method.setMethodType(IdVerificationMethodType.POST_IDENT.value());
-        transaction.setMethod(method);
-        transaction.setEqualityScoreOverall(23);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        List<TolerantResult> results =new ArrayList<>() ;
-        TolerantResult result=new TolerantResult();
-        result.setOverAllScore(23);
-        Scores score=new Scores();
-		result.setScores(score);
-		results.add(result);
-		tolerantResponse.setResults(results);
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(5);
-        config.setRegistrationDataCheckUpperLimit(25);
-        config.setRegistrationDataViPiThreshold(22);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
-    
-    @Test
-    @SneakyThrows
-    void testTolerantDecide122(){
-        IdvTransaction transaction = new IdvTransaction();
-        transaction.setId(1L);
-        transaction.setRegistrationBirthday(Calendar.getInstance().getTime());
-        transaction.setBirthday(Calendar.getInstance().getTime());
-        IdvMethod method = new IdvMethod();
-        method.setNoRecheck(true);
-        method.setMethodType(IdVerificationMethodType.POST_IDENT.value());
-        transaction.setMethod(method);
-        transaction.setEqualityScoreOverall(28);
-        IdvClientConfig clientConfig = new IdvClientConfig();
-        clientConfig.setUrl("http://localhost:8081");
-        ResponseEntity<TolerantResponse> httpResponse = Mockito.mock(ResponseEntity.class);
-        TolerantResponse tolerantResponse = new TolerantResponse();
-        tolerantResponse.setReturnCode("0");
-        List<TolerantResult> results =new ArrayList<>() ;
-        TolerantResult result=new TolerantResult();
-        Scores score=new Scores();
-		result.setScores(score);
-        result.setOverAllScore(28);
-		results.add(result);
-		tolerantResponse.setResults(results);
-        when(httpResponse.getBody()).thenReturn(tolerantResponse);
-        when(idvConfigRepo.getConfiguration(ArgumentMatchers.anyString())).thenReturn("value");
-        when(idvClientConfigDao.getConfiguration(ArgumentMatchers.anyString())).thenReturn(clientConfig);
-        when(restTemplate.exchange(ArgumentMatchers.any(URI.class),ArgumentMatchers.any(HttpMethod.class),
-                        ArgumentMatchers.any(HttpEntity.class),ArgumentMatchers.any(Class.class)))
-                .thenReturn(httpResponse);
-        IdvHistoricConfig config=new IdvHistoricConfig();
-        config.setRegistrationDataCheckLowerLimit(5);
-        config.setRegistrationDataCheckUpperLimit(25);
-        config.setRegistrationDataViPiThreshold(22);
-        List<IdvHistoricConfig> IdvHistoricConfig=new ArrayList<>();
-        IdvHistoricConfig.add(config);
-		Page<IdvHistoricConfig> historicConfigPage = new PageImpl<>(IdvHistoricConfig);
-        when(historicConfigDao.findAll(ArgumentMatchers.any(Pageable.class))).thenReturn(historicConfigPage);
-        assertThat(decider.decide(transaction)).isNotNull();
-    }
+
+	public Integer getCgId() {
+		return this.cgId;
+	}
+
+	public void setCgId(Integer cgId) {
+		this.cgId = cgId;
+	}
+
+	public String getCgLevel() {
+		return this.cgLevel;
+	}
+
+	public void setCgLevel(String cgLevel) {
+		this.cgLevel = cgLevel;
+	}
+
+	public String getStudyGroupName() {
+		return studyGroupName;
+	}
+
+	public void setStudyGroupName(String studyGroupName) {
+		this.studyGroupName = studyGroupName;
+	}
+
+	public String getCgType() {
+		return this.cgType;
+	}
+
+	public void setCgType(String cgType) {
+		this.cgType = cgType;
+	}
+
+	public Date getCreateDate() {
+		return this.createDate;
+	}
+
+	public void setCreateDate(Date createDate) {
+		this.createDate = createDate;
+	}
+
+	public Date getUpdateDate() {
+		return this.updateDate;
+	}
+
+	public void setUpdateDate(Date updateDate) {
+		this.updateDate = updateDate;
+	}
+
+	public List<PrmPgDrT> getPrmPgDrTs() {
+		return this.prmPgDrTs;
+	}
+
+	public void setPrmPgDrTs(List<PrmPgDrT> prmPgDrTs) {
+		this.prmPgDrTs = prmPgDrTs;
+	}
+
+	public PrmPgDrT addPrmPgDrT(PrmPgDrT prmPgDrT) {
+		getPrmPgDrTs().add(prmPgDrT);
+		prmPgDrT.setPrmPgPeerGroupT(this);
+
+		return prmPgDrT;
+	}
+
+	public PrmPgDrT removePrmPgDrT(PrmPgDrT prmPgDrT) {
+		getPrmPgDrTs().remove(prmPgDrT);
+		prmPgDrT.setPrmPgPeerGroupT(null);
+
+		return prmPgDrT;
+	}
+
+	public UiUserBase getUiUserBaseUpd() {
+		return this.uiUserBaseUpd;
+	}
+
+	public void setUiUserBaseUpd(UiUserBase uiUserBaseUpd) {
+		this.uiUserBaseUpd = uiUserBaseUpd;
+	}
+
+	public UiUserBase getUiUserBaseCr() {
+		return this.uiUserBaseCr;
+	}
+
+	public void setUiUserBaseCr(UiUserBase uiUserBaseCr) {
+		this.uiUserBaseCr = uiUserBaseCr;
+	}
+
 }
-TolerantScoreDeciderTest.testTolerantDecide:118 » NullPointer Cannot invoke "S...
-[ERROR]   TolerantScoreDeciderTest.testTolerantDecide1:199 » NullPointer Cannot invoke "...
-[ERROR]   TolerantScoreDeciderTest.testTolerantDecide11:240 » NullPointer Cannot invoke ...
-[ERROR]   TolerantScoreDeciderTest.testTolerantDecide12:281 » NullPointer Cannot invoke ...
-[ERROR]   TolerantScoreDeciderTest.testTolerantDecide122:363 » NullPointer Cannot invoke...
-[ERROR]   TolerantScoreDeciderTest.testTolerantDecide132:322 » NullPointer Cannot invoke...
-
-
-<!-- https://mvnrepository.com/artifact/commons-collections/commons-collections -->
-<dependency>
-    <groupId>commons-collections</groupId>
-    <artifactId>commons-collections</artifactId>
-    <version>3.2.2</version>
-</dependency>
