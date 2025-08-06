@@ -1,159 +1,90 @@
-ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[65,107] Unknown property "cgType" in result type PeerGroup.PeerGroupBuilder. Did you mean "null"?
+ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[77,67] No property named "createdByUiUserBase.uiSystemId" exists in source parameter(s). Did you mean "updatedByUiUserBase"?
 
-@Mappings({ @Mapping(target = "studyGroupId", source = "cgId"),
-			@Mapping(target = "studyGroupName", source = "studyGroupName"), @Mapping(target = "cgType", source = "cgType"),
-			@Mapping(target = "dataRules", source = "prmPgDrTs") })
-	public PeerGroup toStudyPeerGroup(PrmPgPeerGroupT prmPgPeerGroupT);
-
-
-package com.optum.fads.pgp.datarules.domain;
+@Mappings({ @Mapping(target = "timePeriodId", source = "id.pbTimePrd"),
+			@Mapping(target = "fromDate", source = "pbTimeRngBeg"),
+			@Mapping(target = "toDate", source = "pbTimeRngEnd"),
+			@Mapping(target = "weight", source = "pbTimeWeight"),
+			@Mapping(target = "createdUser", source = "createdByUiUserBase.uiSystemId"),
+			@Mapping(target = "updatedUser", source = "updatedByUiUserBase.uiSystemId"),
+		
+	})
+	
+	
+	package com.optum.fads.pgp.datarules.domain;
 
 import java.io.Serializable;
 import java.util.Date;
-import java.util.List;
 
 import com.optum.fads.authorization.api.domain.UiUserBase;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
- * The persistent class for the PRM_PG_PEER_GROUP_T database table.
+ * The persistent class for the PRM_STUDY_TIME_PERIODS_T database table.
  * 
  */
+@Builder
+@Data
 @Entity
-@Table(name="PRM_PG_PEER_GROUP_T")
-public class PrmPgPeerGroupT implements Serializable {
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Table(name = "PRM_STUDY_TIME_PERIODS_T")
+public class PrmStudyTimePeriodsT implements Serializable {
 	private static final long serialVersionUID = 1L;
 
-	@Id
-	@Column(name="CG_ID")
-	private Integer cgId;
-
-	@Column(name="CG_LEVEL")
-	private String cgLevel;
-
-	@Column(name="CG_NAME")
-	private String studyGroupName;
-
-	@Column(name="CG_TYPE")
-	private String cgType;
+	@EmbeddedId
+	private PrmStudyTimePeriodsTPK id;
 
 	@Temporal(TemporalType.DATE)
-	@Column(name="CREATE_DTE")
-	private Date createDate;
+	@Column(name = "CREATE_DTE")
+	private Date createDte;
 
 	@Temporal(TemporalType.DATE)
-	@Column(name="UPDATE_DTE")
-	private Date updateDate;
+	@Column(name = "PB_TIME_RNG_BEG")
+	private Date pbTimeRngBeg;
 
-	//bi-directional many-to-one association to PrmPgDrT
-	@OneToMany(mappedBy="prmPgPeerGroupT")
-	private List<PrmPgDrT> prmPgDrTs;
+	@Temporal(TemporalType.DATE)
+	@Column(name = "PB_TIME_RNG_END")
+	private Date pbTimeRngEnd;
 
-	//bi-directional many-to-one association to UiUserBase
+	@Column(name = "PB_TIME_WEIGHT", precision = 7)
+	private Integer pbTimeWeight;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "UPDATE_DTE")
+	private Date updateDte;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "PB_ID", nullable = false, insertable = false, updatable = false)
+	private PrmStudyMasterT prmStudyMasterT;
+
 	@ManyToOne
-	@JoinColumn(name="CREATE_USR")
-	private UiUserBase uiUserBaseCr;
+	@JoinColumn(name = "UPDATE_USR")
+	private UiUserBase updatedByUiUserBase;
 
-	//bi-directional many-to-one association to UiUserBase
 	@ManyToOne
-	@JoinColumn(name="UPDATE_USR")
-	private UiUserBase uiUserBaseUpd;
-
-
-	public Integer getCgId() {
-		return this.cgId;
-	}
-
-	public void setCgId(Integer cgId) {
-		this.cgId = cgId;
-	}
-
-	public String getCgLevel() {
-		return this.cgLevel;
-	}
-
-	public void setCgLevel(String cgLevel) {
-		this.cgLevel = cgLevel;
-	}
-
-	public String getStudyGroupName() {
-		return studyGroupName;
-	}
-
-	public void setStudyGroupName(String studyGroupName) {
-		this.studyGroupName = studyGroupName;
-	}
-
-	public String getCgType() {
-		return this.cgType;
-	}
-
-	public void setCgType(String cgType) {
-		this.cgType = cgType;
-	}
-
-	public Date getCreateDate() {
-		return this.createDate;
-	}
-
-	public void setCreateDate(Date createDate) {
-		this.createDate = createDate;
-	}
-
-	public Date getUpdateDate() {
-		return this.updateDate;
-	}
-
-	public void setUpdateDate(Date updateDate) {
-		this.updateDate = updateDate;
-	}
-
-	public List<PrmPgDrT> getPrmPgDrTs() {
-		return this.prmPgDrTs;
-	}
-
-	public void setPrmPgDrTs(List<PrmPgDrT> prmPgDrTs) {
-		this.prmPgDrTs = prmPgDrTs;
-	}
-
-	public PrmPgDrT addPrmPgDrT(PrmPgDrT prmPgDrT) {
-		getPrmPgDrTs().add(prmPgDrT);
-		prmPgDrT.setPrmPgPeerGroupT(this);
-
-		return prmPgDrT;
-	}
-
-	public PrmPgDrT removePrmPgDrT(PrmPgDrT prmPgDrT) {
-		getPrmPgDrTs().remove(prmPgDrT);
-		prmPgDrT.setPrmPgPeerGroupT(null);
-
-		return prmPgDrT;
-	}
-
-	public UiUserBase getUiUserBaseUpd() {
-		return this.uiUserBaseUpd;
-	}
-
-	public void setUiUserBaseUpd(UiUserBase uiUserBaseUpd) {
-		this.uiUserBaseUpd = uiUserBaseUpd;
-	}
-
-	public UiUserBase getUiUserBaseCr() {
-		return this.uiUserBaseCr;
-	}
-
-	public void setUiUserBaseCr(UiUserBase uiUserBaseCr) {
-		this.uiUserBaseCr = uiUserBaseCr;
-	}
+	@JoinColumn(name = "CREATE_USR")
+	private UiUserBase uiUserBase2;
 
 }
