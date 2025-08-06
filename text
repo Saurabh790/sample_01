@@ -1,21 +1,12 @@
-ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[77,67] No property named "createdByUiUserBase.uiSystemId" exists in source parameter(s). Did you mean "updatedByUiUserBase"?
-
-@Mappings({ @Mapping(target = "timePeriodId", source = "id.pbTimePrd"),
-			@Mapping(target = "fromDate", source = "pbTimeRngBeg"),
-			@Mapping(target = "toDate", source = "pbTimeRngEnd"),
-			@Mapping(target = "weight", source = "pbTimeWeight"),
-			@Mapping(target = "createdUser", source = "createdByUiUserBase.uiSystemId"),
-			@Mapping(target = "updatedUser", source = "updatedByUiUserBase.uiSystemId"),
-		
-	})
-	
+@Mappings({ @Mapping(source = "id.bpId", target = "behaviorPatternId"),
+			@Mapping(source = "prmBpBehaviorPatsT.bpName", target = "behaviorPatternName"),
+			@Mapping(source = "vcMin", target = "min"), @Mapping(source = "vcMax", target = "max"),
+			@Mapping(source = "vcFlag", target = "flag") })
+	public ActivityLimit toActivityLimit(PrmStudyBpActLimitsT prmStudyBpActLimitsT);
 	
 	package com.optum.fads.pgp.datarules.domain;
 
 import java.io.Serializable;
-import java.util.Date;
-
-import com.optum.fads.authorization.api.domain.UiUserBase;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -24,8 +15,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,7 +26,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 /**
- * The persistent class for the PRM_STUDY_TIME_PERIODS_T database table.
+ * The persistent class for the PRM_STUDY_BP_ACT_LIMITS_T database table.
  * 
  */
 @Builder
@@ -49,42 +38,37 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-@Table(name = "PRM_STUDY_TIME_PERIODS_T")
-public class PrmStudyTimePeriodsT implements Serializable {
+@Table(name = "PRM_STUDY_BP_ACT_LIMITS_T")
+public class PrmStudyBpActLimitsT implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@EmbeddedId
-	private PrmStudyTimePeriodsTPK id;
+	private PrmStudyBpActLimitsTPK id;
 
-	@Temporal(TemporalType.DATE)
-	@Column(name = "CREATE_DTE")
-	private Date createDte;
+	@Column(name = "VC_FLAG", precision = 1)
+	private Integer vcFlag;
 
-	@Temporal(TemporalType.DATE)
-	@Column(name = "PB_TIME_RNG_BEG")
-	private Date pbTimeRngBeg;
+	@Column(name = "VC_MAX", precision = 12, scale = 2)
+	private Integer vcMax;
 
-	@Temporal(TemporalType.DATE)
-	@Column(name = "PB_TIME_RNG_END")
-	private Date pbTimeRngEnd;
+	@Column(name = "VC_MIN", precision = 12, scale = 2)
+	private Integer vcMin;
 
-	@Column(name = "PB_TIME_WEIGHT", precision = 7)
-	private Integer pbTimeWeight;
+	@ManyToOne
+	@JoinColumn(name = "BP_ID", nullable = false, insertable = false, updatable = false)
+	private PrmBpBehaviorPatsT prmBpBehaviorPatsT;
 
-	@Temporal(TemporalType.DATE)
-	@Column(name = "UPDATE_DTE")
-	private Date updateDte;
-
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@ManyToOne(fetch = FetchType.LAZY, targetEntity = PrmStudyMasterT.class)
 	@JoinColumn(name = "PB_ID", nullable = false, insertable = false, updatable = false)
 	private PrmStudyMasterT prmStudyMasterT;
 
-	@ManyToOne
-	@JoinColumn(name = "UPDATE_USR")
-	private UiUserBase updatedByUiUserBase;
-
-	@ManyToOne
-	@JoinColumn(name = "CREATE_USR")
-	private UiUserBase uiUserBase2;
-
 }
+
+
+
+[INFO] Finished at: 2025-08-06T21:55:47+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-pgp-study-api: Compilation failure
+[ERROR] /C:/Users/sgupt664/Project_workspace/FADS_03/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/mapper/StudyDetailMapper.java:[117,43] No property named "prmBpBehaviorPatsT.bpName" exists in source parameter(s). Did you mean "prmBpBehaviorPatsT.bpId"?
+[ERROR]
+[ERROR] -> [Help 1]
