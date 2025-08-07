@@ -1,9 +1,13 @@
 /**
  * 
  */
-package com.optum.fads.authorization.api.dto;
+package com.optum.fads.pgp.reportsection.api.dto;
 
-import lombok.AllArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+
 import lombok.Data;
 
 /**
@@ -11,11 +15,19 @@ import lombok.Data;
  *
  */
 @Data
-@AllArgsConstructor
-public class AccessLevel {
+public class Role implements GrantedAuthority {
+	private static final long serialVersionUID = 1L;
+
+	 private String id;
+	 private String roleName;
+	 
+	 private List<AccessLevel> allowedAccesses = new ArrayList<>();
+
+	 
+	@Override
+	public String getAuthority() {
+		return id;
+	}
 	
-	private String moduleId;
-	private String moduleCode;
-	private String moduleName;
-	private String access;
+	
 }
