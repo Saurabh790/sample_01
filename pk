@@ -1,34 +1,114 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE configuration SYSTEM "config/config.dtd" >
-<configuration version="7.1">
-  <!-- Existing content -->
+@Test
+void testUpdateReportItem_AccessA_ShouldReturnOk() {
+    ReportItemDTO reportItemDTO = new ReportItemDTO();
+    reportItemDTO.setCreatedBySystemId("USER123");
 
-  <!-- Ensure the matchRuleField for matchField-4 is used in both rule1 and rule2 -->
-  <!-- Set isUsed="Y" and give it a higher weight (e.g., 2) -->
-  <!-- This ensures swapped first/last names still contribute full score -->
+    AppUser mockUser = new AppUser();
+    mockUser.setUserSystemId("USER123");
 
-  <!-- In matchRule-1 -->
-  <matchRuleField id="matchRuleField-4" matchFieldRef="matchField-4" minScore="0" maxScore="100" weight="2" isUsed="Y" isMandatory="N" matchEmptyValues="N" conditionType="DONT_CARE" conditionInvert="N"/>
+    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "A");
+    Role role = new Role();
+    role.getAllowedAccesses().add(accessLevel);
+    mockUser.setRole(role);
 
-  <!-- In matchRule-2 -->
-  <matchRuleField id="matchRuleField-4" matchFieldRef="matchField-4" minScore="0" maxScore="100" weight="2" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/>
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(mockUser);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(securityContext.getAuthentication()).thenReturn(authentication);
+    SecurityContextHolder.setContext(securityContext);
 
-  <!-- In matchProfileField section for matchField-4 -->
-  <matchProfileField id="matchProfileField-4" matchFieldRef="matchField-4" emptyScore="0" tokenMinScore="0" tokenScoreWeight="500" socketScore="0" enforceOrder="N" disorderedScore="100" tokenSubset="NONE" useRelevanceWeight="N" useAbbreviations="Y" abbreviationScore="100" phoneticUsage="NO_PHONETIC" compareMode="COMPAREHIGH"/>
+    when(iReportItemDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+    when(iReportItemDataService.updateReportItem(anyInt(), any(ReportItemDTO.class)))
+        .thenReturn("Updated Successfully");
 
-  <!-- These updates boost tokenScoreWeight and disable order enforcement to maximize flipped-name matching. -->
-</configuration>
+    ResponseEntity<String> response = controller.updateReportItem(1, reportItemDTO);
 
-
-
-<matchRule id="matchRule-2" description="Vor-/Nachnamensdreher" enableConditions="Y" minTotalScore="0" maxTotalScore="100" ruleCut="N" name="rule2" maxResultPercentage="100">
-    <matchRuleField id="matchRuleField-1" matchFieldRef="matchField-1" minScore="100" maxScore="100" weight="0" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/>
-    <matchRuleField id="matchRuleField-6" matchFieldRef="matchField-6" minScore="100" maxScore="100" weight="1" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/> 
-	<matchRuleField id="matchRuleField-7" matchFieldRef="matchField-7" minScore="100" maxScore="100" weight="1" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/> <matchRuleField id="matchRuleField-8" matchFieldRef="matchField-8" minScore="0" maxScore="100" weight="1" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/>
-    <matchRuleField id="matchRuleField-4" matchFieldRef="matchField-4" minScore="100" maxScore="100" weight="1" isUsed="Y" isMandatory="N" matchEmptyValues="Y" conditionType="DONT_CARE" conditionInvert="N"/> </matchRule>
-
-
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals("Updated Successfully", response.getBody());
+}
 
 
-git config --global user.name "John Doe"
-$ git config --global user.email johndoe@example.com
+@Test
+void testUpdateReportItem_AccessB_SameUserId_ShouldReturnOk() {
+    ReportItemDTO reportItemDTO = new ReportItemDTO();
+    reportItemDTO.setCreatedBySystemId("USER123");
+
+    AppUser mockUser = new AppUser();
+    mockUser.setUserSystemId("USER123");
+
+    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "B");
+    Role role = new Role();
+    role.getAllowedAccesses().add(accessLevel);
+    mockUser.setRole(role);
+
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(mockUser);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(securityContext.getAuthentication()).thenReturn(authentication);
+    SecurityContextHolder.setContext(securityContext);
+
+    when(iReportItemDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+    when(iReportItemDataService.updateReportItem(anyInt(), any(ReportItemDTO.class)))
+        .thenReturn("Updated Successfully");
+
+    ResponseEntity<String> response = controller.updateReportItem(2, reportItemDTO);
+
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals("Updated Successfully", response.getBody());
+}
+
+
+@Test
+void testUpdateReportItem_AccessB_DifferentUserId_ShouldReturnForbidden() {
+    ReportItemDTO reportItemDTO = new ReportItemDTO();
+    reportItemDTO.setCreatedBySystemId("OTHER_USER");
+
+    AppUser mockUser = new AppUser();
+    mockUser.setUserSystemId("USER123");
+
+    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "B");
+    Role role = new Role();
+    role.getAllowedAccesses().add(accessLevel);
+    mockUser.setRole(role);
+
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(mockUser);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(securityContext.getAuthentication()).thenReturn(authentication);
+    SecurityContextHolder.setContext(securityContext);
+
+    ResponseEntity<String> response = controller.updateReportItem(3, reportItemDTO);
+
+    assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    assertEquals(ReportSectionConstants.NOT_AUTHORIZED, response.getBody());
+}
+
+
+@Test
+void testUpdateReportItem_ExceptionThrown_ShouldReturnBadRequest() {
+    ReportItemDTO reportItemDTO = new ReportItemDTO();
+    reportItemDTO.setCreatedBySystemId("USER123");
+
+    AppUser mockUser = new AppUser();
+    mockUser.setUserSystemId("USER123");
+
+    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "A");
+    Role role = new Role();
+    role.getAllowedAccesses().add(accessLevel);
+    mockUser.setRole(role);
+
+    Authentication authentication = mock(Authentication.class);
+    when(authentication.getPrincipal()).thenReturn(mockUser);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(securityContext.getAuthentication()).thenReturn(authentication);
+    SecurityContextHolder.setContext(securityContext);
+
+    when(iReportItemDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+    when(iReportItemDataService.updateReportItem(anyInt(), any(ReportItemDTO.class)))
+        .thenThrow(new ReportSectionApiException("Some error"));
+
+    ResponseEntity<String> response = controller.updateReportItem(4, reportItemDTO);
+
+    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, response.getBody());
+}
