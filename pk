@@ -1,114 +1,216 @@
-@Test
-void testUpdateReportItem_AccessA_ShouldReturnOk() {
-    ReportItemDTO reportItemDTO = new ReportItemDTO();
-    reportItemDTO.setCreatedBySystemId("USER123");
+package com.optum.fads.pgp.reportsection.api.service;
 
-    AppUser mockUser = new AppUser();
-    mockUser.setUserSystemId("USER123");
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
-    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "A");
-    Role role = new Role();
-    role.getAllowedAccesses().add(accessLevel);
-    mockUser.setRole(role);
+import java.util.ArrayList;
+import java.util.List;
 
-    Authentication authentication = mock(Authentication.class);
-    when(authentication.getPrincipal()).thenReturn(mockUser);
-    SecurityContext securityContext = mock(SecurityContext.class);
-    when(securityContext.getAuthentication()).thenReturn(authentication);
-    SecurityContextHolder.setContext(securityContext);
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
-    when(iReportItemDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
-    when(iReportItemDataService.updateReportItem(anyInt(), any(ReportItemDTO.class)))
-        .thenReturn("Updated Successfully");
-
-    ResponseEntity<String> response = controller.updateReportItem(1, reportItemDTO);
-
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals("Updated Successfully", response.getBody());
-}
-
-
-@Test
-void testUpdateReportItem_AccessB_SameUserId_ShouldReturnOk() {
-    ReportItemDTO reportItemDTO = new ReportItemDTO();
-    reportItemDTO.setCreatedBySystemId("USER123");
-
-    AppUser mockUser = new AppUser();
-    mockUser.setUserSystemId("USER123");
-
-    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "B");
-    Role role = new Role();
-    role.getAllowedAccesses().add(accessLevel);
-    mockUser.setRole(role);
-
-    Authentication authentication = mock(Authentication.class);
-    when(authentication.getPrincipal()).thenReturn(mockUser);
-    SecurityContext securityContext = mock(SecurityContext.class);
-    when(securityContext.getAuthentication()).thenReturn(authentication);
-    SecurityContextHolder.setContext(securityContext);
-
-    when(iReportItemDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
-    when(iReportItemDataService.updateReportItem(anyInt(), any(ReportItemDTO.class)))
-        .thenReturn("Updated Successfully");
-
-    ResponseEntity<String> response = controller.updateReportItem(2, reportItemDTO);
-
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals("Updated Successfully", response.getBody());
-}
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErDrRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
+import com.optum.fads.pgp.datarules.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
+import com.optum.fads.pgp.datarules.repo.ReportItemFormulasRepository;
+import com.optum.fads.pgp.datarules.repo.ReportItemsRepository;
+import com.optum.fads.pgp.datarules.repo.ReportSectionItemsRepository;
+import com.optum.fads.pgp.datarules.repo.ReportSectionsRepository;
+import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
+import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
+import com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.reportsection.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
+import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.service.impl.ReportItemDataService;
 
 
-@Test
-void testUpdateReportItem_AccessB_DifferentUserId_ShouldReturnForbidden() {
-    ReportItemDTO reportItemDTO = new ReportItemDTO();
-    reportItemDTO.setCreatedBySystemId("OTHER_USER");
-
-    AppUser mockUser = new AppUser();
-    mockUser.setUserSystemId("USER123");
-
-    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "B");
-    Role role = new Role();
-    role.getAllowedAccesses().add(accessLevel);
-    mockUser.setRole(role);
-
-    Authentication authentication = mock(Authentication.class);
-    when(authentication.getPrincipal()).thenReturn(mockUser);
-    SecurityContext securityContext = mock(SecurityContext.class);
-    when(securityContext.getAuthentication()).thenReturn(authentication);
-    SecurityContextHolder.setContext(securityContext);
-
-    ResponseEntity<String> response = controller.updateReportItem(3, reportItemDTO);
-
-    assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-    assertEquals(ReportSectionConstants.NOT_AUTHORIZED, response.getBody());
-}
-
-
-@Test
-void testUpdateReportItem_ExceptionThrown_ShouldReturnBadRequest() {
-    ReportItemDTO reportItemDTO = new ReportItemDTO();
-    reportItemDTO.setCreatedBySystemId("USER123");
-
-    AppUser mockUser = new AppUser();
-    mockUser.setUserSystemId("USER123");
-
-    AccessLevel accessLevel = new AccessLevel(null, "STUDY", null, "A");
-    Role role = new Role();
-    role.getAllowedAccesses().add(accessLevel);
-    mockUser.setRole(role);
-
-    Authentication authentication = mock(Authentication.class);
-    when(authentication.getPrincipal()).thenReturn(mockUser);
-    SecurityContext securityContext = mock(SecurityContext.class);
-    when(securityContext.getAuthentication()).thenReturn(authentication);
-    SecurityContextHolder.setContext(securityContext);
-
-    when(iReportItemDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
-    when(iReportItemDataService.updateReportItem(anyInt(), any(ReportItemDTO.class)))
-        .thenThrow(new ReportSectionApiException("Some error"));
-
-    ResponseEntity<String> response = controller.updateReportItem(4, reportItemDTO);
-
-    assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-    assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, response.getBody());
+@RunWith(SpringRunner.class) 
+@DataJpaTest 
+public class ReportItemDataServiceTests {
+	 
+	@Autowired
+	private ReportItemsRepository reportItemsRepository;
+	@Autowired
+	private ReportItemFormulasRepository reportItemFormulasRepository;
+	@Autowired
+	private ReportSectionItemsRepository reportSectionItemsRepository;
+	@Autowired
+	private BehaviorPatternsRepository behaviorPatternsRepository;
+	@Autowired
+	private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+	@Autowired
+	private DataRulesRepository dataRulesRepository;
+	@Autowired
+	private ReportSectionsRepository reportSectionsRepository;
+	
+	private ReportItemDataService reportItemDataService;
+		
+	@Before
+    public void setUp() {
+		reportItemDataService = new ReportItemDataService(reportItemsRepository,
+    			reportItemFormulasRepository, 		
+    			reportSectionItemsRepository, 		
+    			behaviorPatternsRepository,
+    			behaviorPatternErDrRepository,
+    			dataRulesRepository,
+    			reportSectionsRepository);
+    }
+	
+	@Test
+    public void testGetReportItemById(){
+    	Integer reportItemId = 2092;
+    	ReportItemDTO reportItem = reportItemDataService.getReportItemById(reportItemId);
+        assertNotNull(reportItem);
+        assertEquals(reportItem.getReportItemId(), reportItemId);
+        assertEquals(1, reportItem.getNumeratorBehaviorPatterns().size());
+    	assertEquals(1, reportItem.getDenominatorBehaviorPatterns().size());
+    }
+	
+	@Test
+    public void testGetReportItemsList() {
+		ListTableParams listTableParams = new ListTableParams();
+		List<String> searchByParm = new ArrayList<>();
+		List<String> searchInputParm = new ArrayList<>();
+		listTableParams.setSortBy("reportItemName");
+		listTableParams.setSortOrder(1);
+		listTableParams.setPageNumber(1);
+		listTableParams.setRecordsPerPage(10);
+		searchByParm.add("reportItemName");
+		searchByParm.add("createdBy");
+		searchInputParm.add("opioids");
+		searchInputParm.add("mcloud");
+		listTableParams.setSearchBy(searchByParm);
+		listTableParams.setSearchInput(searchInputParm);
+		PaginationResultRI reportItemsList = reportItemDataService.getReportItemsList(listTableParams);
+		assertNotNull(reportItemsList);
+        assertEquals(7, reportItemsList.getTotalRecordsCount());
+		
+	}
+	/*
+	 @Test
+	    public void testNewReportItem() {
+	    	Integer reportItemId = 2095;		// 2018
+	    	int calcFMT = 1; 	// current = 2
+	    	Integer riMinimumDenom = 5; // current = 295
+	    	Integer constantNum =2;
+	    	Integer constantDen =1;
+	    	Date currentDate = Calendar.getInstance().getTime();
+	    	String userId = "CS39286887";
+	    	ReportItemDTO reportItemDTO = new ReportItemDTO();
+	    	reportItemDTO.setReportItemName("O:% of Sched II (2) prescriptions");
+	    	reportItemDTO.setCreatedBy(userId);
+	    	reportItemDTO.setModifiedBy("WA40122433");
+	    	reportItemDTO.setCreatedDate(reportItemDataService.formatDate(currentDate));
+			reportItemDTO.setModifiedDate(reportItemDataService.formatDate(currentDate));
+			reportItemDTO.setCalcFMT(calcFMT);
+			reportItemDTO.setMinimumDenominator(riMinimumDenom);
+			reportItemDTO.setDivideConstant(constantDen);
+			reportItemDTO.setMultipleConstant(constantNum);
+			
+			BehaviorPatternDTO behaviorPatternDTON = new BehaviorPatternDTO();
+			behaviorPatternDTON.setBehaviorPatternId(585);
+			List<BehaviorPatternDTO> numeratorBehaviorPatterns = new ArrayList<>();
+			numeratorBehaviorPatterns.add(behaviorPatternDTON);
+			reportItemDTO.setNumeratorBehaviorPatterns(numeratorBehaviorPatterns);
+			BehaviorPatternDTO behaviorPatternDTOD = new BehaviorPatternDTO();
+			behaviorPatternDTOD.setBehaviorPatternId(586);
+			List<BehaviorPatternDTO> denominatorBehaviorPatterns = new ArrayList<>();
+			denominatorBehaviorPatterns.add(behaviorPatternDTOD);
+			reportItemDTO.setDenominatorBehaviorPatterns(denominatorBehaviorPatterns);
+			
+			ReportItemDTO retReportItemDTO =  reportItemDataService.addReportItem(reportItemDTO); 
+	    	
+	    	assertEquals(reportItemId, retReportItemDTO.getReportItemId());
+	    	assertEquals(1, reportItemDTO.getNumeratorBehaviorPatterns().size());
+	    	assertEquals(1, reportItemDTO.getDenominatorBehaviorPatterns().size());
+	    } 
+	 
+	 @Test
+	    public void testUpdateReportItem() {
+		 Integer reportItemId = 2005;
+		 String userId = "PP3188253";
+		 ReportItemDTO reportItemDTO =new ReportItemDTO();
+		 reportItemDTO.setReportItemId(reportItemId);
+		 reportItemDTO.setReportItemName("O:% Hosp Care Sub Comp to All Care Sub; #clm lines");
+		 reportItemDTO.setModifiedBy(userId);
+		 reportItemDTO.setCreatedBy(userId);
+		 reportItemDTO.setCreatedBySystemId(userId);
+		 reportItemDTO.setCreatedDate("03/22/2019 12:43:48 PM");
+		 reportItemDTO.setOrder(1);
+		 reportItemDTO.setDivideConstant(1);
+		 reportItemDTO.setMultipleConstant(1);
+		 reportItemDTO.setMinimumDenominator(1);
+		 reportItemDTO.setRatioOf("Sum");
+	    List<BehaviorPatternDTO> numBehaviorPatterns = new ArrayList<>();
+	    BehaviorPatternDTO behaviorPatternDTO1 = new BehaviorPatternDTO();
+	    behaviorPatternDTO1.setBehaviorPatternId(288); 
+	    behaviorPatternDTO1.setType("N");
+	    behaviorPatternDTO1.setOperator("+");
+	    numBehaviorPatterns.add(behaviorPatternDTO1);
+	    BehaviorPatternDTO behaviorPatternDTO2 = new BehaviorPatternDTO();
+	    behaviorPatternDTO2.setBehaviorPatternId(289); 
+	    behaviorPatternDTO2.setType("N");
+	    behaviorPatternDTO2.setOperator("-");
+	    numBehaviorPatterns.add(behaviorPatternDTO2);
+	    reportItemDTO.setNumeratorBehaviorPatterns(numBehaviorPatterns);
+	    
+	    List<BehaviorPatternDTO> denBehaviorPatterns = new ArrayList<>();
+	    BehaviorPatternDTO behaviorPatternDTO3 = new BehaviorPatternDTO();
+	    behaviorPatternDTO3.setBehaviorPatternId(290); 
+	    behaviorPatternDTO3.setType("D");
+	    behaviorPatternDTO3.setOperator("+");
+	    denBehaviorPatterns.add(behaviorPatternDTO3);
+	    reportItemDTO.setDenominatorBehaviorPatterns(denBehaviorPatterns);			
+	    	String updateReportItemMessage = reportItemDataService.updateReportItem(reportItemId, reportItemDTO);
+			assertEquals(ReportSectionConstants.UPDATE_REPORT_ITEM_SUCCESS, updateReportItemMessage);
+			ReportItemDTO reportItemDTOU = reportItemDataService.getReportItemById(reportItemId);
+	    	assertEquals(reportItemDTOU.getReportItemName(), reportItemDTO.getReportItemName());
+//	    	assertEquals(2, reportItemDTOU.getNumeratorBehaviorPatterns().size());
+//	    	assertEquals(1, reportItemDTOU.getDenominatorBehaviorPatterns().size());
+	    } 
+*/
+	 @Test
+	    public void testDeleteReportItem() {
+	    	Integer reportItemId = 2014; // 2092, 2093
+	    	List<String> deleteReportItemMessages = reportItemDataService.deleteReportItem(reportItemId); 
+	    	assertEquals(ReportSectionConstants.DELETE_REPORT_ITEM_SUCCESS, deleteReportItemMessages.get(0));   
+	    }
+	 
+	
+	 @Test
+	   public void testGetBehaviorPatterns() {
+		 Integer reportItemId = 2092;
+		 PrmRiRptItemT reportItemInd = reportItemsRepository.getReportItemById(reportItemId);
+		 List<BehaviorPatternDTO> behaviorPatternList = reportItemDataService.getBehaviorPatterns(reportItemInd);
+		 assertEquals(2, behaviorPatternList.size());
+	     for (BehaviorPatternDTO behaviorPatternDTO : behaviorPatternList) {
+			if (behaviorPatternDTO.getType().equals(ReportSectionConstants.NUM_STR)) {
+				assertEquals("Dental, Rend, SSCrowns Age 0-6, #clms", behaviorPatternDTO.getBehaviorPatternName());
+			} else {
+				assertEquals("Dental, Rend, SSCrowns, Ages 0-6, d#recips", behaviorPatternDTO.getBehaviorPatternName());
+			}
+		}
+			
+	}
+	 
+	 @Test
+	   public void  testGetSelectedDataRules() {
+			 Integer erId = 551;
+			 List<DataRuleDTO> selectedDataRulesList =  reportItemDataService.getSelectedDataRules(erId);
+			 assertEquals(3, selectedDataRulesList.size());
+			 int dataRuleId1 =  selectedDataRulesList.get(0).getDataRuleId();
+			 int dataRuleId2 =  selectedDataRulesList.get(1).getDataRuleId();
+			 int dataRuleId3 =  selectedDataRulesList.get(2).getDataRuleId();
+			 assertEquals(503, dataRuleId1);
+			 assertEquals(504, dataRuleId2);
+			 assertEquals(506, dataRuleId3);
+				
+		}
+	
 }
