@@ -4,3 +4,52 @@ source = "dataRuleName"
 
 @Column(name = "BP_NAME")
 private String bpName;
+
+
+@Test
+public void testGetMyReportItems() {
+    // Step 1: Setup test data
+    String userSystemId = "USER12345";
+    ListTableParams listTableParams = new ListTableParams();
+    listTableParams.setSearchBy(null); // simulate missing input
+    listTableParams.setSearchInput(null);
+
+    PaginationResultRI paginationResult = new PaginationResultRI();
+    List<ReportItemDTO> reportItemsList = new ArrayList<>();
+    ReportItemDTO item1 = new ReportItemDTO();
+    item1.setReportItemId(1001);
+    item1.setReportItemName("Test Report Item");
+    item1.setCreatedBy(userSystemId);
+    reportItemsList.add(item1);
+    paginationResult.setReportItemsData(reportItemsList);
+    paginationResult.setTotalRecordsCount(reportItemsList.size());
+
+    // Step 2: Mock the authenticated user
+    AppUser mockAppUser = new AppUser();
+    mockAppUser.setUserSystemId(userSystemId);
+
+    Authentication mockAuth = org.mockito.Mockito.mock(Authentication.class);
+    org.mockito.Mockito.when(mockAuth.getPrincipal()).thenReturn(mockAppUser);
+
+    // Mock the security context
+    org.springframework.security.core.context.SecurityContext mockSecurityContext = org.mockito.Mockito.mock(org.springframework.security.core.context.SecurityContext.class);
+    org.mockito.Mockito.when(mockSecurityContext.getAuthentication()).thenReturn(mockAuth);
+    org.springframework.security.core.context.SecurityContextHolder.setContext(mockSecurityContext);
+
+    // Step 3: Stub the service layer
+    doReturn(paginationResult).when(reportItemDataService).getReportItemsList(org.mockito.ArgumentMatchers.any(ListTableParams.class));
+
+    // Step 4: Invoke controller
+    ResponseEntity<PaginationResultRI> response = reportItemController.getMyReportItems(listTableParams);
+
+    // Step 5: Assert results
+    assertNotNull(response);
+    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(1, response.getBody().getReportItemsData().size());
+    assertEquals(userSystemId, response.getBody().getReportItemsData().get(0).getCreatedBy());
+
+    // Step 6: Validate userSystemId injected into params
+    assertEquals(1, listTableParams.getSearchBy().size());
+    assertEquals("userSystemId", listTableParams.getSearchBy().get(0));
+    assertEquals(userSystemId, listTableParams.getSearchInput().get(0));
+}
