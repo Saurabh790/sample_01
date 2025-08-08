@@ -1,33 +1,298 @@
-/**
- * 
- */
-package com.optum.fads.pgp.reportsection.api.dto;
+package com.optum.fads.pgp.reportsection.api.service;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import org.springframework.security.core.GrantedAuthority;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.test.context.junit4.SpringRunner;
 
-import lombok.Data;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErDrRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
+import com.optum.fads.pgp.datarules.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
+import com.optum.fads.pgp.datarules.repo.ReportItemFormulasRepository;
+import com.optum.fads.pgp.datarules.repo.ReportItemsRepository;
+import com.optum.fads.pgp.datarules.repo.ReportSectionItemsRepository;
+import com.optum.fads.pgp.datarules.repo.ReportSectionsRepository;
+import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
+import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
+import com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.reportsection.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
+import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.service.impl.ReportItemDataService;
 
-/**
- * @author sbiry
- *
- */
-@Data
-public class Role implements GrantedAuthority {
-	private static final long serialVersionUID = 1L;
 
-	 private String id;
-	 private String roleName;
+@RunWith(SpringRunner.class) 
+@DataJpaTest 
+public class ReportItemDataServiceTests {
 	 
-	 private List<AccessLevel> allowedAccesses = new ArrayList<>();
-
-	 
-	@Override
-	public String getAuthority() {
-		return id;
-	}
+	@Autowired
+	private ReportItemsRepository reportItemsRepository;
+	@Autowired
+	private ReportItemFormulasRepository reportItemFormulasRepository;
+	@Autowired
+	private ReportSectionItemsRepository reportSectionItemsRepository;
+	@Autowired
+	private BehaviorPatternsRepository behaviorPatternsRepository;
+	@Autowired
+	private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+	@Autowired
+	private DataRulesRepository dataRulesRepository;
+	@Autowired
+	private ReportSectionsRepository reportSectionsRepository;
 	
+	private ReportItemDataService reportItemDataService;
+	
+	
+	@InjectMocks
+    private ReportItemDataService reportItemService;
+		
+	@Before
+    public void setUp() {
+		reportItemDataService = new ReportItemDataService(reportItemsRepository,
+    			reportItemFormulasRepository, 		
+    			reportSectionItemsRepository, 		
+    			behaviorPatternsRepository,
+    			behaviorPatternErDrRepository,
+    			dataRulesRepository,
+    			reportSectionsRepository);
+    }
+	
+	@Test
+    public void testGetReportItemById(){
+    	Integer reportItemId = 2092;
+    	ReportItemDTO reportItem = reportItemDataService.getReportItemById(reportItemId);
+        assertNotNull(reportItem);
+        assertEquals(reportItem.getReportItemId(), reportItemId);
+        assertEquals(1, reportItem.getNumeratorBehaviorPatterns().size());
+    	assertEquals(1, reportItem.getDenominatorBehaviorPatterns().size());
+    }
+	
+	@Test
+    public void testGetReportItemsList() {
+		ListTableParams listTableParams = new ListTableParams();
+		List<String> searchByParm = new ArrayList<>();
+		List<String> searchInputParm = new ArrayList<>();
+		listTableParams.setSortBy("reportItemName");
+		listTableParams.setSortOrder(1);
+		listTableParams.setPageNumber(1);
+		listTableParams.setRecordsPerPage(10);
+		searchByParm.add("reportItemName");
+		searchByParm.add("createdBy");
+		searchInputParm.add("opioids");
+		searchInputParm.add("mcloud");
+		listTableParams.setSearchBy(searchByParm);
+		listTableParams.setSearchInput(searchInputParm);
+		PaginationResultRI reportItemsList = reportItemDataService.getReportItemsList(listTableParams);
+		assertNotNull(reportItemsList);
+        assertEquals(7, reportItemsList.getTotalRecordsCount());
+		
+	}
+	/*
+	 @Test
+	    public void testNewReportItem() {
+	    	Integer reportItemId = 2095;		// 2018
+	    	int calcFMT = 1; 	// current = 2
+	    	Integer riMinimumDenom = 5; // current = 295
+	    	Integer constantNum =2;
+	    	Integer constantDen =1;
+	    	Date currentDate = Calendar.getInstance().getTime();
+	    	String userId = "CS39286887";
+	    	ReportItemDTO reportItemDTO = new ReportItemDTO();
+	    	reportItemDTO.setReportItemName("O:% of Sched II (2) prescriptions");
+	    	reportItemDTO.setCreatedBy(userId);
+	    	reportItemDTO.setModifiedBy("WA40122433");
+	    	reportItemDTO.setCreatedDate(reportItemDataService.formatDate(currentDate));
+			reportItemDTO.setModifiedDate(reportItemDataService.formatDate(currentDate));
+			reportItemDTO.setCalcFMT(calcFMT);
+			reportItemDTO.setMinimumDenominator(riMinimumDenom);
+			reportItemDTO.setDivideConstant(constantDen);
+			reportItemDTO.setMultipleConstant(constantNum);
+			
+			BehaviorPatternDTO behaviorPatternDTON = new BehaviorPatternDTO();
+			behaviorPatternDTON.setBehaviorPatternId(585);
+			List<BehaviorPatternDTO> numeratorBehaviorPatterns = new ArrayList<>();
+			numeratorBehaviorPatterns.add(behaviorPatternDTON);
+			reportItemDTO.setNumeratorBehaviorPatterns(numeratorBehaviorPatterns);
+			BehaviorPatternDTO behaviorPatternDTOD = new BehaviorPatternDTO();
+			behaviorPatternDTOD.setBehaviorPatternId(586);
+			List<BehaviorPatternDTO> denominatorBehaviorPatterns = new ArrayList<>();
+			denominatorBehaviorPatterns.add(behaviorPatternDTOD);
+			reportItemDTO.setDenominatorBehaviorPatterns(denominatorBehaviorPatterns);
+			
+			ReportItemDTO retReportItemDTO =  reportItemDataService.addReportItem(reportItemDTO); 
+	    	
+	    	assertEquals(reportItemId, retReportItemDTO.getReportItemId());
+	    	assertEquals(1, reportItemDTO.getNumeratorBehaviorPatterns().size());
+	    	assertEquals(1, reportItemDTO.getDenominatorBehaviorPatterns().size());
+	    } 
+	 
+	 @Test
+	    public void testUpdateReportItem() {
+		 Integer reportItemId = 2005;
+		 String userId = "PP3188253";
+		 ReportItemDTO reportItemDTO =new ReportItemDTO();
+		 reportItemDTO.setReportItemId(reportItemId);
+		 reportItemDTO.setReportItemName("O:% Hosp Care Sub Comp to All Care Sub; #clm lines");
+		 reportItemDTO.setModifiedBy(userId);
+		 reportItemDTO.setCreatedBy(userId);
+		 reportItemDTO.setCreatedBySystemId(userId);
+		 reportItemDTO.setCreatedDate("03/22/2019 12:43:48 PM");
+		 reportItemDTO.setOrder(1);
+		 reportItemDTO.setDivideConstant(1);
+		 reportItemDTO.setMultipleConstant(1);
+		 reportItemDTO.setMinimumDenominator(1);
+		 reportItemDTO.setRatioOf("Sum");
+	    List<BehaviorPatternDTO> numBehaviorPatterns = new ArrayList<>();
+	    BehaviorPatternDTO behaviorPatternDTO1 = new BehaviorPatternDTO();
+	    behaviorPatternDTO1.setBehaviorPatternId(288); 
+	    behaviorPatternDTO1.setType("N");
+	    behaviorPatternDTO1.setOperator("+");
+	    numBehaviorPatterns.add(behaviorPatternDTO1);
+	    BehaviorPatternDTO behaviorPatternDTO2 = new BehaviorPatternDTO();
+	    behaviorPatternDTO2.setBehaviorPatternId(289); 
+	    behaviorPatternDTO2.setType("N");
+	    behaviorPatternDTO2.setOperator("-");
+	    numBehaviorPatterns.add(behaviorPatternDTO2);
+	    reportItemDTO.setNumeratorBehaviorPatterns(numBehaviorPatterns);
+	    
+	    List<BehaviorPatternDTO> denBehaviorPatterns = new ArrayList<>();
+	    BehaviorPatternDTO behaviorPatternDTO3 = new BehaviorPatternDTO();
+	    behaviorPatternDTO3.setBehaviorPatternId(290); 
+	    behaviorPatternDTO3.setType("D");
+	    behaviorPatternDTO3.setOperator("+");
+	    denBehaviorPatterns.add(behaviorPatternDTO3);
+	    reportItemDTO.setDenominatorBehaviorPatterns(denBehaviorPatterns);			
+	    	String updateReportItemMessage = reportItemDataService.updateReportItem(reportItemId, reportItemDTO);
+			assertEquals(ReportSectionConstants.UPDATE_REPORT_ITEM_SUCCESS, updateReportItemMessage);
+			ReportItemDTO reportItemDTOU = reportItemDataService.getReportItemById(reportItemId);
+	    	assertEquals(reportItemDTOU.getReportItemName(), reportItemDTO.getReportItemName());
+//	    	assertEquals(2, reportItemDTOU.getNumeratorBehaviorPatterns().size());
+//	    	assertEquals(1, reportItemDTOU.getDenominatorBehaviorPatterns().size());
+	    } 
+*/
+	 @Test
+	    public void testDeleteReportItem() {
+	    	Integer reportItemId = 2014; // 2092, 2093
+	    	List<String> deleteReportItemMessages = reportItemDataService.deleteReportItem(reportItemId); 
+	    	assertEquals(ReportSectionConstants.DELETE_REPORT_ITEM_SUCCESS, deleteReportItemMessages.get(0));   
+	    }
+	 
+	
+	 @Test
+	   public void testGetBehaviorPatterns() {
+		 Integer reportItemId = 2092;
+		 PrmRiRptItemT reportItemInd = reportItemsRepository.getReportItemById(reportItemId);
+		 List<BehaviorPatternDTO> behaviorPatternList = reportItemDataService.getBehaviorPatterns(reportItemInd);
+		 assertEquals(2, behaviorPatternList.size());
+	     for (BehaviorPatternDTO behaviorPatternDTO : behaviorPatternList) {
+			if (behaviorPatternDTO.getType().equals(ReportSectionConstants.NUM_STR)) {
+				assertEquals("Dental, Rend, SSCrowns Age 0-6, #clms", behaviorPatternDTO.getBehaviorPatternName());
+			} else {
+				assertEquals("Dental, Rend, SSCrowns, Ages 0-6, d#recips", behaviorPatternDTO.getBehaviorPatternName());
+			}
+		}
+			
+	}
+	 
+	 @Test
+	   public void  testGetSelectedDataRules() {
+			 Integer erId = 551;
+			 List<DataRuleDTO> selectedDataRulesList =  reportItemDataService.getSelectedDataRules(erId);
+			 assertEquals(3, selectedDataRulesList.size());
+			 int dataRuleId1 =  selectedDataRulesList.get(0).getDataRuleId();
+			 int dataRuleId2 =  selectedDataRulesList.get(1).getDataRuleId();
+			 int dataRuleId3 =  selectedDataRulesList.get(2).getDataRuleId();
+			 assertEquals(503, dataRuleId1);
+			 assertEquals(504, dataRuleId2);
+			 assertEquals(506, dataRuleId3);
+				
+		}
+	 
+	 
+	 @Test
+	 void getReportItems_NoSelectedItems_NoEscapeChar_AllItems() {
+	     ListTableParams params = new ListTableParams();
+	     params.setSearchBy(List.of("createdBy"));
+	     params.setSelectedItemIds(Collections.emptyList());
+
+	     Pageable pageable = PageRequest.of(0, 10);
+	     List<ReportItemDTO> dummyDtos = List.of(new ReportItemDTO());
+
+	     // Simulate no escape char
+	     String[] criteria = new String[]{"name", "createdBy", "updatedBy", "NORMAL", "userId"};
+
+	     // Stub the helper methods
+	     ReportItemDataService spyService = Mockito.spy(reportItemService);
+
+
+	     PaginationResultRI result = spyService.getReportItemsOnSearchCriteria(params);
+
+	     assertEquals(1, result.getTotalRecordsCount());
+	     assertEquals(1, result.getReportItemsData().size());
+	 }
+
+
+	 @Test
+	 void getReportItems_SelectedItems_EscapeChar_MyItemsOnly() {
+	     ListTableParams params = new ListTableParams();
+	     params.setSearchBy(List.of(ReportSectionConstants.USER_SYSTEM_ID));
+	     params.setSelectedItemIds(List.of(1, 2, 3));
+
+	     Pageable pageable = PageRequest.of(0, 10);
+	     
+
+	     String[] criteria = new String[]{"name", "createdBy", "updatedBy", ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR, "user123"};
+
+	     ReportItemDataService spyService = Mockito.spy(reportItemService);
+
+	     
+
+	     PaginationResultRI result = spyService.getReportItemsOnSearchCriteria(params);
+
+	     assertEquals(1, result.getTotalRecordsCount());
+	     assertEquals(1, result.getReportItemsData().size());
+	 }
+
+
+	 @Test
+	 void getReportItems_NoResults_ReturnsEmptyPagination() {
+	     ListTableParams params = new ListTableParams();
+	     params.setSearchBy(List.of("dummy"));
+	     params.setSelectedItemIds(Collections.emptyList());
+
+	     Pageable pageable = PageRequest.of(0, 10);
+	     String[] criteria = new String[]{"name", "createdBy", "updatedBy", "NORMAL", "userId"};
+
+	     ReportItemDataService spyService = Mockito.spy(reportItemService);
+	     
+
+	     when(reportItemsRepository.getReportItemsBySearchCrit("name", "createdBy", "updatedBy", pageable))
+	         .thenReturn(Collections.emptyList());
+	     when(reportItemsRepository.getReportItemsBySearchCrit("name", "createdBy", "updatedBy", null))
+	         .thenReturn(Collections.emptyList());
+
+	     PaginationResultRI result = spyService.getReportItemsOnSearchCriteria(params);
+
+	     assertEquals(0, result.getTotalRecordsCount());
+	     assertTrue(result.getReportItemsData().isEmpty());
+	 }
+
 	
 }
