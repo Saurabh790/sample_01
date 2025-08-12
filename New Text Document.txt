@@ -1,19 +1,98 @@
-<serviceOutput id="serviceOutput-1">
-    <serviceOutputField id="serviceOutputField-1" name="MatchKey" type="STRING"/>
-    <serviceOutputField id="serviceOutputField-2" name="MatchRuleId" type="STRING"/>
-    <serviceOutputField id="serviceOutputField-3" name="MatchScore" type="INTEGER"/>
+/**
+ * 
+ */
+package com.optum.fads.pgp.study.dto;
 
-    <serviceOutputField id="serviceOutputField-4" name="FirstNameScore" type="INTEGER"/>
-    <serviceOutputField id="serviceOutputField-5" name="LastNameScore" type="INTEGER"/>
-    <serviceOutputField id="serviceOutputField-6" name="NameScore" type="INTEGER"/>
-</serviceOutput>
+import java.time.LocalDateTime;
 
-<outputFieldmap id="outputFieldmap-1" outputRef="serviceOutput-1">
-    <outputFieldmapItem id="outputFieldmapItem-1" outputFieldRef="serviceOutputField-1" internalFieldName="match.Key"/>
-    <outputFieldmapItem id="outputFieldmapItem-2" outputFieldRef="serviceOutputField-2" internalFieldName="match.RuleId"/>
-    <outputFieldmapItem id="outputFieldmapItem-3" outputFieldRef="serviceOutputField-3" internalFieldName="match.Score"/>
-    
-    <outputFieldmapItem id="outputFieldmapItem-4" outputFieldRef="serviceOutputField-4" internalFieldName="match.score.matchField-6"/> 
-	<outputFieldmapItem id="outputFieldmapItem-5" outputFieldRef="serviceOutputField-5" internalFieldName="match.score.matchField-7"/> 
-	<outputFieldmapItem id="outputFieldmapItem-6" outputFieldRef="serviceOutputField-6" internalFieldName="match.score.matchField-4"/> 
-</outputFieldmap>
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * @author sbiry
+ *
+ */
+@Getter
+@Setter
+@Data
+@Builder
+public class Study {
+
+	private Integer studyId;
+	private String studyName;
+	private String user;
+	private String createdUser;
+	private String createdBySystemId;
+	private String updatedUser;
+	private String updatedBySystemId;
+
+	@JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
+	@JsonSerialize(using = LocalDateTimeSerializer.class)
+	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
+	private LocalDateTime createDate;
+
+	@JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
+	@JsonSerialize(using = LocalDateTimeSerializer.class)
+	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
+	private LocalDateTime updateDate;
+
+	@JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
+	@JsonSerialize(using = LocalDateTimeSerializer.class)
+	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
+	private LocalDateTime lastRunDate;
+
+/*	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a")
+	@JsonSerialize(using = LocalDateTimeSerializer.class)
+	@JsonDeserialize(using = LocalDateTimeDeserializer.class)*/
+	private LocalDateTime scheduleRunDateTime;
+	
+	private long submitFlag;
+
+}
+
+
+
+
+@Override
+	@Transactional
+	public void scheduleStudyJob(Study study) {
+		//startPGPEngine();
+		LocalDateTime today = LocalDateTime.now();
+		LocalDateTime purgeDate = null;
+		Integer jobId = jobsRepository.getNextJobId();
+		Optional<FadsConfigT> optional = fadsConfigRepository.findById(StudyConstants.PURGE_OPTION_CODE);
+		if (optional.isPresent()) {
+			FadsConfigT fadsConfig = optional.get();
+			purgeDate = today.plusDays(Long.parseLong(fadsConfig.getOptionValue()));
+
+		}
+		logit.info("Schedule Study ID {} - Job at {}", study.getStudyId(), study.getScheduleRunDateTime());
+		JobMasterT jobMaster = JobMasterT.builder().jobId(jobId).datePurge(purgeDate).createDte(today)
+				.createUiUserBase(UiUserBase.builder().uiSystemId(study.getCreatedBySystemId()).build())
+				.updateUiUserBase(UiUserBase.builder().uiSystemId(study.getUpdatedBySystemId()).build())
+				.prmStudyMasterT(PrmStudyMasterT.builder().pbId(study.getStudyId()).build())				
+				.dateSched(study.getScheduleRunDateTime()).arcFlag(BigDecimal.valueOf(0))
+				.holdFlag(BigDecimal.valueOf(0))
+				.purgeFlag(BigDecimal.valueOf(0))
+				.jobLuStatusT(JobLuStatusT.builder().statusCd(Long.valueOf(1)).build()).build();
+		jobMaster = jobsRepository.save(jobMaster);
+
+	}
+	
+	
+	
+	logit.info("Schedule Study ID {} - Job at {}", study.getStudyId(), study.getScheduleRunDateTime());
+	
+	
+	
+[ERROR] /C:/Users/sgupt664/Project_workspace/FADS05/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/service/impl/StudyService.java:[320,89] cannot find symbol
+[ERROR]   symbol:   method getScheduleRunDateTime()
+[ERROR]   location: variable study of type com.optum.fads.pgp.study.dto.Study
