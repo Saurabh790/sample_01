@@ -1,98 +1,454 @@
+package com.optum.fads.pgp.datarules.domain;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+
+import org.hibernate.annotations.Formula;
+
+import jakarta.persistence.*;
+import com.optum.fads.authorization.api.domain.UiUserBase;
+
 /**
+ * The persistent class for the PRM_STUDY_MASTER_T database table.
  * 
  */
-package com.optum.fads.pgp.study.dto;
 
-import java.time.LocalDateTime;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-
-import lombok.Builder;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-
-/**
- * @author sbiry
- *
- */
-@Getter
-@Setter
-@Data
+@Entity
 @Builder
-public class Study {
+@Table(name = "PRM_STUDY_MASTER_T")
+@AllArgsConstructor
+@NoArgsConstructor
+public class PrmStudyMasterT implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-	private Integer studyId;
-	private String studyName;
-	private String user;
-	private String createdUser;
-	private String createdBySystemId;
-	private String updatedUser;
-	private String updatedBySystemId;
+	@Id
+	@Column(name = "PB_ID", unique = true, nullable = false, precision = 7)
+	private Integer pbId;
 
-	@JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
-	@JsonSerialize(using = LocalDateTimeSerializer.class)
-	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
-	private LocalDateTime createDate;
+	@Temporal(TemporalType.DATE)
+	@Column(name = "CREATE_DTE")
+	private Date createDte;
 
-	@JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
-	@JsonSerialize(using = LocalDateTimeSerializer.class)
-	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
-	private LocalDateTime updateDate;
+	@Column(name = "ENC_FFS", nullable = false, precision = 1)
+	private Integer encFfs;
 
-	@JsonFormat(pattern = "MM/dd/yyyy hh:mm a")
-	@JsonSerialize(using = LocalDateTimeSerializer.class)
-	@JsonDeserialize(using = LocalDateTimeDeserializer.class)
+	@Column(name = "PB_DESC", length = 255)
+	private String pbDesc;
+
+	@Column(name = "PB_EXCP_ONLY_FLAG", nullable = false, precision = 1)
+	private Integer pbExcpOnlyFlag;
+
+	@Column(name = "PB_FP_FLAG", precision = 1)
+	private Integer pbFpFlag;
+
+	@Column(name = "PB_NAME", nullable = false, length = 50)
+	private String pbName;
+
+	@Column(name = "PB_USE_DW_FLAG", nullable = false, precision = 1)
+	private Integer pbUseDwFlag;
+
+	@Column(name = "PB_USE_VW_FLAG", nullable = false, precision = 1)
+	private Integer pbUseVwFlag;
+
+	@Column(name = "SUBMIT_FLAG", precision = 1)
+	private Integer submitFlag;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "UPDATE_DTE")
+	private Date updateDte;
+
+	@Column(nullable = false, precision = 1)
+	private Integer xovers;
+
+	// bi-directional many-to-one association to PrmPgPeerGroupT
+	@ManyToOne
+	@JoinColumn(name = "CG_ID", nullable = false)
+	private PrmPgPeerGroupT prmPgPeerGroupT;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "UI_USER_ID")
+	private UiUserBase uiUserBase;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "CREATE_USR", nullable = false)
+	private UiUserBase createdByUiUserBase;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "UPDATE_USR", nullable = false)
+	private UiUserBase updatedByUiUserBase;
+
+	public List<PrmStudyBpActLimitsT> getPrmStudyBpActLimitsTs() {
+		return prmStudyBpActLimitsTs;
+	}
+
+	public void setPrmStudyBpActLimitsTs(List<PrmStudyBpActLimitsT> prmStudyBpActLimitsTs) {
+		this.prmStudyBpActLimitsTs = prmStudyBpActLimitsTs;
+	}
+
+	public List<PrmStudyRsRiExceptT> getPrmStudyRsRiExceptTs() {
+		return prmStudyRsRiExceptTs;
+	}
+
+	public void setPrmStudyRsRiExceptTs(List<PrmStudyRsRiExceptT> prmStudyRsRiExceptTs) {
+		this.prmStudyRsRiExceptTs = prmStudyRsRiExceptTs;
+	}
+
+	public List<PrmStudyRsRiT> getPrmStudyRsRiTs() {
+		return prmStudyRsRiTs;
+	}
+
+	public void setPrmStudyRsRiTs(List<PrmStudyRsRiT> prmStudyRsRiTs) {
+		this.prmStudyRsRiTs = prmStudyRsRiTs;
+	}
+
+	public List<PrmStudyTimePeriodsT> getPrmStudyTimePeriodsTs() {
+		return prmStudyTimePeriodsTs;
+	}
+
+	public void setPrmStudyTimePeriodsTs(List<PrmStudyTimePeriodsT> prmStudyTimePeriodsTs) {
+		this.prmStudyTimePeriodsTs = prmStudyTimePeriodsTs;
+	}
+
+	public LocalDateTime getLastRunDate() {
+		return lastRunDate;
+	}
+
+	public void setLastRunDate(LocalDateTime lastRunDate) {
+		this.lastRunDate = lastRunDate;
+	}
+
+	public LocalDateTime getScheduleRunDateTime() {
+		return scheduleRunDateTime;
+	}
+
+	public void setScheduleRunDateTime(LocalDateTime scheduleRunDateTime) {
+		this.scheduleRunDateTime = scheduleRunDateTime;
+	}
+
+	@OneToMany(mappedBy = "prmStudyMasterT",  cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<PrmStudyBpActLimitsT> prmStudyBpActLimitsTs;
+
+	@OneToMany(mappedBy = "prmStudyMasterT", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<PrmStudyRsRiExceptT> prmStudyRsRiExceptTs = new ArrayList<PrmStudyRsRiExceptT>();
+
+	@OneToMany(mappedBy = "prmStudyMasterT", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<PrmStudyRsRiT> prmStudyRsRiTs = new ArrayList<PrmStudyRsRiT>();;
+
+	@OneToMany(mappedBy = "prmStudyMasterT", cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<PrmStudyTimePeriodsT> prmStudyTimePeriodsTs = new ArrayList<PrmStudyTimePeriodsT>();
+
+
+	@Formula("(select max(j.date_End) from job_Master_T j where j.pb_Id = pb_Id)")
 	private LocalDateTime lastRunDate;
 
-/*	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss a")
-	@JsonSerialize(using = LocalDateTimeSerializer.class)
-	@JsonDeserialize(using = LocalDateTimeDeserializer.class)*/
+	@Formula("(select max(j.date_sched) from job_Master_T j where j.pb_Id = pb_Id)")
 	private LocalDateTime scheduleRunDateTime;
-	
-	private long submitFlag;
+
+	public Integer getPbId() {
+		return pbId;
+	}
+
+	public void setPbId(Integer pbId) {
+		this.pbId = pbId;
+	}
+
+	public Date getCreateDte() {
+		return createDte;
+	}
+
+	public void setCreateDte(Date createDte) {
+		this.createDte = createDte;
+	}
+
+	public Integer getEncFfs() {
+		return encFfs;
+	}
+
+	public void setEncFfs(Integer encFfs) {
+		this.encFfs = encFfs;
+	}
+
+	public String getPbDesc() {
+		return pbDesc;
+	}
+
+	public void setPbDesc(String pbDesc) {
+		this.pbDesc = pbDesc;
+	}
+
+	public Integer getPbExcpOnlyFlag() {
+		return pbExcpOnlyFlag;
+	}
+
+	public void setPbExcpOnlyFlag(Integer pbExcpOnlyFlag) {
+		this.pbExcpOnlyFlag = pbExcpOnlyFlag;
+	}
+
+	public Integer getPbFpFlag() {
+		return pbFpFlag;
+	}
+
+	public void setPbFpFlag(Integer pbFpFlag) {
+		this.pbFpFlag = pbFpFlag;
+	}
+
+	public String getPbName() {
+		return pbName;
+	}
+
+	public void setPbName(String pbName) {
+		this.pbName = pbName;
+	}
+
+	public Integer getPbUseDwFlag() {
+		return pbUseDwFlag;
+	}
+
+	public void setPbUseDwFlag(Integer pbUseDwFlag) {
+		this.pbUseDwFlag = pbUseDwFlag;
+	}
+
+	public Integer getPbUseVwFlag() {
+		return pbUseVwFlag;
+	}
+
+	public void setPbUseVwFlag(Integer pbUseVwFlag) {
+		this.pbUseVwFlag = pbUseVwFlag;
+	}
+
+	public Integer getSubmitFlag() {
+		return submitFlag;
+	}
+
+	public void setSubmitFlag(Integer submitFlag) {
+		this.submitFlag = submitFlag;
+	}
+
+	public Date getUpdateDte() {
+		return updateDte;
+	}
+
+	public void setUpdateDte(Date updateDte) {
+		this.updateDte = updateDte;
+	}
+
+	public Integer getXovers() {
+		return xovers;
+	}
+
+	public void setXovers(Integer xovers) {
+		this.xovers = xovers;
+	}
+
+	public PrmPgPeerGroupT getPrmPgPeerGroupT() {
+		return prmPgPeerGroupT;
+	}
+
+	public void setPrmPgPeerGroupT(PrmPgPeerGroupT prmPgPeerGroupT) {
+		this.prmPgPeerGroupT = prmPgPeerGroupT;
+	}
+
+	public UiUserBase getUiUserBase() {
+		return uiUserBase;
+	}
+
+	public void setUiUserBase(UiUserBase uiUserBase) {
+		this.uiUserBase = uiUserBase;
+	}
+
+	public UiUserBase getCreatedByUiUserBase() {
+		return createdByUiUserBase;
+	}
+
+	public void setCreatedByUiUserBase(UiUserBase createdByUiUserBase) {
+		this.createdByUiUserBase = createdByUiUserBase;
+	}
+
+	public UiUserBase getUpdatedByUiUserBase() {
+		return updatedByUiUserBase;
+	}
+
+	public void setUpdatedByUiUserBase(UiUserBase updatedByUiUserBase) {
+		this.updatedByUiUserBase = updatedByUiUserBase;
+	}
 
 }
 
 
 
+package com.optum.fads.pgp.study.mapper;
 
-@Override
-	@Transactional
-	public void scheduleStudyJob(Study study) {
-		//startPGPEngine();
-		LocalDateTime today = LocalDateTime.now();
-		LocalDateTime purgeDate = null;
-		Integer jobId = jobsRepository.getNextJobId();
-		Optional<FadsConfigT> optional = fadsConfigRepository.findById(StudyConstants.PURGE_OPTION_CODE);
-		if (optional.isPresent()) {
-			FadsConfigT fadsConfig = optional.get();
-			purgeDate = today.plusDays(Long.parseLong(fadsConfig.getOptionValue()));
+import com.optum.fads.authorization.api.domain.UiUserBase;
+import com.optum.fads.pgp.datarules.domain.PrmStudyMasterT;
+import com.optum.fads.pgp.study.dto.Study;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
 
-		}
-		logit.info("Schedule Study ID {} - Job at {}", study.getStudyId(), study.getScheduleRunDateTime());
-		JobMasterT jobMaster = JobMasterT.builder().jobId(jobId).datePurge(purgeDate).createDte(today)
-				.createUiUserBase(UiUserBase.builder().uiSystemId(study.getCreatedBySystemId()).build())
-				.updateUiUserBase(UiUserBase.builder().uiSystemId(study.getUpdatedBySystemId()).build())
-				.prmStudyMasterT(PrmStudyMasterT.builder().pbId(study.getStudyId()).build())				
-				.dateSched(study.getScheduleRunDateTime()).arcFlag(BigDecimal.valueOf(0))
-				.holdFlag(BigDecimal.valueOf(0))
-				.purgeFlag(BigDecimal.valueOf(0))
-				.jobLuStatusT(JobLuStatusT.builder().statusCd(Long.valueOf(1)).build()).build();
-		jobMaster = jobsRepository.save(jobMaster);
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-08-13T14:05:20+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 17.0.10 (Eclipse Adoptium)"
+)
+@Component
+public class StudyMiniMapperImpl implements StudyMiniMapper {
 
-	}
-	
-	
-	
-	logit.info("Schedule Study ID {} - Job at {}", study.getStudyId(), study.getScheduleRunDateTime());
-	
-	
-	
-[ERROR] /C:/Users/sgupt664/Project_workspace/FADS05/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/service/impl/StudyService.java:[320,89] cannot find symbol
-[ERROR]   symbol:   method getScheduleRunDateTime()
-[ERROR]   location: variable study of type com.optum.fads.pgp.study.dto.Study
+    @Override
+    public Study convertToStudy(PrmStudyMasterT prmStudyMasterT) {
+        if ( prmStudyMasterT == null ) {
+            return null;
+        }
+
+        Study.StudyBuilder study = Study.builder();
+
+        study.studyId( prmStudyMasterT.getPbId() );
+        study.studyName( prmStudyMasterT.getPbName() );
+        if ( prmStudyMasterT.getCreateDte() != null ) {
+            study.createDate( LocalDateTime.ofInstant( prmStudyMasterT.getCreateDte().toInstant(), ZoneId.of( "UTC" ) ) );
+        }
+        if ( prmStudyMasterT.getUpdateDte() != null ) {
+            study.updateDate( LocalDateTime.ofInstant( prmStudyMasterT.getUpdateDte().toInstant(), ZoneId.of( "UTC" ) ) );
+        }
+        study.createdBySystemId( prmStudyMasterTCreatedByUiUserBaseUiSystemId( prmStudyMasterT ) );
+        study.createdUser( prmStudyMasterTCreatedByUiUserBaseUserFullName( prmStudyMasterT ) );
+        study.updatedBySystemId( prmStudyMasterTUpdatedByUiUserBaseUiSystemId( prmStudyMasterT ) );
+        study.updatedUser( prmStudyMasterTUpdatedByUiUserBaseUserFullName( prmStudyMasterT ) );
+        study.lastRunDate( prmStudyMasterT.getLastRunDate() );
+        study.scheduleRunDateTime( prmStudyMasterT.getScheduleRunDateTime() );
+        if ( prmStudyMasterT.getSubmitFlag() != null ) {
+            study.submitFlag( prmStudyMasterT.getSubmitFlag() );
+        }
+
+        return study.build();
+    }
+
+    @Override
+    public List<Study> converToStudyDTOs(List<PrmStudyMasterT> prmStudyMiniTs) {
+        if ( prmStudyMiniTs == null ) {
+            return null;
+        }
+
+        List<Study> list = new ArrayList<Study>( prmStudyMiniTs.size() );
+        for ( PrmStudyMasterT prmStudyMasterT : prmStudyMiniTs ) {
+            list.add( convertToStudy( prmStudyMasterT ) );
+        }
+
+        return list;
+    }
+
+    private String prmStudyMasterTCreatedByUiUserBaseUiSystemId(PrmStudyMasterT prmStudyMasterT) {
+        if ( prmStudyMasterT == null ) {
+            return null;
+        }
+        UiUserBase createdByUiUserBase = prmStudyMasterT.getCreatedByUiUserBase();
+        if ( createdByUiUserBase == null ) {
+            return null;
+        }
+        String uiSystemId = createdByUiUserBase.getUiSystemId();
+        if ( uiSystemId == null ) {
+            return null;
+        }
+        return uiSystemId;
+    }
+
+    private String prmStudyMasterTCreatedByUiUserBaseUserFullName(PrmStudyMasterT prmStudyMasterT) {
+        if ( prmStudyMasterT == null ) {
+            return null;
+        }
+        UiUserBase createdByUiUserBase = prmStudyMasterT.getCreatedByUiUserBase();
+        if ( createdByUiUserBase == null ) {
+            return null;
+        }
+        String userFullName = createdByUiUserBase.getUserFullName();
+        if ( userFullName == null ) {
+            return null;
+        }
+        return userFullName;
+    }
+
+    private String prmStudyMasterTUpdatedByUiUserBaseUiSystemId(PrmStudyMasterT prmStudyMasterT) {
+        if ( prmStudyMasterT == null ) {
+            return null;
+        }
+        UiUserBase updatedByUiUserBase = prmStudyMasterT.getUpdatedByUiUserBase();
+        if ( updatedByUiUserBase == null ) {
+            return null;
+        }
+        String uiSystemId = updatedByUiUserBase.getUiSystemId();
+        if ( uiSystemId == null ) {
+            return null;
+        }
+        return uiSystemId;
+    }
+
+    private String prmStudyMasterTUpdatedByUiUserBaseUserFullName(PrmStudyMasterT prmStudyMasterT) {
+        if ( prmStudyMasterT == null ) {
+            return null;
+        }
+        UiUserBase updatedByUiUserBase = prmStudyMasterT.getUpdatedByUiUserBase();
+        if ( updatedByUiUserBase == null ) {
+            return null;
+        }
+        String userFullName = updatedByUiUserBase.getUserFullName();
+        if ( userFullName == null ) {
+            return null;
+        }
+        return userFullName;
+    }
+}
+
+
+
+
+package com.optum.fads.pgp.study.mapper;
+
+import java.util.List;
+
+import com.optum.fads.pgp.datarules.domain.PrmStudyMasterT;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Mappings;
+import org.mapstruct.ReportingPolicy;
+import org.mapstruct.factory.Mappers;
+
+import com.optum.fads.pgp.study.dto.Study;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface StudyMiniMapper {
+	StudyMiniMapper INSTANCE = Mappers.getMapper(StudyMiniMapper.class);
+
+	@Mappings({ @Mapping(target = "studyId", source = "pbId"), @Mapping(target = "studyName", source = "pbName"),
+			@Mapping(target = "createDate", source = "createDte"),
+			@Mapping(target = "updateDate", source = "updateDte"),
+	//		@Mapping(target = "user", source = "uiUserBase.uiSystemId"),
+			@Mapping(target = "createdBySystemId", source = "createdByUiUserBase.uiSystemId"),
+			// @Mapping(target = "createdUser", expression =
+			// "java(prmStudyMasterT.getCreatedByUiUserBase().getUiFirstName() + \" \" +
+			// prmStudyMasterT.getCreatedByUiUserBase().getUiLastName())"),
+			@Mapping(target = "createdUser", source = "createdByUiUserBase.userFullName"),
+			@Mapping(target = "updatedBySystemId", source = "updatedByUiUserBase.uiSystemId"),
+			// @Mapping(target = "updatedUser", expression =
+			// "java(prmStudyMasterT.getUpdatedByUiUserBase().getUiFirstName() + \" \" +
+			// prmStudyMasterT.getUpdatedByUiUserBase().getUiLastName())"),
+			@Mapping(target = "updatedUser", source = "updatedByUiUserBase.userFullName"),
+			@Mapping(target = "lastRunDate", source = "lastRunDate"),
+            @Mapping(target = "scheduleRunDateTime", source = "scheduleRunDateTime"),
+			@Mapping(target = "submitFlag", source = "submitFlag"), })
+	Study convertToStudy(PrmStudyMasterT prmStudyMasterT);
+
+	List<Study> converToStudyDTOs(List<PrmStudyMasterT> prmStudyMiniTs);
+
+}
