@@ -1,163 +1,32 @@
-{
-    "timestamp": 1755107045458,
-    "status": 500,
-    "error": "Internal Server Error",
-    "trace": "java.lang.ClassCastException: class java.lang.String cannot be cast to class com.optum.fads.pgp.study.dto.AppUser (java.lang.String is in module java.base of loader 'bootstrap'; com.optum.fads.pgp.study.dto.AppUser is in unnamed module of loader 'app')\r\n\tat com.optum.fads.pgp.study.controller.StudyController.findMyStudiesByPageable(StudyController.java:304)\r\n\tat java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\r\n\tat java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)\r\n\tat java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\r\n\tat java.base/java.lang.reflect.Method.invoke(Method.java:568)\r\n\tat 
-	
-	
-	/**
- * 
- */
-package com.optum.fads.pgp.study.dto;
+JobMasterT jobMaster = new JobMasterT();
+jobMaster.setJobId(jobId);
+jobMaster.setDatePurge(purgeDate);
+jobMaster.setCreateDte(Date.from(today.atZone(ZoneId.systemDefault()).toInstant()));
 
-import java.util.Collection;
-import java.util.Collections;
+// Create UiUserBase for createUiUserBase
+UiUserBase createUiUserBase = new UiUserBase();
+createUiUserBase.setUiSystemId(study.getCreatedBySystemId());
+jobMaster.setCreateUiUserBase(createUiUserBase);
 
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
+// Create UiUserBase for updateUiUserBase
+UiUserBase updateUiUserBase = new UiUserBase();
+updateUiUserBase.setUiSystemId(study.getUpdatedBySystemId());
+jobMaster.setUpdateUiUserBase(updateUiUserBase);
 
-import lombok.Data;
+// Create PrmStudyMasterT
+PrmStudyMasterT prmStudyMasterT = new PrmStudyMasterT();
+prmStudyMasterT.setPbId(study.getStudyId());
+jobMaster.setPrmStudyMasterT(prmStudyMasterT);
 
-/**
- * @author sbiry
- *
- */
-@Data
-public class AppUser implements UserDetails {
-	private static final long serialVersionUID = 1L;
+jobMaster.setDateSched(Date.from(study.getScheduleRunDateTime()
+    .atZone(ZoneId.systemDefault()).toInstant()));
+jobMaster.setArcFlag(BigDecimal.valueOf(0).intValue());
+jobMaster.setHoldFlag(BigDecimal.valueOf(0).intValue());
+jobMaster.setPurgeFlag(BigDecimal.valueOf(0).intValue());
 
-	private String userId;
-	private String userSystemId;
-	private String userEmail;
-	private Role role = new Role();
+// Create JobLuStatusT
+JobLuStatusT jobLuStatusT = new JobLuStatusT();
+jobLuStatusT.setStatusCd(Long.valueOf(1));
+jobMaster.setJobLuStatusT(jobLuStatusT);
 
-   
-	@Override
-	public Collection<? extends GrantedAuthority> getAuthorities() {	
-		return Collections.EMPTY_LIST;
-	}
-	@Override
-	public String getPassword() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	@Override
-	public String getUsername() {
-		// TODO Auto-generated method stub
-		return userSystemId;
-	}
-	@Override
-	public boolean isAccountNonExpired() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-	@Override
-	public boolean isAccountNonLocked() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-	@Override
-	public boolean isCredentialsNonExpired() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-	@Override
-	public boolean isEnabled() {
-		// TODO Auto-generated method stub
-		return false;
-	}
-	
-	
-}
-
-
-@GetMapping(value = { "/findMyStudiesByPageable/" }, headers = "Accept=application/json")
-//	@ApiOperation(value = "findMyStudiesByPageable", notes = "This will provide study items based on paging, filtering and sorting .")
-	public Page<Study> findMyStudiesByPageable(
-			@RequestParam(name = "pageNumber", required = true, defaultValue = "1") @Min(1) Integer pageNumber,
-			@RequestParam(name = "recordsPerPage", required = true, defaultValue = "10") @Min(10) Integer recordsPerPage,
-			@RequestParam(name = "sortBy", required = false, defaultValue = "studyName") StudyEnum sortBy,
-			@RequestParam(name = "sortOrder", required = false, defaultValue = "desc") Integer sortOrder,
-			@RequestParam(value = "searchBy", required = false) List<String> searchKeys,
-			@RequestParam(value = "searchInput", required = false) List<String> searchvalues) {
-		Map<String, String> map = null;
-
-		String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
-		if (pageNumber > 0) {
-			--pageNumber;
-		} else {
-			pageNumber = 0;
-		}
-
-		Authentication auth =  SecurityContextHolder.getContext().getAuthentication();
-		if (auth != null) {
-			AppUser user = (AppUser) auth.getPrincipal(); // getting issue at this line 
-			int myItemsIndex = searchvalues.indexOf(StudyConstants.USER_SYSTEM_ID);
-			searchvalues.set(myItemsIndex, user.getUserSystemId());
-		}
-		
-		Pageable pageable = PageRequest.of(pageNumber, recordsPerPage,
-				Sort.by(Sort.Order.desc(sortValue).ignoreCase()));
-		if (SortOrder.valueOf(sortOrder).toString().equalsIgnoreCase("asc")) {
-			pageable = PageRequest.of(pageNumber, recordsPerPage, Sort.by(Sort.Order.asc(sortValue).ignoreCase()));
-		}
-
-		if ((searchKeys != null) && (!searchKeys.isEmpty())) {
-			map = IntStream.range(0, searchKeys.size()).boxed()
-					.collect(Collectors.toMap(i -> searchKeys.get(i), i -> searchvalues.get(i)));
-		}
-
-		return studyService.findAllStudies(map, pageable);
-	}
-	
-	
-	AppUser user = (AppUser) auth.getPrincipal(); // getting issue at this line 
-	
-	
-	so study api is one module in this multi module project and AppUser is also avbl in other modules as well not sure whats the conflict 
-	
-	
-package com.optum.fads.pgp.study.controller;
-
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import jakarta.validation.*;
-import jakarta.validation.constraints.Min;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-import com.optum.fads.pgp.study.common.rest.ResponseBuilder;
-import com.optum.fads.pgp.study.common.util.SortOrder;
-import com.optum.fads.pgp.study.common.util.StudyConstants;
-//import com.optum.fads.pgp.study.common.util.StudyDTOValidator;
-import com.optum.fads.pgp.study.common.util.StudyEnum;
-import com.optum.fads.pgp.study.common.util.StudySortEnum;
-import com.optum.fads.pgp.study.dto.AccessLevel;
-import com.optum.fads.pgp.study.dto.AppUser;
-import com.optum.fads.pgp.study.dto.Study;
-import com.optum.fads.pgp.study.dto.StudyDTO;
-import com.optum.fads.pgp.study.exception.StudyNotFoundException;
-import com.optum.fads.pgp.study.service.ICommonService;
-import com.optum.fads.pgp.study.service.IStudyService;
-
-//import io.swagger.annotations.ApiOperation;
-//import io.swagger.annotations.ApiParam;
-import lombok.extern.slf4j.Slf4j;
-
-
-
-
-above are the imports in study module 
+jobMaster = jobsRepository.save(jobMaster);
