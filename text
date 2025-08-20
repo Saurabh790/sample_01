@@ -1,5 +1,89 @@
-prmStudyMasterT.getPrmStudyTimePeriodsTs().stream().forEach(p -> {
-			p.getId().setPbId(studyId);
-			p.setCreateDte(Date.from(studyDTO.getCreateDate().atZone(ZoneId.systemDefault()).toInstant()));
-			p.setUpdateDte(Date.from(studyDTO.getCreateDate().atZone(ZoneId.systemDefault()).toInstant()));
-		});
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name="FADS_LU_VALUES_T")
+@Where(clause = "FIELD_ID= 'CG_TYPE' AND  LU_VIEW='1'") // <-- REMOVE THIS LINE
+public class CgLuValuesT implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @Column(name="FIELD_ID")
+    private String fieldId;
+
+    @Id
+    @Column(name="LU_VALUE")
+    private String luValue;
+
+    // ... rest of the code
+}
+
+
+package com.optum.fads.pgp.datarules.domain;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.io.Serializable;
+import java.util.List;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name="FADS_LU_VALUES_T")
+// @Where clause is removed
+public class CgLuValuesT implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @Column(name="FIELD_ID")
+    private String fieldId;
+
+    @Id
+    @Column(name="LU_VALUE")
+    private String luValue;
+
+    @Column(name="LU_CODE")
+    private String luCode;
+
+    @Column(name="LU_LABEL")
+    private String luLabel;
+
+    @Column(name="LU_PARENT")
+    private String luParent;
+
+    @Column(name="LU_SEQ")
+    private Integer luSeq;
+
+    @Column(name="LU_VIEW")
+    private String luView;
+
+    @Column(name="OBJ_ID")
+    private Integer objId;
+
+    @OneToMany(mappedBy="cgType")
+    private List<PrmPgPeerGroupT> prmPrmPgPeerGroupTs;
+}
+
+package com.optum.fads.pgp.studygroup.api.repo;
+
+import com.optum.fads.pgp.datarules.domain.CgLuValuesT;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+
+@Transactional
+@Repository
+public interface CgLuValuesRepo  extends JpaRepository<CgLuValuesT, String> {
+
+    // Add this method to retrieve the filtered list of values
+    List<CgLuValuesT> findByFieldIdAndLuView(String fieldId, String luView);
+}
