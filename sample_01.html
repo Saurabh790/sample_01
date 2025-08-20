@@ -1,31 +1,52 @@
-JobMasterT jobMaster = JobMasterT.builder().jobId(jobId).datePurge(purgeDate).createDte(Date.from(today.atZone(ZoneId.systemDefault()).toInstant()))
-				.createUiUserBase(UiUserBase.builder().uiSystemId(study.getCreatedBySystemId()).build())
-				.updateUiUserBase(UiUserBase.builder().uiSystemId(study.getUpdatedBySystemId()).build())
-				.prmStudyMasterT(PrmStudyMasterT.builder().pbId(study.getStudyId()).build())				
-				.dateSched(Date.from(study.getScheduleRunDateTime().atZone(ZoneId.systemDefault()).toInstant())).arcFlag(BigDecimal.valueOf(0).intValue())
-				.holdFlag(BigDecimal.valueOf(0).intValue())
-				.purgeFlag(BigDecimal.valueOf(0).intValue())
-				.jobLuStatusT(JobLuStatusT.builder().statusCd(Long.valueOf(1)).build()).build();
-		jobMaster = jobsRepository.save(jobMaster);
+package com.optum.fads.pgp.datarules.domain;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.io.Serializable;
+import java.util.List;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
-NFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-pgp-study-api: Compilation failure: Compilation failure:
-[ERROR] /C:/Users/sgupt664/Project_workspace/FADS07/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/service/impl/StudyService.java:[322,50] cannot find symbol
-[ERROR]   symbol:   method builder()
-[ERROR]   location: class com.optum.fads.pgp.datarules.domain.JobMasterT
-[ERROR] /C:/Users/sgupt664/Project_workspace/FADS07/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/service/impl/StudyService.java:[323,61] cannot find symbol
-[ERROR]   symbol:   method builder()
-[ERROR]   location: class com.optum.fads.authorization.api.domain.UiUserBase
-[ERROR] /C:/Users/sgupt664/Project_workspace/FADS07/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/service/impl/StudyService.java:[324,61] cannot find symbol
-[ERROR]   symbol:   method builder()
-[ERROR]   location: class com.optum.fads.authorization.api.domain.UiUserBase
-[ERROR] /C:/Users/sgupt664/Project_workspace/FADS07/fads-monolithic-application/fads-pgp-study-api/src/main/java/com/optum/fads/pgp/study/service/impl/StudyService.java:[329,59] cannot find symbol
-[ERROR]   symbol:   method builder()
-[ERROR]   location: class com.optum.fads.pgp.datarules.domain.JobLuStatusT
-[ERROR] -> [Help 1]
-[ERROR]
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name="FADS_LU_VALUES_T")
+// @Where clause is removed
+public class CgLuValuesT implements Serializable {
+    private static final long serialVersionUID = 1L;
 
+    @Column(name="FIELD_ID")
+    private String fieldId;
 
+    @Id
+    @Column(name="LU_VALUE")
+    private String luValue;
 
-I have removed builder rea;etd support can we re write the cod e 
+    @Column(name="LU_CODE")
+    private String luCode;
+
+    @Column(name="LU_LABEL")
+    private String luLabel;
+
+    @Column(name="LU_PARENT")
+    private String luParent;
+
+    @Column(name="LU_SEQ")
+    private Integer luSeq;
+
+    @Column(name="LU_VIEW")
+    private String luView;
+
+    @Column(name="OBJ_ID")
+    private Integer objId;
+
+    @OneToMany(mappedBy="cgType")
+    private List<PrmPgPeerGroupT> prmPrmPgPeerGroupTs;
+}
