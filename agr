@@ -1,21 +1,159 @@
-http://localhost:8080/fads/study/363
+package com.optum.fads.pgp.datarules.domain;
 
-{
-    "type": "about:blank",
-    "title": "Not Found",
-    "status": 404,
-    "detail": "No endpoint GET /fads/study/363.",
-    "instance": "/fads/study/363"
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import java.io.Serializable;
+import java.util.Objects;
+
+@Embeddable
+public class FadsLuValuesTPK implements Serializable {
+
+    @Column(name = "FIELD_ID")
+    private String fieldId;
+
+    @Column(name = "LU_VALUE")
+    private String luValue;
+
+    public FadsLuValuesTPK() {}
+
+    public FadsLuValuesTPK(String fieldId, String luValue) {
+        this.fieldId = fieldId;
+        this.luValue = luValue;
+    }
+
+    public String getFieldId() {
+        return fieldId;
+    }
+
+    public void setFieldId(String fieldId) {
+        this.fieldId = fieldId;
+    }
+
+    public String getLuValue() {
+        return luValue;
+    }
+
+    public void setLuValue(String luValue) {
+        this.luValue = luValue;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof FadsLuValuesTPK that)) return false;
+        return Objects.equals(fieldId, that.fieldId) &&
+               Objects.equals(luValue, that.luValue);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(fieldId, luValue);
+    }
 }
 
-@GetMapping("study/{id}")
-	public ResponseEntity<?> getStudy(
-	//		@ApiParam(name = "id", value = "study id", required = true) 
-			@PathVariable("id") Long id) {
 
-		StudyDTO studyDTO = studyService.getStudy(id);
-		if (null == studyDTO)
-			throw new StudyNotFoundException(id);
+package com.optum.fads.pgp.datarules.domain;
 
-		return new ResponseEntity<StudyDTO>(studyDTO, HttpStatus.OK);
-	}
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Where;
+
+import java.io.Serializable;
+import java.util.List;
+
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "FADS_LU_VALUES_T")
+@Where(clause = "FIELD_ID= 'CG_TYPE' AND  LU_VIEW='1'")
+public class CgLuValuesT implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @EmbeddedId
+    private FadsLuValuesTPK id;
+
+    @Column(name = "LU_CODE")
+    private String luCode;
+
+    @Column(name = "LU_LABEL")
+    private String luLabel;
+
+    @Column(name = "LU_PARENT")
+    private String luParent;
+
+    @Column(name = "LU_SEQ")
+    private Integer luSeq;
+
+    @Column(name = "LU_VIEW")
+    private String luView;
+
+    @Column(name = "OBJ_ID")
+    private Integer objId;
+
+    @OneToMany(mappedBy = "cgType")
+    private List<PrmPgPeerGroupT> prmPrmPgPeerGroupTs;
+}
+
+
+package com.optum.fads.pgp.datarules.domain;
+
+import com.optum.fads.authorization.api.domain.UiUserBase;
+import jakarta.persistence.*;
+import lombok.Data;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Entity
+@Table(name = "PRM_PG_PEER_GROUP_T")
+@Data
+public class PrmPgPeerGroupT implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column(name = "CG_ID")
+    private Integer cgId;
+
+    @Column(name = "CG_LEVEL")
+    private String cgLevel;
+
+    @Column(name = "CG_NAME")
+    private String studyGroupName;
+
+    /**
+     * Foreign key: (FIELD_ID, LU_VALUE) in FADS_LU_VALUES_T
+     * must match columns in PRM_PG_PEER_GROUP_T
+     */
+    @ManyToOne
+    @JoinColumns({
+        @JoinColumn(name = "CG_TYPE", referencedColumnName = "LU_VALUE"),
+        @JoinColumn(name = "FIELD_ID", referencedColumnName = "FIELD_ID")
+    })
+    private CgLuValuesT cgType;
+
+    @ManyToOne
+    @JoinColumn(name = "CREATE_USR")
+    private UiUserBase uiUserBaseCr;
+
+    @Column(name = "CREATE_DTE")
+    private LocalDateTime createDate;
+
+    @ManyToOne
+    @JoinColumn(name = "UPDATE_USR")
+    private UiUserBase uiUserBaseUpd;
+
+    @Column(name = "UPDATE_DTE")
+    private LocalDateTime updateDate;
+
+    @OneToMany(mappedBy = "prmPgPeerGroupT")
+    private List<PrmPgDrT> prmPgDrTs;
+
+    @OneToMany(mappedBy = "prmPgPeerGroupT")
+    private List<PrmPgForcedPartT> prmPgForcedPartTs;
+}
