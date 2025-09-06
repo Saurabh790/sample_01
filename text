@@ -1,92 +1,22 @@
-@Builder
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Entity
-@Table(name="FADS_LU_VALUES_T")
-@Where(clause = "FIELD_ID= 'CG_TYPE' AND  LU_VIEW='1'") // <-- REMOVE THIS LINE
-public class CgLuValuesT implements Serializable {
-    private static final long serialVersionUID = 1L;
+C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api>mvn clean install
+[INFO] Scanning for projects...
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/io/projectreactor/netty/reactor-netty-bom/1.1.29/reactor-netty-bom-1.1.29.pom
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[ERROR] Non-resolvable import POM: The following artifacts could not be resolved: io.projectreactor.netty:reactor-netty-bom:pom:1.1.29 (absent): Could not find artifact io.projectreactor.netty:reactor-netty-bom:pom:1.1.29 in artifactory (https://repo1.uhc.com/artifactory/repo) @ line 81, column 19
+ @
+[ERROR] The build could not read 1 project -> [Help 1]
+[ERROR]
+[ERROR]   The project com.optum.fads:fads-pgp-datarules-api:1.0.0 (C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\pom.xml) has 1 error
+[ERROR]     Non-resolvable import POM: The following artifacts could not be resolved: io.projectreactor.netty:reactor-netty-bom:pom:1.1.29 (absent): Could not find artifact io.projectreactor.netty:reactor-netty-bom:pom:1.1.29 in artifactory (https://repo1.uhc.com/artifactory/repo) @ line 81, column 19 -> [Help 2]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
+[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
 
-    @Column(name="FIELD_ID")
-    private String fieldId;
-
-    @Id
-    @Column(name="LU_VALUE")
-    private String luValue;
-
-    // ... rest of the code
-}
-
-
-package com.optum.fads.pgp.datarules.domain;
-
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.io.Serializable;
-import java.util.List;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-
-@Builder
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Entity
-@Table(name="FADS_LU_VALUES_T")
-// @Where clause is removed
-public class CgLuValuesT implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    @Column(name="FIELD_ID")
-    private String fieldId;
-
-    @Id
-    @Column(name="LU_VALUE")
-    private String luValue;
-
-    @Column(name="LU_CODE")
-    private String luCode;
-
-    @Column(name="LU_LABEL")
-    private String luLabel;
-
-    @Column(name="LU_PARENT")
-    private String luParent;
-
-    @Column(name="LU_SEQ")
-    private Integer luSeq;
-
-    @Column(name="LU_VIEW")
-    private String luView;
-
-    @Column(name="OBJ_ID")
-    private Integer objId;
-
-    @OneToMany(mappedBy="cgType")
-    private List<PrmPgPeerGroupT> prmPrmPgPeerGroupTs;
-}
-
-package com.optum.fads.pgp.studygroup.api.repo;
-
-import com.optum.fads.pgp.datarules.domain.CgLuValuesT;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-import java.util.List;
-
-@Transactional
-@Repository
-public interface CgLuValuesRepo  extends JpaRepository<CgLuValuesT, String> {
-
-    // Add this method to retrieve the filtered list of values
-    List<CgLuValuesT> findByFieldIdAndLuView(String fieldId, String luView);
-}
+C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api>
 
 
- return cgLuValuesRepo.findByFieldIdAndLuView("CG_TYPE", "1");
+
