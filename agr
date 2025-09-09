@@ -14,3 +14,15 @@ ORA-00910: specified length too long for its datatype
            otherwise, the length specified was > 4000.
 *Action:   use a shorter length or switch to a datatype permitting a
            longer length such as a VARCHAR2, LONG CHAR, or LONG RAW
+
+
+
+SHOW PARAMETER MAX_STRING_SIZE;
+
+-- If it shows STANDARD, you must upgrade
+SHUTDOWN IMMEDIATE;
+STARTUP UPGRADE;
+ALTER SYSTEM SET MAX_STRING_SIZE=EXTENDED SCOPE=SPFILE;
+@?/rdbms/admin/utl32k.sql
+SHUTDOWN IMMEDIATE;
+STARTUP;
