@@ -1,28 +1,30 @@
-ALTER TABLE your_table
-MODIFY your_column VARCHAR2(5000 BYTE);
+@GetMapping(value = { "/findAllByPageable/" }, headers = "Accept=application/json")
+public Page<Study> findAllByPageable(
+        @RequestParam(name = "pageNumber", required = true, defaultValue = "1") @Min(1) Integer pageNumber,
+        @RequestParam(name = "recordsPerPage", required = true, defaultValue = "10") @Min(1) Integer recordsPerPage, // <-- allow >=1
+        @RequestParam(name = "sortBy", required = false, defaultValue = "studyName") StudyEnum sortBy,
+        @RequestParam(name = "sortOrder", required = false, defaultValue = "0") Integer sortOrder, // 1=asc, else desc
+        @RequestParam(name = "searchBy", required = false) List<String> searchBy,
+        @RequestParam(name = "searchInput", required = false) List<String> searchInput
+) {
+    int pageIdx = (pageNumber != null && pageNumber > 0) ? pageNumber - 1 : 0;
 
+    String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
+    Sort sort = (Integer.valueOf(1).equals(sortOrder))
+            ? Sort.by(Sort.Order.asc(sortValue).ignoreCase())
+            : Sort.by(Sort.Order.desc(sortValue).ignoreCase());
 
+    Pageable pageable = PageRequest.of(pageIdx, recordsPerPage, sort);
 
+    Map<String, String> map = Collections.emptyMap();
+    if (searchBy != null && !searchBy.isEmpty() && searchInput != null && !searchInput.isEmpty()) {
+        int size = Math.min(searchBy.size(), searchInput.size());
+        map = IntStream.range(0, size).boxed().collect(Collectors.toMap(
+                searchBy::get,
+                searchInput::get,
+                (a, b) -> b,
+                LinkedHashMap::new));
+    }
 
-Error starting at line : 4 in command -
-ALTER TABLE PRM_STUDY_MASTER_T
-MODIFY PB_DESC VARCHAR2(5000 BYTE)
-Error report -
-ORA-00910: specified length too long for its datatype
-00910. 00000 -  "specified length too long for its datatype"
-*Cause:    for datatypes CHAR and RAW, the length specified was > 2000;
-           otherwise, the length specified was > 4000.
-*Action:   use a shorter length or switch to a datatype permitting a
-           longer length such as a VARCHAR2, LONG CHAR, or LONG RAW
-
-
-
-SHOW PARAMETER MAX_STRING_SIZE;
-
--- If it shows STANDARD, you must upgrade
-SHUTDOWN IMMEDIATE;
-STARTUP UPGRADE;
-ALTER SYSTEM SET MAX_STRING_SIZE=EXTENDED SCOPE=SPFILE;
-@?/rdbms/admin/utl32k.sql
-SHUTDOWN IMMEDIATE;
-STARTUP;
+    return studyService.findAllStudies(map, pageable);
+}
