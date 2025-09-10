@@ -1,55 +1,7 @@
-@GetMapping(value = { "/findAllByPageable/" }, headers = "Accept=application/json")
-//	@ApiOperation(value = "findAllByPageable", notes = "This will provide study items based on paging, filtering and sorting .")
-	public Page<Study> findAllByPageable(
-			@RequestParam(name = "pageNumber", required = true, defaultValue = "1") @Min(1) Integer pageNumber,
-			@RequestParam(name = "recordsPerPage", required = true, defaultValue = "10") @Min(10) Integer recordsPerPage,
-			@RequestParam(name = "sortBy", required = false, defaultValue = "studyName") StudyEnum sortBy,
-			@RequestParam(name = "sortOrder", required = false, defaultValue = "desc") Integer sortOrder,
-			@RequestParam(value = "searchBy", required = false) List<String> searchKeys,
-			@RequestParam(value = "searchInput", required = false) String searchInput) {
-		Map<String, String> map = null;
+const { studyId } = resp.data;
+navigate(`/study/study/${studyId}`);
 
-		String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
-		if (pageNumber > 0) {
-			--pageNumber;
-		} else {
-			pageNumber = 0;
-		}
 
-		Pageable pageable = PageRequest.of(pageNumber, recordsPerPage,
-				Sort.by(Sort.Order.desc(sortValue).ignoreCase()));
-		if (SortOrder.valueOf(sortOrder).toString().equalsIgnoreCase("asc")) {
-			pageable = PageRequest.of(pageNumber, recordsPerPage, Sort.by(Sort.Order.asc(sortValue).ignoreCase()));
-		}
 
-		if ((searchKeys != null) && (!searchKeys.isEmpty())) {
-			List<String> serchvalues = Collections.singletonList(searchInput);
-			map = IntStream.range(0, searchKeys.size()).boxed()
-					.collect(Collectors.toMap(i -> searchKeys.get(i), i -> serchvalues.get(i)));
-		}
-
-		return studyService.findAllStudies(map, pageable);
-	}
-	
-	
-	map = IntStream.range(0, searchKeys.size()).boxed()
-					.collect(Collectors.toMap(i -> searchKeys.get(i), i -> serchvalues.get(i)));
-					
-					
-					getting below issue 
-					
-					[RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=3F3092F52A4F5B4F17BB9A25003926C7], Granted Authorities=[]]]
-2025-09-08 16:31:48 [http-nio-8080-exec-10] DEBUG o.s.security.web.FilterChainProxy - Secured GET /study/findAllByPageable/?pageNumber=1&recordsPerPage=10&sortBy=studyName&sortOrder=1&searchBy=studyName&searchInput=Chi&searchBy=createdUser&searchInput=Sh
-2025-09-08 16:31:48 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/study/findAllByPageable/?pageNumber=1&recordsPerPage=10&sortBy=studyName&sortOrder=1&searchBy=studyName&searchInput=Chi&searchBy=createdUser&searchInput=Sh", parameters={masked}
-2025-09-08 16:31:48 [http-nio-8080-exec-10] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.optum.fads.pgp.study.controller.StudyController#findAllByPageable(Integer, Integer, StudyEnum, Integer, List, String)
-2025-09-08 16:31:48 [http-nio-8080-exec-10] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
-2025-09-08 16:31:48 [http-nio-8080-exec-10] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
-2025-09-08 16:31:48 [http-nio-8080-exec-10] DEBUG o.s.web.servlet.DispatcherServlet - Failed to complete request: java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
-2025-09-08 16:31:48 [http-nio-8080-exec-10] ERROR o.a.c.c.C.[.[.[.[dispatcherServlet] - Servlet.service() for servlet [dispatcherServlet] in context with path [/fads] threw exception [Request processing failed: java.lang.IndexOutOfBoundsException: Index: 1, Size: 1] with root cause
-java.lang.IndexOutOfBoundsException: Index: 1, Size: 1
-	at java.base/java.util.Collections$SingletonList.get(Collections.java:4959)
-	at com.optum.fads.pgp.study.controller.StudyController.lambda$findAllByPageable$3(StudyController.java:150)
-	at java.base/java.util.stream.Collectors.lambda$uniqKeysMapAccumulator$1(Collectors.java:180)
-	at java.base/java.util.stream.ReduceOps$3ReducingSink.accept(ReduceOps.java:169)
-	at java.base/java.util.stream.IntPipeline$1$1.accept(IntPipeline.java:180)
-	at java.base/java.util.stream.Streams$RangeIntSpliterator.forEachRemaining(Streams.java:104)
+const { studyId } = resp.data;
+navigate(`/study/study/${studyId}`);
