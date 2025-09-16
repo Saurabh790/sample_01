@@ -1,30 +1,9 @@
-@GetMapping(value = { "/findAllByPageable/" }, headers = "Accept=application/json")
-public Page<Study> findAllByPageable(
-        @RequestParam(name = "pageNumber", required = true, defaultValue = "1") @Min(1) Integer pageNumber,
-        @RequestParam(name = "recordsPerPage", required = true, defaultValue = "10") @Min(1) Integer recordsPerPage, // <-- allow >=1
-        @RequestParam(name = "sortBy", required = false, defaultValue = "studyName") StudyEnum sortBy,
-        @RequestParam(name = "sortOrder", required = false, defaultValue = "0") Integer sortOrder, // 1=asc, else desc
-        @RequestParam(name = "searchBy", required = false) List<String> searchBy,
-        @RequestParam(name = "searchInput", required = false) List<String> searchInput
-) {
-    int pageIdx = (pageNumber != null && pageNumber > 0) ? pageNumber - 1 : 0;
+// add near other state
+// optional: track a simple error flag if you want to show inline error styling
+const isNameEmpty = !dataRuleName?.trim();
 
-    String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
-    Sort sort = (Integer.valueOf(1).equals(sortOrder))
-            ? Sort.by(Sort.Order.asc(sortValue).ignoreCase())
-            : Sort.by(Sort.Order.desc(sortValue).ignoreCase());
 
-    Pageable pageable = PageRequest.of(pageIdx, recordsPerPage, sort);
-
-    Map<String, String> map = Collections.emptyMap();
-    if (searchBy != null && !searchBy.isEmpty() && searchInput != null && !searchInput.isEmpty()) {
-        int size = Math.min(searchBy.size(), searchInput.size());
-        map = IntStream.range(0, size).boxed().collect(Collectors.toMap(
-                searchBy::get,
-                searchInput::get,
-                (a, b) -> b,
-                LinkedHashMap::new));
-    }
-
-    return studyService.findAllStudies(map, pageable);
-}
+const updateBtnDisabled =
+  isNameEmpty || // ⬅️ disable when name is empty/whitespace
+  pgpUserAccess === PGP_USER_ACCESS.READ_ONLY ||
+  (pgpUserAccess === PGP_USER_ACCESS.BASIC && userData?.userSystemId !== dataRule?.createdBySystemId);
