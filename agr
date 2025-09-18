@@ -1,5 +1,45 @@
-catch (Exception ex) {
-    log.error("Failed to retrieve job details: {}", ex.getMessage(), ex);
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .body("An error occurred while retrieving the job details. Please try again later.");
+package com.optum.fads.pgp.jobs.api.mapper;
+
+import com.optum.fads.pgp.jobs.api.dto.JobDTO;
+import com.optum.fads.pgp.datarules.domain.JobMasterT;
+import org.mapstruct.*;
+import org.mapstruct.factory.Mappers;
+
+import java.util.List;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface JobDetailMapper {
+    JobDetailMapper INSTANCE = Mappers.getMapper(JobDetailMapper.class);
+
+
+    @Mappings({
+            @Mapping(source = "jobId", target = "jobId"),
+            @Mapping(source = "prmStudyMasterT.pbId", target = "studyId"),
+            @Mapping(source = "prmStudyMasterT.pbName", target = "studyName"),
+            @Mapping(source = "prmStudyMasterT.pbDesc", target = "studyDescription"),
+            @Mapping(source = "jobLuStatusT.statusCd", target = "status"),
+            @Mapping(source = "jobLuStatusT.statusDesc", target = "statusDescription"),
+          /*  @Mapping(source = "purgeFlag", target = "purgeFlag"),
+            @Mapping(source = "dateBeg", target = "startedDate"),
+            @Mapping(source = "dateEnd", target = "completedDate"), */
+            @Mapping(source = "dateSched", target = "scheduledRunDate"),
+          /*  @Mapping(source = "jobCgRows", target = "studyRows"),
+            @Mapping(source = "jobBpRows", target = "behaviorPatternRows"),
+            @Mapping(source = "jobRiRows", target = "reportItemRows"), */
+            @Mapping(source = "createUiUserBase.userFullName", target = "createdBy"),
+        //    @Mapping(source = "createDte", target = "submittedDate"),
+        //    @Mapping(source = "createDte", target = "createdDate"),
+        //    @Mapping(source = "createUiUserBase.uiSystemId", target = "createdBySystemId"),
+            @Mapping(source = "datePurge", target = "purgeDate"),
+        //    @Mapping(source = "updateUiUserBase.userFullName", target = "modifiedBy"),
+        //    @Mapping(source = "updateDte", target = "modifiedDate")//, */
+          //  @Mapping(expression = "java(jobMasterT.getJobMasterCasesTs()!= null ? jobMasterT.getJobMasterCasesTs().size():0)", target = "caseCount")
+    })
+    JobDTO convertToJob(JobMasterT jobMasterT);
+
+    List<JobDTO> convertToJobDTOs(List<JobMasterT> jobMasterTs);
+    @InheritInverseConfiguration
+
+
+    JobMasterT convertToJobMasterT(JobDTO jobDTO);
 }
