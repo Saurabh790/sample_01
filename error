@@ -1,7 +1,16 @@
-if (singleValue.getDrLabel() != null && !singleValue.getDrLabel().isBlank() &&
-    singleValue.getId() != null &&
-    singleValue.getId().getDrValue() != null && !singleValue.getId().getDrValue().isBlank()) {
-
-    codeBean.setValue(singleValue.getDrLabel());
-    codeBean.setCode(singleValue.getId().getDrValue());
+for (DrCodeValueDTO drCodeValueDTO : codeValueList) {
+    if (drCodeValueDTO != null &&
+        drCodeValueDTO.getCode() != null && !drCodeValueDTO.getCode().isBlank() &&
+        drCodeValueDTO.getValue() != null && !drCodeValueDTO.getValue().isBlank()) {
+        
+        PrmDrSingleValuesT prmDrSingleValuesT = new PrmDrSingleValuesT();
+        PrmDrSingleValuesTPK prmDrSingleValuesTPK = new PrmDrSingleValuesTPK();
+        prmDrSingleValuesTPK.setDrId(dataRuleId);
+        prmDrSingleValuesTPK.setDrValue(drCodeValueDTO.getCode());
+        
+        prmDrSingleValuesT.setId(prmDrSingleValuesTPK);
+        prmDrSingleValuesT.setDrLabel(drCodeValueDTO.getValue());
+        
+        prmDrSingleValues.add(prmDrSingleValuesT);
+    }
 }
