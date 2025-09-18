@@ -1,45 +1,57 @@
-<!-- Force Netty to 4.1.124.Final via BOM + nearest-wins -->
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-common</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-buffer</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-transport</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-codec</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-handler</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-codec-http</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-codec-http2</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-resolver</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-resolver-dns</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-handler-proxy</artifactId>
-</dependency>
-<dependency>
-  <groupId>io.netty</groupId>
-  <artifactId>netty-codec-socks</artifactId>
-</dependency>
+private Pageable createPageable(ListTableParams listTableParams) {
+    String sortByStr = listTableParams.getSortBy();
+    int pageNumberI  = listTableParams.getPageNumber() - 1;
+    int pageSizeI    = listTableParams.getRecordsPerPage();
+
+    Sort.Direction sortDirection = (listTableParams.getSortOrder() > 0)
+            ? Sort.Direction.ASC
+            : Sort.Direction.DESC;
+
+    String sortProperty;
+
+    switch (sortByStr) {
+        case JobsConstants.STUDY_NAME:
+            // study name lives on the related PrmStudyMasterT entity
+            sortProperty = "prmStudyMasterT.pbName";   // <— key change
+            break;
+
+        case JobsConstants.JOB_STATUS_DESC:
+            // to-one relation; sorting by nested path is fine
+            sortProperty = "jobLuStatusT.statusDesc";
+            break;
+
+        case JobsConstants.SCHEDULED_RUN_DATE:
+            sortProperty = JobsConstants.DATE_SCHEDULED; // your constant maps to entity field name; verify it's "dateSched"
+            break;
+
+        case JobsConstants.PURGE_DATE:
+            sortProperty = JobsConstants.DATE_PURGE;     // verify it's "datePurge"
+            break;
+
+        case JobsConstants.JOB_ID:
+            sortProperty = JobsConstants.JOB_ID;         // "jobId"
+            break;
+
+        case JobsConstants.CREATED_BY:
+            // On JobMasterT you have:
+            //   private UiUserBase createUiUserBase;
+            // Pick the correct field on UiUserBase (guessing userName or displayName)
+            sortProperty = "createUiUserBase.userName";  // <— adjust to actual UiUserBase property
+            break;
+
+        case JobsConstants.CASE_COUNT:
+            // You sort CASE_COUNT in-memory on the DTO; don’t try to DB-sort by a non-entity field.
+            // Fall back to a stable DB sort (jobId) so pagination is deterministic.
+            sortProperty = JobsConstants.JOB_ID;
+            break;
+
+        default:
+            sortProperty = JobsConstants.JOB_ID;
+    }
+
+    // ignoreCase only makes sense for Strings; harmless otherwise.
+    Sort.Order order = new Sort.Order(sortDirection, sortProperty).ignoreCase();
+    Sort sort = Sort.by(order);
+
+    return PageRequest.of(pageNumberI, pageSizeI, sort);
+}
