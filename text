@@ -1,57 +1,20 @@
-private Pageable createPageable(ListTableParams listTableParams) {
-    String sortByStr = listTableParams.getSortBy();
-    int pageNumberI  = listTableParams.getPageNumber() - 1;
-    int pageSizeI    = listTableParams.getRecordsPerPage();
-
-    Sort.Direction sortDirection = (listTableParams.getSortOrder() > 0)
-            ? Sort.Direction.ASC
-            : Sort.Direction.DESC;
-
-    String sortProperty;
-
-    switch (sortByStr) {
-        case JobsConstants.STUDY_NAME:
-            // study name lives on the related PrmStudyMasterT entity
-            sortProperty = "prmStudyMasterT.pbName";   // <— key change
-            break;
-
-        case JobsConstants.JOB_STATUS_DESC:
-            // to-one relation; sorting by nested path is fine
-            sortProperty = "jobLuStatusT.statusDesc";
-            break;
-
-        case JobsConstants.SCHEDULED_RUN_DATE:
-            sortProperty = JobsConstants.DATE_SCHEDULED; // your constant maps to entity field name; verify it's "dateSched"
-            break;
-
-        case JobsConstants.PURGE_DATE:
-            sortProperty = JobsConstants.DATE_PURGE;     // verify it's "datePurge"
-            break;
-
-        case JobsConstants.JOB_ID:
-            sortProperty = JobsConstants.JOB_ID;         // "jobId"
-            break;
-
-        case JobsConstants.CREATED_BY:
-            // On JobMasterT you have:
-            //   private UiUserBase createUiUserBase;
-            // Pick the correct field on UiUserBase (guessing userName or displayName)
-            sortProperty = "createUiUserBase.userName";  // <— adjust to actual UiUserBase property
-            break;
-
-        case JobsConstants.CASE_COUNT:
-            // You sort CASE_COUNT in-memory on the DTO; don’t try to DB-sort by a non-entity field.
-            // Fall back to a stable DB sort (jobId) so pagination is deterministic.
-            sortProperty = JobsConstants.JOB_ID;
-            break;
-
-        default:
-            sortProperty = JobsConstants.JOB_ID;
-    }
-
-    // ignoreCase only makes sense for Strings; harmless otherwise.
-    Sort.Order order = new Sort.Order(sortDirection, sortProperty).ignoreCase();
-    Sort sort = Sort.by(order);
-
-    return PageRequest.of(pageNumberI, pageSizeI, sort);
-}
+urity.web.FilterChainProxy - Secured GET /jobmonitor/getjobs/?pageNumber=1&recordsPerPage=10&sortBy=createdBy&sortOrder=1
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/jobmonitor/getjobs/?pageNumber=1&recordsPerPage=10&sortBy=createdBy&sortOrder=1", parameters={masked}
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.optum.fads.pgp.jobs.api.controller.JobMonitorController#getJobsByParms(ListTableParams)
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-09-18 22:15:08 [http-nio-8080-exec-8] INFO  c.o.f.p.j.a.c.JobMonitorController - version: 6.1.5
+2025-09-18 22:15:08 [http-nio-8080-exec-8] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService -  Going to fetch Job Monitor Records 
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(1895809807<open>)] for JPA transaction
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.findAll]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT,readOnly
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.j.d.DriverManagerDataSource - Creating new JDBC DriverManager Connection to [jdbc:oracle:thin:@//wn000193163.ms.ds.uhc.com:1521/XEPDB1]
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.jdbc.datasource.DataSourceUtils - Setting JDBC Connection [oracle.jdbc.driver.T4CConnection@106ad154] read-only
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@578c2b1b]
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Initiating transaction rollback
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Rolling back JPA transaction on EntityManager [SessionImpl(1895809807<open>)]
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.jdbc.datasource.DataSourceUtils - Resetting read-only flag of JDBC Connection [oracle.jdbc.driver.T4CConnection@106ad154]
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.orm.jpa.JpaTransactionManager - Not closing pre-bound JPA EntityManager after transaction
+2025-09-18 22:15:08 [http-nio-8080-exec-8] ERROR c.o.f.p.j.a.c.JobMonitorController - An error occurred while retrieving the job details. Please try again later.
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [application/json]
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing ["An error occurred while retrieving the job details. Please try again later."]
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
+2025-09-18 22:15:08 [http-nio-8080-exec-8] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
