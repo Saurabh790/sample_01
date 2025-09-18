@@ -1,16 +1,10 @@
-if (dataRuleInd.getPrmDrSingleValuesTs() != null && !dataRuleInd.getPrmDrSingleValuesTs().isEmpty()) {
-			dataRuleDTO.setRangeValue(DataRuleConstants.NO_VALUE);
-			List<DrCodeValueDTO> codeValuesList = new ArrayList<>();
-			for (PrmDrSingleValuesT singleValue : dataRuleInd.getPrmDrSingleValuesTs()) {
-				DrCodeValueDTO codeBean = new DrCodeValueDTO();
-				if (singleValue.getDrLabel() != null && !singleValue.getDrLabel().isBlank() &&
-					    singleValue.getId() != null &&
-					    singleValue.getId().getDrValue() != null && !singleValue.getId().getDrValue().isBlank()) {
-					    codeBean.setValue(singleValue.getDrLabel());
-					    codeBean.setCode(singleValue.getId().getDrValue());
-					}
-				codeValuesList.add(codeBean);
+for (DrCodeValueDTO drCodeValueDTO : codeValueList) {
+				
+				PrmDrSingleValuesT prmDrSingleValuesT = new PrmDrSingleValuesT();
+				PrmDrSingleValuesTPK prmDrSingleValuesTPK = new PrmDrSingleValuesTPK();
+				prmDrSingleValuesTPK.setDrId(dataRuleId);
+				prmDrSingleValuesTPK.setDrValue(drCodeValueDTO.getCode());
+				prmDrSingleValuesT.setId(prmDrSingleValuesTPK);
+				prmDrSingleValuesT.setDrLabel(drCodeValueDTO.getValue());
+				prmDrSingleValues.add(prmDrSingleValuesT);
 			}
-			dataRuleDTO.setSelectedValues(codeValuesList);
-			logit.info(" Code Values list populated with {} code Value data", codeValuesList.size());
-		}
