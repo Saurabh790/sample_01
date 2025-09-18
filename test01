@@ -1,32 +1,155 @@
-JobMasterT jobMaster = new JobMasterT();
-jobMaster.setJobId(jobId);
-jobMaster.setDatePurge(purgeDate);
-jobMaster.setCreateDte(Date.from(today.atZone(ZoneId.systemDefault()).toInstant()));
+public PaginationResult getJobsOnSearchCriteria(ListTableParams listTableParams) {
+    long t0 = System.currentTimeMillis();
+    PaginationResult paginationResult = new PaginationResult();
 
-// Create UiUserBase for createUiUserBase
-UiUserBase createUiUserBase = new UiUserBase();
-createUiUserBase.setUiSystemId(study.getCreatedBySystemId());
-jobMaster.setCreateUiUserBase(createUiUserBase);
+    // Validate inputs
+    if (listTableParams == null
+            || listTableParams.getSearchBy() == null
+            || listTableParams.getSearchInput() == null
+            || listTableParams.getSearchBy().size() != listTableParams.getSearchInput().size()) {
 
-// Create UiUserBase for updateUiUserBase
-UiUserBase updateUiUserBase = new UiUserBase();
-updateUiUserBase.setUiSystemId(study.getUpdatedBySystemId());
-jobMaster.setUpdateUiUserBase(updateUiUserBase);
+        logit.warn("Invalid ListTableParams: searchBy/searchInput mismatch or null");
+        paginationResult.setJobsData(Collections.emptyList());
+        paginationResult.setTotalRecordsCount(0);
+        return paginationResult;
+    }
 
-// Create PrmStudyMasterT
-PrmStudyMasterT prmStudyMasterT = new PrmStudyMasterT();
-prmStudyMasterT.setPbId(study.getStudyId());
-jobMaster.setPrmStudyMasterT(prmStudyMasterT);
+    Pageable pageable = createPageable(listTableParams);
 
-jobMaster.setDateSched(Date.from(study.getScheduleRunDateTime()
-    .atZone(ZoneId.systemDefault()).toInstant()));
-jobMaster.setArcFlag(BigDecimal.valueOf(0).intValue());
-jobMaster.setHoldFlag(BigDecimal.valueOf(0).intValue());
-jobMaster.setPurgeFlag(BigDecimal.valueOf(0).intValue());
+    String studyNameVal = JobsConstants.PERCENT_STR;
+    String jobStatusVal = JobsConstants.PERCENT_STR;
+    String createdByVal = JobsConstants.PERCENT_STR;
+    String userIdVal    = JobsConstants.PERCENT_STR;
 
-// Create JobLuStatusT
-JobLuStatusT jobLuStatusT = new JobLuStatusT();
-jobLuStatusT.setStatusCd(Long.valueOf(1));
-jobMaster.setJobLuStatusT(jobLuStatusT);
+    Integer jobIdVal = null;
+    boolean spChInJobName = false;
+    boolean jobIdSelected = false;
 
-jobMaster = jobsRepository.save(jobMaster);
+    try {
+        int myItemsIndex = listTableParams.getSearchBy().indexOf(JobsConstants.USER_SYSTEM_ID);
+        int searchCritSize = listTableParams.getSearchBy().size();
+
+        // Iterate through search criteria
+        for (int i = 0; i < searchCritSize; i++) {
+            String rawInput   = listTableParams.getSearchInput().get(i);
+            String searchInput = rawInput == null ? "" : rawInput.toLowerCase();
+            String searchBy    = listTableParams.getSearchBy().get(i);
+
+            switch (searchBy) {
+                case JobsConstants.JOB_STATUS_DESC:
+                    jobStatusVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
+                    break;
+
+                case JobsConstants.STUDY_NAME:
+                    if (StringUtils.containsAny(searchInput, JobsConstants.PERCENT_CHAR)
+                            || StringUtils.containsAny(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
+                        spChInJobName = true;
+                    }
+                    studyNameVal = ServiceUtil.replStudyName(searchInput);
+                    break;
+
+                case JobsConstants.CREATED_BY:
+                    if (StringUtils.containsWhitespace(searchInput)) {
+                        searchInput = searchInput.trim().replaceAll("\\s+", " ");
+                    }
+                    createdByVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
+                    break;
+
+                case JobsConstants.USER_SYSTEM_ID:
+                    userIdVal = searchInput;
+                    break;
+
+                case JobsConstants.JOB_ID:
+                    try {
+                        jobIdVal = Integer.parseInt(searchInput);
+                        jobIdSelected = true;
+                    } catch (NumberFormatException nfe) {
+                        logit.warn("Invalid JOB_ID '{}' in search input. Ignoring JOB_ID filter.", searchInput, nfe);
+                        jobIdSelected = false;
+                    }
+                    break;
+
+                default:
+                    // ignore unknown criteria
+                    break;
+            }
+        }
+
+        // Repository calls
+        List<JobMasterT> jobsList = Collections.emptyList();
+        List<JobMasterT> jobsCntList = Collections.emptyList();
+        boolean myItems = listTableParams.getSearchBy().contains(JobsConstants.USER_SYSTEM_ID);
+
+        if (jobIdSelected && jobIdVal != null) {
+            jobsList = myItems
+                    ? jobsRepository.getMyJobsBySearchCriteriaWithJobId(jobStatusVal, studyNameVal, createdByVal, userIdVal, jobIdVal, pageable)
+                    : jobsRepository.getJobsBySearchCriteriaWithJobId(jobStatusVal, studyNameVal, createdByVal, jobIdVal, pageable);
+            jobsCntList = jobsList; // same list when searching by jobId
+        } else if (spChInJobName) {
+            jobsCntList = myItems
+                    ? jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, null)
+                    : jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, null);
+
+            jobsList = myItems
+                    ? jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, pageable)
+                    : jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, pageable);
+        } else {
+            jobsCntList = myItems
+                    ? jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, null)
+                    : jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, null);
+
+            jobsList = myItems
+                    ? jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, pageable)
+                    : jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, pageable);
+        }
+
+        jobsList    = safeList(jobsList);
+        jobsCntList = safeList(jobsCntList);
+
+        int jobsCount = jobsCntList.size();
+        logit.info("Jobs query returned {} record(s). criteria: status='{}', study='{}', createdBy='{}', userId='{}', jobId={}, myItems={}, spChInJobName={}",
+                jobsCount, jobStatusVal, studyNameVal, createdByVal, userIdVal, jobIdVal, myItems, spChInJobName);
+
+        List<JobDTO> jobsDataList = jobsList.isEmpty()
+                ? Collections.<JobDTO>emptyList()
+                : jobDetailMapper.convertToJobDTOs(jobsList);
+
+        // Sort if needed
+        if (JobsConstants.CASE_COUNT.equals(listTableParams.getSortBy()) && !jobsDataList.isEmpty()) {
+            if (listTableParams.getSortOrder() > 0) {
+                Collections.sort(jobsDataList, Comparator.comparing(JobDTO::getCaseCount));
+            } else {
+                Collections.sort(jobsDataList, Comparator.comparing(JobDTO::getCaseCount).reversed());
+            }
+        }
+
+        paginationResult.setJobsData(jobsDataList);
+        paginationResult.setTotalRecordsCount(jobsCount);
+        return paginationResult;
+    }
+    catch (org.springframework.dao.DataAccessException dae) {
+        logit.error("Database error while fetching jobs (criteria: study='{}', status='{}', createdBy='{}', userId='{}').",
+                studyNameVal, jobStatusVal, createdByVal, userIdVal, dae);
+        throw dae;
+    }
+    catch (Exception ex) {
+        logit.error("Unexpected error in getJobsOnSearchCriteria. Params: {}", safeSummarize(listTableParams), ex);
+        throw ex;
+    }
+    finally {
+        long took = System.currentTimeMillis() - t0;
+        logit.debug("getJobsOnSearchCriteria finished in {} ms", took);
+    }
+}
+
+// Helpers
+private static <T> List<T> safeList(List<T> list) {
+    return list == null ? Collections.emptyList() : list;
+}
+
+private static String safeSummarize(ListTableParams p) {
+    if (p == null) return "null";
+    return String.format("page=%s, size=%s, sortBy=%s, sortOrder=%s, searchBy=%s, searchInput(size=%d)",
+            p.getPage(), p.getPageSize(), p.getSortBy(), p.getSortOrder(),
+            p.getSearchBy(), p.getSearchInput() == null ? 0 : p.getSearchInput().size());
+}
