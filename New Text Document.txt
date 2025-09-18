@@ -1,90 +1,113 @@
-package com.optum.fads.pgp.jobs.api.common;
+package com.optum.fads.pgp.datarules.domain;
 
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.Date;
 import java.util.List;
 
-public class ListTableParams {
-    String sortBy;
-    Integer sortOrder;
-    List<String> searchBy;
-    List<String> searchInput;
-    Integer recordsPerPage;
-    Integer pageNumber;
-    List<Integer> selectedItemIds;
+import com.optum.fads.authorization.api.domain.UiUserBase;
 
-    public String getSortBy() {
-        return sortBy;
-    }
+/**
+ * The persistent class for the JOB_MASTER_T database table.
+ *
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+//@ToString
+@Entity
+@Table(name = "JOB_MASTER_T")
+public class JobMasterT implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-    public void setSortBy(String sortBy) {
-        this.sortBy = sortBy;
-    }
+	@Id
+	@Column(name = "JOB_ID", unique = true, nullable = false, precision = 7)
+	private long jobId;
 
-    public Integer getSortOrder() {
-        return sortOrder;
-    }
+	@Column(name = "ARC_FLAG", precision = 1)
+	private Integer arcFlag;
 
-    public void setSortOrder(Integer sortOrder) {
-        this.sortOrder = sortOrder;
-    }
+	@Temporal(TemporalType.DATE)
+	@Column(name = "CREATE_DTE")
+	private Date createDte;
 
-    public List<String> getSearchBy() {
-        return searchBy;
-    }
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_BEG")
+	private Date dateBeg;
 
-    public void setSearchBy(List<String> searchBy) {
-        this.searchBy = searchBy;
-    }
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_END")
+	private Date dateEnd;
 
-    public List<String> getSearchInput() {
-        return searchInput;
-    }
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_PURGE")
+	private Date datePurge;
 
-    public void setSearchInput(List<String> searchInput) {
-        this.searchInput = searchInput;
-    }
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_SCHED")
+	private Date dateSched;
 
-    public Integer getRecordsPerPage() {
-        return recordsPerPage;
-    }
+	@Column(name = "HOLD_FLAG", precision = 1)
+	private Integer holdFlag;
 
-    public void setRecordsPerPage(Integer recordsPerPage) {
-        this.recordsPerPage = recordsPerPage;
-    }
+	@Column(name = "JOB_BP_ROWS", precision = 8)
+	private Integer jobBpRows;
 
-    public Integer getPageNumber() {
-        return pageNumber;
-    }
+	@Column(name = "JOB_CG_ROWS", precision = 8)
+	private Integer jobCgRows;
 
-    public void setPageNumber(Integer pageNumber) {
-        this.pageNumber = pageNumber;
-    }
+	@Column(name = "JOB_MISSING_COUNT", precision = 3)
+	private Integer jobMissingCount;
 
-    public List<Integer> getSelectedItemIds() {
-        return selectedItemIds;
-    }
+	@Column(name = "JOB_RI_ROWS", precision = 8)
+	private Integer jobRiRows;
 
-    public void setSelectedItemIds(List<Integer> selectedItemIds) {
-        this.selectedItemIds = selectedItemIds;
-    }
+	@Column(name = "LOG_FILE_NOTES", length = 4000)
+	private String logFileNotes;
+
+	@Column(name = "PURGE_FLAG", precision = 1)
+	private Integer purgeFlag;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "UPDATE_DTE")
+	private Date updateDte;
+
+	// bi-directional many-to-one association to JobMasterLogsT
+//	@OneToMany(mappedBy="jobMasterT")
+//	private List<JobMasterLogsT> jobMasterLogsTs;
+
+	// bi-directional many-to-one association to JobLuStatusT
+	@ManyToOne
+	@JoinColumn(name = "JOB_STATUS")
+	private JobLuStatusT jobLuStatusT;
+
+	// bi-directional many-to-one association to PrmStudyMasterT
+	@ManyToOne
+	@JoinColumn(name = "PB_ID")
+	private PrmStudyMasterT prmStudyMasterT;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "CREATE_USR")
+	private UiUserBase createUiUserBase;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "UPDATE_USR")
+	private UiUserBase updateUiUserBase;
+
+
+	@OneToMany(mappedBy = "jobMasterT")
+	@OrderBy("id.dateBeg desc")
+	private List<JobMasterLogsT> jobMasterLogsTs;
+
 
 }
-
-
-[INFO] Finished at: 2025-09-18T21:37:50+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-pgp-jobmonitor-api: Compilation failure: Compilation failure:
-[ERROR] /C:/Users/sgupt664/latestDef/fads-monolithic-application/fads-pgp-jobmonitor-api/src/main/java/com/optum/fads/pgp/jobs/api/service/impl/JobMonitorDataService.java:[436,18] cannot find symbol
-[ERROR]   symbol:   method getPage()
-[ERROR]   location: variable p of type com.optum.fads.pgp.jobs.api.common.ListTableParams
-[ERROR] /C:/Users/sgupt664/latestDef/fads-monolithic-application/fads-pgp-jobmonitor-api/src/main/java/com/optum/fads/pgp/jobs/api/service/impl/JobMonitorDataService.java:[436,31] cannot find symbol
-[ERROR]   symbol:   method getPageSize()
-[ERROR]   location: variable p of type com.optum.fads.pgp.jobs.api.common.ListTableParams
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-
-C:\Users\sgupt664\latestDef\fads-monolithic-application\fads-pgp-jobmonitor-api>
