@@ -1,24 +1,5 @@
-21:47:25 [http-nio-8080-exec-7] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
-2025-09-18 21:47:25 [http-nio-8080-exec-7] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy - Securing GET /jobmonitor/getjobs/?pageNumber=1&recordsPerPage=10&sortBy=studyName&sortOrder=1
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.s.w.c.HttpSessionSecurityContextRepository - Retrieved SecurityContextImpl [Authentication=UsernamePasswordAuthenticationToken [Principal=AppUser(userId=sgupt664, userSystemId=SG6234283, userEmail=sourabh.gupta@optum.com, role=Role(id=0, roleName=Optum Admin, fadsRole=com.optum.fads.authorization.api.dto.FadsRole@47bd218a, pgpRole=PgpRole(groupId=0, roleName=Optum Admin, pgpAccesses=[SurAccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=A), SurAccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=A)]), caseRole=com.optum.fads.authorization.api.dto.CaseRole@230b02ee, allowedAccesses=[AccessLevel(moduleId=2, moduleCode=JOBMONITOR, moduleName=Job Monitor, access=A), AccessLevel(moduleId=1, moduleCode=STUDY, moduleName=Build / Modify Study, access=A)])), Credentials=[PROTECTED], Authenticated=true, Details=WebAuthenticationDetails [RemoteIpAddress=0:0:0:0:0:0:0:1, SessionId=F64BBEF1D86C91F07F9400C0AE27B4B0], Granted Authorities=[]]]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.security.web.FilterChainProxy - Secured GET /jobmonitor/getjobs/?pageNumber=1&recordsPerPage=10&sortBy=studyName&sortOrder=1
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - GET "/fads/jobmonitor/getjobs/?pageNumber=1&recordsPerPage=10&sortBy=studyName&sortOrder=1", parameters={masked}
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping - Mapped to com.optum.fads.pgp.jobs.api.controller.JobMonitorController#getJobsByParms(ListTableParams)
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Opening JPA EntityManager in OpenEntityManagerInViewInterceptor
-2025-09-18 21:47:26 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.c.JobMonitorController - version: 6.1.5
-2025-09-18 21:47:26 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService -  Going to fetch Job Monitor Records 
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(1170225583<open>)] for JPA transaction
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.findAll]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT,readOnly
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.j.d.DriverManagerDataSource - Creating new JDBC DriverManager Connection to [jdbc:oracle:thin:@//wn000193163.ms.ds.uhc.com:1521/XEPDB1]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.jdbc.datasource.DataSourceUtils - Setting JDBC Connection [oracle.jdbc.driver.T4CConnection@1eacb0ec] read-only
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@6c7234a2]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Initiating transaction rollback
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Rolling back JPA transaction on EntityManager [SessionImpl(1170225583<open>)]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.jdbc.datasource.DataSourceUtils - Resetting read-only flag of JDBC Connection [oracle.jdbc.driver.T4CConnection@1eacb0ec]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Not closing pre-bound JPA EntityManager after transaction
-2025-09-18 21:47:26 [http-nio-8080-exec-5] ERROR c.o.f.p.j.a.c.JobMonitorController - An error occurred while retrieving the job details. Please try again later.
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Using 'application/json', given [application/json] and supported [application/json]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.w.s.m.m.a.HttpEntityMethodProcessor - Writing ["An error occurred while retrieving the job details. Please try again later."]
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.o.j.s.OpenEntityManagerInViewInterceptor - Closing JPA EntityManager in OpenEntityManagerInViewInterceptor
-2025-09-18 21:47:26 [http-nio-8080-exec-5] DEBUG o.s.web.servlet.DispatcherServlet - Completed 400 BAD_REQUEST
+catch (Exception ex) {
+    log.error("Failed to retrieve job details: {}", ex.getMessage(), ex);
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body("An error occurred while retrieving the job details. Please try again later.");
+}
