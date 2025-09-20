@@ -1,45 +1,41 @@
-package com.optum.fads.pgp.jobs.api.mapper;
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
 
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.datarules.domain.JobMasterT;
-import org.mapstruct.*;
-import org.mapstruct.factory.Mappers;
+    <!-- Base log file -->
+    <property name="LOG_FILE" value="C:/Users/sgupt664/fads_dev/fadslog.log" />
 
-import java.util.List;
+    <!-- Rolling appender with size-based policy -->
+    <appender name="ROLLING"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeBasedRollingPolicy">
+            <!-- Roll when file reaches 5 MB -->
+            <maxFileSize>5MB</maxFileSize>
+            <!-- Keep up to 10 old files -->
+            <fileNamePattern>C:/Users/sgupt664/fads_dev/fads_sso.%i.log</fileNamePattern>
+            <maxHistory>10</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface JobDetailMapper {
-    JobDetailMapper INSTANCE = Mappers.getMapper(JobDetailMapper.class);
+    <!-- Console output -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
 
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="ROLLING"/>
+        <appender-ref ref="CONSOLE"/>
+    </root>
 
-    @Mappings({
-            @Mapping(source = "jobId", target = "jobId"),
-            @Mapping(source = "prmStudyMasterT.pbId", target = "studyId"),
-            @Mapping(source = "prmStudyMasterT.pbName", target = "studyName"),
-            @Mapping(source = "prmStudyMasterT.pbDesc", target = "studyDescription"),
-            @Mapping(source = "jobLuStatusT.statusCd", target = "status"),
-            @Mapping(source = "jobLuStatusT.statusDesc", target = "statusDescription"),
-          /*  @Mapping(source = "purgeFlag", target = "purgeFlag"),
-            @Mapping(source = "dateBeg", target = "startedDate"),
-            @Mapping(source = "dateEnd", target = "completedDate"), */
-            @Mapping(source = "dateSched", target = "scheduledRunDate"),
-          /*  @Mapping(source = "jobCgRows", target = "studyRows"),
-            @Mapping(source = "jobBpRows", target = "behaviorPatternRows"),
-            @Mapping(source = "jobRiRows", target = "reportItemRows"), */
-            @Mapping(source = "createUiUserBase.userFullName", target = "createdBy"),
-        //    @Mapping(source = "createDte", target = "submittedDate"),
-        //    @Mapping(source = "createDte", target = "createdDate"),
-        //    @Mapping(source = "createUiUserBase.uiSystemId", target = "createdBySystemId"),
-            @Mapping(source = "datePurge", target = "purgeDate"),
-        //    @Mapping(source = "updateUiUserBase.userFullName", target = "modifiedBy"),
-        //    @Mapping(source = "updateDte", target = "modifiedDate")//, */
-          //  @Mapping(expression = "java(jobMasterT.getJobMasterCasesTs()!= null ? jobMasterT.getJobMasterCasesTs().size():0)", target = "caseCount")
-    })
-    JobDTO convertToJob(JobMasterT jobMasterT);
+    <!-- Package-specific levels -->
+    <logger name="org.springframework" level="DEBUG"/>
+    <logger name="org.springframework.web" level="DEBUG"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
 
-    List<JobDTO> convertToJobDTOs(List<JobMasterT> jobMasterTs);
-    @InheritInverseConfiguration
-
-
-    JobMasterT convertToJobMasterT(JobDTO jobDTO);
-}
+</configuration>
