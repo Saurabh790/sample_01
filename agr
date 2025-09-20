@@ -1,41 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- Base log file -->
-    <property name="LOG_FILE" value="C:/Users/sgupt664/fads_dev/fadslog.log" />
+  <!-- Active/current log file -->
+  <property name="LOG_FILE" value="C:/Users/sgupt664/fads_dev/fadslog.log"/>
 
-    <!-- Rolling appender with size-based policy -->
-    <appender name="ROLLING"
-              class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_FILE}</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeBasedRollingPolicy">
-            <!-- Roll when file reaches 5 MB -->
-            <maxFileSize>5MB</maxFileSize>
-            <!-- Keep up to 10 old files -->
-            <fileNamePattern>C:/Users/sgupt664/fads_dev/fads_sso.%i.log</fileNamePattern>
-            <maxHistory>10</maxHistory>
-        </rollingPolicy>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
+  <appender name="ROLLING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- All current logs go here; rolled files use the pattern below -->
+    <file>${LOG_FILE}</file>
 
-    <!-- Console output -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
-        </encoder>
-    </appender>
+    <!-- Daily + size-based rollover -->
+    <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+      <!-- New set each day, and within the day index files as they exceed 5 MB -->
+      <fileNamePattern>
+        C:/Users/sgupt664/fads_dev/fads_sso.%d{yyyy-MM-dd}.%i.log
+      </fileNamePattern>
+      <maxFileSize>5MB</maxFileSize>
+      <!-- Keep 30 days of history -->
+      <maxHistory>30</maxHistory>
+      <!-- Optional: cap total disk usage for all rolled logs -->
+      <totalSizeCap>5GB</totalSizeCap>
+    </rollingPolicy>
 
-    <!-- Root logger -->
-    <root level="INFO">
-        <appender-ref ref="ROLLING"/>
-        <appender-ref ref="CONSOLE"/>
-    </root>
+    <encoder>
+      <pattern>%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
 
-    <!-- Package-specific levels -->
-    <logger name="org.springframework" level="DEBUG"/>
-    <logger name="org.springframework.web" level="DEBUG"/>
-    <logger name="org.hibernate.SQL" level="DEBUG"/>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="ROLLING"/>
+    <appender-ref ref="CONSOLE"/>
+  </root>
+
+  <logger name="org.springframework" level="DEBUG"/>
+  <logger name="org.springframework.web" level="DEBUG"/>
+  <logger name="org.hibernate.SQL" level="DEBUG"/>
 
 </configuration>
