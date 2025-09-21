@@ -1,13 +1,13 @@
-log4j.appender.ERROR=org.apache.log4j.FileAppender
-log4j.appender.ERROR.File=error.log
-log4j.appender.ERROR.layout=org.apache.log4j.PatternLayout
-log4j.appender.ERROR.layout.ConversionPattern=%d [%t] %-5p %c - %m%n
+<!-- Route Log4j 1.x to SLF4J/Logback -->
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>log4j-over-slf4j</artifactId>
+  <version>1.7.36</version> <!-- or your BOM-managed version -->
+</dependency>
 
-log4j.rootLogger=ERROR, RollingAppender
-log4j.logger.com.optum.fads.web.config=INFO,ERROR
-log4j.logger.com.optum.fads.web.security=INFO,ERROR
-log4j.appender.RollingAppender=org.apache.log4j.DailyRollingFileAppender
-log4j.appender.RollingAppender.File=${catalina.base}//logs//fads_sso.log
-log4j.appender.RollingAppender.DatePattern='.'yyyy-MM-dd
-log4j.appender.RollingAppender.layout=org.apache.log4j.PatternLayout
-log4j.appender.RollingAppender.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss} %c{1} [%p] %m%n
+<!-- Route commons-logging to SLF4J/Logback (often useful) -->
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>jcl-over-slf4j</artifactId>
+  <version>1.7.36</version>
+</dependency>
