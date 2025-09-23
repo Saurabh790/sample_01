@@ -1,2 +1,29 @@
-@Query("SELECT MAX(cgId)+1 FROM PrmPgPeerGroupT")
-	Integer retrieveNextStudyGroupId();
+ private void saveStudyGroupParticipants(StudyGroupDTO studyGroupDTO) {
+			List<String> participantIdList = studyGroupDTO.getParticipants();
+			List<PrmPgForcedPartT> participantDataList = null;
+			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(StudyGroupConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
+					Locale.ENGLISH);
+			if(!participantIdList.isEmpty()) {
+				participantDataList = new ArrayList<>();
+				for (String participantId: participantIdList) {
+					PrmPgForcedPartT cgfp = new PrmPgForcedPartT();
+					UiUserBase uiUserBaseCr = new UiUserBase();	
+					cgfp.setUiUserBaseCr(uiUserBaseCr);		
+					UiUserBase uiUserBaseUpd = new UiUserBase();
+					cgfp.setUiUserBaseUpd(uiUserBaseUpd);
+					PrmPgForcedPartTPK cgfpPK = new PrmPgForcedPartTPK();
+					cgfpPK.setCgId(studyGroupDTO.getStudyGroupId());
+					cgfpPK.setParticipantId(participantId);
+					cgfp.setId(cgfpPK);
+					cgfp.getUiUserBaseCr().setUiSystemId(studyGroupDTO.getCreatedBySystemId());
+					cgfp.setCreateDte(LocalDateTime.parse(studyGroupDTO.getCreatedDate(), dateTimeFormatter));
+					cgfp.getUiUserBaseUpd().setUiSystemId(studyGroupDTO.getModifiedBySystemId());
+					cgfp.setUpdateDte(LocalDateTime.parse(studyGroupDTO.getModifiedDate(), dateTimeFormatter));
+					participantDataList.add(cgfp);
+				}
+				studyGroupFpRepository.saveAll(participantDataList);
+				studyGroupFpRepository.flush();
+				logit.info("Saved Study Group Participant IDs = {} for Study Group ID {}",participantIdList.size(), studyGroupDTO.getStudyGroupId() );
+			}
+			
+		}
