@@ -1,7 +1,53 @@
-@Query("SELECT j FROM JobMasterT j " +
-            "WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt " +
-            "AND LOWER(j.prmStudyMasterT.pbName) LIKE :studyNm " +
-            "AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy " +
-            "AND LOWER(j.createUiUserBase.uiUserId) = :userId")
-    List<JobMasterT> getMyJobsBySearchCriteria(@Param("jobSt") String jobSt, @Param("studyNm") String studyNm,
-                                               @Param("createdBy") String createdBy, @Param("userId") String userId, Pageable pageRequest);
+private Pageable createPageable(ListTableParams listTableParams) {
+    String sortByStr = listTableParams.getSortBy();
+    int pageNumberI  = Math.max(0, listTableParams.getPageNumber() - 1);
+    int pageSizeI    = Math.max(1, listTableParams.getRecordsPerPage());
+
+    Sort.Direction sortDirection = (listTableParams.getSortOrder() > 0)
+            ? Sort.Direction.ASC
+            : Sort.Direction.DESC;
+
+    // Map UI sort key -> entity property
+    String sortProperty;
+    switch (sortByStr) {
+        case JobsConstants.STUDY_NAME:
+            sortProperty = "prmStudyMasterT.pbName";                // String
+            break;
+        case JobsConstants.JOB_STATUS_DESC:
+            sortProperty = "jobLuStatusT.statusDesc";               // String
+            break;
+        case JobsConstants.SCHEDULED_RUN_DATE:
+            sortProperty = "dateSched";                             // Date/Timestamp
+            break;
+        case JobsConstants.PURGE_DATE:
+            sortProperty = "datePurge";                             // Date/Timestamp
+            break;
+        case JobsConstants.JOB_ID:
+            sortProperty = "jobId";                                 // Numeric
+            break;
+        case JobsConstants.CREATED_BY:
+            sortProperty = "createUiUserBase.userFullName";         // String (Formula)
+            break;
+        case JobsConstants.CASE_COUNT:
+            // Not a mapped entity field (you sort this in-memory later). Fall back to jobId.
+            // Keep the direction so paging remains deterministic.
+            sortProperty = "jobId";
+            break;
+        default:
+            sortProperty = "jobId";
+            break;
+    }
+
+    // Apply ignoreCase ONLY to known String properties
+    boolean isStringField =
+            "prmStudyMasterT.pbName".equals(sortProperty) ||
+            "jobLuStatusT.statusDesc".equals(sortProperty) ||
+            "createUiUserBase.userFullName".equals(sortProperty);
+
+    Sort.Order order = new Sort.Order(sortDirection, sortProperty);
+    if (isStringField) {
+        order = order.ignoreCase();
+    }
+
+    return PageRequest.of(pageNumberI, pageSizeI, Sort.by(order));
+}
