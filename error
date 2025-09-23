@@ -1,13 +1,7 @@
-<!-- Route Log4j 1.x to SLF4J/Logback -->
-<dependency>
-  <groupId>org.slf4j</groupId>
-  <artifactId>log4j-over-slf4j</artifactId>
-  <version>1.7.36</version> <!-- or your BOM-managed version -->
-</dependency>
-
-<!-- Route commons-logging to SLF4J/Logback (often useful) -->
-<dependency>
-  <groupId>org.slf4j</groupId>
-  <artifactId>jcl-over-slf4j</artifactId>
-  <version>1.7.36</version>
-</dependency>
+@Query("SELECT j FROM JobMasterT j " +
+            "WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt " +
+            "AND LOWER(j.prmStudyMasterT.pbName) LIKE :studyNm " +
+            "AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy " +
+            "AND LOWER(j.createUiUserBase.uiUserId) = :userId")
+    List<JobMasterT> getMyJobsBySearchCriteria(@Param("jobSt") String jobSt, @Param("studyNm") String studyNm,
+                                               @Param("createdBy") String createdBy, @Param("userId") String userId, Pageable pageRequest);
