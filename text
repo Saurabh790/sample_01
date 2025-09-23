@@ -1,33 +1,44 @@
-@Query("""
-SELECT j FROM JobMasterT j
-WHERE LOWER(j.jobLuStatusT.statusDesc)   LIKE :jobSt
-  AND LOWER(j.prmStudyMasterT.pbName)    LIKE :studyNm
-  AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy
-  AND LOWER(function('to_char', j.createUiUserBase.uiUserId)) = LOWER(:userId)
-""")
-List<JobMasterT> getMyJobsBySearchCriteria(
-    @Param("jobSt") String jobSt,
-    @Param("studyNm") String studyNm,
-    @Param("createdBy") String createdBy,
-    @Param("userId") String userId,
-    Pageable pageRequest
-);
+@Service
+public class JobMonitorDataService {
 
+    private static final Logger logit = LoggerFactory.getLogger(JobMonitorDataService.class);
 
+    // ⬇️ Class-level constants (outside methods)
+    private static final Set<String> STRING_SORT_FIELDS = Set.of(
+        "jobLuStatusT.statusDesc",      // status
+        "prmStudyMasterT.pbName",       // study
+        "createUiUserBase.userFullName" // createdBy
+    );
 
-@Query("""
-SELECT j FROM JobMasterT j
-WHERE LOWER(j.jobLuStatusT.statusDesc)   LIKE :jobSt
-  AND LOWER(j.prmStudyMasterT.pbName)    LIKE :studyNm
-  AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy
-  AND j.jobId = :jobId
-  AND LOWER(function('to_char', j.createUiUserBase.uiUserId)) = LOWER(:userId)
-""")
-List<JobMasterT> getMyJobsBySearchCriteriaWithJobId(
-    @Param("jobSt") String jobSt,
-    @Param("studyNm") String studyNm,
-    @Param("createdBy") String createdBy,
-    @Param("userId") String userId,
-    @Param("jobId") Integer jobId,
-    Pageable pageRequest
-);
+    // Map UI sort keys -> entity property paths
+    private static final Map<String, String> SORT_BY_TO_PROP = Map.of(
+        "jobId",     "jobId",
+        "status",    "jobLuStatusT.statusDesc",
+        "studyName", "prmStudyMasterT.pbName",
+        "createdBy", "createUiUserBase.userFullName"
+        // ⚠️ Only include "caseCount" if it's a real entity property.
+        // If it's DTO-only, DO NOT map it here—keep sorting it in-memory as you already do.
+    );
+
+    // ⬇️ Helper used by your getJobsOnSearchCriteria(...)
+    private Pageable createPageable(ListTableParams p) {
+        int page = Math.max(0, p.getPageNumber() - 1);
+        int size = Math.max(1, p.getRecordsPerPage());
+
+        String sortByKey = Optional.ofNullable(p.getSortBy()).orElse("jobId");
+        String prop = SORT_BY_TO_PROP.getOrDefault(sortByKey, "jobId");
+
+        Sort.Direction dir = (p.getSortOrder() >= 0) ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+        Sort.Order order = new Sort.Order(dir, prop);
+        if (STRING_SORT_FIELDS.contains(prop)) {
+            order = order.ignoreCase(); // never set ignoreCase for numeric fields like jobId
+        }
+        return PageRequest.of(page, size, Sort.by(order));
+    }
+
+    public PaginationResult getJobsOnSearchCriteria(ListTableParams listTableParams) {
+        Pageable pageable = createPageable(listTableParams);
+        // ... your existing logic ...
+    }
+}
