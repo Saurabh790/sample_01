@@ -1,39 +1,8 @@
-private Pageable createPageable(ListTableParams listTableParams) {
-    String sortByStr = listTableParams.getSortBy();
-    int pageNumberI  = listTableParams.getPageNumber() - 1;
-    int pageSizeI    = listTableParams.getRecordsPerPage();
 
-    Sort.Direction sortDirection = (listTableParams.getSortOrder() > 0)
-            ? Sort.Direction.ASC
-            : Sort.Direction.DESC;
-
-    String sortProperty;
-    switch (sortByStr) {
-        case JobsConstants.STUDY_NAME:            // "studyName"
-            sortProperty = "prmStudyMasterT.pbName";
-            break;
-        case JobsConstants.JOB_STATUS_DESC:       // "jobStatusDesc"
-            sortProperty = "jobLuStatusT.statusDesc";
-            break;
-        case JobsConstants.SCHEDULED_RUN_DATE:    // "scheduledRunDate"
-            sortProperty = "dateSched";
-            break;
-        case JobsConstants.PURGE_DATE:            // "purgeDate"
-            sortProperty = "datePurge";
-            break;
-        case JobsConstants.JOB_ID:                // "jobId"
-            sortProperty = "jobId";
-            break;
-        case JobsConstants.CREATED_BY:            // "createdBy"
-            // ← EXACTLY matches your MapStruct source
-            sortProperty = "createUiUserBase.userFullName";
-            break;
-        case JobsConstants.CASE_COUNT:            // not an entity field; you sort this in-memory
-        default:
-            sortProperty = "jobId";
-            break;
-    }
-
-    Sort sort = Sort.by(new Sort.Order(sortDirection, sortProperty).ignoreCase());
-    return PageRequest.of(pageNumberI, pageSizeI, sort);
-}
+    @Query("SELECT j FROM JobMasterT j " +
+            "WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt " +
+            "AND LOWER(j.prmStudyMasterT.pbName) LIKE :studyNm " +
+            "AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy " +
+            "AND LOWER(j.createUiUserBase.uiUserId) =   LOWER(:userId)")
+    List<JobMasterT> getMyJobsBySearchCriteria(@Param("jobSt") String jobSt, @Param("studyNm") String studyNm,
+                                               @Param("createdBy") String createdBy, @Param("userId") String userId, Pageable pageRequest);
