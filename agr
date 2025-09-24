@@ -1,10 +1,8 @@
--- Does any creator have this login?
-select count(*)
-from JOB_MASTER_T j
-join UI_USER_BASE u on u.UI_SYSTEM_ID = j.CREATE_USR
-where lower(trim(u.UI_USER_ID)) = 'sg6234283';
 
--- Or, by system id (likely your intent):
-select count(*)
-from JOB_MASTER_T j
-where j.CREATE_USR = 44;
+    @Query("SELECT j FROM JobMasterT j " +
+            "WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt " +
+            "AND LOWER(j.prmStudyMasterT.pbName) LIKE :studyNm " +
+            "AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy " +
+            "AND LOWER(function('to_char', j.createUiUserBase.uiUserId)) =   LOWER(:userId)")
+    List<JobMasterT> getMyJobsBySearchCriteria(@Param("jobSt") String jobSt, @Param("studyNm") String studyNm,
+                                               @Param("createdBy") String createdBy, @Param("userId") String userId, Pageable pageRequest);
