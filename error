@@ -39,3 +39,36 @@ public void scheduleStudyJob(Study study) {
 
     jobsRepository.save(jobMaster);
 }
+
+
+@Repository
+public interface UiUserBaseRepository extends JpaRepository<UiUserBase, Long> {
+    // you usually don’t need any custom methods for getReferenceById(...)
+}
+
+
+@Service
+public class StudyServiceImpl implements StudyService {
+
+    private final JobsRepository jobsRepository;
+    private final FadsConfigRepository fadsConfigRepository;
+    private final UiUserBaseRepository uiUserBaseRepository;
+    private final PrmStudyMasterRepository prmStudyMasterRepository;
+    private final JobLuStatusRepository jobLuStatusRepository;
+
+    @Autowired
+    public StudyServiceImpl(JobsRepository jobsRepository,
+                            FadsConfigRepository fadsConfigRepository,
+                            UiUserBaseRepository uiUserBaseRepository,
+                            PrmStudyMasterRepository prmStudyMasterRepository,
+                            JobLuStatusRepository jobLuStatusRepository) {
+        this.jobsRepository = jobsRepository;
+        this.fadsConfigRepository = fadsConfigRepository;
+        this.uiUserBaseRepository = uiUserBaseRepository;
+        this.prmStudyMasterRepository = prmStudyMasterRepository;
+        this.jobLuStatusRepository = jobLuStatusRepository;
+    }
+
+    // ... scheduleStudyJob code here ...
+}
+
