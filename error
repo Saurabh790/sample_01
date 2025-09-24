@@ -1,18 +1,14 @@
-so I am using this 
-// JobMasterT.java
-@Column(name = "CREATE_USR", insertable = false, updatable = false)
-private String createUsr;   // holds 'sg6234283'
-and 
 @Query("""
   SELECT j FROM JobMasterT j
   WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt
     AND LOWER(j.prmStudyMasterT.pbName)   LIKE :studyNm
     AND TRIM(LOWER(j.createUsr))          = TRIM(LOWER(:userId))
+    AND (:createdBy) = (:createdBy)  -- bind the param so signature stays the same, but no effect
 """)
 List<JobMasterT> getMyJobsBySearchCriteria(
     @Param("jobSt") String jobSt,
     @Param("studyNm") String studyNm,
+    @Param("createdBy") String createdBy,   // still passed from callers
     @Param("userId") String userId,
     Pageable pageRequest
 );
-will solve the issue ight?
