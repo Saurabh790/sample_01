@@ -1,80 +1,18 @@
-@Override
-@Transactional
-public void scheduleStudyJob(Study study) {
-    LocalDateTime now = LocalDateTime.now();
-
-    JobMasterT jobMaster = new JobMasterT();
-    jobMaster.setJobId(jobsRepository.getNextJobId());
-    jobMaster.setCreateDte(Date.from(now.atZone(ZoneId.systemDefault()).toInstant()));
-    jobMaster.setArcFlag(0);
-    jobMaster.setHoldFlag(0);
-    jobMaster.setPurgeFlag(0);
-
-    // If you compute purgeDate:
-    fadsConfigRepository.findById(StudyConstants.PURGE_OPTION_CODE).ifPresent(cfg -> {
-        Date purgeDate = Date.from(
-            now.plusDays(Long.parseLong(cfg.getOptionValue()))
-               .atZone(ZoneId.systemDefault()).toInstant());
-        jobMaster.setDatePurge(purgeDate);
-    });
-
-    // ✅ Link existing rows via getReference (no SELECT, just a proxy)
-    UiUserBase creatorRef = uiUserBaseRepository.getReferenceById(study.getCreatedBySystemId());
-    UiUserBase updaterRef = uiUserBaseRepository.getReferenceById(study.getUpdatedBySystemId());
-    PrmStudyMasterT studyRef = prmStudyMasterRepository.getReferenceById(study.getStudyId());
-
-    // Pick the correct existing status code for “scheduled/created”
-    JobLuStatusT statusRef = jobLuStatusRepository.getReferenceById(1L /* e.g., SCHEDULED */);
-
-    jobMaster.setCreateUiUserBase(creatorRef);
-    jobMaster.setUpdateUiUserBase(updaterRef);
-    jobMaster.setPrmStudyMasterT(studyRef);
-    jobMaster.setJobLuStatusT(statusRef);
-
-    // If you intend to store time of run, use TIMESTAMP (see mapping tip below)
-    if (study.getScheduleRunDateTime() != null) {
-        jobMaster.setDateSched(Date.from(
-            study.getScheduleRunDateTime().atZone(ZoneId.systemDefault()).toInstant()));
-    }
-
-    jobsRepository.save(jobMaster);
-}
-
-
-@Repository
-public interface UiUserBaseRepository extends JpaRepository<UiUserBase, Long> {
-    // you usually don’t need any custom methods for getReferenceById(...)
-}
-
-@Autowired
-private JobLuStatusRepository jobLuStatusRepository;
-
-
-@Repository
-public interface JobLuStatusRepository extends JpaRepository<JobLuStatusT, Long> {}
-
-@Service
-public class StudyServiceImpl implements StudyService {
-
-    private final JobsRepository jobsRepository;
-    private final FadsConfigRepository fadsConfigRepository;
-    private final UiUserBaseRepository uiUserBaseRepository;
-    private final PrmStudyMasterRepository prmStudyMasterRepository;
-    private final JobLuStatusRepository jobLuStatusRepository;
-
-    @Autowired
-    public StudyServiceImpl(JobsRepository jobsRepository,
-                            FadsConfigRepository fadsConfigRepository,
-                            UiUserBaseRepository uiUserBaseRepository,
-                            PrmStudyMasterRepository prmStudyMasterRepository,
-                            JobLuStatusRepository jobLuStatusRepository) {
-        this.jobsRepository = jobsRepository;
-        this.fadsConfigRepository = fadsConfigRepository;
-        this.uiUserBaseRepository = uiUserBaseRepository;
-        this.prmStudyMasterRepository = prmStudyMasterRepository;
-        this.jobLuStatusRepository = jobLuStatusRepository;
-    }
-
-    // ... scheduleStudyJob code here ...
-}
-
+so I am using this 
+// JobMasterT.java
+@Column(name = "CREATE_USR", insertable = false, updatable = false)
+private String createUsr;   // holds 'sg6234283'
+and 
+@Query("""
+  SELECT j FROM JobMasterT j
+  WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt
+    AND LOWER(j.prmStudyMasterT.pbName)   LIKE :studyNm
+    AND TRIM(LOWER(j.createUsr))          = TRIM(LOWER(:userId))
+""")
+List<JobMasterT> getMyJobsBySearchCriteria(
+    @Param("jobSt") String jobSt,
+    @Param("studyNm") String studyNm,
+    @Param("userId") String userId,
+    Pageable pageRequest
+);
+will solve the issue ight?
