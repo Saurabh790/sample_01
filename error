@@ -1,53 +1,41 @@
-private Pageable createPageable(ListTableParams listTableParams) {
-    String sortByStr = listTableParams.getSortBy();
-    int pageNumberI  = Math.max(0, listTableParams.getPageNumber() - 1);
-    int pageSizeI    = Math.max(1, listTableParams.getRecordsPerPage());
+@Override
+@Transactional
+public void scheduleStudyJob(Study study) {
+    LocalDateTime now = LocalDateTime.now();
 
-    Sort.Direction sortDirection = (listTableParams.getSortOrder() > 0)
-            ? Sort.Direction.ASC
-            : Sort.Direction.DESC;
+    JobMasterT jobMaster = new JobMasterT();
+    jobMaster.setJobId(jobsRepository.getNextJobId());
+    jobMaster.setCreateDte(Date.from(now.atZone(ZoneId.systemDefault()).toInstant()));
+    jobMaster.setArcFlag(0);
+    jobMaster.setHoldFlag(0);
+    jobMaster.setPurgeFlag(0);
 
-    // Map UI sort key -> entity property
-    String sortProperty;
-    switch (sortByStr) {
-        case JobsConstants.STUDY_NAME:
-            sortProperty = "prmStudyMasterT.pbName";                // String
-            break;
-        case JobsConstants.JOB_STATUS_DESC:
-            sortProperty = "jobLuStatusT.statusDesc";               // String
-            break;
-        case JobsConstants.SCHEDULED_RUN_DATE:
-            sortProperty = "dateSched";                             // Date/Timestamp
-            break;
-        case JobsConstants.PURGE_DATE:
-            sortProperty = "datePurge";                             // Date/Timestamp
-            break;
-        case JobsConstants.JOB_ID:
-            sortProperty = "jobId";                                 // Numeric
-            break;
-        case JobsConstants.CREATED_BY:
-            sortProperty = "createUiUserBase.userFullName";         // String (Formula)
-            break;
-        case JobsConstants.CASE_COUNT:
-            // Not a mapped entity field (you sort this in-memory later). Fall back to jobId.
-            // Keep the direction so paging remains deterministic.
-            sortProperty = "jobId";
-            break;
-        default:
-            sortProperty = "jobId";
-            break;
+    // If you compute purgeDate:
+    fadsConfigRepository.findById(StudyConstants.PURGE_OPTION_CODE).ifPresent(cfg -> {
+        Date purgeDate = Date.from(
+            now.plusDays(Long.parseLong(cfg.getOptionValue()))
+               .atZone(ZoneId.systemDefault()).toInstant());
+        jobMaster.setDatePurge(purgeDate);
+    });
+
+    // ✅ Link existing rows via getReference (no SELECT, just a proxy)
+    UiUserBase creatorRef = uiUserBaseRepository.getReferenceById(study.getCreatedBySystemId());
+    UiUserBase updaterRef = uiUserBaseRepository.getReferenceById(study.getUpdatedBySystemId());
+    PrmStudyMasterT studyRef = prmStudyMasterRepository.getReferenceById(study.getStudyId());
+
+    // Pick the correct existing status code for “scheduled/created”
+    JobLuStatusT statusRef = jobLuStatusRepository.getReferenceById(1L /* e.g., SCHEDULED */);
+
+    jobMaster.setCreateUiUserBase(creatorRef);
+    jobMaster.setUpdateUiUserBase(updaterRef);
+    jobMaster.setPrmStudyMasterT(studyRef);
+    jobMaster.setJobLuStatusT(statusRef);
+
+    // If you intend to store time of run, use TIMESTAMP (see mapping tip below)
+    if (study.getScheduleRunDateTime() != null) {
+        jobMaster.setDateSched(Date.from(
+            study.getScheduleRunDateTime().atZone(ZoneId.systemDefault()).toInstant()));
     }
 
-    // Apply ignoreCase ONLY to known String properties
-    boolean isStringField =
-            "prmStudyMasterT.pbName".equals(sortProperty) ||
-            "jobLuStatusT.statusDesc".equals(sortProperty) ||
-            "createUiUserBase.userFullName".equals(sortProperty);
-
-    Sort.Order order = new Sort.Order(sortDirection, sortProperty);
-    if (isStringField) {
-        order = order.ignoreCase();
-    }
-
-    return PageRequest.of(pageNumberI, pageSizeI, Sort.by(order));
+    jobsRepository.save(jobMaster);
 }
