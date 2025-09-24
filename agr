@@ -1,38 +1,113 @@
-  private Pageable createPageable(ListTableParams listTableParams) {
-        String sortByStr = listTableParams.getSortBy();
-        int pageNumberI  = listTableParams.getPageNumber() - 1;
-        int pageSizeI    = listTableParams.getRecordsPerPage();
+package com.optum.fads.pgp.datarules.domain;
 
-        Sort.Direction sortDirection = (listTableParams.getSortOrder() > 0)
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
+import java.io.Serializable;
+import jakarta.persistence.*;
 
-        String sortProperty;
-        switch (sortByStr) {
-            case JobsConstants.STUDY_NAME:            
-                sortProperty = "prmStudyMasterT.pbName";
-                break;
-            case JobsConstants.JOB_STATUS_DESC:     
-                sortProperty = "jobLuStatusT.statusDesc";
-                break;
-            case JobsConstants.SCHEDULED_RUN_DATE:    
-                sortProperty = "dateSched";
-                break;
-            case JobsConstants.PURGE_DATE:            
-                sortProperty = "datePurge";
-                break;
-            case JobsConstants.JOB_ID:                
-                sortProperty = "jobId";
-                break;
-            case JobsConstants.CREATED_BY:            
-                sortProperty = "createUiUserBase.userFullName";
-                break;
-            case JobsConstants.CASE_COUNT:         
-            default:
-                sortProperty = "jobId";
-                break;
-        }
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-        Sort sort = Sort.by(new Sort.Order(sortDirection, sortProperty).ignoreCase());
-        return PageRequest.of(pageNumberI, pageSizeI, sort);
-    }
+import java.util.Date;
+import java.util.List;
+
+import com.optum.fads.authorization.api.domain.UiUserBase;
+
+/**
+ * The persistent class for the JOB_MASTER_T database table.
+ *
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+//@ToString
+@Entity
+@Table(name = "JOB_MASTER_T")
+public class JobMasterT implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "JOB_ID", unique = true, nullable = false, precision = 7)
+	private long jobId;
+
+	@Column(name = "ARC_FLAG", precision = 1)
+	private Integer arcFlag;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "CREATE_DTE")
+	private Date createDte;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_BEG")
+	private Date dateBeg;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_END")
+	private Date dateEnd;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_PURGE")
+	private Date datePurge;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "DATE_SCHED")
+	private Date dateSched;
+
+	@Column(name = "HOLD_FLAG", precision = 1)
+	private Integer holdFlag;
+
+	@Column(name = "JOB_BP_ROWS", precision = 8)
+	private Integer jobBpRows;
+
+	@Column(name = "JOB_CG_ROWS", precision = 8)
+	private Integer jobCgRows;
+
+	@Column(name = "JOB_MISSING_COUNT", precision = 3)
+	private Integer jobMissingCount;
+
+	@Column(name = "JOB_RI_ROWS", precision = 8)
+	private Integer jobRiRows;
+
+	@Column(name = "LOG_FILE_NOTES", length = 4000)
+	private String logFileNotes;
+
+	@Column(name = "PURGE_FLAG", precision = 1)
+	private Integer purgeFlag;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name = "UPDATE_DTE")
+	private Date updateDte;
+
+	// bi-directional many-to-one association to JobMasterLogsT
+//	@OneToMany(mappedBy="jobMasterT")
+//	private List<JobMasterLogsT> jobMasterLogsTs;
+
+	// bi-directional many-to-one association to JobLuStatusT
+	@ManyToOne
+	@JoinColumn(name = "JOB_STATUS")
+	private JobLuStatusT jobLuStatusT;
+
+	// bi-directional many-to-one association to PrmStudyMasterT
+	@ManyToOne
+	@JoinColumn(name = "PB_ID")
+	private PrmStudyMasterT prmStudyMasterT;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "CREATE_USR")
+	private UiUserBase createUiUserBase;
+
+	// bi-directional many-to-one association to UiUserBase
+	@ManyToOne
+	@JoinColumn(name = "UPDATE_USR")
+	private UiUserBase updateUiUserBase;
+
+
+	@OneToMany(mappedBy = "jobMasterT")
+	@OrderBy("id.dateBeg desc")
+	private List<JobMasterLogsT> jobMasterLogsTs;
+
+
+}
