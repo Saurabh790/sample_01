@@ -1,22 +1,10 @@
-import java.time.*;
-import java.time.format.*;
+-- Does any creator have this login?
+select count(*)
+from JOB_MASTER_T j
+join UI_USER_BASE u on u.UI_SYSTEM_ID = j.CREATE_USR
+where lower(trim(u.UI_USER_ID)) = 'sg6234283';
 
-public class DateParser {
-
-    private static final DateTimeFormatter STUDY_FMT =
-        new DateTimeFormatterBuilder()
-            .parseCaseInsensitive()
-            .appendPattern("MM/dd/uuuu hh:mm[:ss] a") // seconds allowed but optional
-            .toFormatter(Locale.US);
-
-    public static LocalDateTime parseDateForStudy(String s) {
-        try {
-            // Parse with optional seconds, then normalize to 0 seconds
-            return LocalDateTime.parse(s.trim(), STUDY_FMT)
-                                .withSecond(0)
-                                .withNano(0);
-        } catch (DateTimeException e) {
-            throw new IllegalArgumentException("Error parsing date: " + s, e);
-        }
-    }
-}
+-- Or, by system id (likely your intent):
+select count(*)
+from JOB_MASTER_T j
+where j.CREATE_USR = 44;
