@@ -1,2 +1,21 @@
-The method getReferenceById(Long) in the type JpaRepository<UiUserBase,Long> is not applicable for the arguments (String)
-UiUserBase creatorRef = uiUserBaseRepository.getReferenceById(study.getCreatedBySystemId());
+package com.optum.fads.pgp.study.repo;
+
+import com.optum.fads.pgp.datarules.domain.PrmStudyMasterT;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface StudyOwnRepository
+		extends JpaRepository<PrmStudyMasterT, Long>, JpaSpecificationExecutor<PrmStudyMasterT> {
+
+	@Query(value = "SELECT  Max(PB_ID+1) FROM prm_study_master_t", nativeQuery = true)
+	Integer getNextStudyId();
+	
+
+}
+The method getReferenceById(Long) in the type JpaRepository<PrmStudyMasterT,Long> is not applicable for the arguments (Integer)
+
+for below line
+PrmStudyMasterT studyRef = studyOwnRepository.getReferenceById(study.getStudyId());
