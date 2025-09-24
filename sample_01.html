@@ -1,8 +1,84 @@
+package com.optum.fads.pgp.jobs.api.common;
 
-    @Query("SELECT j FROM JobMasterT j " +
-            "WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt " +
-            "AND LOWER(j.prmStudyMasterT.pbName) LIKE :studyNm " +
-            "AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy " +
-            "AND LOWER(j.createUiUserBase.uiUserId) =   LOWER(:userId)")
-    List<JobMasterT> getMyJobsBySearchCriteria(@Param("jobSt") String jobSt, @Param("studyNm") String studyNm,
-                                               @Param("createdBy") String createdBy, @Param("userId") String userId, Pageable pageRequest);
+/*
+//***********************************************
+//Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+//This software and documentation contain confidential and
+//proprietary information owned by UnitedHealth Group Corporation.
+//Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+/**
+ * Constants used for Job Monitor
+ */
+public final class JobsConstants {
+
+    private JobsConstants() {
+    }
+
+    public static final String BLANK_STR = " ";
+    public static final String UNDERSCORE = "_";
+    public static final String PERCENT_STR = "%";
+    public static final String SPACE_ENCODED_STR = "%20";
+    public static final String PLUS_STR = "+";
+    public static final String PLUS_REPL_STR = "spch2b";    // + sign encoding = %2B
+    public static final char PERCENT_CHAR = '%';
+    public static final char UNDERSCORE_CHAR = '_';
+    public static int ZERO_VALUE_INT = 0;
+    public static int UNIT_VALUE_INT = 1;
+    public static int DBL_VALUE_INT = 2;
+    public static final String NULL_STR = "";
+    public static final String COMMA_STR = ",";
+    public static final String COMMA_REPL_STR = "spch2c";    // , sign encoding = %2C
+    public static final long COGNOS_REPORT_OPTION_CODE = 300;///reports/bi/?pathRef=.public_folders%2FSURREPORTS%2FPeer+Group+Ranking&format=HTML&Download=false&prompt=true&action=run&p_job_id=
+    public static final Integer ZERO_VALUE = 0;
+    public static final Integer JOB_STATUS_CANCELLED = 14;
+    public static final Integer JOB_STATUS_SCH_4_PURGE = 15;
+    public static final Integer JOB_STATUS_COMPLETE = 20;
+    public static final Integer PURGE_FLAG_TRUE = 1;
+    public static final String SUCCESS_MESSAGE = "Action successful";
+    public static final String JOB_PURGED = "Job purged.";
+    public static final String JOB_CANCELED = "Job cancelled.";
+    public static final String RUN_DATE_SAVED = "New run date saved";
+    public static final String PURGE_DATE_SAVED = "New purge date saved.";
+    public static final String FAIL_MESSAGE = "Action failed";
+    public static final String DATE_FORMAT_MMDDYYYY = "MM/dd/yyyy";
+    public static final String DATE_FORMAT_MMDDYYYY_HHMMSS_A = "MM/dd/yyyy hh:mm:ss a";
+    public static final String DATE_FORMAT_MMDDYYYY_HHMM_A = "MM/dd/yyyy hh:mm a";
+    public static final String EXCEPTION_MESSAGE = "Exception: ";
+    public static final String JOB_ID = "jobId";
+    public static final String SCHEDULED_RUN_DATE = "scheduledRunDate";
+    public static final String DATE_SCHEDULED = "dateSched";
+    public static final String PURGE_DATE = "purgeDate";
+    public static final String DATE_PURGE = "datePurge";
+    public static final String STUDY_NAME = "studyName";
+    public static final String JOB_STATUS_DESC = "statusDescription";
+    public static final String SET_RUN_DATE = "SET-RUN-DATE";
+    public static final String SET_PURGE_DATE = "SET-PURGE-DATE";
+    public static final String CHANGE_RUN_DATE_INVALID_REQUEST = "Scheduled Run date cannot be changed for a job that is already started";
+    public static final String CHANGE_PURGE_DATE_INVALID_REQUEST = "Purge date cannot be changed unless the job status = complete";
+    public static final String CHANGE_DATES_INVALID_REQUEST = "Change Dates not permissible for this job";
+    public static final String PURGE_JOB_INVALID_REQUEST = "Job cannot be purged, unless it is complete, cancelled or in failed status";
+    public static final String CANCEL_JOB_INVALID_REQUEST = "Job is already cancelled, completed, failed or scheduled for purge";
+    public static final String NON_ZERO_CASE_COUNT = "Job has cases assigned and cannot be purged";
+    public static final String JOB_ID_DOES_NOT_EXIST = "Job does not exist";
+    public static final String NO_DATA_FOUND_MSG = "No data obtained";
+    public static final String CREATED_BY = "createdBy";
+    public static final String CREATE_DATE = "createDate";
+    public static final String UPDATED_BY = "updatedBy";
+    public static final String USER_SYSTEM_ID = "userSystemId";
+    public static final String MODIFIED_BY = "modifiedBy";
+    public static final String UPDATE_DATE = "updateDate";
+    public static final String CASE_COUNT = "caseCount";
+    public static final String PURGE_JOB_INVALID_DATA = "Job can't be purged due to inappropriate data";
+    public static final String JOB_DETAILS_NOT_FOUND = "An error occurred while retrieving the job details. Please try again later.";
+    public static final String FADS_CONFIG_DETAILS_NOT_FOUND_MSG = "An error occurred while retrieving the fads config details. Please try again later.";
+    public static final String CASES_DETAILS_NOT_FOUND_MSG = "An error occurred while retrieving the Cases details. Please try again later.";
+    public static final String MY_JOBS_NOT_FOUND_MSG = "An error occurred while retrieving the job details. Please try again later.";
+    public static final String REPORT_URL_NOT_FOUND_MSG = "An error occurred while retrieving the report url for the option code. Please try again later.";
+    public static final String CHANGE_PURGE_DATE_NOT_FOUND_MSG = "An error occurred while changing the purge date. Please try again later.";
+    public static final String CHANGE_DATE_NOT_FOUND_MSG = "An error occurred while changing the date for the particular job id. Please try again later.";
+    public static final String CANCELLING_JOB_NOT_FOUND_MSG = "An error occurred while cancelling the job. Please try again later.";
+}
+
