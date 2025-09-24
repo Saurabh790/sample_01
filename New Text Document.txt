@@ -1,48 +1,55 @@
 
-    @Query("SELECT j FROM JobMasterT j " +
-            "WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt " +
-            "AND LOWER(j.prmStudyMasterT.pbName) LIKE :studyNm " +
-            "AND LOWER(j.createUiUserBase.userFullName) LIKE :createdBy " +
-            "AND LOWER(function('to_char', j.createUiUserBase.uiUserId)) =   LOWER(:userId)")
-    List<JobMasterT> getMyJobsBySearchCriteria(@Param("jobSt") String jobSt, @Param("studyNm") String studyNm,
-                                               @Param("createdBy") String createdBy, @Param("userId") String userId, Pageable pageRequest);
-											   
-											   I guess above query is generating the belwow hql rg.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@54a1c9ed]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG org.hibernate.SQL - select jmt1_0.JOB_ID,jmt1_0.ARC_FLAG,jmt1_0.CREATE_DTE,jmt1_0.CREATE_USR,jmt1_0.DATE_BEG,jmt1_0.DATE_END,jmt1_0.DATE_PURGE,jmt1_0.DATE_SCHED,jmt1_0.HOLD_FLAG,jmt1_0.JOB_BP_ROWS,jmt1_0.JOB_CG_ROWS,jmt1_0.JOB_STATUS,jmt1_0.JOB_MISSING_COUNT,jmt1_0.JOB_RI_ROWS,jmt1_0.LOG_FILE_NOTES,jmt1_0.PB_ID,jmt1_0.PURGE_FLAG,jmt1_0.UPDATE_DTE,jmt1_0.UPDATE_USR from JOB_MASTER_T jmt1_0 join UI_USER_BASE cuub1_0 on cuub1_0.UI_SYSTEM_ID=jmt1_0.CREATE_USR join JOB_LU_STATUS_T jlst1_0 on jlst1_0.STATUS_CD=jmt1_0.JOB_STATUS join PRM_STUDY_MASTER_T psmt1_0 on psmt1_0.PB_ID=jmt1_0.PB_ID where lower(jlst1_0.STATUS_DESC) like ? and lower(psmt1_0.PB_NAME) like ? and lower(cuub1_0.UI_FIRST_NAME || ' ' || cuub1_0.UI_LAST_NAME) like ? and lower(to_char(cuub1_0.UI_USER_ID))=lower(?) order by jmt1_0.JOB_ID desc offset ? rows fetch first ? rows only
 
+23:51:54.462 ERROR o.s.boot.SpringApplication - Application run failed
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'sqlEntityManagerFactory' defined in class path resource [com/optum/fads/web/config/ServiceConfig.class]: [PersistenceUnit: default] Unable to build Hibernate SessionFactory; nested exception is org.hibernate.MappingException: Column 'CREATE_USR' is duplicated in mapping for entity 'com.optum.fads.pgp.datarules.domain.JobMasterT' (use '@Column(insertable=false, updatable=false)' when mapping multiple properties to the same column)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1786)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:600)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:522)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:326)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:234)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:324)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:200)
+        at org.springframework.context.support.AbstractApplicationContext.getBean(AbstractApplicationContext.java:1234)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:952)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:624)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:754)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:456)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:334)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1343)
+        at com.optum.fads.web.FADSWebApplication.main(FADSWebApplication.java:12)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:50)
+Caused by: jakarta.persistence.PersistenceException: [PersistenceUnit: default] Unable to build Hibernate SessionFactory; nested exception is org.hibernate.MappingException: Column 'CREATE_USR' is duplicated in mapping for entity 'com.optum.fads.pgp.datarules.domain.JobMasterT' (use '@Column(insertable=false, updatable=false)' when mapping multiple properties to the same column)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:421)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:396)
+        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1833)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1782)
+        ... 21 common frames omitted
+Caused by: org.hibernate.MappingException: Column 'CREATE_USR' is duplicated in mapping for entity 'com.optum.fads.pgp.datarules.domain.JobMasterT' (use '@Column(insertable=false, updatable=false)' when mapping multiple properties to the same column)
+        at org.hibernate.mapping.Value.checkColumnDuplication(Value.java:197)
+        at org.hibernate.mapping.MappingHelper.checkPropertyColumnDuplication(MappingHelper.java:249)
+        at org.hibernate.mapping.PersistentClass.checkColumnDuplication(PersistentClass.java:938)
+        at org.hibernate.mapping.PersistentClass.validate(PersistentClass.java:678)
+        at org.hibernate.mapping.RootClass.validate(RootClass.java:273)
+        at org.hibernate.boot.internal.MetadataImpl.validate(MetadataImpl.java:497)
+        at org.hibernate.internal.SessionFactoryImpl.<init>(SessionFactoryImpl.java:273)
+        at org.hibernate.boot.internal.SessionFactoryBuilderImpl.build(SessionFactoryBuilderImpl.java:450)
+        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1507)
+        at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:75)
+        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:409)
+        ... 25 common frames omitted
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.669 s
+[INFO] Finished at: 2025-09-24T23:51:54+05:30
+[INFO] ------------------------------------------------------------------------
 
-
-
-giving empty records 
-
-
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.c.JobMonitorController -  Going to fetch Job Monitor Records Long.getMyJobsByParms inside started
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService -  Going to fetch Job Monitor Records Long.valueOf(page.getTotalElements()).intValue() inside com.optum.fads.pgp.jobs.api.common.ListTableParams@5bb1d5b0
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or null 01 
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or null 02
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or null i 0
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or listTableParams.getSearchBy().get(i) i userSystemId
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or searchInput i 44 sg6234283
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or searchInput i myItems 1231 true
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or searchInput i myItems 88 true
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(1603160606<open>)] for JPA transaction
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.getMyJobsBySearchCriteria]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.j.d.DriverManagerDataSource - Creating new JDBC DriverManager Connection to [jdbc:oracle:thin:@//wn000193163.ms.ds.uhc.com:1521/XEPDB1]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@7aa320c4]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG org.hibernate.SQL - select jmt1_0.JOB_ID,jmt1_0.ARC_FLAG,jmt1_0.CREATE_DTE,jmt1_0.CREATE_USR,jmt1_0.DATE_BEG,jmt1_0.DATE_END,jmt1_0.DATE_PURGE,jmt1_0.DATE_SCHED,jmt1_0.HOLD_FLAG,jmt1_0.JOB_BP_ROWS,jmt1_0.JOB_CG_ROWS,jmt1_0.JOB_STATUS,jmt1_0.JOB_MISSING_COUNT,jmt1_0.JOB_RI_ROWS,jmt1_0.LOG_FILE_NOTES,jmt1_0.PB_ID,jmt1_0.PURGE_FLAG,jmt1_0.UPDATE_DTE,jmt1_0.UPDATE_USR from JOB_MASTER_T jmt1_0 join UI_USER_BASE cuub1_0 on cuub1_0.UI_SYSTEM_ID=jmt1_0.CREATE_USR join JOB_LU_STATUS_T jlst1_0 on jlst1_0.STATUS_CD=jmt1_0.JOB_STATUS join PRM_STUDY_MASTER_T psmt1_0 on psmt1_0.PB_ID=jmt1_0.PB_ID where lower(jlst1_0.STATUS_DESC) like ? and lower(psmt1_0.PB_NAME) like ? and lower(cuub1_0.UI_FIRST_NAME || ' ' || cuub1_0.UI_LAST_NAME) like ? and lower(to_char(cuub1_0.UI_USER_ID))=lower(?)
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Initiating transaction commit
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Committing JPA transaction on EntityManager [SessionImpl(1603160606<open>)]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Not closing pre-bound JPA EntityManager after transaction
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - testing99  Jobs query jobStatusVal %  studyNameVal='%', study='%', createdByVal='%', userIdVal='sg6234283', pageable=Page request [number: 0, size 10, sort: jobId: DESC]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Found thread-bound EntityManager [SessionImpl(1603160606<open>)] for JPA transaction
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Creating new transaction with name [org.springframework.data.jpa.repository.support.SimpleJpaRepository.getMyJobsBySearchCriteria]: PROPAGATION_REQUIRED,ISOLATION_DEFAULT
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Exposing JPA transaction as JDBC [org.springframework.orm.jpa.vendor.HibernateJpaDialect$HibernateConnectionHandle@54a1c9ed]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG org.hibernate.SQL - select jmt1_0.JOB_ID,jmt1_0.ARC_FLAG,jmt1_0.CREATE_DTE,jmt1_0.CREATE_USR,jmt1_0.DATE_BEG,jmt1_0.DATE_END,jmt1_0.DATE_PURGE,jmt1_0.DATE_SCHED,jmt1_0.HOLD_FLAG,jmt1_0.JOB_BP_ROWS,jmt1_0.JOB_CG_ROWS,jmt1_0.JOB_STATUS,jmt1_0.JOB_MISSING_COUNT,jmt1_0.JOB_RI_ROWS,jmt1_0.LOG_FILE_NOTES,jmt1_0.PB_ID,jmt1_0.PURGE_FLAG,jmt1_0.UPDATE_DTE,jmt1_0.UPDATE_USR from JOB_MASTER_T jmt1_0 join UI_USER_BASE cuub1_0 on cuub1_0.UI_SYSTEM_ID=jmt1_0.CREATE_USR join JOB_LU_STATUS_T jlst1_0 on jlst1_0.STATUS_CD=jmt1_0.JOB_STATUS join PRM_STUDY_MASTER_T psmt1_0 on psmt1_0.PB_ID=jmt1_0.PB_ID where lower(jlst1_0.STATUS_DESC) like ? and lower(psmt1_0.PB_NAME) like ? and lower(cuub1_0.UI_FIRST_NAME || ' ' || cuub1_0.UI_LAST_NAME) like ? and lower(to_char(cuub1_0.UI_USER_ID))=lower(?) order by jmt1_0.JOB_ID desc offset ? rows fetch first ? rows only
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Initiating transaction commit
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Committing JPA transaction on EntityManager [SessionImpl(1603160606<open>)]
-2025-09-24 22:49:39 [http-nio-8080-exec-5] DEBUG o.s.orm.jpa.JpaTransactionManager - Not closing pre-bound JPA EntityManager after transaction
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or searchInput i jobsCntList 5654 []
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Invalid ListTableParams: searchBy/searchInput mismatch or searchInput i jobsCntList last []
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService - Jobs query returned 0 record(s). criteria: status='%', study='%', createdBy='%', userId='sg6234283', jobId=null, myItems=true, spChInJobName=false
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.s.i.JobMonitorDataService -  Going to fetch Job Monitor Records content paginationResult com.optum.fads.pgp.jobs.api.common.ListTableParams@5bb1d5b0
-2025-09-24 22:49:39 [http-nio-8080-exec-5] INFO  c.o.f.p.j.a.c.JobMonitorController -  Going to fetch Job Monitor Records Long.getMyJobsByParms inside ended
+C:\Users\sgupt664\DE303849\fads-monolithic-application\fads-web>
