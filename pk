@@ -1,394 +1,48 @@
-/**
- * 
- */
-package com.optum.fads.pgp.study.service.impl;
+@Override
+@Transactional
+public void scheduleStudyJob(Study study) {
+    LocalDateTime today = LocalDateTime.now();
+    Date purgeDate = null;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
+    // jobId type safety: entity has long, nextJobId() returns Integer
+    long jobId = Long.valueOf(jobsRepository.getNextJobId());
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+    Optional<FadsConfigT> optional = fadsConfigRepository.findById(StudyConstants.PURGE_OPTION_CODE);
+    if (optional.isPresent()) {
+        FadsConfigT fadsConfig = optional.get();
+        purgeDate = Date.from(
+            today.plusDays(Long.parseLong(fadsConfig.getOptionValue()))
+                 .atZone(ZoneId.systemDefault())
+                 .toInstant()
+        );
+    }
 
-import com.optum.fads.authorization.api.domain.UiUserBase;
-import com.optum.fads.pgp.datarules.domain.FadsConfigT;
-import com.optum.fads.pgp.datarules.domain.JobLuStatusT;
-import com.optum.fads.pgp.datarules.domain.JobMasterT;
-import com.optum.fads.pgp.datarules.domain.PrmStudyBpActLimitsT;
-import com.optum.fads.pgp.datarules.domain.PrmStudyBpActLimitsTPK;
-import com.optum.fads.pgp.datarules.domain.PrmStudyMasterT;
-import com.optum.fads.pgp.datarules.domain.PrmStudyRsRiExceptT;
-import com.optum.fads.pgp.datarules.domain.PrmStudyRsRiExceptTPK;
-import com.optum.fads.pgp.datarules.domain.PrmStudyRsRiT;
-import com.optum.fads.pgp.datarules.domain.PrmStudyRsRiTPK;
-import com.optum.fads.pgp.datarules.dto.ExceptionProcess;
-import com.optum.fads.pgp.datarules.dto.ReportSection;
-import com.optum.fads.pgp.datarules.dto.Study;
-import com.optum.fads.pgp.datarules.dto.StudyDTO;
-import com.optum.fads.pgp.datarules.dto.StudyRsRiException;
-import com.optum.fads.pgp.datarules.dto.StudyRsRiItem;
-import com.optum.fads.pgp.datarules.repo.FadsConfigRepository;
-import com.optum.fads.pgp.study.common.util.StudyConstants;
-import com.optum.fads.pgp.study.mapper.StudyDetailMapper;
-import com.optum.fads.pgp.study.mapper.StudyMiniMapper;
-import com.optum.fads.pgp.study.repo.JobsRepository;
-import com.optum.fads.pgp.study.repo.StudyOwnRepository;
-import com.optum.fads.pgp.study.repo.UiUserBaseRepository;
-import com.optum.fads.pgp.study.repo.specs.StudySpecification;
-import com.optum.fads.pgp.study.service.IStudyService;
+    logit.info("Schedule Study ID {} - Job at {}", study.getStudyId(), study.getScheduleRunDateTime());
 
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
-/**
- * @author sbiry StudyService
- */
+    JobMasterT jobMaster = new JobMasterT();
+    jobMaster.setJobId(jobId);
+    jobMaster.setDatePurge(purgeDate);
+    jobMaster.setCreateDte(Date.from(today.atZone(ZoneId.systemDefault()).toInstant()));
+    jobMaster.setArcFlag(0);
+    jobMaster.setHoldFlag(0);
+    jobMaster.setPurgeFlag(0);
 
-@Service
-public class StudyService implements IStudyService {
-	
-	private static final Logger logit = LoggerFactory
-			.getLogger(StudyService.class);
-	
-	@Autowired
-	private StudyOwnRepository studyOwnRepository;
+    // ✅ Use managed references instead of 'new'
+    UiUserBase creatorRef = uiUserBaseRepository.getReferenceById(study.getCreatedBySystemId());
+    UiUserBase updaterRef = uiUserBaseRepository.getReferenceById(study.getUpdatedBySystemId());
+    PrmStudyMasterT studyRef = studyOwnRepository.getReferenceById(study.getStudyId());
+    JobLuStatusT statusRef = jobLuStatusRepository.getReferenceById(1L); // put your real default status id
 
-	@Autowired
-	private JobsRepository jobsRepository;
+    jobMaster.setCreateUiUserBase(creatorRef);
+    jobMaster.setUpdateUiUserBase(updaterRef);
+    jobMaster.setPrmStudyMasterT(studyRef);
+    jobMaster.setJobLuStatusT(statusRef);
 
-	@Autowired
-	private FadsConfigRepository fadsConfigRepository;
+    if (study.getScheduleRunDateTime() != null) {
+        jobMaster.setDateSched(Date.from(
+            study.getScheduleRunDateTime().atZone(ZoneId.systemDefault()).toInstant()
+        ));
+    }
 
-	@Autowired
-	private StudyMiniMapper studyMiniMapper;
-
-	@Autowired
-	private StudyDetailMapper studyDetailMapper;
-	
-
-	@Transactional(readOnly = true)
-	@Override
-	public Page<Study> findAllStudies(final Map<String, String> filterOptions, final Pageable pageable) {
-		Specification<PrmStudyMasterT> finalSpecs = StudySpecification.findAllStudySpecification(filterOptions);
-		Page<PrmStudyMasterT> entityPage = studyOwnRepository.findAll(finalSpecs, pageable);
-		List<Study> dtoList = studyMiniMapper.converToStudyDTOs(entityPage.getContent());
-		return new PageImpl<Study>(dtoList, pageable, entityPage.getTotalElements());
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public StudyDTO getStudy(Long id) {
-
-	    Optional<PrmStudyMasterT> optional = studyOwnRepository.findById(id);
-
-	    if (optional.isPresent()) {
-	        PrmStudyMasterT prmStudyMasterT = optional.get();
-	        StudyDTO studyDTO = studyDetailMapper.toStudyDTO(prmStudyMasterT);
-
-	        // Map StudyRsRiItems
-	        List<StudyRsRiItem> studyRsRiItems = studyDetailMapper
-	                .toStudyRsRiItems(prmStudyMasterT.getPrmStudyRsRiTs());
-
-	        studyRsRiItems.forEach(studyRsRiItem -> {
-	            studyDTO.getReportSections().forEach(rs -> {
-	                if (Objects.equals(rs.getReportSectionId(), studyRsRiItem.getReportSectionId())) {
-	                    rs.getReportItems().forEach(ri -> {
-	                    	if (Objects.equals(ri.getReportItemId(), studyRsRiItem.getReportItemId())) {
-	                            rs.setRsOrder(studyRsRiItem.getRsOrder());
-	                            ri.setLowerLimit(studyRsRiItem.getLowerLimit());
-	                            ri.setUpperLimit(studyRsRiItem.getUpperLimit());
-	                            ri.setPercentage(studyRsRiItem.getPercentage());
-	                            ri.setStandardDeviation(studyRsRiItem.getStandardDeviation());
-	                            ri.setWeight(studyRsRiItem.getWeight());
-	                        }
-	                    });
-	                }
-	            });
-	        });
-
-	        // Map StudyRsRiExceptions
-	        List<StudyRsRiException> studyRsRiExceptions = studyDetailMapper
-	                .toStudyRsRiExceptions(prmStudyMasterT.getPrmStudyRsRiExceptTs());
-
-	        studyRsRiExceptions.forEach(srx -> {
-	            studyDTO.getReportSections().forEach(rs -> {
-	            	if (Objects.equals(rs.getReportSectionId(), srx.getReportSectionId())) {
-	                    rs.getReportItems().forEach(ri -> {
-	                        if (Objects.equals(ri.getReportItemId(), srx.getReportItemId())) {
-	                            studyDTO.getTimePeriods().forEach(timePeriod -> {
-	                                if (Objects.equals(timePeriod.getTimePeriodId(), srx.getTimePeriodId())) {
-	                                    ri.getExceptionProcesses().add(new ExceptionProcess(
-	                                            srx.getTimePeriodId(),
-	                                            srx.getExceptionFlag(),
-	                                            srx.getOverLimitFlag()));
-	                                }
-	                            });
-	                        }
-	                    });
-	                }
-	            });
-	        });
-
-	        List<ReportSection> rsSortedList = studyDTO.getReportSections().stream()
-	                .sorted(Comparator.comparing(
-	                        ReportSection::getRsOrder,
-	                        Comparator.nullsLast(Comparator.naturalOrder())
-	                ))
-	                .collect(Collectors.toList());
-
-	        studyDTO.setReportSections(new LinkedHashSet<>(rsSortedList));
-
-	        return studyDTO;
-	    }
-
-	    return null;
-	}
-
-	@Override
-	@Transactional
-	public StudyDTO createStudy(StudyDTO studyDTO) {
-		List<PrmStudyBpActLimitsT> bpActLimitsTs = new ArrayList<PrmStudyBpActLimitsT>();
-		List<PrmStudyRsRiExceptT> studyRsRiExpList = new ArrayList<PrmStudyRsRiExceptT>();
-		List<PrmStudyRsRiT> studyRsRi = new ArrayList<PrmStudyRsRiT>();
-		logit.info("Principal class: here check logit.infostudyOwnRepository.getNextStudyId() before  ");
-		PrmStudyMasterT prmStudyMasterT = studyDetailMapper.convertToPrmStudyMasterT(studyDTO);
-		logit.info("Principal class: here check logit.infostudyOwnRepository.getNextStudyId():: after ");
-		prmStudyMasterT.setPbExcpOnlyFlag(new BigDecimal(0).intValue());
-		prmStudyMasterT.setPbUseDwFlag(new BigDecimal(1).intValue());
-		prmStudyMasterT.setPbUseVwFlag(new BigDecimal(1).intValue());
-		prmStudyMasterT.setCreateDte(Date.from(studyDTO.getCreateDate().atZone(ZoneId.systemDefault()).toInstant()));
-		prmStudyMasterT.setUpdateDte(Date.from(studyDTO.getCreateDate().atZone(ZoneId.systemDefault()).toInstant()));
-		logit.info("Principal class: here check logit.infostudyOwnRepository.getNextStudyId():: " + studyOwnRepository.getNextStudyId());
-		Integer studyId = studyOwnRepository.getNextStudyId();
-		prmStudyMasterT.setPbId(studyId);
-
-		prmStudyMasterT.getPrmStudyTimePeriodsTs().stream().forEach(p -> {
-			p.getId().setPbId(studyId);
-			p.setCreateDte(Date.from(studyDTO.getCreateDate().atZone(ZoneId.systemDefault()).toInstant()));
-			p.setUpdateDte(Date.from(studyDTO.getCreateDate().atZone(ZoneId.systemDefault()).toInstant()));
-		});
-
-		if (prmStudyMasterT.getPrmStudyBpActLimitsTs() != null
-				&& (!prmStudyMasterT.getPrmStudyBpActLimitsTs().isEmpty())) {
-			prmStudyMasterT.getPrmStudyBpActLimitsTs().stream().forEach(p -> {
-				bpActLimitsTs.add(PrmStudyBpActLimitsT.builder().vcFlag(p.getVcFlag()).vcMax(p.getVcMax())
-						.vcMin(p.getVcMin())
-						.id(PrmStudyBpActLimitsTPK.builder().bpId(p.getId().getBpId()).pbId(studyId).build()).build());
-			});
-		}
-
-		studyDTO.getReportSections().forEach(rs -> {
-			rs.getReportItems().forEach(ri -> {
-				studyRsRi.add(PrmStudyRsRiT.builder().pbRiOlLolmt(ri.getLowerLimit())
-						.pbRiOlUplmt(ri.getUpperLimit()).pbRiOlPct(ri.getPercentage())
-						.pbRiOlSdev(ri.getStandardDeviation()).pbRiWeight(ri.getWeight())
-						.id(PrmStudyRsRiTPK.builder().pbId(studyId).rsId(rs.getReportSectionId())
-								.riId(ri.getReportItemId()).rsOrder(rs.getRsOrder()).build())
-						.build());
-				if(ri.getExceptionProcesses()!=null) {		
-				ri.getExceptionProcesses().stream().forEach(ep -> {					
-					studyRsRiExpList.add(PrmStudyRsRiExceptT.builder()
-							.id(PrmStudyRsRiExceptTPK.builder().pbId(studyId).rsId(rs.getReportSectionId())
-									.riId(ri.getReportItemId()).pbTimePrd(ep.getTimePeriodId()).build())
-							.pbriExcpFlag(ep.getExceptionFlag()).pbriOverLmtFlag(ep.getOverLimitFlag()).build());
-
-				});
-			}
-			});
-
-		});
-
-		prmStudyMasterT.setPrmStudyBpActLimitsTs(bpActLimitsTs);
-		prmStudyMasterT.setPrmStudyRsRiTs(studyRsRi);
-		prmStudyMasterT.setPrmStudyRsRiExceptTs(studyRsRiExpList);
-
-		prmStudyMasterT = studyOwnRepository.saveAndFlush(prmStudyMasterT);
-
-		return studyDetailMapper.toStudyDTO(prmStudyMasterT);
-
-	}
-
-	@Override
-	@Transactional
-	public StudyDTO updateStudy(Integer id, StudyDTO studyDTO) {
-		List<PrmStudyBpActLimitsT> bpActLimitsTs = new ArrayList<PrmStudyBpActLimitsT>();
-		List<PrmStudyRsRiExceptT> studyRsRiExpList = new ArrayList<PrmStudyRsRiExceptT>();
-		List<PrmStudyRsRiT> studyRsRi = new ArrayList<PrmStudyRsRiT>();
-		PrmStudyMasterT prmStudyMasterT = studyDetailMapper.convertToPrmStudyMasterT(studyDTO);
-		prmStudyMasterT.setPbExcpOnlyFlag(new BigDecimal(0).intValue());
-		prmStudyMasterT.setPbUseDwFlag(new BigDecimal(1).intValue());
-		prmStudyMasterT.setPbUseVwFlag(new BigDecimal(1).intValue());
-		prmStudyMasterT.setUpdateDte(Date.from(studyDTO.getUpdateDate().atZone(ZoneId.systemDefault()).toInstant()));
-		Integer studyId = prmStudyMasterT.getPbId();
-
-		prmStudyMasterT.setPbId(studyId);
-
-		prmStudyMasterT.getPrmStudyTimePeriodsTs().stream().forEach(p -> {
-			p.getId().setPbId(studyId);
-			p.setUpdateDte(Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant()));
-		});
-		if (prmStudyMasterT.getPrmStudyBpActLimitsTs() != null
-				&& (!prmStudyMasterT.getPrmStudyBpActLimitsTs().isEmpty())) {
-			prmStudyMasterT.getPrmStudyBpActLimitsTs().stream().forEach(p -> {
-				bpActLimitsTs.add(PrmStudyBpActLimitsT.builder().vcFlag(p.getVcFlag()).vcMax(p.getVcMax())
-						.vcMin(p.getVcMin())
-						.id(PrmStudyBpActLimitsTPK.builder().bpId(p.getId().getBpId()).pbId(studyId).build()).build());
-			});
-		}
-		
-		studyDTO.getReportSections().forEach(rs -> {
-			rs.getReportItems().forEach(ri -> {
-				studyRsRi.add(PrmStudyRsRiT.builder().pbRiOlLolmt(ri.getLowerLimit())
-						.pbRiOlUplmt(ri.getUpperLimit()).pbRiOlPct(ri.getPercentage())
-						.pbRiOlSdev(ri.getStandardDeviation()).pbRiWeight(ri.getWeight())
-						.id(PrmStudyRsRiTPK.builder().pbId(studyId).rsId(rs.getReportSectionId())
-								.riId(ri.getReportItemId()).rsOrder(rs.getRsOrder()).build())
-						.build());
-				if(ri.getExceptionProcesses()!=null) {		
-				ri.getExceptionProcesses().stream().forEach(ep -> {					
-					studyRsRiExpList.add(PrmStudyRsRiExceptT.builder()
-							.id(PrmStudyRsRiExceptTPK.builder().pbId(studyId).rsId(rs.getReportSectionId())
-									.riId(ri.getReportItemId()).pbTimePrd(ep.getTimePeriodId()).build())
-							.pbriExcpFlag(ep.getExceptionFlag()).pbriOverLmtFlag(ep.getOverLimitFlag()).build());
-
-				});
-			}
-			});
-
-		});
-
-		prmStudyMasterT.setPrmStudyBpActLimitsTs(bpActLimitsTs);
-		prmStudyMasterT.setPrmStudyRsRiTs(studyRsRi);
-
-		prmStudyMasterT.setPrmStudyRsRiExceptTs(studyRsRiExpList);
-		prmStudyMasterT = studyOwnRepository.saveAndFlush(prmStudyMasterT);
-
-		return studyDetailMapper.toStudyDTO(prmStudyMasterT);
-
-	}
-
-	@Override
-	@Transactional
-	public boolean deleteStudy(Long id) {
-		Optional<PrmStudyMasterT> optional = studyOwnRepository.findById(id);
-		if (optional.isPresent()) {
-			studyOwnRepository.deleteById(id);
-			return true;
-		}
-		return false;
-	}
-	@Override
-	@Transactional
-	public boolean isStudyNameExists(String name) {		
- 		 Optional<PrmStudyMasterT> optional = studyOwnRepository.findOne(new Specification<PrmStudyMasterT>() {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public Predicate toPredicate(Root<PrmStudyMasterT> root, CriteriaQuery<?> query,
-                                         CriteriaBuilder criteriaBuilder) {
-				return  criteriaBuilder.equal(criteriaBuilder.lower(criteriaBuilder.trim(root.get("pbName"))), name); 
-			};
-		});
- 		 
- 		 if (optional.isPresent()) {			
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	@Transactional
-	public void scheduleStudyJob(Study study) {
-		//startPGPEngine();
-		LocalDateTime today = LocalDateTime.now();
-		Date purgeDate = null;
-		Integer jobId = jobsRepository.getNextJobId();
-		Optional<FadsConfigT> optional = fadsConfigRepository.findById(StudyConstants.PURGE_OPTION_CODE);
-		if (optional.isPresent()) {
-			FadsConfigT fadsConfig = optional.get();
-			purgeDate = Date.from(today.plusDays(Long.parseLong(fadsConfig.getOptionValue()))
-					.atZone(ZoneId.systemDefault())
-					.toInstant());
-
-		}
-		logit.info("Schedule Study ID {} - Job at {}", study.getStudyId(), study.getScheduleRunDateTime());
-		JobMasterT jobMaster = new JobMasterT();
-		jobMaster.setJobId(jobId);
-		jobMaster.setDatePurge(purgeDate);
-		jobMaster.setCreateDte(Date.from(today.atZone(ZoneId.systemDefault()).toInstant()));
-
-		// Create UiUserBase for createUiUserBase
-		UiUserBase createUiUserBase = new UiUserBase();
-		createUiUserBase.setUiSystemId(study.getCreatedBySystemId());
-		jobMaster.setCreateUiUserBase(createUiUserBase); 
-
-		// Create UiUserBase for updateUiUserBase
-		UiUserBase updateUiUserBase = new UiUserBase();
-		updateUiUserBase.setUiSystemId(study.getUpdatedBySystemId());
-		jobMaster.setUpdateUiUserBase(updateUiUserBase);
-
-		// Create PrmStudyMasterT
-		PrmStudyMasterT prmStudyMasterT = new PrmStudyMasterT();
-		prmStudyMasterT.setPbId(study.getStudyId());
-		jobMaster.setPrmStudyMasterT(prmStudyMasterT);
-
-//		jobMaster.setDateSched(Date.from(study.getSchedulseRunDateTime()
-//		    .atZone(ZoneId.systemDefault()).toInstant()));
-		jobMaster.setArcFlag(BigDecimal.valueOf(0).intValue());
-		jobMaster.setHoldFlag(BigDecimal.valueOf(0).intValue());
-		jobMaster.setPurgeFlag(BigDecimal.valueOf(0).intValue());
-
-		// Create JobLuStatusT
-		JobLuStatusT jobLuStatusT = new JobLuStatusT();
-	//	jobLuStatusT.setStatusCd(Long.valueOf(1));
-		jobMaster.setJobLuStatusT(jobLuStatusT);
-
-		jobMaster = jobsRepository.save(jobMaster);
-	}
-
-	@Transactional
-	private void startPGPEngine() {
-		boolean engineStatus = false;       
-		Integer stageZeroCount = 0;
-		Integer runningJobs = 0;
-		stageZeroCount = jobsRepository.countByStageZero();
-		if (stageZeroCount > 0) {
-			runningJobs = jobsRepository.countByRunningJobs();
-			if (runningJobs < (stageZeroCount - 5)) {
-				engineStatus = true;
-			}
-		} else {
-			engineStatus = true;
-		}
-		if (engineStatus)
-			jobsRepository.startPGPEngine();
-
-	}
-
-	@Override
-	@Transactional
-	public boolean isJobsExistWithStudy(Long id) {
-		List<JobMasterT> optional = jobsRepository.findJobsWithStudyId(id);
-		if (optional.size()>0) {			
-			return true;
-		}
-		return false;
-	}
+    jobsRepository.save(jobMaster);
 }
