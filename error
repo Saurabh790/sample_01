@@ -1,14 +1,31 @@
-@Query("""
-  SELECT j FROM JobMasterT j
-  WHERE LOWER(j.jobLuStatusT.statusDesc) LIKE :jobSt
-    AND LOWER(j.prmStudyMasterT.pbName)   LIKE :studyNm
-    AND TRIM(LOWER(j.createUsr))          = TRIM(LOWER(:userId))
-    AND (:createdBy) = (:createdBy)  -- bind the param so signature stays the same, but no effect
-""")
-List<JobMasterT> getMyJobsBySearchCriteria(
-    @Param("jobSt") String jobSt,
-    @Param("studyNm") String studyNm,
-    @Param("createdBy") String createdBy,   // still passed from callers
-    @Param("userId") String userId,
-    Pageable pageRequest
-);
+<!-- pom.xml -->
+<dependency>
+  <groupId>net.minidev</groupId>
+  <artifactId>json-smart</artifactId>
+  <version>2.5.2</version>
+  <scope>test</scope>
+</dependency>
+<dependency>
+  <groupId>net.minidev</groupId>
+  <artifactId>accessors-smart</artifactId>
+  <version>2.5.2</version>
+  <scope>test</scope>
+</dependency>
+
+
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>json-smart</artifactId>
+      <version>2.5.2</version>
+      <type>pom</type>
+    </dependency>
+    <dependency>
+      <groupId>net.minidev</groupId>
+      <artifactId>accessors-smart</artifactId>
+      <version>2.5.2</version>
+      <type>pom</type>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
