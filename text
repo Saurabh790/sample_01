@@ -1,113 +1,19 @@
-package com.optum.fads.pgp.datarules.domain;
-
-import java.io.Serializable;
-import jakarta.persistence.*;
-
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
-
-import java.util.Date;
-import java.util.List;
-
-import com.optum.fads.authorization.api.domain.UiUserBase;
-
-/**
- * The persistent class for the JOB_MASTER_T database table.
- *
- */
-@Getter
-@Setter
-@EqualsAndHashCode
-@NoArgsConstructor
-//@ToString
-@Entity
-@Table(name = "JOB_MASTER_T")
-public class JobMasterT implements Serializable {
-	private static final long serialVersionUID = 1L;
-
-	@Id
-	@Column(name = "JOB_ID", unique = true, nullable = false, precision = 7)
-	private long jobId;
-
-	@Column(name = "ARC_FLAG", precision = 1)
-	private Integer arcFlag;
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "CREATE_DTE")
-	private Date createDte;
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "DATE_BEG")
-	private Date dateBeg;
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "DATE_END")
-	private Date dateEnd;
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "DATE_PURGE")
-	private Date datePurge;
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "DATE_SCHED")
-	private Date dateSched;
-
-	@Column(name = "HOLD_FLAG", precision = 1)
-	private Integer holdFlag;
-
-	@Column(name = "JOB_BP_ROWS", precision = 8)
-	private Integer jobBpRows;
-
-	@Column(name = "JOB_CG_ROWS", precision = 8)
-	private Integer jobCgRows;
-
-	@Column(name = "JOB_MISSING_COUNT", precision = 3)
-	private Integer jobMissingCount;
-
-	@Column(name = "JOB_RI_ROWS", precision = 8)
-	private Integer jobRiRows;
-
-	@Column(name = "LOG_FILE_NOTES", length = 4000)
-	private String logFileNotes;
-
-	@Column(name = "PURGE_FLAG", precision = 1)
-	private Integer purgeFlag;
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "UPDATE_DTE")
-	private Date updateDte;
-
-	// bi-directional many-to-one association to JobMasterLogsT
-//	@OneToMany(mappedBy="jobMasterT")
-//	private List<JobMasterLogsT> jobMasterLogsTs;
-
-	// bi-directional many-to-one association to JobLuStatusT
-	@ManyToOne
-	@JoinColumn(name = "JOB_STATUS")
-	private JobLuStatusT jobLuStatusT;
-
-	// bi-directional many-to-one association to PrmStudyMasterT
-	@ManyToOne
-	@JoinColumn(name = "PB_ID")
-	private PrmStudyMasterT prmStudyMasterT;
-
-	// bi-directional many-to-one association to UiUserBase
-	@ManyToOne
-	@JoinColumn(name = "CREATE_USR")
-	private UiUserBase createUiUserBase;
-
-	// bi-directional many-to-one association to UiUserBase
-	@ManyToOne
-	@JoinColumn(name = "UPDATE_USR")
-	private UiUserBase updateUiUserBase;
-
-
-	@OneToMany(mappedBy = "jobMasterT")
-	@OrderBy("id.dateBeg desc")
-	private List<JobMasterLogsT> jobMasterLogsTs;
-
-
-}
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.8.2
+2 info using node@v22.6.0
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:c:\Users\sgupt664\US9271664\hcep-osgp-analytics-application\.npmrc
+5 silly config load:file:C:\Users\sgupt664\.npmrc
+6 silly config load:file:C:\Users\sgupt664\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm view @testing-library/jest-dom description dist-tags.latest homepage version time
+8 verbose argv "view" "--json" "--" "@testing-library/jest-dom" "description" "dist-tags.latest" "homepage" "version" "time"
+9 verbose logfile logs-max:10 dir:C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-10-08T14_54_22_729Z-
+10 verbose logfile C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-10-08T14_54_22_729Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET 200 https://centraluhg.jfrog.io/artifactory/api/npm/com-optum-osgp-npm-vir/@testing-library%2fjest-dom 2494ms (cache updated)
+13 verbose cwd c:\Users\sgupt664\US9271664\hcep-osgp-analytics-application
+14 verbose os Windows_NT 10.0.19045
+15 verbose node v22.6.0
+16 verbose npm  v10.8.2
+17 verbose exit 0
+18 info ok
