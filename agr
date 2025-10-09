@@ -1,15 +1,13 @@
-{
-  "overrides": {
-    "loader-runner": "4.2.0"
+"overrides": {
+  "@uitk/react": {
+    "markdown-to-jsx": "7.4.0"
   }
 }
-# 1) Close editors and any running node processes
-Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-Process code -ErrorAction SilentlyContinue | Stop-Process -Force  # if VS Code
 
-# 2) Remove lock & node_modules robustly
+# close editors / any node processes first
+Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
+Get-Process code -ErrorAction SilentlyContinue | Stop-Process -Force
+
 npx rimraf node_modules package-lock.json
 npm cache clean --force
-
-# 3) Install without audit (your Artifactory 404s audit)
 npm install --no-audit
