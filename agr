@@ -1,13 +1,273 @@
-"overrides": {
-  "@uitk/react": {
-    "markdown-to-jsx": "7.4.0"
-  }
+import React from "react";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
+
+// ------------------------------------------------------------------------------------
+// User Information History (mocked)
+// - Title: User Information History
+// - Default sort: History Seq No (DESC)
+// - Pagination enabled via GenericGrid
+// - Client-side Excel export from visible data
+// ------------------------------------------------------------------------------------
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchOnWindowFocus: false } },
+});
+
+export default function FadsUserInformationHistory() {
+  // Build mock rows for two System IDs. In real usage, replace with server data
+  // and provide baseURL + dataTransformCallBack like in your sample screen.
+  type Row = {
+    id: string; // unique row id for MUI
+    systemId: string;
+    histSqNum: number;
+    changeDt: string; // ISO or display date
+    changeUsr: string; // derived from last/first name in your API
+    piGroup: string;
+    pgpGroup: string;
+    ctGroup: string;
+    userId: string;
+    email: string;
+    lastName: string;
+    firstName: string;
+  };
+
+  const buildRows = (): Row[] => {
+    const rows: Row[] = [];
+
+    const pushHistory = (
+      systemId: string,
+      seq: number,
+      y: number,
+      m: number,
+      d: number,
+      lastName: string,
+      firstName: string,
+      userId: string,
+      email: string,
+      piGroup: string,
+      pgpGroup: string,
+      ctGroup: string
+    ) => {
+      const changeDt = new Date(y, m - 1, d).toISOString().slice(0, 10);
+      rows.push({
+        id: `${systemId}-${seq}`,
+        systemId,
+        histSqNum: seq,
+        changeDt,
+        changeUsr: `${lastName}, ${firstName}`,
+        piGroup,
+        pgpGroup,
+        ctGroup,
+        userId,
+        email,
+        lastName,
+        firstName,
+      });
+    };
+
+    // Mock history for SYS-10001
+    pushHistory(
+      "SYS-10001",
+      5,
+      2025,
+      7,
+      19,
+      "Silvers",
+      "Kristy",
+      "kristy.s",
+      "kristy.s@optum.com",
+      "FADS_PI_01",
+      "FADS_PGP_A",
+      "FADS_CT_X"
+    );
+    pushHistory(
+      "SYS-10001",
+      4,
+      2024,
+      12,
+      8,
+      "Silvers",
+      "Kristy",
+      "kristy.s",
+      "kristy.s@optum.com",
+      "FADS_PI_01",
+      "FADS_PGP_A",
+      "FADS_CT_X"
+    );
+    pushHistory(
+      "SYS-10001",
+      3,
+      2024,
+      3,
+      10,
+      "Silvers",
+      "Kristy",
+      "kristy.s",
+      "kristy.s@optum.com",
+      "FADS_PI_02",
+      "FADS_PGP_A",
+      "FADS_CT_Y"
+    );
+
+    // Mock history for SYS-20002
+    pushHistory(
+      "SYS-20002",
+      3,
+      2025,
+      9,
+      1,
+      "Cupka",
+      "Cassandra",
+      "cass.c",
+      "cass.c@optum.com",
+      "FADS_PI_03",
+      "FADS_PGP_B",
+      "FADS_CT_Z"
+    );
+    pushHistory(
+      "SYS-20002",
+      2,
+      2024,
+      11,
+      21,
+      "Cupka",
+      "Cassandra",
+      "cass.c",
+      "cass.c@optum.com",
+      "FADS_PI_03",
+      "FADS_PGP_B",
+      "FADS_CT_Z"
+    );
+    pushHistory(
+      "SYS-20002",
+      1,
+      2024,
+      2,
+      29,
+      "Cupka",
+      "Cassandra",
+      "cass.c",
+      "cass.c@optum.com",
+      "FADS_PI_00",
+      "FADS_PGP_B",
+      "FADS_CT_W"
+    );
+
+    // Sort by System ID asc, then History Seq No desc (default visual expectation)
+    return rows.sort((a, b) =>
+      a.systemId === b.systemId
+        ? b.histSqNum - a.histSqNum
+        : a.systemId.localeCompare(b.systemId)
+    );
+  };
+
+  const rows = React.useMemo(() => buildRows(), []);
+
+  // Columns per requirement text & snap_01
+  const columns = [
+    { field: "systemId", headerName: "System ID", flex: 1.5, minWidth: 140 },
+    {
+      field: "histSqNum",
+      headerName: "History Seq No.",
+      flex: 1,
+      minWidth: 140,
+      type: "number",
+      description:
+        "Sequence grouped by System ID – increments by 1 on create/update/disable",
+    },
+    {
+      field: "changeDt",
+      headerName: "Change Dt",
+      flex: 1.2,
+      minWidth: 130,
+    },
+    {
+      field: "changeUsr",
+      headerName: "User",
+      flex: 1.4,
+      minWidth: 160,
+    },
+    { field: "piGroup", headerName: "PI Group", flex: 1.2, minWidth: 130 },
+    { field: "pgpGroup", headerName: "PGP Group", flex: 1.2, minWidth: 130 },
+    { field: "ctGroup", headerName: "CT Group", flex: 1.2, minWidth: 130 },
+    { field: "userId", headerName: "User ID", flex: 1.2, minWidth: 130 },
+    {
+      field: "email",
+      headerName: "Email Address",
+      flex: 2,
+      minWidth: 220,
+    },
+    { field: "lastName", headerName: "Last Name", flex: 1.2, minWidth: 140 },
+    { field: "firstName", headerName: "First Name", flex: 1.2, minWidth: 140 },
+  ];
+
+  // Excel (client) – exports the visible dataset/columns
+  const excelExport = {
+    columnNames: [
+      "systemId",
+      "histSqNum",
+      "changeDt",
+      "changeUsr",
+      "piGroup",
+      "pgpGroup",
+      "ctGroup",
+      "userId",
+      "email",
+      "lastName",
+      "firstName",
+    ],
+    columnHeadings: [
+      "System ID",
+      "History Seq No.",
+      "Change Dt",
+      "User",
+      "PI Group",
+      "PGP Group",
+      "CT Group",
+      "User ID",
+      "Email Address",
+      "Last Name",
+      "First Name",
+    ],
+    // keep endpoints unset since we export on client from rows
+    endPoint: "",
+    myItemEndPoint: "",
+    fileNamePrefix: "User-Information-History",
+    responseDataVar: "content",
+  };
+
+  const initConfig = {
+    header: "User Information History",
+    description: "Sorted by History Seq No. (DESC)",
+    url: "", // not used for client rows
+    columns,
+    baseURL: "",
+    sort: true,
+    labelledBy: "user-information-history-table",
+    defaultSortModel: [
+      { field: "histSqNum", sort: "desc" as const },
+      { field: "systemId", sort: "asc" as const },
+    ],
+    excelExport,
+    myEndPoint: "",
+    pageId: "user-information-history",
+    dataTransformCallBack: undefined,
+    enableActionColumn: false,
+    rows, // client-side rows
+    exportModeValue: "client" as const, // use server for your API later
+    createButton: undefined,
+    editRecord: undefined,
+    // Optional grid-level props depending on your GenericGrid implementation
+    pageSizeOptions: [10, 25, 50, 100],
+    initialPageSize: 10,
+  };
+
+  return (
+    <div style={{ padding: "90px 32px" }}>
+      <QueryClientProvider client={queryClient}>
+        <GenericGrid {...initConfig} />
+      </QueryClientProvider>
+    </div>
+  );
 }
-
-# close editors / any node processes first
-Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-Process code -ErrorAction SilentlyContinue | Stop-Process -Force
-
-npx rimraf node_modules package-lock.json
-npm cache clean --force
-npm install --no-audit
