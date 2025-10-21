@@ -252,7 +252,17 @@ export default function FadsUserInformationHistory() {
     excelExport,
     myEndPoint: "",
     pageId: "user-information-history",
-    dataTransformCallBack: undefined,
+    dataTransformCallBack: () =>
+      React.useCallback(
+        (data: any) => ({
+          rows: data?.content ?? (Array.isArray(data) ? data : []),
+          pageInfo: {
+            totalRowCount:
+              data?.totalElements ?? (Array.isArray(data) ? data.length : 0),
+          },
+        }),
+        []
+      ),
     enableActionColumn: false,
     rows, // client-side rows
     exportModeValue: "client" as const, // use server for your API later
