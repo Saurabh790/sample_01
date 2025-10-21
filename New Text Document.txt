@@ -1,35 +1,165 @@
-npm warn cleanup   [
-npm warn cleanup     '\\\\?\\C:\\Users\\sgupt664\\US9271664\\hcep-osgp-analytics-application\\node_modules\\@uitk\\react',
-npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\Users\sgupt664\US9271664\hcep-osgp-analytics-application\node_modules\@uitk\react\cjs\component\TrackingProvider'] {
-npm warn cleanup       errno: -4048,
-npm warn cleanup       code: 'EPERM',
-npm warn cleanup       syscall: 'rmdir',
-npm warn cleanup       path: 'C:\\Users\\sgupt664\\US9271664\\hcep-osgp-analytics-application\\node_modules\\@uitk\\react\\cjs\\component\\TrackingProvider'      
-npm warn cleanup     }
-npm warn cleanup   ],
-npm warn cleanup   [
-npm warn cleanup     '\\\\?\\C:\\Users\\sgupt664\\US9271664\\hcep-osgp-analytics-application\\node_modules\\@babel\\generator',
-npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\Users\sgupt664\US9271664\hcep-osgp-analytics-application\node_modules\@babel\generator\node_modules\@babel\types\lib\builders\typescript'] {
-npm warn cleanup       errno: -4048,
-npm warn cleanup       code: 'EPERM',
-npm warn cleanup       syscall: 'rmdir',
-npm warn cleanup       path: 'C:\\Users\\sgupt664\\US9271664\\hcep-osgp-analytics-application\\node_modules\\@babel\\generator\\node_modules\\@babel\\types\\lib\\builders\\typescript'
-npm warn cleanup     }
-npm warn cleanup   ],
-npm warn cleanup   [
-npm warn cleanup     '\\\\?\\C:\\Users\\sgupt664\\US9271664\\hcep-osgp-analytics-application\\node_modules',
-npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'C:\Users\sgupt664\US9271664\hcep-osgp-analytics-application\node_modules\@uitk'] {
-npm warn cleanup       errno: -4048,
-npm warn cleanup       code: 'EPERM',
-npm warn cleanup       syscall: 'rmdir',
-npm warn cleanup       path: 'C:\\Users\\sgupt664\\US9271664\\hcep-osgp-analytics-application\\node_modules\\@uitk'
-npm warn cleanup     }
-npm warn cleanup   ]
-npm warn cleanup ]
-npm error code E403
-npm error 403 403 Forbidden - GET https://centraluhg.jfrog.io/artifactory/api/npm/com-optum-osgp-npm-vir/markdown-to-jsx/-/markdown-to-jsx-7.7.15.tgz
-npm error 403 In most cases, you or one of your dependencies are requesting
-npm error 403 a package version that is forbidden by your security policy, or
-npm error 403 on a server you do not have access to.
-npm error A complete log of this run can be found in: C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-10-09T04_06_48_729Z-debug-0.log
-PS C:\Users\sgupt664\US9
+Title of the page:User Information History
+
+Default view :Sorted by History Seq No DESC
+
+
+
+Developing a page to display a table listing of a history of all changes to UI_USER_BASE and SE_USR_GRP tables.. 
+
+The users will  have the option to export from the page to an excel spreadsheet.
+
+Pagination should be avaible.
+
+Create the following Column Headers:
+
+
+
+Coloumns to be shown
+
+System ID
+
+History Seq No. HIST_SQ_NUM (Group by on the System ID-increment by 1 everytime a record is created or updated or disabled)
+
+Change Dt CHANGE_DT 
+
+User CHANGE_USR (Use the system id to get the name) UI_LAST_NAME||UI_FIRST_NAME 
+
+PI Group FADS_GRP_ID
+
+PGP Group FADS_SUR_GRP_ID 
+
+CT Group FADS_CASE_GRP_ID 
+
+User ID UI_USER_ID 
+
+Email Address UI_EMAIL_ADDRESS 
+
+Last Name UI_LAST_NAME
+
+First Name UI_FIRST_NAME 
+
+above is requirement and I have attached the snap 01 is the requirement screen which  I have to build
+
+and below is the code for sample screen which is using the MUI grid mostly and snap 02 is the sample of that so analyze and generate the code with some mock data for my screen with code 
+
+
+import React, { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { urlConfig } from "../../utils/urlConfig";
+import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+export default function FadsUserManagement(props: any) {
+  const FADS_BASE_URL = process.env.FADS_GATEWAY_URL;
+  const baseURL = FADS_BASE_URL + urlConfig.studyLibraryBaseURL;
+  const myEndPoint = FADS_BASE_URL + urlConfig.myStudyLibraryEndPoint;
+
+  const DataTransformCallBack = () => {
+    return React.useCallback(
+      (data) => ({
+        rows: data.content.map((ele: any, ind: number) => ({
+          ...ele,
+          id: ele.studyId,
+        })),
+        pageInfo: { totalRowCount: data.totalElements },
+      }),
+      []
+    );
+  };
+
+  const columns = [
+    { field: "studyName", headerName: "Study Name", flex: 5, minWidth: 250 },
+    {
+      field: "createdUser",
+      headerName: "Created By",
+      flex: 2,
+      minWidth: 110,
+    },
+    {
+      field: "createDate",
+      headerName: "Created Date",
+      flex: 2,
+      minWidth: 100,
+      filterable: false,
+    },
+    {
+      field: "updatedUser",
+      headerName: "Updated By",
+      flex: 2,
+      minWidth: 110,
+    },
+    {
+      field: "updateDate",
+      headerName: "Updated Date",
+      flex: 2,
+      minWidth: 100,
+      filterable: false,
+    },
+    {
+      field: "lastRunDate",
+      headerName: "Last Run Date",
+      flex: 2,
+      minWidth: 100,
+      filterable: false,
+    },
+  ];
+
+  let initConfig = {
+    header: "User Role Management",
+    description: "Modify an existing role or create a new role",
+    url: "",
+    columns: columns,
+    baseURL: baseURL,
+    sort: true,
+    labelledBy: "table-caption",
+    defaultSortModel: [{ field: "studyName", sort: "asc" }],
+    excelExport: {
+      columnNames: [
+        "studyName",
+        "createdUser",
+        "createDate",
+        "updatedUser",
+        "updateDate",
+      ],
+    //   columnHeadings: PGP_EXPORT_COLUMN_HEADINGS,
+      endPoint: FADS_BASE_URL + urlConfig.studyLibraryExcel,
+      myItemEndPoint: FADS_BASE_URL + urlConfig.MyStudyLibraryExcel,
+      fileNamePrefix: "Study-List_export",
+      responseDataVar: "content",
+    },
+    myEndPoint,
+    pageId: "study",
+    dataTransformCallBack: DataTransformCallBack,
+    enableActionColumn: true,
+    rows: [],
+    exportModeValue: "server" as "server" | "client",
+    createButton: {
+      buttonName: "Create New User",
+      onClick: () => {
+        
+      },
+    //   disabled: pgpUserAccess === PGP_USER_ACCESS.READ_ONLY,
+    },
+    editRecord: {
+      onClick: (row: any) => {
+      },
+    //   disabled: pgpUserAccess === PGP_USER_ACCESS.READ_ONLY,
+    },
+  };
+
+  return (
+      <div style={{padding: '90px 32px'}}>
+        <QueryClientProvider client={queryClient}>
+          <GenericGrid {...initConfig} />
+        </QueryClientProvider>
+      </div>
+  );
+}
+;
