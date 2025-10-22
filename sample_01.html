@@ -1,3 +1,165 @@
-// was: "../components/pages/FadsUserInformationHistory"
-import FadsUserInformationHistory from "./FadsUserInformationHistory";
-{ header: "User Information History", content: <FadsUserInformationHistory /> },
+import React from "react";
+import { QueryClient, QueryClientProvider } from "react-query";
+import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
+
+// -----------------------------------------------------------------------------
+// Page: User Information History
+// Description: Displays mock user change history (no backend call)
+// Default view: Sorted by History Seq No DESC
+// -----------------------------------------------------------------------------
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { refetchOnWindowFocus: false },
+  },
+});
+
+export default function FadsUserInformationHistory() {
+  // ---------------------------------------------------------------------------
+  // Mock Data Builder
+  // ---------------------------------------------------------------------------
+  type Row = {
+    id: string;
+    systemId: string;
+    histSqNum: number;
+    changeDt: string;
+    changeUsr: string;
+    piGroup: string;
+    pgpGroup: string;
+    ctGroup: string;
+    userId: string;
+    email: string;
+    lastName: string;
+    firstName: string;
+  };
+
+  const buildRows = (): Row[] => {
+    const rows: Row[] = [];
+
+    const pushHistory = (
+      systemId: string,
+      seq: number,
+      y: number,
+      m: number,
+      d: number,
+      lastName: string,
+      firstName: string,
+      userId: string,
+      email: string,
+      piGroup: string,
+      pgpGroup: string,
+      ctGroup: string
+    ) => {
+      const changeDt = new Date(y, m - 1, d).toISOString().slice(0, 10);
+      rows.push({
+        id: `${systemId}-${seq}`,
+        systemId,
+        histSqNum: seq,
+        changeDt,
+        changeUsr: `${lastName}, ${firstName}`,
+        piGroup,
+        pgpGroup,
+        ctGroup,
+        userId,
+        email,
+        lastName,
+        firstName,
+      });
+    };
+
+    // Mocked user history
+    pushHistory("SYS-10001", 5, 2025, 7, 19, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
+    pushHistory("SYS-10001", 4, 2024, 12, 8, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
+    pushHistory("SYS-10001", 3, 2024, 3, 10, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y");
+
+    pushHistory("SYS-20002", 3, 2025, 9, 1, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
+    pushHistory("SYS-20002", 2, 2024, 11, 21, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
+    pushHistory("SYS-20002", 1, 2024, 2, 29, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_00", "FADS_PGP_B", "FADS_CT_W");
+
+    // Sort by System ID ASC, History Seq No DESC
+    return rows.sort((a, b) =>
+      a.systemId === b.systemId ? b.histSqNum - a.histSqNum : a.systemId.localeCompare(b.systemId)
+    );
+  };
+
+  const rows = React.useMemo(() => buildRows(), []);
+
+  // ---------------------------------------------------------------------------
+  // Column Definitions
+  // ---------------------------------------------------------------------------
+  const columns = [
+    { field: "systemId", headerName: "System ID", flex: 1.4, minWidth: 150 },
+    { field: "histSqNum", headerName: "History Seq No.", flex: 1, minWidth: 150, type: "number" },
+    { field: "changeDt", headerName: "Change Dt", flex: 1.1, minWidth: 130 },
+    { field: "changeUsr", headerName: "User", flex: 1.4, minWidth: 160 },
+    { field: "piGroup", headerName: "PI Group", flex: 1.1, minWidth: 120 },
+    { field: "pgpGroup", headerName: "PGP Group", flex: 1.1, minWidth: 120 },
+    { field: "ctGroup", headerName: "CT Group", flex: 1.1, minWidth: 120 },
+    { field: "userId", headerName: "User ID", flex: 1.1, minWidth: 120 },
+    { field: "email", headerName: "Email Address", flex: 1.8, minWidth: 220 },
+    { field: "lastName", headerName: "Last Name", flex: 1.1, minWidth: 140 },
+    { field: "firstName", headerName: "First Name", flex: 1.1, minWidth: 140 },
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Excel Export Configuration
+  // ---------------------------------------------------------------------------
+  const excelExport = {
+    columnNames: [
+      "systemId", "histSqNum", "changeDt", "changeUsr", "piGroup",
+      "pgpGroup", "ctGroup", "userId", "email", "lastName", "firstName",
+    ],
+    columnHeadings: [
+      "System ID", "History Seq No.", "Change Dt", "User", "PI Group",
+      "PGP Group", "CT Group", "User ID", "Email Address", "Last Name", "First Name",
+    ],
+    endPoint: "",
+    myItemEndPoint: "",
+    fileNamePrefix: "User-Information-History",
+    responseDataVar: "content",
+  };
+
+  // ---------------------------------------------------------------------------
+  // Grid Configuration (initConfig)
+  // ---------------------------------------------------------------------------
+  const initConfig = {
+    header: "User Information History",
+    description: "Sorted by History Seq No. (DESC)",
+    url: undefined,
+    baseURL: undefined,
+    myEndPoint: undefined,
+    exportModeValue: "client" as const,
+    showMyItemsToggle: false,
+
+    rows,
+    pageInfo: { totalRowCount: rows.length },
+
+    columns,
+    sort: true,
+    labelledBy: "user-information-history-table",
+    defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
+
+    dataTransformCallBack: () =>
+      React.useCallback(
+        () => ({ rows, pageInfo: { totalRowCount: rows.length } }),
+        [rows]
+      ),
+
+    excelExport,
+    enableActionColumn: false,
+    pageId: "user-information-history",
+    pageSizeOptions: [10, 25, 50, 100],
+    initialPageSize: 10,
+  };
+
+  // ---------------------------------------------------------------------------
+  // Render Component
+  // ---------------------------------------------------------------------------
+  return (
+    <div style={{ padding: "90px 32px" }}>
+      <QueryClientProvider client={queryClient}>
+        <GenericGrid {...initConfig} />
+      </QueryClientProvider>
+    </div>
+  );
+}
