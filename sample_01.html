@@ -67,7 +67,7 @@ export default function FadsUserInformationHistory() {
       });
     };
 
-    // Mocked user history
+    // Mocked records for demonstration
     pushHistory("SYS-10001", 5, 2025, 7, 19, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
     pushHistory("SYS-10001", 4, 2024, 12, 8, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
     pushHistory("SYS-10001", 3, 2024, 3, 10, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y");
@@ -106,12 +106,12 @@ export default function FadsUserInformationHistory() {
   // ---------------------------------------------------------------------------
   const excelExport = {
     columnNames: [
-      "systemId", "histSqNum", "changeDt", "changeUsr", "piGroup",
-      "pgpGroup", "ctGroup", "userId", "email", "lastName", "firstName",
+      "systemId", "histSqNum", "changeDt", "changeUsr",
+      "piGroup", "pgpGroup", "ctGroup", "userId", "email", "lastName", "firstName",
     ],
     columnHeadings: [
-      "System ID", "History Seq No.", "Change Dt", "User", "PI Group",
-      "PGP Group", "CT Group", "User ID", "Email Address", "Last Name", "First Name",
+      "System ID", "History Seq No.", "Change Dt", "User",
+      "PI Group", "PGP Group", "CT Group", "User ID", "Email Address", "Last Name", "First Name",
     ],
     endPoint: "",
     myItemEndPoint: "",
@@ -125,29 +125,32 @@ export default function FadsUserInformationHistory() {
   const initConfig = {
     header: "User Information History",
     description: "Sorted by History Seq No. (DESC)",
-    url: undefined,
-    baseURL: undefined,
-    myEndPoint: undefined,
-    exportModeValue: "client" as const,
-    showMyItemsToggle: false,
-
-    rows,
-    pageInfo: { totalRowCount: rows.length },
-
+    url: "",
     columns,
+    baseURL: "",
     sort: true,
     labelledBy: "user-information-history-table",
     defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
+    excelExport,
+    myEndPoint: "",
+    pageId: "user-information-history",
 
+    // ✅ REQUIRED: must always return a function
     dataTransformCallBack: () =>
       React.useCallback(
-        () => ({ rows, pageInfo: { totalRowCount: rows.length } }),
-        [rows]
+        (data: any) => ({
+          rows: Array.isArray(data) ? data : data?.content ?? [],
+          pageInfo: {
+            totalRowCount:
+              Array.isArray(data) ? data.length : data?.totalElements ?? 0,
+          },
+        }),
+        []
       ),
 
-    excelExport,
     enableActionColumn: false,
-    pageId: "user-information-history",
+    rows,
+    exportModeValue: "client" as const,
     pageSizeOptions: [10, 25, 50, 100],
     initialPageSize: 10,
   };
