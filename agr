@@ -93,74 +93,47 @@ export default function FadsUserInformationHistory() {
     { field: "firstName", headerName: "First Name", flex: 1.2, minWidth: 140 },
   ];
 
-  // ---------- Excel export (client) ----------
-  const excelExport = {
-    columnNames: [
-      "systemId", "histSqNum", "changeDt", "changeUsr",
-      "piGroup", "pgpGroup", "ctGroup", "userId", "email", "lastName", "firstName",
-    ],
-    columnHeadings: [
-      "System ID", "History Seq No.", "Change Dt", "User",
-      "PI Group", "PGP Group", "CT Group", "User ID", "Email Address", "Last Name", "First Name",
-    ],
-    endPoint: "",
-    myItemEndPoint: "",
-    fileNamePrefix: "User-Information-History",
-    responseDataVar: "content",
-  };
-
-  // ---------- Grid config (pure client mode; no server fetch) ----------
+  // ---------- Grid config ----------
   const initConfig = {
     header: "User Information History",
     description: "Sorted by History Seq No. (DESC)",
-
-    // IMPORTANT: use undefined, not empty strings, so GenericGrid never fetches
     url: undefined as unknown as string,
     baseURL: undefined as unknown as string,
     myEndPoint: undefined as unknown as string,
-
     exportModeValue: "client" as const,
-    disableServerFetch: true,        // if GenericGrid supports it
-    showMyItemsToggle: false,        // hide All/My Items switch (if supported)
+    disableServerFetch: true,
+    showMyItemsToggle: false,
 
     rows,
     pageInfo: { totalRowCount: rows.length },
-
     columns,
     sort: true,
     labelledBy: "user-information-history-table",
     defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
-
     dataTransformCallBack: () =>
-      React.useCallback(
-        // echo client rows so the prop type is satisfied
-        () => ({ rows, pageInfo: { totalRowCount: rows.length } }),
-        [rows]
-      ),
-
-    excelExport,
+      React.useCallback(() => ({ rows, pageInfo: { totalRowCount: rows.length } }), [rows]),
+    excelExport: {
+      columnNames: [
+        "systemId","histSqNum","changeDt","changeUsr",
+        "piGroup","pgpGroup","ctGroup","userId","email","lastName","firstName",
+      ],
+      columnHeadings: [
+        "System ID","History Seq No.","Change Dt","User","PI Group",
+        "PGP Group","CT Group","User ID","Email Address","Last Name","First Name",
+      ],
+      endPoint: "",
+      myItemEndPoint: "",
+      fileNamePrefix: "User-Information-History",
+    },
     enableActionColumn: false,
     pageId: "user-information-history",
     pageSizeOptions: [10, 25, 50, 100],
     initialPageSize: 10,
   };
 
-  // ---------- Render ----------
-  // Give the grid a container with real width/height to avoid the MUI 0px warning
   return (
-    <div
-      style={{
-        padding: "90px 32px",
-        width: "100%",
-        boxSizing: "border-box",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          minHeight: 480,           // ensure non-zero height
-        }}
-      >
+    <div style={{ padding: "90px 32px", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ width: "100%", minHeight: 500 }}>
         <QueryClientProvider client={queryClient}>
           <GenericGrid {...initConfig} />
         </QueryClientProvider>
