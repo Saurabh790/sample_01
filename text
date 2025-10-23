@@ -1,105 +1,167 @@
-import { store } from "@optum-osgp-temp/osgp-ui-state-management-lib";
-import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
-import TemplateResolver from "./TemplateResolver";
-import { LicenseInfo } from '@mui/x-license-pro';
-import { CASE_CONTACT_EDITED_OBJ, CASE_SUCCESS_MSG, CROSS_OVER_OPTIONS, CT_FORM_DIRTY, DEFAULT, FFS_CLAIM, JOB_MONITOR_USER_ROLE, NEW_CASE_ASSOCIATIONS, NEW_CASE_CONTACTS, NEW_CASE_FILES, NEW_CASE_REMINDERS, PGP_USER_ROLE, SHOW_BACK_DROP_INDICATOR, SHOW_ERROR_TOAST, SHOW_PRINT_PDF_DIALOG, BANNER_MSG, SHOW_SUCCESS_TOAST, GLOBAL_ERRORS, FINDINGS_OBSERVATIONS, INVEST_REVIEW_FROM_DATE, INVEST_REVIEW_TO_DATE, NEW_CASE_NOTES } from "./components/sub-components/fads/common/AppConstants";
-import { USER_PROFILE } from "./constants/AppConstants";
-import { useFetchUserDetailsQuery } from "./components/sub-components/fads/casetracking/Api/UseQueryHooks";
-import { PowerBiAuthentication } from "@optum-osgp-temp/osgp-analytics-powerbi-authentication";
-import { AppControllerContext } from "@optum-osgp-temp/ui-app-controller";
-import { setTitleTag } from "./utils/appUtils";
+import React from "react";
+import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
 
-
-const MUI_LICENSE_KEY = process.env.MUI_LICENSE_KEY || '';
-LicenseInfo.setLicenseKey(MUI_LICENSE_KEY);
-store.set(SHOW_ERROR_TOAST,false);
-store.set(BANNER_MSG,CASE_SUCCESS_MSG);
-function App() {
-
-  const context = useContext(AppControllerContext);
-  const [currentRole, setCurrentRole] = store.useStoreState('currentRole'); //setting at pageBuilder library
-  
-  useEffect(() =>{
-    if(currentRole)
-      setTitleTag(currentRole)
-  },[currentRole])
-
-  useLayoutEffect(() => {
-    if (!localStorage.getItem('userToken')) {
-      localStorage.setItem('userToken', 'random-token');
-    }
-    store.set("userDetailData", null);
-    store.set("caseDetailData", null);
-    store.set("modulePermissions", []);
-    store.set("readOnlyNodeAccess", false);
-    store.set("caseNoteTypeConstant", null);
-    store.set("financialValidConstant", null);
-    store.set("hideTemplate", false);
-    store.set(DEFAULT, []);
-    store.set(NEW_CASE_FILES, []);
-    store.set(NEW_CASE_REMINDERS, []);
-    store.set(NEW_CASE_NOTES, []);
-    store.set(NEW_CASE_ASSOCIATIONS, []);
-    store.set(NEW_CASE_CONTACTS, []);
-    store.set(CASE_CONTACT_EDITED_OBJ, [])
-    store.set(SHOW_SUCCESS_TOAST,false);
-    store.set(SHOW_PRINT_PDF_DIALOG,false);
-    store.set(SHOW_BACK_DROP_INDICATOR,false);
-    store.set(PGP_USER_ROLE,null);
-    store.set(FFS_CLAIM, []);
-    store.set(CROSS_OVER_OPTIONS, []);
-    store.set(JOB_MONITOR_USER_ROLE, null);
-    store.set("study", null);
-    store.set(USER_PROFILE, {});
-    store.set(CT_FORM_DIRTY,false)
-    store.set(GLOBAL_ERRORS, [])
-    store.set(FINDINGS_OBSERVATIONS, [])
-    store.set(INVEST_REVIEW_FROM_DATE,null);
-    store.set(INVEST_REVIEW_TO_DATE,null)
-  }, []);
-
-  useFetchUserDetailsQuery();
-  const powerBIConfig = {
-    clientId: process.env.POWERBI_CLIENT_ID
-    , scopes: [process.env.POWERBI_SCOPES]
-    , env: process.env.ENVIRONMENT
-    , loggerUrl: process.env.LOGGING_API_URL
-    , gatewayUrl: process.env.API_GATEWAY_BASE_URL
-    , loginHint: store.get("loginHint")
+export default function FadsUserInformationHistory() {
+  // ---------- mock rows shaped to your headers ----------
+  type Row = {
+    id: string;
+    changeDt: string;
+    changeUsr: string;
+    histSqNum: number;
+    cfgTextA: string;
+    cfgDateA: string;
+    cfgTextB: string;
+    cfgDateB: string;
+    cfgTextC: string;
+    cfgDateC: string;
   };
-  let [powerBIAuthRequired, setPowerBIAuthRequired]  = useState(false);
 
-  function hasAnyPowerBIComp(comp:any) {
-    if (comp?.compType == "EmbeddedAnalytics" && (comp?.compSubType == "" || comp?.compSubType == "powerBI")) {
-      // setPowerBIAuthRequired(true);
-      return true;
-    }
-    if(comp?.children) {
-      hasAnyPowerBIComp(comp.children[0]);
-    }
-  }
-  useEffect(()=> {
-    let pageCompList = context?.pageConfig?.page?.compList;
-    if(pageCompList) {
-      pageCompList.forEach( (comp:any) => {
-        hasAnyPowerBIComp(comp);
-        if(powerBIAuthRequired) {
-          return;
-        }
-      }) 
-    }
-  },[context]);
+  const rows: Row[] = React.useMemo(
+    () => [
+      {
+        id: "SYS-10001-5",
+        changeDt: "2025-07-19",
+        changeUsr: "Kristy Silvers",
+        histSqNum: 5,
+        cfgTextA: "123456789X",
+        cfgDateA: "2025-07-18",
+        cfgTextB: "123456789Y",
+        cfgDateB: "2025-07-18",
+        cfgTextC: "123456789Z",
+        cfgDateC: "2025-07-19",
+      },
+      {
+        id: "SYS-10001-4",
+        changeDt: "2024-12-08",
+        changeUsr: "Kristy Silvers",
+        histSqNum: 4,
+        cfgTextA: "123456789X",
+        cfgDateA: "2024-12-07",
+        cfgTextB: "123456789Y",
+        cfgDateB: "2024-12-07",
+        cfgTextC: "123456789A",
+        cfgDateC: "2024-12-08",
+      },
+      {
+        id: "SYS-10001-3",
+        changeDt: "2024-03-10",
+        changeUsr: "Kristy Silvers",
+        histSqNum: 3,
+        cfgTextA: "123456789K",
+        cfgDateA: "2024-03-09",
+        cfgTextB: "123456789L",
+        cfgDateB: "2024-03-09",
+        cfgTextC: "123456789M",
+        cfgDateC: "2024-03-10",
+      },
+      {
+        id: "SYS-20002-3",
+        changeDt: "2025-09-01",
+        changeUsr: "Cassandra Cupka",
+        histSqNum: 3,
+        cfgTextA: "987654321X",
+        cfgDateA: "2025-08-31",
+        cfgTextB: "987654321Y",
+        cfgDateB: "2025-08-31",
+        cfgTextC: "987654321Z",
+        cfgDateC: "2025-09-01",
+      },
+      {
+        id: "SYS-20002-2",
+        changeDt: "2024-11-21",
+        changeUsr: "Cassandra Cupka",
+        histSqNum: 2,
+        cfgTextA: "987654321A",
+        cfgDateA: "2024-11-20",
+        cfgTextB: "987654321B",
+        cfgDateB: "2024-11-20",
+        cfgTextC: "987654321C",
+        cfgDateC: "2024-11-21",
+      },
+      {
+        id: "SYS-20002-1",
+        changeDt: "2024-02-29",
+        changeUsr: "Cassandra Cupka",
+        histSqNum: 1,
+        cfgTextA: "987654321D",
+        cfgDateA: "2024-02-28",
+        cfgTextB: "987654321E",
+        cfgDateB: "2024-02-28",
+        cfgTextC: "987654321F",
+        cfgDateC: "2024-02-29",
+      },
+    ],
+    []
+  );
+
+  // ---------- columns in the exact order you requested ----------
+  const columns = [
+    { field: "changeDt",  headerName: "Change Date",  flex: 1.1, minWidth: 130 },
+    { field: "changeUsr", headerName: "User",         flex: 1.3, minWidth: 160 },
+    { field: "histSqNum", headerName: "History Seq",  type: "number", flex: 0.9, minWidth: 120 },
+
+    { field: "cfgTextA",  headerName: "Config Text A", flex: 1.2, minWidth: 140 },
+    { field: "cfgDateA",  headerName: "Config Date A", flex: 1.1, minWidth: 130 },
+
+    { field: "cfgTextB",  headerName: "Config Text B", flex: 1.2, minWidth: 140 },
+    { field: "cfgDateB",  headerName: "Config Date B", flex: 1.1, minWidth: 130 },
+
+    { field: "cfgTextC",  headerName: "Config Text C", flex: 1.2, minWidth: 140 },
+    { field: "cfgDateC",  headerName: "Config Date C", flex: 1.1, minWidth: 130 },
+  ];
+
+  // ---------- grid config (client only; no fetch) ----------
+  const initConfig: any = {
+    header: "User Information History",
+    description: "Sorted by History Seq No (DESC)",
+
+    // FIX: Removed the URL properties (`url`, `baseURL`, `myEndPoint`)
+    // that were incorrectly typed as strings but set to undefined.
+    // OMITTING them entirely prevents the GenericGrid from attempting a fetch.
+
+    exportModeValue: "client", // Explicitly tells the grid to use client data
+
+    rows,
+    columns,
+    sort: true,
+    defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
+    labelledBy: "user-information-history-table",
+
+    // This callback is likely intended for formatting server responses.
+    // For a client-only grid, it can often be simplified or removed,
+    // but we'll keep it minimal to provide the expected rows/pageInfo format
+    // without triggering a re-fetch.
+    dataTransformCallBack: () =>
+      React.useCallback(
+        () => ({
+          rows,
+          pageInfo: { totalRowCount: rows.length },
+        }),
+        [rows]
+      ),
+
+    enableActionColumn: false,
+    pageSizeOptions: [10, 25, 50, 100],
+    initialPageSize: 10,
+
+    // optional: client export (kept minimal since we're mocking)
+    excelExport: {
+      columnNames: [
+        "changeDt","changeUsr","histSqNum",
+        "cfgTextA","cfgDateA","cfgTextB","cfgDateB","cfgTextC","cfgDateC",
+      ],
+      columnHeadings: [
+        "Change Date","User","History Seq",
+        "Config Text A","Config Date A","Config Text B","Config Date B","Config Text C","Config Date C",
+      ],
+      // FIX: Removed unnecessary `endPoint` and `myItemEndPoint` from excelExport config
+      fileNamePrefix: "User-Information-History",
+    },
+  };
 
   return (
-    <>
-      {powerBIAuthRequired && (<PowerBiAuthentication config={powerBIConfig}/>)}
-      <Routes>
-        <Route path="/" element={<TemplateResolver />}></Route>
-        <Route path="/:page" element={<TemplateResolver />}></Route>
-      </Routes>
-    </>
+    <div style={{ padding: "90px 32px", width: "100%", minHeight: 600 }}>
+      <GenericGrid {...initConfig} />
+    </div>
   );
 }
-
-export default App;
