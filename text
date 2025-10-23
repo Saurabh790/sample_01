@@ -1,19 +1,105 @@
-0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
-1 info using npm@10.8.2
-2 info using node@v22.6.0
-3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
-4 silly config load:file:c:\Users\sgupt664\US9271664\hcep-osgp-analytics-application\.npmrc
-5 silly config load:file:C:\Users\sgupt664\.npmrc
-6 silly config load:file:C:\Users\sgupt664\AppData\Roaming\npm\etc\npmrc
-7 verbose title npm view @testing-library/jest-dom description dist-tags.latest homepage version time
-8 verbose argv "view" "--json" "--" "@testing-library/jest-dom" "description" "dist-tags.latest" "homepage" "version" "time"
-9 verbose logfile logs-max:10 dir:C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-10-08T14_54_22_729Z-
-10 verbose logfile C:\Users\sgupt664\AppData\Local\npm-cache\_logs\2025-10-08T14_54_22_729Z-debug-0.log
-11 silly logfile done cleaning log files
-12 http fetch GET 200 https://centraluhg.jfrog.io/artifactory/api/npm/com-optum-osgp-npm-vir/@testing-library%2fjest-dom 2494ms (cache updated)
-13 verbose cwd c:\Users\sgupt664\US9271664\hcep-osgp-analytics-application
-14 verbose os Windows_NT 10.0.19045
-15 verbose node v22.6.0
-16 verbose npm  v10.8.2
-17 verbose exit 0
-18 info ok
+import { store } from "@optum-osgp-temp/osgp-ui-state-management-lib";
+import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
+import { Route, Routes } from "react-router-dom";
+import TemplateResolver from "./TemplateResolver";
+import { LicenseInfo } from '@mui/x-license-pro';
+import { CASE_CONTACT_EDITED_OBJ, CASE_SUCCESS_MSG, CROSS_OVER_OPTIONS, CT_FORM_DIRTY, DEFAULT, FFS_CLAIM, JOB_MONITOR_USER_ROLE, NEW_CASE_ASSOCIATIONS, NEW_CASE_CONTACTS, NEW_CASE_FILES, NEW_CASE_REMINDERS, PGP_USER_ROLE, SHOW_BACK_DROP_INDICATOR, SHOW_ERROR_TOAST, SHOW_PRINT_PDF_DIALOG, BANNER_MSG, SHOW_SUCCESS_TOAST, GLOBAL_ERRORS, FINDINGS_OBSERVATIONS, INVEST_REVIEW_FROM_DATE, INVEST_REVIEW_TO_DATE, NEW_CASE_NOTES } from "./components/sub-components/fads/common/AppConstants";
+import { USER_PROFILE } from "./constants/AppConstants";
+import { useFetchUserDetailsQuery } from "./components/sub-components/fads/casetracking/Api/UseQueryHooks";
+import { PowerBiAuthentication } from "@optum-osgp-temp/osgp-analytics-powerbi-authentication";
+import { AppControllerContext } from "@optum-osgp-temp/ui-app-controller";
+import { setTitleTag } from "./utils/appUtils";
+
+
+const MUI_LICENSE_KEY = process.env.MUI_LICENSE_KEY || '';
+LicenseInfo.setLicenseKey(MUI_LICENSE_KEY);
+store.set(SHOW_ERROR_TOAST,false);
+store.set(BANNER_MSG,CASE_SUCCESS_MSG);
+function App() {
+
+  const context = useContext(AppControllerContext);
+  const [currentRole, setCurrentRole] = store.useStoreState('currentRole'); //setting at pageBuilder library
+  
+  useEffect(() =>{
+    if(currentRole)
+      setTitleTag(currentRole)
+  },[currentRole])
+
+  useLayoutEffect(() => {
+    if (!localStorage.getItem('userToken')) {
+      localStorage.setItem('userToken', 'random-token');
+    }
+    store.set("userDetailData", null);
+    store.set("caseDetailData", null);
+    store.set("modulePermissions", []);
+    store.set("readOnlyNodeAccess", false);
+    store.set("caseNoteTypeConstant", null);
+    store.set("financialValidConstant", null);
+    store.set("hideTemplate", false);
+    store.set(DEFAULT, []);
+    store.set(NEW_CASE_FILES, []);
+    store.set(NEW_CASE_REMINDERS, []);
+    store.set(NEW_CASE_NOTES, []);
+    store.set(NEW_CASE_ASSOCIATIONS, []);
+    store.set(NEW_CASE_CONTACTS, []);
+    store.set(CASE_CONTACT_EDITED_OBJ, [])
+    store.set(SHOW_SUCCESS_TOAST,false);
+    store.set(SHOW_PRINT_PDF_DIALOG,false);
+    store.set(SHOW_BACK_DROP_INDICATOR,false);
+    store.set(PGP_USER_ROLE,null);
+    store.set(FFS_CLAIM, []);
+    store.set(CROSS_OVER_OPTIONS, []);
+    store.set(JOB_MONITOR_USER_ROLE, null);
+    store.set("study", null);
+    store.set(USER_PROFILE, {});
+    store.set(CT_FORM_DIRTY,false)
+    store.set(GLOBAL_ERRORS, [])
+    store.set(FINDINGS_OBSERVATIONS, [])
+    store.set(INVEST_REVIEW_FROM_DATE,null);
+    store.set(INVEST_REVIEW_TO_DATE,null)
+  }, []);
+
+  useFetchUserDetailsQuery();
+  const powerBIConfig = {
+    clientId: process.env.POWERBI_CLIENT_ID
+    , scopes: [process.env.POWERBI_SCOPES]
+    , env: process.env.ENVIRONMENT
+    , loggerUrl: process.env.LOGGING_API_URL
+    , gatewayUrl: process.env.API_GATEWAY_BASE_URL
+    , loginHint: store.get("loginHint")
+  };
+  let [powerBIAuthRequired, setPowerBIAuthRequired]  = useState(false);
+
+  function hasAnyPowerBIComp(comp:any) {
+    if (comp?.compType == "EmbeddedAnalytics" && (comp?.compSubType == "" || comp?.compSubType == "powerBI")) {
+      // setPowerBIAuthRequired(true);
+      return true;
+    }
+    if(comp?.children) {
+      hasAnyPowerBIComp(comp.children[0]);
+    }
+  }
+  useEffect(()=> {
+    let pageCompList = context?.pageConfig?.page?.compList;
+    if(pageCompList) {
+      pageCompList.forEach( (comp:any) => {
+        hasAnyPowerBIComp(comp);
+        if(powerBIAuthRequired) {
+          return;
+        }
+      }) 
+    }
+  },[context]);
+
+  return (
+    <>
+      {powerBIAuthRequired && (<PowerBiAuthentication config={powerBIConfig}/>)}
+      <Routes>
+        <Route path="/" element={<TemplateResolver />}></Route>
+        <Route path="/:page" element={<TemplateResolver />}></Route>
+      </Routes>
+    </>
+  );
+}
+
+export default App;
