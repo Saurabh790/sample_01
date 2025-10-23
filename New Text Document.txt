@@ -2,76 +2,159 @@ import React from "react";
 import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
 
 export default function FadsUserInformationHistory() {
-  // mock rows
-  const rows = React.useMemo(() => {
-    const push = (systemId: string, seq: number, date: string, user: string,
-      pi: string, pgp: string, ct: string, uid: string, email: string, last: string, first: string
-    ) => ({
-      id: `${systemId}-${seq}`,
-      systemId,
-      histSqNum: seq,
-      changeDt: date,
-      changeUsr: user,
-      piGroup: pi,
-      pgpGroup: pgp,
-      ctGroup: ct,
-      userId: uid,
-      email,
-      lastName: last,
-      firstName: first,
-    });
+  // ---------- mock rows shaped to your headers ----------
+  type Row = {
+    id: string;
+    changeDt: string;
+    changeUsr: string;
+    histSqNum: number;
+    cfgTextA: string;
+    cfgDateA: string;
+    cfgTextB: string;
+    cfgDateB: string;
+    cfgTextC: string;
+    cfgDateC: string;
+  };
 
-    return [
-      push("SYS-10001", 5, "2025-07-19", "Silvers, Kristy", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X", "kristy.s", "kristy.s@optum.com", "Silvers", "Kristy"),
-      push("SYS-10001", 4, "2024-12-08", "Silvers, Kristy", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X", "kristy.s", "kristy.s@optum.com", "Silvers", "Kristy"),
-      push("SYS-10001", 3, "2024-03-10", "Silvers, Kristy", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y", "kristy.s", "kristy.s@optum.com", "Silvers", "Kristy"),
-      push("SYS-20002", 3, "2025-09-01", "Cupka, Cassandra", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z", "cass.c", "cass.c@optum.com", "Cupka", "Cassandra"),
-      push("SYS-20002", 2, "2024-11-21", "Cupka, Cassandra", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z", "cass.c", "cass.c@optum.com", "Cupka", "Cassandra"),
-      push("SYS-20002", 1, "2024-02-29", "Cupka, Cassandra", "FADS_PI_00", "FADS_PGP_B", "FADS_CT_W", "cass.c", "cass.c@optum.com", "Cupka", "Cassandra"),
-    ];
-  }, []);
+  const rows: Row[] = React.useMemo(
+    () => [
+      {
+        id: "SYS-10001-5",
+        changeDt: "2025-07-19",
+        changeUsr: "Kristy Silvers",
+        histSqNum: 5,
+        cfgTextA: "123456789X",
+        cfgDateA: "2025-07-18",
+        cfgTextB: "123456789Y",
+        cfgDateB: "2025-07-18",
+        cfgTextC: "123456789Z",
+        cfgDateC: "2025-07-19",
+      },
+      {
+        id: "SYS-10001-4",
+        changeDt: "2024-12-08",
+        changeUsr: "Kristy Silvers",
+        histSqNum: 4,
+        cfgTextA: "123456789X",
+        cfgDateA: "2024-12-07",
+        cfgTextB: "123456789Y",
+        cfgDateB: "2024-12-07",
+        cfgTextC: "123456789A",
+        cfgDateC: "2024-12-08",
+      },
+      {
+        id: "SYS-10001-3",
+        changeDt: "2024-03-10",
+        changeUsr: "Kristy Silvers",
+        histSqNum: 3,
+        cfgTextA: "123456789K",
+        cfgDateA: "2024-03-09",
+        cfgTextB: "123456789L",
+        cfgDateB: "2024-03-09",
+        cfgTextC: "123456789M",
+        cfgDateC: "2024-03-10",
+      },
+      {
+        id: "SYS-20002-3",
+        changeDt: "2025-09-01",
+        changeUsr: "Cassandra Cupka",
+        histSqNum: 3,
+        cfgTextA: "987654321X",
+        cfgDateA: "2025-08-31",
+        cfgTextB: "987654321Y",
+        cfgDateB: "2025-08-31",
+        cfgTextC: "987654321Z",
+        cfgDateC: "2025-09-01",
+      },
+      {
+        id: "SYS-20002-2",
+        changeDt: "2024-11-21",
+        changeUsr: "Cassandra Cupka",
+        histSqNum: 2,
+        cfgTextA: "987654321A",
+        cfgDateA: "2024-11-20",
+        cfgTextB: "987654321B",
+        cfgDateB: "2024-11-20",
+        cfgTextC: "987654321C",
+        cfgDateC: "2024-11-21",
+      },
+      {
+        id: "SYS-20002-1",
+        changeDt: "2024-02-29",
+        changeUsr: "Cassandra Cupka",
+        histSqNum: 1,
+        cfgTextA: "987654321D",
+        cfgDateA: "2024-02-28",
+        cfgTextB: "987654321E",
+        cfgDateB: "2024-02-28",
+        cfgTextC: "987654321F",
+        cfgDateC: "2024-02-29",
+      },
+    ],
+    []
+  );
 
+  // ---------- columns in the exact order you requested ----------
   const columns = [
-    { field: "systemId", headerName: "System ID", flex: 1 },
-    { field: "histSqNum", headerName: "History Seq No.", flex: 1 },
-    { field: "changeDt", headerName: "Change Dt", flex: 1 },
-    { field: "changeUsr", headerName: "User", flex: 1.2 },
-    { field: "piGroup", headerName: "PI Group", flex: 1 },
-    { field: "pgpGroup", headerName: "PGP Group", flex: 1 },
-    { field: "ctGroup", headerName: "CT Group", flex: 1 },
-    { field: "userId", headerName: "User ID", flex: 1 },
-    { field: "email", headerName: "Email Address", flex: 1.5 },
-    { field: "lastName", headerName: "Last Name", flex: 1 },
-    { field: "firstName", headerName: "First Name", flex: 1 },
+    { field: "changeDt",  headerName: "Change Date",  flex: 1.1, minWidth: 130 },
+    { field: "changeUsr", headerName: "User",         flex: 1.3, minWidth: 160 },
+    { field: "histSqNum", headerName: "History Seq",  type: "number", flex: 0.9, minWidth: 120 },
+
+    { field: "cfgTextA",  headerName: "Config Text A", flex: 1.2, minWidth: 140 },
+    { field: "cfgDateA",  headerName: "Config Date A", flex: 1.1, minWidth: 130 },
+
+    { field: "cfgTextB",  headerName: "Config Text B", flex: 1.2, minWidth: 140 },
+    { field: "cfgDateB",  headerName: "Config Date B", flex: 1.1, minWidth: 130 },
+
+    { field: "cfgTextC",  headerName: "Config Text C", flex: 1.2, minWidth: 140 },
+    { field: "cfgDateC",  headerName: "Config Date C", flex: 1.1, minWidth: 130 },
   ];
 
-  const initConfig = {
+  // ---------- grid config (client only; no fetch) ----------
+  const initConfig: any = {
     header: "User Information History",
-    description: "Sorted by History Seq No. (DESC)",
+    description: "Sorted by History Seq No (DESC)",
 
-    // ✅ block server mode entirely
-    fetchMode: "client",         // <-- REQUIRED for this Grid version
-    url: null,
-    baseURL: null,
-    myEndPoint: null,
-    showMyItemsToggle: false,
+    // keep these undefined (typed as string) so GenericGrid doesn't try to fetch
+    url:        undefined as unknown as string,
+    baseURL:    undefined as unknown as string,
+    myEndPoint: undefined as unknown as string,
 
-    // ✅ provide rows through transform callback
-    dataTransformCallBack: () =>
-      React.useCallback(() => ({
-        rows,
-        pageInfo: { totalRowCount: rows.length },
-      }), [rows]),
-
-    columns,
-    rows,
-    pageInfo: { totalRowCount: rows.length },
     exportModeValue: "client",
+
+    rows,
+    columns,
+    sort: true,
+    defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
+    labelledBy: "user-information-history-table",
+
+    dataTransformCallBack: () =>
+      React.useCallback(
+        () => ({
+          rows,
+          pageInfo: { totalRowCount: rows.length },
+        }),
+        [rows]
+      ),
+
     enableActionColumn: false,
-    defaultSortModel: [{ field: "histSqNum", sort: "desc" }],
     pageSizeOptions: [10, 25, 50, 100],
     initialPageSize: 10,
-    excelExport: undefined, // disable since server mode off
+
+    // optional: client export (kept minimal since we're mocking)
+    excelExport: {
+      columnNames: [
+        "changeDt","changeUsr","histSqNum",
+        "cfgTextA","cfgDateA","cfgTextB","cfgDateB","cfgTextC","cfgDateC",
+      ],
+      columnHeadings: [
+        "Change Date","User","History Seq",
+        "Config Text A","Config Date A","Config Text B","Config Date B","Config Text C","Config Date C",
+      ],
+      endPoint: "",
+      myItemEndPoint: "",
+      fileNamePrefix: "User-Information-History",
+    },
   };
 
   return (
