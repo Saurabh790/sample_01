@@ -2,129 +2,81 @@ import React from "react";
 import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
 
 export default function FadsUserInformationHistory() {
-  type Row = {
-    id: string;
-    systemId: string;
-    histSqNum: number;
-    changeDt: string;
-    changeUsr: string;
-    piGroup: string;
-    pgpGroup: string;
-    ctGroup: string;
-    userId: string;
-    email: string;
-    lastName: string;
-    firstName: string;
-  };
+  // mock rows
+  const rows = React.useMemo(() => {
+    const push = (systemId: string, seq: number, date: string, user: string,
+      pi: string, pgp: string, ct: string, uid: string, email: string, last: string, first: string
+    ) => ({
+      id: `${systemId}-${seq}`,
+      systemId,
+      histSqNum: seq,
+      changeDt: date,
+      changeUsr: user,
+      piGroup: pi,
+      pgpGroup: pgp,
+      ctGroup: ct,
+      userId: uid,
+      email,
+      lastName: last,
+      firstName: first,
+    });
 
-  const buildRows = (): Row[] => {
-    const rows: Row[] = [];
-    const pushHistory = (
-      systemId: string,
-      seq: number,
-      y: number,
-      m: number,
-      d: number,
-      lastName: string,
-      firstName: string,
-      userId: string,
-      email: string,
-      piGroup: string,
-      pgpGroup: string,
-      ctGroup: string
-    ) => {
-      const changeDt = new Date(y, m - 1, d).toISOString().slice(0, 10);
-      rows.push({
-        id: `${systemId}-${seq}`,
-        systemId,
-        histSqNum: seq,
-        changeDt,
-        changeUsr: `${lastName}, ${firstName}`,
-        piGroup,
-        pgpGroup,
-        ctGroup,
-        userId,
-        email,
-        lastName,
-        firstName,
-      });
-    };
-
-    // mock data
-    pushHistory("SYS-10001", 5, 2025, 7, 19, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
-    pushHistory("SYS-10001", 4, 2024, 12, 8, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
-    pushHistory("SYS-10001", 3, 2024, 3, 10, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y");
-
-    pushHistory("SYS-20002", 3, 2025, 9, 1, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
-    pushHistory("SYS-20002", 2, 2024, 11, 21, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
-    pushHistory("SYS-20002", 1, 2024, 2, 29, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_00", "FADS_PGP_B", "FADS_CT_W");
-
-    return rows.sort((a, b) =>
-      a.systemId === b.systemId ? b.histSqNum - a.histSqNum : a.systemId.localeCompare(b.systemId)
-    );
-  };
-
-  const rows = React.useMemo(() => buildRows(), []);
+    return [
+      push("SYS-10001", 5, "2025-07-19", "Silvers, Kristy", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X", "kristy.s", "kristy.s@optum.com", "Silvers", "Kristy"),
+      push("SYS-10001", 4, "2024-12-08", "Silvers, Kristy", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X", "kristy.s", "kristy.s@optum.com", "Silvers", "Kristy"),
+      push("SYS-10001", 3, "2024-03-10", "Silvers, Kristy", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y", "kristy.s", "kristy.s@optum.com", "Silvers", "Kristy"),
+      push("SYS-20002", 3, "2025-09-01", "Cupka, Cassandra", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z", "cass.c", "cass.c@optum.com", "Cupka", "Cassandra"),
+      push("SYS-20002", 2, "2024-11-21", "Cupka, Cassandra", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z", "cass.c", "cass.c@optum.com", "Cupka", "Cassandra"),
+      push("SYS-20002", 1, "2024-02-29", "Cupka, Cassandra", "FADS_PI_00", "FADS_PGP_B", "FADS_CT_W", "cass.c", "cass.c@optum.com", "Cupka", "Cassandra"),
+    ];
+  }, []);
 
   const columns = [
-    { field: "systemId", headerName: "System ID", flex: 1.5, minWidth: 140 },
-    { field: "histSqNum", headerName: "History Seq No.", flex: 1, minWidth: 140, type: "number" },
-    { field: "changeDt", headerName: "Change Dt", flex: 1.2, minWidth: 130 },
-    { field: "changeUsr", headerName: "User", flex: 1.4, minWidth: 160 },
-    { field: "piGroup", headerName: "PI Group", flex: 1.2, minWidth: 130 },
-    { field: "pgpGroup", headerName: "PGP Group", flex: 1.2, minWidth: 130 },
-    { field: "ctGroup", headerName: "CT Group", flex: 1.2, minWidth: 130 },
-    { field: "userId", headerName: "User ID", flex: 1.2, minWidth: 130 },
-    { field: "email", headerName: "Email Address", flex: 2, minWidth: 220 },
-    { field: "lastName", headerName: "Last Name", flex: 1.2, minWidth: 140 },
-    { field: "firstName", headerName: "First Name", flex: 1.2, minWidth: 140 },
+    { field: "systemId", headerName: "System ID", flex: 1 },
+    { field: "histSqNum", headerName: "History Seq No.", flex: 1 },
+    { field: "changeDt", headerName: "Change Dt", flex: 1 },
+    { field: "changeUsr", headerName: "User", flex: 1.2 },
+    { field: "piGroup", headerName: "PI Group", flex: 1 },
+    { field: "pgpGroup", headerName: "PGP Group", flex: 1 },
+    { field: "ctGroup", headerName: "CT Group", flex: 1 },
+    { field: "userId", headerName: "User ID", flex: 1 },
+    { field: "email", headerName: "Email Address", flex: 1.5 },
+    { field: "lastName", headerName: "Last Name", flex: 1 },
+    { field: "firstName", headerName: "First Name", flex: 1 },
   ];
 
-  // Only client-side export metadata; leave endpoints empty and grid won't call them
-  const excelExport = {
-    columnNames: [
-      "systemId","histSqNum","changeDt","changeUsr",
-      "piGroup","pgpGroup","ctGroup","userId","email","lastName","firstName",
-    ],
-    columnHeadings: [
-      "System ID","History Seq No.","Change Dt","User","PI Group",
-      "PGP Group","CT Group","User ID","Email Address","Last Name","First Name",
-    ],
-    endPoint: "",        // not used in client mode
-    myItemEndPoint: "",  // not used in client mode
-    fileNamePrefix: "User-Information-History",
-  };
-
-  // IMPORTANT: don't pass any URL-ish props; rely on client rows only
   const initConfig = {
     header: "User Information History",
     description: "Sorted by History Seq No. (DESC)",
-    url: undefined as unknown as string,
-    baseURL: undefined as unknown as string,
-    myEndPoint: undefined as unknown as string,
-    exportModeValue: "client" as const,
 
+    // ✅ block server mode entirely
+    fetchMode: "client",         // <-- REQUIRED for this Grid version
+    url: null,
+    baseURL: null,
+    myEndPoint: null,
+    showMyItemsToggle: false,
+
+    // ✅ provide rows through transform callback
+    dataTransformCallBack: () =>
+      React.useCallback(() => ({
+        rows,
+        pageInfo: { totalRowCount: rows.length },
+      }), [rows]),
+
+    columns,
     rows,
     pageInfo: { totalRowCount: rows.length },
-    columns,
-    sort: true,
-    labelledBy: "user-information-history-table",
-    defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
-    dataTransformCallBack: () =>
-      React.useCallback(() => ({ rows, pageInfo: { totalRowCount: rows.length } }), [rows]),
-
-    excelExport,
+    exportModeValue: "client",
     enableActionColumn: false,
-    pageId: "user-information-history",
+    defaultSortModel: [{ field: "histSqNum", sort: "desc" }],
     pageSizeOptions: [10, 25, 50, 100],
     initialPageSize: 10,
-  } as any;
+    excelExport: undefined, // disable since server mode off
+  };
 
   return (
-    <div style={{ padding: "90px 32px", width: "100%", boxSizing: "border-box" }}>
-      <div style={{ width: "100%", minHeight: 500 }}>
-        <GenericGrid {...initConfig} />
-      </div>
+    <div style={{ padding: "90px 32px", width: "100%", minHeight: 600 }}>
+      <GenericGrid {...initConfig} />
     </div>
   );
 }
