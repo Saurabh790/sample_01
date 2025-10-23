@@ -1,15 +1,5 @@
 import React from "react";
-import { QueryClient, QueryClientProvider } from "react-query";
 import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
-
-// -----------------------------------------------------------------------------
-// Page: User Information History (Pure client mode - no server calls)
-// Default: Sorted by History Seq No. (DESC)
-// -----------------------------------------------------------------------------
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false } },
-});
 
 export default function FadsUserInformationHistory() {
   type Row = {
@@ -90,61 +80,50 @@ export default function FadsUserInformationHistory() {
     { field: "firstName", headerName: "First Name", flex: 1.2, minWidth: 140 },
   ];
 
-  // IMPORTANT: avoid any props that may not exist on GenericGridProps
-  const initConfig /* : GenericGridProps */ = {
+  // Only client-side export metadata; leave endpoints empty and grid won't call them
+  const excelExport = {
+    columnNames: [
+      "systemId","histSqNum","changeDt","changeUsr",
+      "piGroup","pgpGroup","ctGroup","userId","email","lastName","firstName",
+    ],
+    columnHeadings: [
+      "System ID","History Seq No.","Change Dt","User","PI Group",
+      "PGP Group","CT Group","User ID","Email Address","Last Name","First Name",
+    ],
+    endPoint: "",        // not used in client mode
+    myItemEndPoint: "",  // not used in client mode
+    fileNamePrefix: "User-Information-History",
+  };
+
+  // IMPORTANT: don't pass any URL-ish props; rely on client rows only
+  const initConfig = {
     header: "User Information History",
     description: "Sorted by History Seq No. (DESC)",
-
-    // keep undefined so the grid never fetches
     url: undefined as unknown as string,
     baseURL: undefined as unknown as string,
     myEndPoint: undefined as unknown as string,
-
-    // force client mode
     exportModeValue: "client" as const,
 
-    // provide your own rows & count
     rows,
     pageInfo: { totalRowCount: rows.length },
-
     columns,
     sort: true,
     labelledBy: "user-information-history-table",
     defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
-
-    // shape to satisfy the prop; it simply returns the client rows
     dataTransformCallBack: () =>
-      React.useCallback(
-        () => ({ rows, pageInfo: { totalRowCount: rows.length } }),
-        [rows]
-      ),
+      React.useCallback(() => ({ rows, pageInfo: { totalRowCount: rows.length } }), [rows]),
 
-    excelExport: {
-      columnNames: [
-        "systemId","histSqNum","changeDt","changeUsr",
-        "piGroup","pgpGroup","ctGroup","userId","email","lastName","firstName",
-      ],
-      columnHeadings: [
-        "System ID","History Seq No.","Change Dt","User",
-        "PI Group","PGP Group","CT Group","User ID","Email Address","Last Name","First Name",
-      ],
-      endPoint: "",
-      myItemEndPoint: "",
-      fileNamePrefix: "User-Information-History",
-    },
-
+    excelExport,
     enableActionColumn: false,
     pageId: "user-information-history",
     pageSizeOptions: [10, 25, 50, 100],
     initialPageSize: 10,
-  } as any; // <- if your GenericGridProps is strict, this avoids TS errors on extra/unknown fields
+  } as any;
 
   return (
     <div style={{ padding: "90px 32px", width: "100%", boxSizing: "border-box" }}>
       <div style={{ width: "100%", minHeight: 500 }}>
-        <QueryClientProvider client={queryClient}>
-          <GenericGrid {...initConfig} />
-        </QueryClientProvider>
+        <GenericGrid {...initConfig} />
       </div>
     </div>
   );
