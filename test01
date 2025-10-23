@@ -1,105 +1,501 @@
-import React from "react"
-import { TabbedPanel } from "@optum-osgp-temp/osgp-ui-component-lib";
-import { BehaviorPatternLibrary } from "../sub-components/fads/pgp/behavior-pattern/BehaviorPatternLibrary";
-import ReportItem from '../sub-components/fads/pgp/report-item/ReportItem';
-import ReportSectionLibrary from "../sub-components/fads/pgp/reportSection/ReportSectionLibrary";
+
+import React from "react";
 import { QueryClient, QueryClientProvider } from "react-query";
-import { DataRuleGrid } from "../sub-components/fads/pgp/dataRule/DataRuleGrid";
-import { PeerGroupGrid } from "../sub-components/fads/pgp/peerGroup/PeerGroupGrid";
-import { JobMonitorGrid } from "../sub-components/fads/pgp/job-monitor/JobMonitorGrid";
-import StudiesLibraryGrid from "../sub-components/fads/pgp/study/StudiesLibraryGrid";
-import { useState } from "react";
-import NotificationBanner from "../sub-components/fads/common/NotificationBanner/NotificationBanner";
-import { CASE_ERROR_MSG, SHOW_ERROR_TOAST, BANNER_MSG, SHOW_SUCCESS_TOAST } from "../sub-components/fads/common/AppConstants";
-import { store } from "@optum-osgp-temp/osgp-ui-state-management-lib";
-import { PGPRootContainer, MainTitle } from "./PeerGroupProfiling";
-import { AEPLogger } from "../../utils/AEPUtils";
-import FadsUserInformationHistory from "../components/pages/FadsUserInformationHistory";
+import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
+
+// ------------------------------------------------------------------------------------
+// User Information History (mocked)
+// - Title: User Information History
+// - Default sort: History Seq No (DESC)
+// - Pagination enabled via GenericGrid
+// - Client-side Excel export from visible data
+// ------------------------------------------------------------------------------------
 
 const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            refetchOnWindowFocus: false,
-        },
-    }
-})
+  defaultOptions: { queries: { refetchOnWindowFocus: false } },
+});
 
-interface DiscProps {
-	defaultValue: any
+export default function FadsUserInformationHistory() {
+  // Build mock rows for two System IDs. In real usage, replace with server data
+  // and provide baseURL + dataTransformCallBack like in your sample screen.
+  type Row = {
+    id: string; // unique row id for MUI
+    systemId: string;
+    histSqNum: number;
+    changeDt: string; // ISO or display date
+    changeUsr: string; // derived from last/first name in your API
+    piGroup: string;
+    pgpGroup: string;
+    ctGroup: string;
+    userId: string;
+    email: string;
+    lastName: string;
+    firstName: string;
+  };
+
+  const buildRows = (): Row[] => {
+    const rows: Row[] = [];
+
+    const pushHistory = (
+      systemId: string,
+      seq: number,
+      y: number,
+      m: number,
+      d: number,
+      lastName: string,
+      firstName: string,
+      userId: string,
+      email: string,
+      piGroup: string,
+      pgpGroup: string,
+      ctGroup: string
+    ) => {
+      const changeDt = new Date(y, m - 1, d).toISOString().slice(0, 10);
+      rows.push({
+        id: `${systemId}-${seq}`,
+        systemId,
+        histSqNum: seq,
+        changeDt,
+        changeUsr: `${lastName}, ${firstName}`,
+        piGroup,
+        pgpGroup,
+        ctGroup,
+        userId,
+        email,
+        lastName,
+        firstName,
+      });
+    };
+
+    // Mock history for SYS-10001
+    pushHistory(
+      "SYS-10001",
+      5,
+      2025,
+      7,
+      19,
+      "Silvers",
+      "Kristy",
+      "kristy.s",
+      "kristy.s@optum.com",
+      "FADS_PI_01",
+      "FADS_PGP_A",
+      "FADS_CT_X"
+    );
+    pushHistory(
+      "SYS-10001",
+      4,
+      2024,
+      12,
+      8,
+      "Silvers",
+      "Kristy",
+      "kristy.s",
+      "kristy.s@optum.com",
+      "FADS_PI_01",
+      "FADS_PGP_A",
+      "FADS_CT_X"
+    );
+    pushHistory(
+      "SYS-10001",
+      3,
+      2024,
+      3,
+      10,
+      "Silvers",
+      "Kristy",
+      "kristy.s",
+      "kristy.s@optum.com",
+      "FADS_PI_02",
+      "FADS_PGP_A",
+      "FADS_CT_Y"
+    );
+
+    // Mock history for SYS-20002
+    pushHistory(
+      "SYS-20002",
+      3,
+      2025,
+      9,
+      1,
+      "Cupka",
+      "Cassandra",
+      "cass.c",
+      "cass.c@optum.com",
+      "FADS_PI_03",
+      "FADS_PGP_B",
+      "FADS_CT_Z"
+    );
+    pushHistory(
+      "SYS-20002",
+      2,
+      2024,
+      11,
+      21,
+      "Cupka",
+      "Cassandra",
+      "cass.c",
+      "cass.c@optum.com",
+      "FADS_PI_03",
+      "FADS_PGP_B",
+      "FADS_CT_Z"
+    );
+    pushHistory(
+      "SYS-20002",
+      1,
+      2024,
+      2,
+      29,
+      "Cupka",
+      "Cassandra",
+      "cass.c",
+      "cass.c@optum.com",
+      "FADS_PI_00",
+      "FADS_PGP_B",
+      "FADS_CT_W"
+    );
+
+    // Sort by System ID asc, then History Seq No desc (default visual expectation)
+    return rows.sort((a, b) =>
+      a.systemId === b.systemId
+        ? b.histSqNum - a.histSqNum
+        : a.systemId.localeCompare(b.systemId)
+    );
+  };
+
+  const rows = React.useMemo(() => buildRows(), []);
+
+  // Columns per requirement text & snap_01
+  const columns = [
+    { field: "systemId", headerName: "System ID", flex: 1.5, minWidth: 140 },
+    {
+      field: "histSqNum",
+      headerName: "History Seq No.",
+      flex: 1,
+      minWidth: 140,
+      type: "number",
+      description:
+        "Sequence grouped by System ID – increments by 1 on create/update/disable",
+    },
+    {
+      field: "changeDt",
+      headerName: "Change Dt",
+      flex: 1.2,
+      minWidth: 130,
+    },
+    {
+      field: "changeUsr",
+      headerName: "User",
+      flex: 1.4,
+      minWidth: 160,
+    },
+    { field: "piGroup", headerName: "PI Group", flex: 1.2, minWidth: 130 },
+    { field: "pgpGroup", headerName: "PGP Group", flex: 1.2, minWidth: 130 },
+    { field: "ctGroup", headerName: "CT Group", flex: 1.2, minWidth: 130 },
+    { field: "userId", headerName: "User ID", flex: 1.2, minWidth: 130 },
+    {
+      field: "email",
+      headerName: "Email Address",
+      flex: 2,
+      minWidth: 220,
+    },
+    { field: "lastName", headerName: "Last Name", flex: 1.2, minWidth: 140 },
+    { field: "firstName", headerName: "First Name", flex: 1.2, minWidth: 140 },
+  ];
+
+  // Excel (client) – exports the visible dataset/columns
+  const excelExport = {
+    columnNames: [
+      "systemId",
+      "histSqNum",
+      "changeDt",
+      "changeUsr",
+      "piGroup",
+      "pgpGroup",
+      "ctGroup",
+      "userId",
+      "email",
+      "lastName",
+      "firstName",
+    ],
+    columnHeadings: [
+      "System ID",
+      "History Seq No.",
+      "Change Dt",
+      "User",
+      "PI Group",
+      "PGP Group",
+      "CT Group",
+      "User ID",
+      "Email Address",
+      "Last Name",
+      "First Name",
+    ],
+    // keep endpoints unset since we export on client from rows
+    endPoint: "",
+    myItemEndPoint: "",
+    fileNamePrefix: "User-Information-History",
+    responseDataVar: "content",
+  };
+
+  const initConfig = {
+    header: "User Information History",
+    description: "Sorted by History Seq No. (DESC)",
+    url: "", // not used for client rows
+    columns,
+    baseURL: "",
+    sort: true,
+    labelledBy: "user-information-history-table",
+    defaultSortModel: [
+      { field: "histSqNum", sort: "desc" as const },
+      { field: "systemId", sort: "asc" as const },
+    ],
+    excelExport,
+    myEndPoint: "",
+    pageId: "user-information-history",
+    dataTransformCallBack: () =>
+      React.useCallback(
+        (data: any) => ({
+          rows: data?.content ?? (Array.isArray(data) ? data : []),
+          pageInfo: {
+            totalRowCount:
+              data?.totalElements ?? (Array.isArray(data) ? data.length : 0),
+          },
+        }),
+        []
+      ),
+    enableActionColumn: false,
+    rows, // client-side rows
+    exportModeValue: "client" as const, // use server for your API later
+    createButton: undefined,
+    editRecord: undefined,
+    // Optional grid-level props depending on your GenericGrid implementation
+    pageSizeOptions: [10, 25, 50, 100],
+    initialPageSize: 10,
+  };
+
+  return (
+    <div style={{ padding: "90px 32px" }}>
+      <QueryClientProvider client={queryClient}>
+        <GenericGrid {...initConfig} />
+      </QueryClientProvider>
+    </div>
+  );
 }
 
-const panels = [
-    {
-        header: "Data Rule",
-        content: <DataRuleGrid />,
-    },
-    {
-        header: "Peer Group",
-        content: <PeerGroupGrid />,
-    },
-    {
-        header: "Behavior Pattern",
-        content: <BehaviorPatternLibrary />,
-    },
-    {
-        header: "Report Item",
-        content: <ReportItem />,
-    },
-    {
-        header: "Report Section",
-        content: <ReportSectionLibrary />,
-    },
-    {
-        header: "Study",
-        content: <StudiesLibraryGrid />,
-    },
-    {
-        header: "Job Monitor",
-        content: <JobMonitorGrid />,
-    },
-];
 
-const PGP = ({ defaultValue }: DiscProps) => {
-    const [showToast] = store.useStoreState(SHOW_SUCCESS_TOAST);
-    const [showErrorToast] = store.useStoreState(SHOW_ERROR_TOAST);
-    const [showSuccessMSG] = store.useStoreState(BANNER_MSG);
-    const [head, setHead] = useState<any>(defaultValue);
-    const onHeadPress = (val: any) => {
-        setHead(val)
-    }
-    AEPLogger("Peer Group Profiling", "User Clicked on the tab "+panels[head]?.header, "INFO");
-    return (
-        <>
-            <div data-testid="pgp-test" id="peer-group-profiling">
-                <PGPRootContainer id="pgp-root">
-                    <MainTitle>Peer Group Profiling</MainTitle>
-                    <QueryClientProvider client={queryClient}>
-                        <TabbedPanel className="secondary-nav-menu pgp-tabbed-panel"
-                            panels={panels}
-                            titlesAs="h1"
-                            onHeaderPress={onHeadPress}
-                            selectedPanel={head} />
-                    </QueryClientProvider>
-                </PGPRootContainer>
-            </div>
-            {(showToast || showErrorToast) && 
-                <NotificationBanner
-                    message={showErrorToast ? CASE_ERROR_MSG : showSuccessMSG}
-                    type={showErrorToast ? "error" : "success"}
-                    autoClose={true} 
-                    showToast={showErrorToast || showToast}
-                    style={{
-                        position: "fixed",
-                        top: "150px",
-                        width: "95%",
-                        display: "flex",
-                        justifyContent: "center",
-                    }}
-                />
-            }
-        </>
-    );
-};
+in above code it should display mock data as we mocked but we are getting issue and below is the console output of this page please suggest 
 
 
-export default PGP;
+
+index.js:109  MUI: useResizeContainer - The parent DOM element of the data grid has an empty width.
+Please make sure that this element has an intrinsic width.
+The grid displays with a width of 0px.
+
+More details: https://mui.com/r/x-data-grid-no-dimensions.
+ff.reduce.t.<computed> @ index.js:109
+eval @ index.js:189
+e @ index.js:35
+emit @ index.js:109
+eval @ index.js:109
+publishEvent @ index.js:109
+eval @ index.js:189
+computeSizeAndPublishResizeEvent @ index.js:109
+eval @ index.js:34
+commitHookEffectListMount @ react-dom.development.js:20569
+commitLifeCycles @ react-dom.development.js:20630
+commitLayoutEffects @ react-dom.development.js:23422
+callCallback @ react-dom.development.js:3945
+invokeGuardedCallbackDev @ react-dom.development.js:3994
+invokeGuardedCallback @ react-dom.development.js:4056
+commitRootImpl @ react-dom.development.js:23147
+unstable_runWithPriority @ scheduler.development.js:468
+runWithPriority$1 @ react-dom.development.js:11276
+commitRoot @ react-dom.development.js:22986
+performSyncWorkOnRoot @ react-dom.development.js:22325
+eval @ react-dom.development.js:11327
+unstable_runWithPriority @ scheduler.development.js:468
+runWithPriority$1 @ react-dom.development.js:11276
+flushSyncCallbackQueueImpl @ react-dom.development.js:11322
+flushSyncCallbackQueue @ react-dom.development.js:11309
+discreteUpdates$1 @ react-dom.development.js:22416
+discreteUpdates @ react-dom.development.js:3756
+dispatchDiscreteEvent @ react-dom.development.js:5889
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+VM14196 index.ts:18 Logger Data - Map(0) {size: 0}
+VM14196 index.ts:19 ------------------------------------------------------------------------------
+VM14196 index.ts:15 ------------------------------------------------------------------------------
+VM14196 index.ts:16 HTTP REQUEST
+VM14196 index.ts:17 Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+  
+onError @ webpack://OSGP-ANALY…/core/query.js?:367
+reject @ webpack://OSGP-ANALY…core/retryer.js?:77
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:142
+Promise.catch
+run @ webpack://OSGP-ANALY…ore/retryer.js?:126
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:159
+Promise.then
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:155
+Promise.catch
+run @ webpack://OSGP-ANALY…ore/retryer.js?:126
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:159
+Promise.then
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:155
+Promise.catch
+run @ webpack://OSGP-ANALY…ore/retryer.js?:126
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:159
+Promise.then
+eval @ webpack://OSGP-ANALY…ore/retryer.js?:155
+Promise.catch
+run @ webpack://OSGP-ANALY…ore/retryer.js?:126
+Retryer @ webpack://OSGP-ANALY…ore/retryer.js?:166
+fetch @ webpack://OSGP-ANALY…/core/query.js?:341
+executeFetch @ webpack://OSGP-ANALY…eryObserver.js?:211
+setOptions @ webpack://OSGP-ANALY…ueryObserver.js?:97
+eval @ webpack://OSGP-ANALY…useBaseQuery.js?:87
+invokePassiveEffectCreate @ webpack://OSGP-ANALY…velopment.js?:23483
+callCallback @ webpack://OSGP-ANALY…evelopment.js?:3945
+invokeGuardedCallbackDev @ webpack://OSGP-ANALY…evelopment.js?:3994
+invokeGuardedCallback @ webpack://OSGP-ANALY…evelopment.js?:4056
+flushPassiveEffectsImpl @ webpack://OSGP-ANALY…velopment.js?:23570
+unstable_runWithPriority @ webpack://OSGP-ANALY…development.js?:468
+runWithPriority$1 @ webpack://OSGP-ANALY…velopment.js?:11276
+flushPassiveEffects @ webpack://OSGP-ANALY…velopment.js?:23443
+performSyncWorkOnRoot @ webpack://OSGP-ANALY…velopment.js?:22265
+eval @ webpack://OSGP-ANALY…velopment.js?:11327
+unstable_runWithPriority @ webpack://OSGP-ANALY…development.js?:468
+runWithPriority$1 @ webpack://OSGP-ANALY…velopment.js?:11276
+flushSyncCallbackQueueImpl @ webpack://OSGP-ANALY…velopment.js?:11322
+flushSyncCallbackQueue @ webpack://OSGP-ANALY…velopment.js?:11309
+discreteUpdates$1 @ webpack://OSGP-ANALY…velopment.js?:22416
+discreteUpdates @ webpack://OSGP-ANALY…evelopment.js?:3756
+dispatchDiscreteEvent @ webpack://OSGP-ANALY…evelopment.js?:5889
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
+ ------------------------------------------------------------------------------
+ HTTP REQUEST
+ Request Config - {transitional: {…}, transformRequest: Array(1), transformResponse: Array(1), timeout: 0, adapter: ƒ, …}
+ Logger Data - Map(0) {size: 0}
+ ------------------------------------------------------------------------------
