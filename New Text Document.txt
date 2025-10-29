@@ -1,120 +1,149 @@
-.osgp-tag {
-  background-color: #fbfbfb !important;
-  border: 1px solid #959595;
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+package com.optum.fads.userroles.api.config;
+
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import org.modelmapper.ModelMapper; // showing issue at this line 
+import org.modelmapper.convention.MatchingStrategies; // showing issue at this line 
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
+
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper // showing issue at this line 
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {  // showing issue at this line 
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);  // showing issue at this line 
+        return modelMapper;
+    }
 }
 
-.selected-drag-drop-container .osgp-data-grid {
-  padding: 0px !important;
-}
-.selected-drag-drop-container .osgp-data-grid-toolbar-container,
-.selected-drag-drop-container .MuiDataGrid-columnHeaders {
-  display: none;
-}
-.selected-drag-drop-container .MuiDataGrid-row:hover {
-  background: none !important;
-}
-.selected-drag-drop-container .MuiDataGrid-row .MuiChip-icon {
-  cursor: pointer;
-}
-.selected-drag-drop-container .MuiDataGrid-cell {
-  padding-left: 0px !important;
-  padding-right: 15px !important;
-}
-.selected-drag-drop-container .MuiDataGrid-cell:focus,
-.selected-drag-drop-container .MuiDataGrid-cell:focus-within {
-  outline: none !important;
-}
-.selected-drag-drop-container .osgp-data-grid-empty-message {
-  width: 100%;
-  text-align: center;
-}
-.selected-drag-drop-container .MuiDataGrid-cell--textCenter {
-  min-width: 40px !important;
-  padding-right: 0px !important;
-}
-.selected-drag-drop-container .MuiDataGrid-cell--textLeft {
-  /* Consider compatibility; see note below */
-  max-width: fit-content !important;
-}
 
-.study-time-period-form fieldset {
-  border: 1px solid #cccccc;
-  border-radius: 8px;
-  padding: 10px 15px 25px 15px;
-  background-color: white;
-}
-.study-time-period-form legend {
-  padding-inline-start: 7px;
-  padding-inline-end: 7px;
-}
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>3.4.11</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.optum.fads.userroles.api</groupId>
+	<artifactId>UserRolesAPI</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>UserRolesAPI</name>
+	<description>User Roles API FOR FADS </description>
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>17</java.version>
+		<spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-client</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.azure.spring</groupId>
+			<artifactId>spring-cloud-azure-starter-keyvault</artifactId>
+		</dependency>
 
-.MuiDataGrid-main .MuiDataGrid-columnHeaderTitle {
-  white-space: normal;
-  line-height: normal !important;
-}
-.MuiDataGrid-main .MuiDataGrid-columnHeader {
-  height: unset !important;
-}
-/* Replaced SCSS // comment with CSS comment */
-.MuiDataGrid-main .MuiDataGrid-columnHeaders {
-  /* Insert the maximum height allowed for the headers. */
-  max-height: 200px !important;
-}
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.azure.spring</groupId>
+				<artifactId>spring-cloud-azure-dependencies</artifactId>
+				<version>${spring-cloud-azure.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
-.action-spacing {
-  margin-right: 10px;
-}
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 
-.Panelcomponent__HeaderText-ebl5fp-2 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  font-family: "Optum Sans", sans-serif;
-}
-
-.dropDownMargin_0px {
-  margin: 0px !important;
-}
-
-#osgp-dialog-description .generic-grid-pick-list {
-  width: 100%;
-}
-
-.dialog-schedule .MuiDialog-container .MuiDialog-paper {
-  width: 50%;
-  max-width: unset;
-  font-family: "Optum Sans", sans-serif;
-  color: #000000 !important;
-}
-
-#schedule-grid {
-  height: 50%;
-  background-color: #e5e5e5;
-  border-radius: 20px;
-}
-#schedule-grid b {
-  font-size: 16px;
-}
-
-#schedule-row-header {
-  color: #002677;
-  font-family: "Optum Sans", sans-serif;
-  font-size: 12px;
-}
-
-#schedule-row-value {
-  font-family: "Optum Sans", sans-serif;
-  font-size: 14px;
-  color: #333333;
-  margin-top: -20px;
-}
-
-/* Hide arrows for number inputs (all browsers) */
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-/* Firefox */
-input[type="number"] {
-  -moz-appearance: textfield;
-}
+</project>
