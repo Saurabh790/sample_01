@@ -1,168 +1,143 @@
-import React from "react";
-import { QueryClient, QueryClientProvider } from "react-query";
-import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
+package com.optum.fads.userroles.api.config.dao.impl;
 
-// -----------------------------------------------------------------------------
-// Page: User Information History
-// Description: Displays mock user change history (no backend call)
-// Default view: Sorted by History Seq No DESC
-// -----------------------------------------------------------------------------
+import java.util.ArrayList;
+import java.util.List;
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { refetchOnWindowFocus: false },
-  },
-});
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 
-export default function FadsUserInformationHistory() {
-  // ---------------------------------------------------------------------------
-  // Mock Data Builder
-  // ---------------------------------------------------------------------------
-  type Row = {
-    id: string;
-    systemId: string;
-    histSqNum: number;
-    changeDt: string;
-    changeUsr: string;
-    piGroup: string;
-    pgpGroup: string;
-    ctGroup: string;
-    userId: string;
-    email: string;
-    lastName: string;
-    firstName: string;
-  };
+import org.hibernate.LockOptions;
+import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Repository;
 
-  const buildRows = (): Row[] => {
-    const rows: Row[] = [];
+import com.optum.fads.userroles.api.config.dao.LuValuesDAO;
+import com.optum.fads.userroles.api.config.domain.LuValues;
+import com.optum.fads.userroles.api.config.domain.LuValuesId;
 
-    const pushHistory = (
-      systemId: string,
-      seq: number,
-      y: number,
-      m: number,
-      d: number,
-      lastName: string,
-      firstName: string,
-      userId: string,
-      email: string,
-      piGroup: string,
-      pgpGroup: string,
-      ctGroup: string
-    ) => {
-      const changeDt = new Date(y, m - 1, d).toISOString().slice(0, 10);
-      rows.push({
-        id: `${systemId}-${seq}`,
-        systemId,
-        histSqNum: seq,
-        changeDt,
-        changeUsr: `${lastName}, ${firstName}`,
-        piGroup,
-        pgpGroup,
-        ctGroup,
-        userId,
-        email,
-        lastName,
-        firstName,
-      });
-    };
+@Repository
+public class LuValuesDAOImpl implements LuValuesDAO {
 
-    // Mocked records for demonstration
-    pushHistory("SYS-10001", 5, 2025, 7, 19, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
-    pushHistory("SYS-10001", 4, 2024, 12, 8, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
-    pushHistory("SYS-10001", 3, 2024, 3, 10, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y");
+    private static final Logger log = LoggerFactory.getLogger(LuValuesDAOImpl.class);
 
-    pushHistory("SYS-20002", 3, 2025, 9, 1, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
-    pushHistory("SYS-20002", 2, 2024, 11, 21, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
-    pushHistory("SYS-20002", 1, 2024, 2, 29, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_00", "FADS_PGP_B", "FADS_CT_W");
+    @PersistenceContext
+    private EntityManager em;
 
-    // Sort by System ID ASC, History Seq No DESC
-    return rows.sort((a, b) =>
-      a.systemId === b.systemId ? b.histSqNum - a.histSqNum : a.systemId.localeCompare(b.systemId)
-    );
-  };
+    private Session session() {
+        return em.unwrap(Session.class);
+    }
 
-  const rows = React.useMemo(() => buildRows(), []);
+    @Override
+    public void save(LuValues transientInstance) {
+        log.debug("saving LuValues instance");
+        em.persist(transientInstance);
+    }
 
-  // ---------------------------------------------------------------------------
-  // Column Definitions
-  // ---------------------------------------------------------------------------
-  const columns = [
-    { field: "systemId", headerName: "System ID", flex: 1.4, minWidth: 150 },
-    { field: "histSqNum", headerName: "History Seq No.", flex: 1, minWidth: 150, type: "number" },
-    { field: "changeDt", headerName: "Change Dt", flex: 1.1, minWidth: 130 },
-    { field: "changeUsr", headerName: "User", flex: 1.4, minWidth: 160 },
-    { field: "piGroup", headerName: "PI Group", flex: 1.1, minWidth: 120 },
-    { field: "pgpGroup", headerName: "PGP Group", flex: 1.1, minWidth: 120 },
-    { field: "ctGroup", headerName: "CT Group", flex: 1.1, minWidth: 120 },
-    { field: "userId", headerName: "User ID", flex: 1.1, minWidth: 120 },
-    { field: "email", headerName: "Email Address", flex: 1.8, minWidth: 220 },
-    { field: "lastName", headerName: "Last Name", flex: 1.1, minWidth: 140 },
-    { field: "firstName", headerName: "First Name", flex: 1.1, minWidth: 140 },
-  ];
+    @Override
+    public void delete(LuValues persistentInstance) {
+        log.debug("deleting LuValues instance");
+        em.remove(em.contains(persistentInstance) ? persistentInstance : em.merge(persistentInstance));
+    }
 
-  // ---------------------------------------------------------------------------
-  // Excel Export Configuration
-  // ---------------------------------------------------------------------------
-  const excelExport = {
-    columnNames: [
-      "systemId", "histSqNum", "changeDt", "changeUsr",
-      "piGroup", "pgpGroup", "ctGroup", "userId", "email", "lastName", "firstName",
-    ],
-    columnHeadings: [
-      "System ID", "History Seq No.", "Change Dt", "User",
-      "PI Group", "PGP Group", "CT Group", "User ID", "Email Address", "Last Name", "First Name",
-    ],
-    endPoint: "",
-    myItemEndPoint: "",
-    fileNamePrefix: "User-Information-History",
-    responseDataVar: "content",
-  };
+    @Override
+    public LuValues findById(LuValuesId id) { // FIXED package/type
+        log.debug("getting LuValues instance with id: {}", id);
+        return em.find(LuValues.class, id); // FIX: use entity class, not string FQN
+    }
 
-  // ---------------------------------------------------------------------------
-  // Grid Configuration (initConfig)
-  // ---------------------------------------------------------------------------
-  const initConfig = {
-    header: "User Information History",
-    description: "Sorted by History Seq No. (DESC)",
-    url: "",
-    columns,
-    baseURL: "",
-    sort: true,
-    labelledBy: "user-information-history-table",
-    defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
-    excelExport,
-    myEndPoint: "",
-    pageId: "user-information-history",
+    @Override
+    public List<LuValues> findByExample(LuValues probe) {
+        // REPLACEMENT for removed org.hibernate.criterion.Example
+        // Build a dynamic Criteria query using non-null fields from the probe.
+        log.debug("finding LuValues by example (dynamic criteria)");
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<LuValues> cq = cb.createQuery(LuValues.class);
+        Root<LuValues> root = cq.from(LuValues.class);
 
-    // ✅ REQUIRED: must always return a function
-    dataTransformCallBack: () =>
-      React.useCallback(
-        (data: any) => ({
-          rows: Array.isArray(data) ? data : data?.content ?? [],
-          pageInfo: {
-            totalRowCount:
-              Array.isArray(data) ? data.length : data?.totalElements ?? 0,
-          },
-        }),
-        []
-      ),
+        List<Predicate> ps = new ArrayList<>();
+        if (probe.getId() != null) {
+            if (probe.getId().getFieldId() != null) {
+                ps.add(cb.equal(root.get("id").get("fieldId"), probe.getId().getFieldId()));
+            }
+            if (probe.getId().getLuId() != null) {
+                ps.add(cb.equal(root.get("id").get("luId"), probe.getId().getLuId()));
+            }
+        }
+        if (probe.getLuCode() != null)   ps.add(cb.equal(root.get("luCode"), probe.getLuCode()));
+        if (probe.getLuLabel() != null)  ps.add(cb.equal(root.get("luLabel"), probe.getLuLabel()));
+        if (probe.getLuView() != null)   ps.add(cb.equal(root.get("luView"), probe.getLuView()));
+        if (probe.getObjId() != null)    ps.add(cb.equal(root.get("objId"), probe.getObjId()));
+        if (probe.getLuSeq() != null)    ps.add(cb.equal(root.get("luSeq"), probe.getLuSeq()));
+        if (probe.getLuParent() != null) ps.add(cb.equal(root.get("luParent"), probe.getLuParent()));
 
-    enableActionColumn: false,
-    rows,
-    exportModeValue: "client" as const,
-    pageSizeOptions: [10, 25, 50, 100],
-    initialPageSize: 10,
-  };
+        cq.select(root).where(ps.toArray(Predicate[]::new));
+        return em.createQuery(cq).getResultList();
+    }
 
-  // ---------------------------------------------------------------------------
-  // Render Component
-  // ---------------------------------------------------------------------------
-  return (
-    <div style={{ padding: "90px 32px" }}>
-      <QueryClientProvider client={queryClient}>
-        <GenericGrid {...initConfig} />
-      </QueryClientProvider>
-    </div>
-  );
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<LuValues> findByProperty(String propertyName, Object value) {
+        log.debug("finding LuValues with property: {}, value: {}", propertyName, value);
+        // Use named parameter (Hibernate 6 disallows bare '?')
+        String ql = "select l from LuValues l where l." + propertyName + " = :val";
+        TypedQuery<LuValues> q = em.createQuery(ql, LuValues.class);
+        q.setParameter("val", value);
+        return q.getResultList();
+    }
+
+    @Override public List<LuValues> findByLuCode(Object v)   { return findByProperty("luCode", v); }
+    @Override public List<LuValues> findByLuLabel(Object v)  { return findByProperty("luLabel", v); }
+    @Override public List<LuValues> findByLuView(Object v)   { return findByProperty("luView", v); }
+    @Override public List<LuValues> findByObjId(Object v)    { return findByProperty("objId", v); }
+    @Override public List<LuValues> findByLuSeq(Object v)    { return findByProperty("luSeq", v); }
+    @Override public List<LuValues> findByLuParent(Object v) { return findByProperty("luParent", v); }
+
+    @Override
+    public List<LuValues> findAll() {
+        log.debug("finding all LuValues");
+        return em.createQuery("select l from LuValues l", LuValues.class).getResultList();
+    }
+
+    @Override
+    public LuValues merge(LuValues detached) {
+        log.debug("merging LuValues");
+        return em.merge(detached);
+    }
+
+    @Override
+    public void attachDirty(LuValues instance) {
+        log.debug("attachDirty -> saveOrUpdate");
+        em.merge(instance);
+    }
+
+    @Override
+    public void attachClean(LuValues instance) {
+        log.debug("attachClean (no-op for JPA). Using Hibernate lock NONE for parity.");
+        session().buildLockRequest(LockOptions.NONE).lock(instance);
+    }
+
+    @Override
+    public List<LuValues> findByFieldIdAndOrderBySeq(String fieldId) {
+        log.debug("findByFieldIdAndOrderBySeq {}", fieldId);
+        String ql = """
+            select l from LuValues l
+            where l.id.fieldId = :fieldId
+              and l.luView = '1'
+            order by l.luSeq asc
+            """;
+        return em.createQuery(ql, LuValues.class)
+                 .setParameter("fieldId", fieldId)
+                 .getResultList();
+    }
+
+    public static LuValuesDAO getFromApplicationContext(ApplicationContext ctx) {
+        return ctx.getBean(LuValuesDAOImpl.class);
+    }
 }
