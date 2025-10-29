@@ -1,156 +1,256 @@
-import React from "react";
-import { QueryClient, QueryClientProvider } from "react-query";
-import { GenericGrid } from "../sub-components/fads/common/grid/pgp-grid/GenericGrid";
+package com.optum.fads.userroles.api.config.dao.impl;
 
-// -----------------------------------------------------------------------------
-// Page: User Information History (Pure client mode - no server calls)
-// Default view: Sorted by History Seq No. (DESC)
-// -----------------------------------------------------------------------------
+import static org.hibernate.criterion.Example.create; // issue at this line
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false } },
-});
+import java.util.List;
 
-export default function FadsUserInformationHistory() {
-  // ---------- Mock data ----------
-  type Row = {
-    id: string;
-    systemId: string;
-    histSqNum: number;
-    changeDt: string;
-    changeUsr: string;
-    piGroup: string;
-    pgpGroup: string;
-    ctGroup: string;
-    userId: string;
-    email: string;
-    lastName: string;
-    firstName: string;
-  };
+import org.hibernate.LockOptions;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.query.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Repository;
 
-  const buildRows = (): Row[] => {
-    const rows: Row[] = [];
-    const pushHistory = (
-      systemId: string,
-      seq: number,
-      y: number,
-      m: number,
-      d: number,
-      lastName: string,
-      firstName: string,
-      userId: string,
-      email: string,
-      piGroup: string,
-      pgpGroup: string,
-      ctGroup: string
-    ) => {
-      const changeDt = new Date(y, m - 1, d).toISOString().slice(0, 10);
-      rows.push({
-        id: `${systemId}-${seq}`,
-        systemId,
-        histSqNum: seq,
-        changeDt,
-        changeUsr: `${lastName}, ${firstName}`,
-        piGroup,
-        pgpGroup,
-        ctGroup,
-        userId,
-        email,
-        lastName,
-        firstName,
-      });
-    };
+import com.optum.fads.userroles.api.config.dao.LuValuesDAO;
+import com.optum.fads.userroles.api.config.domain.LuValues;
 
-    // Sample data (two System IDs)
-    pushHistory("SYS-10001", 5, 2025, 7, 19, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
-    pushHistory("SYS-10001", 4, 2024, 12, 8, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_01", "FADS_PGP_A", "FADS_CT_X");
-    pushHistory("SYS-10001", 3, 2024, 3, 10, "Silvers", "Kristy", "kristy.s", "kristy.s@optum.com", "FADS_PI_02", "FADS_PGP_A", "FADS_CT_Y");
+/**
+ * A data access object (DAO) providing persistence and search support for
+ * LuValues entities. Transaction control of the save(), update() and delete()
+ * operations can directly support Spring container-managed transactions or they
+ * can be augmented to handle user-managed Spring transactions. Each of these
+ * methods provides additional information for how to configure it for the
+ * desired type of transaction control.
+ * 
+ * @see com.optum.fads.config.domain.LuValues
+ * @author MyEclipse Persistence Tools
+ */
+@Repository
+public class LuValuesDAOImpl implements LuValuesDAO {
+	private static final Logger log = LoggerFactory
+			.getLogger(LuValuesDAOImpl.class);
+	// property constants
+	public static final String LU_CODE = "luCode";
+	public static final String LU_LABEL = "luLabel";
+	public static final String LU_VIEW = "luView";
+	public static final String OBJ_ID = "objId";
+	public static final String LU_SEQ = "luSeq";
+	public static final String LU_PARENT = "luParent";
+	@Autowired
+	private SessionFactory sessionFactory;
 
-    pushHistory("SYS-20002", 3, 2025, 9, 1, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
-    pushHistory("SYS-20002", 2, 2024, 11, 21, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_03", "FADS_PGP_B", "FADS_CT_Z");
-    pushHistory("SYS-20002", 1, 2024, 2, 29, "Cupka", "Cassandra", "cass.c", "cass.c@optum.com", "FADS_PI_00", "FADS_PGP_B", "FADS_CT_W");
+	public void setSessionFactory(SessionFactory sessionFactory) {
+		this.sessionFactory = sessionFactory;
+	}
 
-    // Grouped sort: System ID ASC, Hist Seq DESC
-    return rows.sort((a, b) =>
-      a.systemId === b.systemId ? b.histSqNum - a.histSqNum : a.systemId.localeCompare(b.systemId)
-    );
-  };
+	private Session getCurrentSession() {
+		return sessionFactory.getCurrentSession();
+	}
 
-  const rows = React.useMemo(() => buildRows(), []);
+	protected void initDao() {
+		// do nothing
+	}
 
-  // ---------- Columns ----------
-  const columns = [
-    { field: "systemId", headerName: "System ID", flex: 1.4, minWidth: 150 },
-    { field: "histSqNum", headerName: "History Seq No.", flex: 1, minWidth: 150, type: "number" },
-    { field: "changeDt", headerName: "Change Dt", flex: 1.1, minWidth: 130 },
-    { field: "changeUsr", headerName: "User", flex: 1.4, minWidth: 160 },
-    { field: "piGroup", headerName: "PI Group", flex: 1.1, minWidth: 120 },
-    { field: "pgpGroup", headerName: "PGP Group", flex: 1.1, minWidth: 120 },
-    { field: "ctGroup", headerName: "CT Group", flex: 1.1, minWidth: 120 },
-    { field: "userId", headerName: "User ID", flex: 1.1, minWidth: 120 },
-    { field: "email", headerName: "Email Address", flex: 1.8, minWidth: 220 },
-    { field: "lastName", headerName: "Last Name", flex: 1.1, minWidth: 140 },
-    { field: "firstName", headerName: "First Name", flex: 1.1, minWidth: 140 },
-  ];
+	public void save(LuValues transientInstance) {
+		log.debug("saving LuValues instance");
+		try {
+			getCurrentSession().save(transientInstance);
+			log.debug("save successful");
+		} catch (RuntimeException re) {
+			log.error("save failed", re);
+			throw re;
+		}
+	}
 
-  // ---------- Excel export (client) ----------
-  const excelExport = {
-    columnNames: [
-      "systemId", "histSqNum", "changeDt", "changeUsr",
-      "piGroup", "pgpGroup", "ctGroup", "userId", "email", "lastName", "firstName",
-    ],
-    columnHeadings: [
-      "System ID", "History Seq No.", "Change Dt", "User",
-      "PI Group", "PGP Group", "CT Group", "User ID", "Email Address", "Last Name", "First Name",
-    ],
-    endPoint: "",
-    myItemEndPoint: "",
-    fileNamePrefix: "User-Information-History",
-    responseDataVar: "content",
-  };
+	public void delete(LuValues persistentInstance) {
+		log.debug("deleting LuValues instance");
+		try {
+			getCurrentSession().delete(persistentInstance);
+			log.debug("delete successful");
+		} catch (RuntimeException re) {
+			log.error("delete failed", re);
+			throw re;
+		}
+	}
 
-  // ---------- Grid config (pure client mode; no server fetch) ----------
-  const initConfig = {
-    header: "User Information History",
-    description: "Sorted by History Seq No. (DESC)",
+	public LuValues findById(com.optum.fads.config.domain.LuValuesId id) { // issue at this line
+		log.debug("getting LuValues instance with id: " + id);
+		try {
+			LuValues instance = (LuValues) getCurrentSession().get(
+					"com.optum.fads.config.domain.LuValues", id);
+			return instance;
+		} catch (RuntimeException re) {
+			log.error("get failed", re);
+			throw re;
+		}
+	}
 
-    // ensure no network calls are made
-    url: undefined as unknown as string,
-    baseURL: undefined as unknown as string,
-    myEndPoint: undefined as unknown as string,
-    exportModeValue: "client" as const,
-    disableServerFetch: true,         // if GenericGrid supports this flag
-    showMyItemsToggle: false,         // hide All/My Items toggle in client mode
+	public List<LuValues> findByExample(LuValues instance) {
+		log.debug("finding LuValues instance by example");
+		try {
+			List<LuValues> results = (List<LuValues>) getCurrentSession()
+					.createCriteria("com.optum.fads.config.domain.LuValues")
+					.add(create(instance)).list();
+			log.debug("find by example successful, result size: "
+					+ results.size());
+			return results;
+		} catch (RuntimeException re) {
+			log.error("find by example failed", re);
+			throw re;
+		}
+	}
 
-    // client rows & correct count
-    rows,
-    pageInfo: { totalRowCount: rows.length },
+	public List findByProperty(String propertyName, Object value) {
+		log.debug("finding LuValues instance with property: " + propertyName
+				+ ", value: " + value);
+		try {
+			/*String queryString = "from LuValues as model where model."
+					+ propertyName + "= ?";*/
+			
+			StringBuilder queryStr = new StringBuilder();
+			queryStr.append("from LuValues as model where model.");
+			queryStr.append(propertyName);
+			queryStr.append("=?");
+			
+			Query queryObject = getCurrentSession().createQuery(queryStr.toString());
+			queryObject.setParameter(0, value);
+			return queryObject.list();
+		} catch (RuntimeException re) {
+			log.error("find by property name failed", re);
+			throw re;
+		}
+	}
 
-    columns,
-    sort: true,
-    labelledBy: "user-information-history-table",
-    defaultSortModel: [{ field: "histSqNum", sort: "desc" as const }],
+	public List<LuValues> findByLuCode(Object luCode) {
+		return findByProperty(LU_CODE, luCode);
+	}
 
-    // satisfy prop typing; echo client rows
-    dataTransformCallBack: () =>
-      React.useCallback(
-        () => ({ rows, pageInfo: { totalRowCount: rows.length } }),
-        [rows]
-      ),
+	public List<LuValues> findByLuLabel(Object luLabel) {
+		return findByProperty(LU_LABEL, luLabel);
+	}
 
-    excelExport,
-    enableActionColumn: false,
-    pageId: "user-information-history",
-    pageSizeOptions: [10, 25, 50, 100],
-    initialPageSize: 10,
-  };
+	public List<LuValues> findByLuView(Object luView) {
+		return findByProperty(LU_VIEW, luView);
+	}
 
-  // ---------- Render ----------
-  return (
-    <div style={{ padding: "90px 32px" }}>
-      <QueryClientProvider client={queryClient}>
-        <GenericGrid {...initConfig} />
-      </QueryClientProvider>
-    </div>
-  );
+	public List<LuValues> findByObjId(Object objId) {
+		return findByProperty(OBJ_ID, objId);
+	}
+
+	public List<LuValues> findByLuSeq(Object luSeq) {
+		return findByProperty(LU_SEQ, luSeq);
+	}
+
+	public List<LuValues> findByLuParent(Object luParent) {
+		return findByProperty(LU_PARENT, luParent);
+	}
+
+	public List findAll() {
+		log.debug("finding all LuValues instances");
+		try {
+			String queryString = "from LuValues";
+			Query queryObject = getCurrentSession().createQuery(queryString);
+			return queryObject.list();
+		} catch (RuntimeException re) {
+			log.error("find all failed", re);
+			throw re;
+		}
+	}
+
+	public LuValues merge(LuValues detachedInstance) {
+		log.debug("merging LuValues instance");
+		try {
+			LuValues result = (LuValues) getCurrentSession().merge(
+					detachedInstance);
+			log.debug("merge successful");
+			return result;
+		} catch (RuntimeException re) {
+			log.error("merge failed", re);
+			throw re;
+		}
+	}
+
+	public void attachDirty(LuValues instance) {
+		log.debug("attaching dirty LuValues instance");
+		try {
+			getCurrentSession().saveOrUpdate(instance);
+			log.debug("attach successful");
+		} catch (RuntimeException re) {
+			log.error("attach failed", re);
+			throw re;
+		}
+	}
+
+	public void attachClean(LuValues instance) {
+		log.debug("attaching clean LuValues instance");
+		try {
+			getCurrentSession().buildLockRequest(LockOptions.NONE).lock(
+					instance);
+			log.debug("attach successful");
+		} catch (RuntimeException re) {
+			log.error("attach failed", re);
+			throw re;
+		}
+	}
+	
+	/* (non-Javadoc)
+	 * @see com.optum.fads.config.dao.impl.LuValuesDAO#findByFieldIdAndOrderBySeq(java.lang.String)
+	 */
+	@Override
+	public List<LuValues> findByFieldIdAndOrderBySeq(String fieldId) {
+		log.debug("finding LuValues instance by example");
+		try {
+			String queryString = "from LuValues as model where model.id.fieldId"
+					+  "= ?" +
+					" and model.luView='1' order by model.luSeq asc ";
+			Query queryObject = getCurrentSession().createQuery(queryString);
+			queryObject.setParameter(0, fieldId);
+			return queryObject.list();
+		} catch (RuntimeException re) {
+			log.error("find by example failed", re);
+			throw re;
+		}
+	}
+
+	public static LuValuesDAO getFromApplicationContext(ApplicationContext ctx) {
+		return (LuValuesDAO) ctx.getBean("LuValuesDAO");
+	}
+}
+
+
+
+
+LuValaues it is showing error at every line and here we have below is our LuValues
+package com.optum.fads.userroles.api.config.domain;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+/**
+ * LuValues entity. @author MyEclipse Persistence Tools
+ */
+@Entity
+@Table(name = "LU_VALUES")
+public class LuValues extends AbstractLuValues implements java.io.Serializable {
+
+	// Constructors
+
+	/** default constructor */
+	public LuValues() {
+	}
+
+	/** minimal constructor */
+	public LuValues(LuValuesId id, Integer objId) {
+		super(id, objId);
+	}
+
+	/** full constructor */
+	public LuValues(LuValuesId id, String luCode, String luLabel,
+			String luView, Integer objId, Integer luSeq, String luParent) {
+		super(id, luCode, luLabel, luView, objId, luSeq, luParent);
+	}
+
 }
