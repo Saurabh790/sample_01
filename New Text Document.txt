@@ -1,149 +1,49 @@
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
 
-package com.optum.fads.userroles.api.config;
+SELECT  t1.UI_SYSTEM_ID, UI_USER_ID, UI_LAST_NAME, UI_FIRST_NAME, UI_TITLE,UI_E_MAIL_ADDRESS,
 
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+ FADS_GRP_NAME, SUR_GRP_NAME,  CASE_GRP_NAME
 
-import org.modelmapper.ModelMapper; // showing issue at this line 
-import org.modelmapper.convention.MatchingStrategies; // showing issue at this line 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
+FROM OMNI.UI_USER_BASE t1, OMNI.SE_USR_GRP t2, OMNI.SE_SUR_GRP t3,  OMNI.SE_CASE_GRP t5,OMNI.SE_FADS_GRP t6
 
-/**
- * The CommonConfig holds spring based configuration
- */
-@Configuration
-public class CommonConfig {
+where t1.UI_SYSTEM_ID = t2.UI_SYSTEM_ID
 
-    /**
-     * Model Mapper for mapping objects
-     *
-     * @return modelMapper // showing issue at this line 
-     */
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {  // showing issue at this line 
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);  // showing issue at this line 
-        return modelMapper;
-    }
-}
+and t2.FADS_GRP_ID-t6.FADS_GRP_ID
+
+and t2.SUR_GRP_ID = t3.SUR_GRP_ID
+
+and t2.CASE_GRP_ID = t5.CASE_GRP_ID
 
 
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.11</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>com.optum.fads.userroles.api</groupId>
-	<artifactId>UserRolesAPI</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>UserRolesAPI</name>
-	<description>User Roles API FOR FADS </description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
-	<properties>
-		<java.version>17</java.version>
-		<spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.azure.spring</groupId>
-			<artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-		</dependency>
 
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>${spring-cloud-azure.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
+UI_USER_BASE
+UI_SYSTEM_ID	VARCHAR2(25 BYTE)
+UI_USER_ID	VARCHAR2(25 BYTE)
+UI_TITLE	VARCHAR2(15 BYTE)
+UI_LAST_NAME	VARCHAR2(40 BYTE)
+UI_FIRST_NAME	VARCHAR2(20 BYTE)
+UI_PHONE	VARCHAR2(15 BYTE)
+UI_USER_INACTIVE	CHAR(1 BYTE)
+UI_E_MAIL_ADDRESS	VARCHAR2(50 BYTE)
+UI_CREATED_BY	VARCHAR2(25 BYTE)
+UI_CREATED_DT	DATE
+UI_TERMINATED_BY	VARCHAR2(25 BYTE)
+UI_TERMINATED_DT	DATE
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</path>
-					</annotationProcessorPaths>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
+SE_USR_GRP
+UI_SYSTEM_ID	VARCHAR2(25 BYTE)
+FADS_GRP_ID	NUMBER(5,0)
+SUR_GRP_ID	NUMBER(5,0)
+CASE_GRP_ID	NUMBER(5,0)
 
-</project>
+
+SE_SUR_GRP
+SUR_GRP_ID	NUMBER(5,0)
+SUR_GRP_NAME	VARCHAR2(40 BYTE)
+
+SE_CASE_GRP
+CASE_GRP_ID	NUMBER(5,0)
+CASE_GRP_NAME	VARCHAR2(40 BYTE)
+
+SE_FADS_GRP
+FADS_GRP_ID	NUMBER(5,0)
+FADS_GRP_NAME	VARCHAR2(40 BYTE)
