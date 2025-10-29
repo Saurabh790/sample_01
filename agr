@@ -1,16 +1,279 @@
-<dependencies>
-  ...
-  <dependency>
-    <groupId>org.modelmapper</groupId>
-    <artifactId>modelmapper</artifactId>
-    <version>3.2.0</version> <!-- or newer -->
-  </dependency>
-  ...
-</dependencies>
+1) Entity models
+// src/main/java/com/example/demo/entity/UiUserBase.java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+import java.util.Date;
+
+@Entity
+@Table(name = "UI_USER_BASE", schema = "OMNI")
+public class UiUserBase {
+    @Id
+    @Column(name = "UI_SYSTEM_ID", length = 25, nullable = false)
+    private String uiSystemId;
+
+    @Column(name = "UI_USER_ID", length = 25)
+    private String uiUserId;
+
+    @Column(name = "UI_TITLE", length = 15)
+    private String uiTitle;
+
+    @Column(name = "UI_LAST_NAME", length = 40)
+    private String uiLastName;
+
+    @Column(name = "UI_FIRST_NAME", length = 20)
+    private String uiFirstName;
+
+    @Column(name = "UI_PHONE", length = 15)
+    private String uiPhone;
+
+    @Column(name = "UI_USER_INACTIVE", length = 1)
+    private String uiUserInactive;
+
+    @Column(name = "UI_E_MAIL_ADDRESS", length = 50)
+    private String uiEmailAddress;
+
+    @Column(name = "UI_CREATED_BY", length = 25)
+    private String uiCreatedBy;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "UI_CREATED_DT")
+    private Date uiCreatedDt;
+
+    @Column(name = "UI_TERMINATED_BY", length = 25)
+    private String uiTerminatedBy;
+
+    @Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "UI_TERMINATED_DT")
+    private Date uiTerminatedDt;
+
+    // getters/setters
+    // ...
+}
+
+// src/main/java/com/example/demo/entity/SeUsrGrp.java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "SE_USR_GRP", schema = "OMNI")
+public class SeUsrGrp {
+    @Id
+    @Column(name = "UI_SYSTEM_ID", length = 25, nullable = false)
+    private String uiSystemId;
+
+    @Column(name = "FADS_GRP_ID")
+    private Long fadsGrpId;
+
+    @Column(name = "SUR_GRP_ID")
+    private Long surGrpId;
+
+    @Column(name = "CASE_GRP_ID")
+    private Long caseGrpId;
+
+    // getters/setters
+    // ...
+}
+
+// src/main/java/com/example/demo/entity/SeSurGrp.java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "SE_SUR_GRP", schema = "OMNI")
+public class SeSurGrp {
+    @Id
+    @Column(name = "SUR_GRP_ID")
+    private Long surGrpId;
+
+    @Column(name = "SUR_GRP_NAME", length = 40)
+    private String surGrpName;
+
+    // getters/setters
+    // ...
+}
+
+// src/main/java/com/example/demo/entity/SeCaseGrp.java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "SE_CASE_GRP", schema = "OMNI")
+public class SeCaseGrp {
+    @Id
+    @Column(name = "CASE_GRP_ID")
+    private Long caseGrpId;
+
+    @Column(name = "CASE_GRP_NAME", length = 40)
+    private String caseGrpName;
+
+    // getters/setters
+    // ...
+}
+
+// src/main/java/com/example/demo/entity/SeFadsGrp.java
+package com.example.demo.entity;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "SE_FADS_GRP", schema = "OMNI")
+public class SeFadsGrp {
+    @Id
+    @Column(name = "FADS_GRP_ID")
+    private Long fadsGrpId;
+
+    @Column(name = "FADS_GRP_NAME", length = 40)
+    private String fadsGrpName;
+
+    // getters/setters
+    // ...
+}
+
+2) DTO (result projection)
+// src/main/java/com/example/demo/dto/UserListItem.java
+package com.example.demo.dto;
+
+public class UserListItem {
+    private final String uiSystemId;
+    private final String uiUserId;
+    private final String lastName;
+    private final String firstName;
+    private final String title;
+    private final String email;
+    private final String fadsGrpName;
+    private final String surGrpName;
+    private final String caseGrpName;
+
+    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
+                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
+        this.uiSystemId = uiSystemId;
+        this.uiUserId = uiUserId;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.title = title;
+        this.email = email;
+        this.fadsGrpName = fadsGrpName;
+        this.surGrpName = surGrpName;
+        this.caseGrpName = caseGrpName;
+    }
+
+    // getters only (immutable DTO)
+    // ...
+}
+
+3) DAO & DAO Impl (using JPQL JOINs with ON)
+// src/main/java/com/example/demo/dao/UserDao.java
+package com.example.demo.dao;
+
+import com.example.demo.dto.UserListItem;
+import java.util.List;
+
+public interface UserDao {
+    List<UserListItem> getUserList();
+}
+
+// src/main/java/com/example/demo/dao/impl/UserDaoImpl.java
+package com.example.demo.dao.impl;
+
+import com.example.demo.dao.UserDao;
+import com.example.demo.dto.UserListItem;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+@Transactional
+public class UserDaoImpl implements UserDao {
+
+    @PersistenceContext
+    private EntityManager em;
+
+    @Override
+    public List<UserListItem> getUserList() {
+        // JPQL equivalent of your SQL with proper JOINs
+        String jpql = """
+            SELECT new com.example.demo.dto.UserListItem(
+                u.uiSystemId, u.uiUserId, u.uiLastName, u.uiFirstName, u.uiTitle, u.uiEmailAddress,
+                f.fadsGrpName, s.surGrpName, c.caseGrpName
+            )
+            FROM com.example.demo.entity.UiUserBase u
+            JOIN com.example.demo.entity.SeUsrGrp g ON g.uiSystemId = u.uiSystemId
+            JOIN com.example.demo.entity.SeFadsGrp f ON f.fadsGrpId = g.fadsGrpId
+            JOIN com.example.demo.entity.SeSurGrp  s ON s.surGrpId  = g.surGrpId
+            JOIN com.example.demo.entity.SeCaseGrp c ON c.caseGrpId = g.caseGrpId
+            """;
+
+        return em.createQuery(jpql, UserListItem.class).getResultList();
+    }
+}
 
 
-<dependency>
-    <groupId>org.apache.commons</groupId>
-    <artifactId>commons-lang3</artifactId>
-    <version>3.13.0</version>
-</dependency>
+Note: The ON clause in JPQL requires JPA 2.1+ (Hibernate 5+). This avoids needing bidirectional mappings for these joins.
+
+4) Service & ServiceImpl
+// src/main/java/com/example/demo/service/UserService.java
+package com.example.demo.service;
+
+import com.example.demo.dto.UserListItem;
+import java.util.List;
+
+public interface UserService {
+    List<UserListItem> getUserList();
+}
+
+// src/main/java/com/example/demo/service/impl/UserServiceImpl.java
+package com.example.demo.service.impl;
+
+import com.example.demo.dao.UserDao;
+import com.example.demo.dto.UserListItem;
+import com.example.demo.service.UserService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+public class UserServiceImpl implements UserService {
+
+    private final UserDao userDao;
+
+    public UserServiceImpl(UserDao userDao) {
+        this.userDao = userDao;
+    }
+
+    @Override
+    public List<UserListItem> getUserList() {
+        return userDao.getUserList();
+    }
+}
+
+5) Controller
+// src/main/java/com/example/demo/controller/UserController.java
+package com.example.demo.controller;
+
+import com.example.demo.dto.UserListItem;
+import com.example.demo.service.UserService;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+public class UserController {
+
+    private final UserService userService;
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping("/api/users")
+    public List<UserListItem> getUserList() {
+        return userService.getUserList();
+    }
+}
