@@ -451,159 +451,44 @@ so I hv to keep the required thinhgs so it can connect db now  below are my pom
 </project>
 
 
-below is my java class to rfetirve data <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.11</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>com.optum.fads</groupId>
-	<artifactId>fads-user-roles-api</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>User-Roles-API</name>
-	<description>User Roles API FOR FADS </description>
-	<properties>
-		<java.version>17</java.version>
-		<spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-		<org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+below is my java class to rfetirve data 
 
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.azure.spring</groupId>
-			<artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.modelmapper</groupId>
-			<artifactId>modelmapper</artifactId>
-			<version>3.2.0</version> <!-- or newer -->
-		</dependency>
-		<dependency>
-			<groupId>com.microsoft.sqlserver</groupId>
-			<artifactId>mssql-jdbc</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.18.0</version>
-		</dependency>
-		<!-- Lombok -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<scope>provided</scope>
-		</dependency>
+package com.optum.fads.userroles.api.dao;
 
-		<!-- MapStruct -->
+import java.util.List;
 
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-jdk8</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-processor</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>com.microsoft.sqlserver</groupId>
-			<artifactId>mssql-jdbc</artifactId>
-			<version>10.2.0.jre11</version>
-		</dependency>
+import org.springframework.stereotype.Repository;
 
+import com.optum.fads.userroles.api.dto.UserListItem;
 
-		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-collections4</artifactId>
-			<version>4.5.0-M1</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>${spring-cloud-azure.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<configuration>
-					<annotationProcessorPaths>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</path>
-					</annotationProcessorPaths>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
+@Repository
+@Transactional
+public class UserDaoImpl implements UserDao {
 
-</project>
+    @PersistenceContext
+    private EntityManager em;
+
+    @Override
+    public List<UserListItem> getUserList() {
+        String jpql = """
+            SELECT new com.example.demo.dto.UserListItem(
+                u.uiSystemId, u.uiUserId, u.uiLastName, u.uiFirstName, u.uiTitle, u.uiEmailAddress,
+                f.fadsGrpName, s.surGrpName, c.caseGrpName
+            )
+            FROM com.example.demo.entity.UiUserBase u
+            JOIN com.example.demo.entity.SeUsrGrp g ON g.uiSystemId = u.uiSystemId
+            JOIN com.example.demo.entity.SeFadsGrp f ON f.fadsGrpId = g.fadsGrpId
+            JOIN com.example.demo.entity.SeSurGrp  s ON s.surGrpId  = g.surGrpId
+            JOIN com.example.demo.entity.SeCaseGrp c ON c.caseGrpId = g.caseGrpId
+            """;
+
+        return em.createQuery(jpql, UserListItem.class).getResultList();
+    }
+}
 
 
 
