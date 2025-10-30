@@ -1,195 +1,272 @@
-1) Entity models
-// src/main/java/com/example/demo/entity/UiUserBase.java
-package com.example.demo.entity;
+application.yml (merged & corrected)
+server:
+  port: 8080
+  servlet:
+    context-path: /userroles
 
-import jakarta.persistence.*;
-import java.util.Date;
+app:
+  context-path: /fads/api/userroles/v1.0
 
-@Entity
-@Table(name = "UI_USER_BASE", schema = "OMNI")
-public class UiUserBase {
-    @Id
-    @Column(name = "UI_SYSTEM_ID", length = 25, nullable = false)
-    private String uiSystemId;
+spring:
+  application:
+    name: fads-userroles-api
 
-    @Column(name = "UI_USER_ID", length = 25)
-    private String uiUserId;
+  datasource:
+    url: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true
+    username: ${DB_USERNAME:fads_dev}
+    password: ${DB_PASSWORD:changeme}   # <-- put real secret in env or Key Vault
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
 
-    @Column(name = "UI_TITLE", length = 15)
-    private String uiTitle;
+  jpa:
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+        format_sql: true
+    hibernate:
+      ddl-auto: none
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
 
-    @Column(name = "UI_LAST_NAME", length = 40)
-    private String uiLastName;
+# Keep only if you actually validate JWTs on this service; otherwise remove this block
+# spring:
+#   security:
+#     oauth2:
+#       resourceserver:
+#         jwt:
+#           jwk-set-uri: https://maltss-nprd-idp.optum.com/idp/oauth2/maltss_aep_pprd_ui/.well-known/jwks
+#           jws-algorithms: RS512
 
-    @Column(name = "UI_FIRST_NAME", length = 20)
-    private String uiFirstName;
+logging:
+  file:
+    path: /Users/aghosh98/userroles_app.log
+  level:
+    org.springframework.http: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE   # show bound params in Hibernate 6
 
-    @Column(name = "UI_PHONE", length = 15)
-    private String uiPhone;
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
-    @Column(name = "UI_USER_INACTIVE", length = 1)
-    private String uiUserInactive;
+---
+spring:
+  profiles: build
+# logging:
+#   config: classpath:logback-test.xml
+#   file: target/casetracking_app.log
 
-    @Column(name = "UI_E_MAIL_ADDRESS", length = 50)
-    private String uiEmailAddress;
+Why this works
 
-    @Column(name = "UI_CREATED_BY", length = 25)
-    private String uiCreatedBy;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "UI_CREATED_DT")
-    private Date uiCreatedDt;
+Uses Boot-preferred keys (url/username/password/driver-class-name).
 
-    @Column(name = "UI_TERMINATED_BY", length = 25)
-    private String uiTerminatedBy;
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "UI_TERMINATED_DT")
-    private Date uiTerminatedDt;
+Keeps a single, modern dialect.
 
-    // getters/setters
-    // ...
-}
 
-// src/main/java/com/example/demo/entity/SeUsrGrp.java
-package com.example.demo.entity;
+Makes Hibernate SQL + parameter logging visible for quick DB connectivity debugging.
 
-import jakarta.persistence.*;
 
-@Entity
-@Table(name = "SE_USR_GRP", schema = "OMNI")
-public class SeUsrGrp {
-    @Id
-    @Column(name = "UI_SYSTEM_ID", length = 25, nullable = false)
-    private String uiSystemId;
+Leaves OAuth2 resource server commented unless needed (it can block requests if misconfigured).
 
-    @Column(name = "FADS_GRP_ID")
-    private Long fadsGrpId;
 
-    @Column(name = "SUR_GRP_ID")
-    private Long surGrpId;
 
-    @Column(name = "CASE_GRP_ID")
-    private Long caseGrpId;
+✅ pom.xml (de-duped & Java 17 friendly)
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    // getters/setters
-    // ...
-}
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.4.11</version>
+    <relativePath/>
+  </parent>
 
-// src/main/java/com/example/demo/entity/SeSurGrp.java
-package com.example.demo.entity;
+  <groupId>com.optum.fads</groupId>
+  <artifactId>fads-user-roles-api</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>User-Roles-API</name>
+  <description>User Roles API FOR FADS</description>
 
-import jakarta.persistence.*;
+  <properties>
+    <java.version>17</java.version>
+    <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
+    <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+    <mssql.jdbc.version>12.6.1.jre11</mssql.jdbc.version>
+  </properties>
 
-@Entity
-@Table(name = "SE_SUR_GRP", schema = "OMNI")
-public class SeSurGrp {
-    @Id
-    @Column(name = "SUR_GRP_ID")
-    private Long surGrpId;
+  <dependencies>
+    <!-- Spring -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <!-- Only keep oauth2 client/resource-server if you actually need it -->
+    <!--
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-client</artifactId>
+    </dependency>
+    -->
 
-    @Column(name = "SUR_GRP_NAME", length = 40)
-    private String surGrpName;
+    <!-- DB driver (single, pinned) -->
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql.jdbc.version}</version>
+    </dependency>
 
-    // getters/setters
-    // ...
-}
+    <!-- Azure Key Vault (optional) -->
+    <!-- Keep only if you will read DB secrets from Key Vault -->
+    <!--
+    <dependency>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
+    </dependency>
+    -->
 
-// src/main/java/com/example/demo/entity/SeCaseGrp.java
-package com.example.demo.entity;
+    <!-- Utilities -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.18.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+      <version>4.5.0-M1</version>
+    </dependency>
 
-import jakarta.persistence.*;
+    <!-- Lombok -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <version>1.18.34</version>
+      <scope>provided</scope>
+    </dependency>
 
-@Entity
-@Table(name = "SE_CASE_GRP", schema = "OMNI")
-public class SeCaseGrp {
-    @Id
-    @Column(name = "CASE_GRP_ID")
-    private Long caseGrpId;
+    <!-- MapStruct -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
 
-    @Column(name = "CASE_GRP_NAME", length = 40)
-    private String caseGrpName;
+    <!-- Test -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
-    // getters/setters
-    // ...
-}
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.azure.spring</groupId>
+        <artifactId>spring-cloud-azure-dependencies</artifactId>
+        <version>${spring-cloud-azure.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
-// src/main/java/com/example/demo/entity/SeFadsGrp.java
-package com.example.demo.entity;
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.11.0</version>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>1.18.34</version>
+            </path>
+            <path>
+              <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${org.mapstruct.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
 
-import jakarta.persistence.*;
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>
 
-@Entity
-@Table(name = "SE_FADS_GRP", schema = "OMNI")
-public class SeFadsGrp {
-    @Id
-    @Column(name = "FADS_GRP_ID")
-    private Long fadsGrpId;
+Why this works
 
-    @Column(name = "FADS_GRP_NAME", length = 40)
-    private String fadsGrpName;
 
-    // getters/setters
-    // ...
-}
+Single SQL Server driver (version line works with Java 17).
 
-2) DTO (result projection)
-// src/main/java/com/example/demo/dto/UserListItem.java
-package com.example.demo.dto;
 
-public class UserListItem {
-    private final String uiSystemId;
-    private final String uiUserId;
-    private final String lastName;
-    private final String firstName;
-    private final String title;
-    private final String email;
-    private final String fadsGrpName;
-    private final String surGrpName;
-    private final String caseGrpName;
+Proper annotation processors for Lombok + MapStruct.
 
-    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
-                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
-        this.uiSystemId = uiSystemId;
-        this.uiUserId = uiUserId;
-        this.lastName = lastName;
-        this.firstName = firstName;
-        this.title = title;
-        this.email = email;
-        this.fadsGrpName = fadsGrpName;
-        this.surGrpName = surGrpName;
-        this.caseGrpName = caseGrpName;
-    }
 
-    // getters only (immutable DTO)
-    // ...
-}
+Removed duplicates and unnecessary versions.
 
-3) DAO & DAO Impl (using JPQL JOINs with ON)
-// src/main/java/com/example/demo/dao/UserDao.java
-package com.example.demo.dao;
 
-import com.example.demo.dto.UserListItem;
+
+✅ DAO fix (package names + readOnly)
+Make sure your entities and DTO live under com.optum.fads.userroles.api... and that the UserListItem constructor signature matches the selected columns.
+package com.optum.fads.userroles.api.dao;
+
 import java.util.List;
 
-public interface UserDao {
-    List<UserListItem> getUserList();
-}
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-// src/main/java/com/example/demo/dao/impl/UserDaoImpl.java
-package com.example.demo.dao.impl;
+import com.optum.fads.userroles.api.dto.UserListItem;
 
-import com.example.demo.dao.UserDao;
-import com.example.demo.dto.UserListItem;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Repository;
-
-import java.util.List;
 
 @Repository
-@Transactional
+@Transactional(readOnly = true)
 public class UserDaoImpl implements UserDao {
 
     @PersistenceContext
@@ -197,17 +274,16 @@ public class UserDaoImpl implements UserDao {
 
     @Override
     public List<UserListItem> getUserList() {
-        // JPQL equivalent of your SQL with proper JOINs
         String jpql = """
-            SELECT new com.example.demo.dto.UserListItem(
+            SELECT new com.optum.fads.userroles.api.dto.UserListItem(
                 u.uiSystemId, u.uiUserId, u.uiLastName, u.uiFirstName, u.uiTitle, u.uiEmailAddress,
                 f.fadsGrpName, s.surGrpName, c.caseGrpName
             )
-            FROM com.example.demo.entity.UiUserBase u
-            JOIN com.example.demo.entity.SeUsrGrp g ON g.uiSystemId = u.uiSystemId
-            JOIN com.example.demo.entity.SeFadsGrp f ON f.fadsGrpId = g.fadsGrpId
-            JOIN com.example.demo.entity.SeSurGrp  s ON s.surGrpId  = g.surGrpId
-            JOIN com.example.demo.entity.SeCaseGrp c ON c.caseGrpId = g.caseGrpId
+            FROM com.optum.fads.userroles.api.entity.UiUserBase u
+            JOIN com.optum.fads.userroles.api.entity.SeUsrGrp g ON g.uiSystemId = u.uiSystemId
+            JOIN com.optum.fads.userroles.api.entity.SeFadsGrp f ON f.fadsGrpId = g.fadsGrpId
+            JOIN com.optum.fads.userroles.api.entity.SeSurGrp  s ON s.surGrpId  = g.surGrpId
+            JOIN com.optum.fads.userroles.api.entity.SeCaseGrp c ON c.caseGrpId = g.caseGrpId
             """;
 
         return em.createQuery(jpql, UserListItem.class).getResultList();
@@ -215,65 +291,43 @@ public class UserDaoImpl implements UserDao {
 }
 
 
-Note: The ON clause in JPQL requires JPA 2.1+ (Hibernate 5+). This avoids needing bidirectional mappings for these joins.
+Tip: If your entities have @Entity(name="..."), you can use those names instead of FQCNs in JPQL (e.g., FROM UiUserBase u), which is cleaner and avoids refactor breakage.
 
-4) Service & ServiceImpl
-// src/main/java/com/example/demo/service/UserService.java
-package com.example.demo.service;
 
-import com.example.demo.dto.UserListItem;
-import java.util.List;
+Quick connectivity test
+Add a quick runner to confirm the pool can connect and run a trivial query:
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Configuration;
 
-public interface UserService {
-    List<UserListItem> getUserList();
+@Configuration
+class DbSmokeTestConfig {
+  @Bean CommandLineRunner dbSmoke(JdbcTemplate jdbc) {
+    return args -> {
+      Integer one = jdbc.queryForObject("SELECT 1", Integer.class);
+      System.out.println("DB connectivity OK, SELECT 1 -> " + one);
+    };
+  }
 }
 
-// src/main/java/com/example/demo/service/impl/UserServiceImpl.java
-package com.example.demo.service.impl;
+If this prints on startup, your datasource + driver + credentials are good.
 
-import com.example.demo.dao.UserDao;
-import com.example.demo.dto.UserListItem;
-import com.example.demo.service.UserService;
-import org.springframework.stereotype.Service;
+Final notes
 
-import java.util.List;
 
-@Service
-public class UserServiceImpl implements UserService {
+Rotate any passwords you shared and load them via env/Key Vault:
 
-    private final UserDao userDao;
 
-    public UserServiceImpl(UserDao userDao) {
-        this.userDao = userDao;
-    }
+DB_USERNAME, DB_PASSWORD
 
-    @Override
-    public List<UserListItem> getUserList() {
-        return userDao.getUserList();
-    }
-}
 
-5) Controller
-// src/main/java/com/example/demo/controller/UserController.java
-package com.example.demo.controller;
 
-import com.example.demo.dto.UserListItem;
-import com.example.demo.service.UserService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+If you truly need OAuth2 Resource Server (JWT) on this service, re-enable that block and confirm the issuer/jwks are reachable; otherwise requests may get 401 before hitting DB code.
 
-@RestController
-public class UserController {
 
-    private final UserService userService;
-    public UserController(UserService userService) {
-        this.userService = userService;
-    }
+If your schema uses mixed case or reserved words, set hibernate.globally_quoted_identifiers=true under spring.jpa.properties.hibernate.* (you currently don’t need it if names are simple).
 
-    @GetMapping("/api/users")
-    public List<UserListItem> getUserList() {
-        return userService.getUserList();
-    }
-}
+
+If you want, paste your UserListItem constructor and one entity (e.g., UiUserBase) and I’ll verify the JPQL column list matches the types exactly.
