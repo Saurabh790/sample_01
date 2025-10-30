@@ -1,40 +1,24 @@
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
+package com.optum.fads.userroles.api.config;
 
-package com.optum.fads.userroles.api;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.web.SecurityFilterChain;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.web.bind.annotation.CrossOrigin;
+@Configuration
+public class SecurityConfig {
 
-
-/**
- * Entry point to the cloud scaffolding boiler plate - Spring Boot
- * 
- * @author AUTHOR, AUTHOR_EMAIL
- * @version VERSION
- */
-@CrossOrigin("*")
-@EnableAutoConfiguration(exclude =HibernateJpaAutoConfiguration.class ) 
-@ComponentScan(basePackages = { "com.optum.fads" })
-@SpringBootApplication
-public class UserRolesApiApplication {
-    /**
-     * Main method for cloud scaffolding boiler plate. Sends metadata to discovery
-     * service.
-     */
-    public static void main(String[] args) {
-        SpringApplication.run(UserRolesApiApplication.class, args);
-    }
-    
-
+  @Bean
+  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http
+      .csrf(csrf -> csrf.disable())
+      .authorizeHttpRequests(auth -> auth
+          .anyRequest().permitAll()
+      )
+      .formLogin(login -> login.disable())
+      .httpBasic(basic -> basic.disable())
+      .logout(lo -> lo.disable())
+      .oauth2Login(oauth -> oauth.disable());
+    return http.build();
+  }
 }
