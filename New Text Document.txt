@@ -1,333 +1,65 @@
-application.yml (merged & corrected)
-server:
-  port: 8080
-  servlet:
-    context-path: /userroles
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
 
-app:
-  context-path: /fads/api/userroles/v1.0
+package com.optum.fads.userroles.api.config;
 
-spring:
-  application:
-    name: fads-userroles-api
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 
-  datasource:
-    url: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true
-    username: ${DB_USERNAME:fads_dev}
-    password: ${DB_PASSWORD:changeme}   # <-- put real secret in env or Key Vault
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
-  jpa:
-    open-in-view: false
-    show-sql: true
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.SQLServerDialect
-        format_sql: true
-    hibernate:
-      ddl-auto: none
-      naming:
-        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-        physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
 
-# Keep only if you actually validate JWTs on this service; otherwise remove this block
-# spring:
-#   security:
-#     oauth2:
-#       resourceserver:
-#         jwt:
-#           jwk-set-uri: https://maltss-nprd-idp.optum.com/idp/oauth2/maltss_aep_pprd_ui/.well-known/jwks
-#           jws-algorithms: RS512
-
-logging:
-  file:
-    path: /Users/aghosh98/userroles_app.log
-  level:
-    org.springframework.http: INFO
-    org.springframework.security: INFO
-    org.springframework.web: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE   # show bound params in Hibernate 6
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  endpoint:
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-
----
-spring:
-  profiles: build
-# logging:
-#   config: classpath:logback-test.xml
-#   file: target/casetracking_app.log
-
-Why this works
-
-
-Uses Boot-preferred keys (url/username/password/driver-class-name).
-
-
-Keeps a single, modern dialect.
-
-
-Makes Hibernate SQL + parameter logging visible for quick DB connectivity debugging.
-
-
-Leaves OAuth2 resource server commented unless needed (it can block requests if misconfigured).
-
-
-
-✅ pom.xml (de-duped & Java 17 friendly)
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.11</version>
-    <relativePath/>
-  </parent>
-
-  <groupId>com.optum.fads</groupId>
-  <artifactId>fads-user-roles-api</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>User-Roles-API</name>
-  <description>User Roles API FOR FADS</description>
-
-  <properties>
-    <java.version>17</java.version>
-    <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-    <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-    <mssql.jdbc.version>12.6.1.jre11</mssql.jdbc.version>
-  </properties>
-
-  <dependencies>
-    <!-- Spring -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-    <!-- Only keep oauth2 client/resource-server if you actually need it -->
-    <!--
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-client</artifactId>
-    </dependency>
-    -->
-
-    <!-- DB driver (single, pinned) -->
-    <dependency>
-      <groupId>com.microsoft.sqlserver</groupId>
-      <artifactId>mssql-jdbc</artifactId>
-      <version>${mssql.jdbc.version}</version>
-    </dependency>
-
-    <!-- Azure Key Vault (optional) -->
-    <!-- Keep only if you will read DB secrets from Key Vault -->
-    <!--
-    <dependency>
-      <groupId>com.azure.spring</groupId>
-      <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-    </dependency>
-    -->
-
-    <!-- Utilities -->
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.18.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-collections4</artifactId>
-      <version>4.5.0-M1</version>
-    </dependency>
-
-    <!-- Lombok -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>1.18.34</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <!-- MapStruct -->
-    <dependency>
-      <groupId>org.mapstruct</groupId>
-      <artifactId>mapstruct</artifactId>
-      <version>${org.mapstruct.version}</version>
-    </dependency>
-
-    <!-- Test -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-  </dependencies>
-
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>com.azure.spring</groupId>
-        <artifactId>spring-cloud-azure-dependencies</artifactId>
-        <version>${spring-cloud-azure.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
-
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.11.0</version>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-              <version>1.18.34</version>
-            </path>
-            <path>
-              <groupId>org.mapstruct</groupId>
-              <artifactId>mapstruct-processor</artifactId>
-              <version>${org.mapstruct.version}</version>
-            </path>
-          </annotationProcessorPaths>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-      </plugin>
-    </plugins>
-  </build>
-</project>
-
-Why this works
-
-
-Single SQL Server driver (version line works with Java 17).
-
-
-Proper annotation processors for Lombok + MapStruct.
-
-
-Removed duplicates and unnecessary versions.
-
-
-
-✅ DAO fix (package names + readOnly)
-Make sure your entities and DTO live under com.optum.fads.userroles.api... and that the UserListItem constructor signature matches the selected columns.
-package com.optum.fads.userroles.api.dao;
-
-import java.util.List;
-
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.optum.fads.userroles.api.dto.UserListItem;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-
-@Repository
-@Transactional(readOnly = true)
-public class UserDaoImpl implements UserDao {
-
-    @PersistenceContext
-    private EntityManager em;
-
-    @Override
-    public List<UserListItem> getUserList() {
-        String jpql = """
-            SELECT new com.optum.fads.userroles.api.dto.UserListItem(
-                u.uiSystemId, u.uiUserId, u.uiLastName, u.uiFirstName, u.uiTitle, u.uiEmailAddress,
-                f.fadsGrpName, s.surGrpName, c.caseGrpName
-            )
-            FROM com.optum.fads.userroles.api.entity.UiUserBase u
-            JOIN com.optum.fads.userroles.api.entity.SeUsrGrp g ON g.uiSystemId = u.uiSystemId
-            JOIN com.optum.fads.userroles.api.entity.SeFadsGrp f ON f.fadsGrpId = g.fadsGrpId
-            JOIN com.optum.fads.userroles.api.entity.SeSurGrp  s ON s.surGrpId  = g.surGrpId
-            JOIN com.optum.fads.userroles.api.entity.SeCaseGrp c ON c.caseGrpId = g.caseGrpId
-            """;
-
-        return em.createQuery(jpql, UserListItem.class).getResultList();
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
     }
 }
+package com.optum.fads.userroles.api.config;
 
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-Tip: If your entities have @Entity(name="..."), you can use those names instead of FQCNs in JPQL (e.g., FROM UiUserBase u), which is cleaner and avoids refactor breakage.
-
-
-Quick connectivity test
-Add a quick runner to confirm the pool can connect and run a trivial query:
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Configuration;
+import javax.sql.DataSource;
 
 @Configuration
-class DbSmokeTestConfig {
-  @Bean CommandLineRunner dbSmoke(JdbcTemplate jdbc) {
-    return args -> {
-      Integer one = jdbc.queryForObject("SELECT 1", Integer.class);
-      System.out.println("DB connectivity OK, SELECT 1 -> " + one);
-    };
-  }
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.userroles.api.repo")
+@ComponentScan(basePackages = { "com.optum.fads.userroles.api" ,"com.optum.fads.userroles.api" })
+public class ServiceConfig {
+
+	@ConfigurationProperties("spring.datasource")
+	public DataSource customDataSource() {
+		return DataSourceBuilder.create().build();
+	}
+
+
 }
 
-If this prints on startup, your datasource + driver + credentials are good.
-
-Final notes
-
-
-Rotate any passwords you shared and load them via env/Key Vault:
-
-
-DB_USERNAME, DB_PASSWORD
-
-
-
-
-If you truly need OAuth2 Resource Server (JWT) on this service, re-enable that block and confirm the issuer/jwks are reachable; otherwise requests may get 401 before hitting DB code.
-
-
-If your schema uses mixed case or reserved words, set hibernate.globally_quoted_identifiers=true under spring.jpa.properties.hibernate.* (you currently don’t need it if names are simple).
-
-
-If you want, paste your UserListItem constructor and one entity (e.g., UiUserBase) and I’ll verify the JPQL column list matches the types exactly.
+these are 2 config files in my code in any circumstance it will impact my get api 
