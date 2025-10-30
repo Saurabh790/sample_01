@@ -1,24 +1,31 @@
-package com.optum.fads.userroles.api.controllers;
+@Repository
+@Transactional(readOnly = true)
+public class UserDaoImpl implements UserDao {
 
-import java.util.List;
+    @PersistenceContext
+    private EntityManager em;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.service.UserService;
-
-
-@RestController
-public class UserRolesController {
-
-    private UserService userService = null;
-    public void UserController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @GetMapping("/api/getUserList")
+    @Override
     public List<UserListItem> getUserList() {
-        return userService.getUserList();
+        String jpql = """
+            SELECT new com.optum.fads.userroles.api.dto.UserListItem(
+                u.uiSystemId,
+                u.uiUserId,
+                u.uiLastName,
+                u.uiFirstName,
+                u.uiTitle,
+                u.uiEMailAddress,
+                fg.fadsGrpName,
+                sg.surGrpName,
+                cg.caseGrpName
+            )
+            FROM UiUserBase u
+            JOIN u.seUsrGrp ug
+            LEFT JOIN ug.fadsGrp fg
+            LEFT JOIN ug.fadsSurGrp sg
+            LEFT JOIN ug.fadsCaseGrp cg
+            """;
+
+        return em.createQuery(jpql, UserListItem.class).getResultList();
     }
 }
