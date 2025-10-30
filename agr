@@ -1,23 +1,12 @@
-package com.optum.fads.userroles.api.controllers;
+package com.optum.fads.userroles.api.config;
 
-import java.util.List;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.service.UserService;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-@RestController
-public class UserRolesController {
-
-    private final UserService userService;
-
-    // ✅ Correct constructor (no return type)
-    public UserRolesController(UserService userService) {
-        this.userService = userService;
-    }
-
-    @GetMapping("/api/getUserList")
-    public List<UserListItem> getUserList() {
-        return userService.getUserList();
-    }
+@Configuration
+@EnableTransactionManagement // Optional, but safe to keep
+public class ServiceConfig {
+    // No DataSource bean here
+    // No ComponentScan
+    // No @EnableJpaRepositories — you are not using Spring Data Repositories
 }
