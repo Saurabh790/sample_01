@@ -1,1 +1,94 @@
 GET http://localhost:8080/userroles/api/getUserList
+
+
+Got it.
+You want this flow:
+
+Repository → returns Entities (no JPQL in DAO)
+Service → uses MapStruct → convert Entity → DTO
+Controller → returns DTO List
+
+✅ Step 1: Create Repository (no custom query)
+package com.optum.fads.userroles.api.repo;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UiUserBaseRepository extends JpaRepository<UiUserBase, String> {
+}
+
+
+This gives you findAll() automatically.
+
+✅ Step 2: MapStruct Mapper
+package com.optum.fads.userroles.api.mapper;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface UserListItemMapper {
+
+    @Mapping(source = "uiSystemId", target = "uiSystemId")
+    @Mapping(source = "uiUserId", target = "uiUserId")
+    @Mapping(source = "uiLastName", target = "uiLastName")
+    @Mapping(source = "uiFirstName", target = "uiFirstName")
+    @Mapping(source = "uiTitle", target = "uiTitle")
+    @Mapping(source = "uiEMailAddress", target = "uiEMailAddress")
+    @Mapping(source = "seUsrGrp.fadsGrp.fadsGrpName",   target = "fadsGrpName")
+    @Mapping(source = "seUsrGrp.fadsSurGrp.surGrpName", target = "surGrpName")
+    @Mapping(source = "seUsrGrp.fadsCaseGrp.caseGrpName", target = "caseGrpName")
+    UserListItem toDto(UiUserBase entity);
+}
+
+
+💡 This flattens nested fields exactly like your SQL did.
+
+✅ Step 3: Service Layer
+package com.optum.fads.userroles.api.service;
+
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
+
+    private final UiUserBaseRepository repo;
+    private final UserListItemMapper mapper;
+
+    @Override
+    public List<UserListItem> getUserList() {
+        return repo.findAll()
+                .stream()
+                .map(mapper::toDto)
+                .toList();
+    }
+}
+
+✅ Step 4: Controller (fix constructor!)
+@RestController
+@RequiredArgsConstructor
+public class UserRolesController {
+
+    private final UserService userService;
+
+    @GetMapping("/api/getUserList")
+    public List<UserListItem> getUserList() {
+        return userService.getUserList();
+    }
+}
+
+✅ That’s it — No JPQL. No manual queries. Only Mapper.
+⚠ Important Note
+
+If your DB contains many records, this approach loads all and then maps → might cause N+1 query problem due to lazy joins.
+But functionally, this works exactly how you asked: pure MapStruct, no query code.
