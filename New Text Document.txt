@@ -1,15 +1,6 @@
- DONE 0.0s
-#5 [ 1/10] FROM edgeinternal1uhg.optum.com/glb-docker-uhg-loc/uhg-com-optum-omms/java17-golden:onprem@sha256:bb0e7edfe8ab2bdacf4bc605360f42db714c6af2bd61502d92aaef1ba0920082
-#5 resolve edgeinternal1uhg.optum.com/glb-docker-uhg-loc/uhg-com-optum-omms/java17-golden:onprem@sha256:bb0e7edfe8ab2bdacf4bc605360f42db714c6af2bd61502d92aaef1ba0920082 done
-#5 ...
-#6 [internal] load build context
-#6 transferring context: 416B done
-#6 DONE 0.1s
-#7 [ 2/10] COPY filebeat.yml /fads/filebeat/filebeat.yml
-#7 ERROR: failed to calculate checksum of ref ybhqgzlsagrr1h1vnx3fa2jg7::qvs16p7z8ox9g99vqm68pzoks: "/filebeat.yml": not found
-#8 [ 3/10] COPY target/fads-userroles-api.jar /fads/bin/fads-userroles-api.jar
-#8 ERROR: failed to calculate checksum of ref ybhqgzlsagrr1h1vnx3fa2jg7::qvs16p7z8ox9g99vqm68pzoks: "/target/fads-userroles-api.jar": not found
-#5 [ 1/10] FROM edgeinternal1uhg.optum.com/glb-docker-uhg-loc/uhg-com-optum-omms/java17-golden:onprem@sha256:bb0e7edfe8ab2bdacf4bc605360f42db714c6af2bd61502d92aaef1ba0920082
-#5 DONE 0.5s
-------
- > [ 2/10] COPY filebeat.yml /fads/filebeat/filebeat.yml:
+#!/bin/sh
+
+#nohup /fads/bin/filebeat-ctl.sh > /dev/null 2>&1 &
+/fads/filebeat/filebeat-6.5.4-linux-x86_64/filebeat -e -v -c /fads/filebeat/filebeat.yml  > /dev/null 2>&1 &
+
+exec java $JAVA_OPTS -jar -Doracle.jdbc.timezoneAsRegion=false -Dspring.profiles.active=$PLATFORM  /fads/bin/fads-userroles-api.jar
