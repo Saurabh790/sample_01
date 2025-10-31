@@ -1,256 +1,195 @@
-package com.optum.fads.userroles.api.config.dao.impl;
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-import static org.hibernate.criterion.Example.create; // issue at this line
+  <modelVersion>4.0.0</modelVersion>
 
-import java.util.List;
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.4.11</version>
+    <relativePath/>
+  </parent>
 
-import org.hibernate.LockOptions;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.query.Query;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Repository;
+  <groupId>com.optum.fads</groupId>
+  <artifactId>fads-user-roles-api</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>User-Roles-API</name>
+  <description>User Roles API FOR FADS</description>
 
-import com.optum.fads.userroles.api.config.dao.LuValuesDAO;
-import com.optum.fads.userroles.api.config.domain.LuValues;
+  <properties>
+    <java.version>17</java.version>
+    <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
+    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+    <mssql.jdbc.version>12.6.1.jre11</mssql.jdbc.version>
+  </properties>
 
-/**
- * A data access object (DAO) providing persistence and search support for
- * LuValues entities. Transaction control of the save(), update() and delete()
- * operations can directly support Spring container-managed transactions or they
- * can be augmented to handle user-managed Spring transactions. Each of these
- * methods provides additional information for how to configure it for the
- * desired type of transaction control.
- * 
- * @see com.optum.fads.config.domain.LuValues
- * @author MyEclipse Persistence Tools
- */
-@Repository
-public class LuValuesDAOImpl implements LuValuesDAO {
-	private static final Logger log = LoggerFactory
-			.getLogger(LuValuesDAOImpl.class);
-	// property constants
-	public static final String LU_CODE = "luCode";
-	public static final String LU_LABEL = "luLabel";
-	public static final String LU_VIEW = "luView";
-	public static final String OBJ_ID = "objId";
-	public static final String LU_SEQ = "luSeq";
-	public static final String LU_PARENT = "luParent";
-	@Autowired
-	private SessionFactory sessionFactory;
+  <dependencies>
 
-	public void setSessionFactory(SessionFactory sessionFactory) {
-		this.sessionFactory = sessionFactory;
-	}
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
 
-	private Session getCurrentSession() {
-		return sessionFactory.getCurrentSession();
-	}
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
 
-	protected void initDao() {
-		// do nothing
-	}
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-client</artifactId>
+    </dependency>
 
-	public void save(LuValues transientInstance) {
-		log.debug("saving LuValues instance");
-		try {
-			getCurrentSession().save(transientInstance);
-			log.debug("save successful");
-		} catch (RuntimeException re) {
-			log.error("save failed", re);
-			throw re;
-		}
-	}
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
 
-	public void delete(LuValues persistentInstance) {
-		log.debug("deleting LuValues instance");
-		try {
-			getCurrentSession().delete(persistentInstance);
-			log.debug("delete successful");
-		} catch (RuntimeException re) {
-			log.error("delete failed", re);
-			throw re;
-		}
-	}
+    <dependency>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
+    </dependency>
 
-	public LuValues findById(com.optum.fads.config.domain.LuValuesId id) { // issue at this line
-		log.debug("getting LuValues instance with id: " + id);
-		try {
-			LuValues instance = (LuValues) getCurrentSession().get(
-					"com.optum.fads.config.domain.LuValues", id);
-			return instance;
-		} catch (RuntimeException re) {
-			log.error("get failed", re);
-			throw re;
-		}
-	}
+    <dependency>
+      <groupId>org.modelmapper</groupId>
+      <artifactId>modelmapper</artifactId>
+      <version>3.2.0</version>
+    </dependency>
 
-	public List<LuValues> findByExample(LuValues instance) {
-		log.debug("finding LuValues instance by example");
-		try {
-			List<LuValues> results = (List<LuValues>) getCurrentSession()
-					.createCriteria("com.optum.fads.config.domain.LuValues")
-					.add(create(instance)).list();
-			log.debug("find by example successful, result size: "
-					+ results.size());
-			return results;
-		} catch (RuntimeException re) {
-			log.error("find by example failed", re);
-			throw re;
-		}
-	}
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql.jdbc.version}</version>
+    </dependency>
 
-	public List findByProperty(String propertyName, Object value) {
-		log.debug("finding LuValues instance with property: " + propertyName
-				+ ", value: " + value);
-		try {
-			/*String queryString = "from LuValues as model where model."
-					+ propertyName + "= ?";*/
-			
-			StringBuilder queryStr = new StringBuilder();
-			queryStr.append("from LuValues as model where model.");
-			queryStr.append(propertyName);
-			queryStr.append("=?");
-			
-			Query queryObject = getCurrentSession().createQuery(queryStr.toString());
-			queryObject.setParameter(0, value);
-			return queryObject.list();
-		} catch (RuntimeException re) {
-			log.error("find by property name failed", re);
-			throw re;
-		}
-	}
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.18.0</version>
+    </dependency>
 
-	public List<LuValues> findByLuCode(Object luCode) {
-		return findByProperty(LU_CODE, luCode);
-	}
+    <!-- Lombok -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
 
-	public List<LuValues> findByLuLabel(Object luLabel) {
-		return findByProperty(LU_LABEL, luLabel);
-	}
+    <!-- MapStruct -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
 
-	public List<LuValues> findByLuView(Object luView) {
-		return findByProperty(LU_VIEW, luView);
-	}
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-processor</artifactId>
+      <version>${org.mapstruct.version}</version>
+      <scope>provided</scope>
+    </dependency>
 
-	public List<LuValues> findByObjId(Object objId) {
-		return findByProperty(OBJ_ID, objId);
-	}
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+      <version>4.5.0-M1</version>
+    </dependency>
 
-	public List<LuValues> findByLuSeq(Object luSeq) {
-		return findByProperty(LU_SEQ, luSeq);
-	}
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
 
-	public List<LuValues> findByLuParent(Object luParent) {
-		return findByProperty(LU_PARENT, luParent);
-	}
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
 
-	public List findAll() {
-		log.debug("finding all LuValues instances");
-		try {
-			String queryString = "from LuValues";
-			Query queryObject = getCurrentSession().createQuery(queryString);
-			return queryObject.list();
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-	}
+  </dependencies>
 
-	public LuValues merge(LuValues detachedInstance) {
-		log.debug("merging LuValues instance");
-		try {
-			LuValues result = (LuValues) getCurrentSession().merge(
-					detachedInstance);
-			log.debug("merge successful");
-			return result;
-		} catch (RuntimeException re) {
-			log.error("merge failed", re);
-			throw re;
-		}
-	}
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.azure.spring</groupId>
+        <artifactId>spring-cloud-azure-dependencies</artifactId>
+        <version>${spring-cloud-azure.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
-	public void attachDirty(LuValues instance) {
-		log.debug("attaching dirty LuValues instance");
-		try {
-			getCurrentSession().saveOrUpdate(instance);
-			log.debug("attach successful");
-		} catch (RuntimeException re) {
-			log.error("attach failed", re);
-			throw re;
-		}
-	}
+  <build>
+    <!-- Make the jar name exactly what your Dockerfile expects -->
+    <finalName>fads-userroles-api</finalName>
 
-	public void attachClean(LuValues instance) {
-		log.debug("attaching clean LuValues instance");
-		try {
-			getCurrentSession().buildLockRequest(LockOptions.NONE).lock(
-					instance);
-			log.debug("attach successful");
-		} catch (RuntimeException re) {
-			log.error("attach failed", re);
-			throw re;
-		}
-	}
-	
-	/* (non-Javadoc)
-	 * @see com.optum.fads.config.dao.impl.LuValuesDAO#findByFieldIdAndOrderBySeq(java.lang.String)
-	 */
-	@Override
-	public List<LuValues> findByFieldIdAndOrderBySeq(String fieldId) {
-		log.debug("finding LuValues instance by example");
-		try {
-			String queryString = "from LuValues as model where model.id.fieldId"
-					+  "= ?" +
-					" and model.luView='1' order by model.luSeq asc ";
-			Query queryObject = getCurrentSession().createQuery(queryString);
-			queryObject.setParameter(0, fieldId);
-			return queryObject.list();
-		} catch (RuntimeException re) {
-			log.error("find by example failed", re);
-			throw re;
-		}
-	}
+    <plugins>
 
-	public static LuValuesDAO getFromApplicationContext(ApplicationContext ctx) {
-		return (LuValuesDAO) ctx.getBean("LuValuesDAO");
-	}
-}
+      <!-- Ensure MapStruct + Lombok processors run -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </path>
+            <path>
+              <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${org.mapstruct.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
 
+      <!-- Build fat jar at target/fads-userroles-api.jar -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
+      <!-- Make sure filebeat.yml exists at repo root for Docker COPY -->
+      <!-- Adjust 'src/main/docker/filebeat.yml' if your file lives elsewhere -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>prepare-docker-context</id>
+            <phase>validate</phase>
+            <configuration>
+              <target>
+                <copy
+                  file="${project.basedir}/src/main/docker/filebeat.yml"
+                  tofile="${project.basedir}/filebeat.yml"
+                  overwrite="true"
+                  failonerror="false"/>
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
 
+    </plugins>
+  </build>
 
-LuValaues it is showing error at every line and here we have below is our LuValues
-package com.optum.fads.userroles.api.config.domain;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-
-/**
- * LuValues entity. @author MyEclipse Persistence Tools
- */
-@Entity
-@Table(name = "LU_VALUES")
-public class LuValues extends AbstractLuValues implements java.io.Serializable {
-
-	// Constructors
-
-	/** default constructor */
-	public LuValues() {
-	}
-
-	/** minimal constructor */
-	public LuValues(LuValuesId id, Integer objId) {
-		super(id, objId);
-	}
-
-	/** full constructor */
-	public LuValues(LuValuesId id, String luCode, String luLabel,
-			String luView, Integer objId, Integer luSeq, String luParent) {
-		super(id, luCode, luLabel, luView, objId, luSeq, luParent);
-	}
-
-}
+</project>
