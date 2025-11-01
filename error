@@ -1,158 +1,167 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+1) Use the correct Specification type everywhere
+Make sure every file uses:
+import org.springframework.data.jpa.domain.Specification;
 
-    <modelVersion>4.0.0</modelVersion>
+and NOT anything from jakarta.persistence.criteria.Specification (there is no such type) or other packages.
+Files to check:
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.11</version>
-        <relativePath/>
-    </parent>
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-user-roles-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>User-Roles-API</name>
-    <description>User Roles API FOR FADS</description>
+UserService (method signature)
 
-    <properties>
-        <java.version>17</java.version>
-        <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-        <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-        <mssql.jdbc.version>12.6.1.jre11</mssql.jdbc.version>
-    </properties>
 
-    <dependencies>
+UserServiceImpl
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
+UserSpecification (class return type)
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+Any other place you mention Specification
 
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-        </dependency>
 
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>3.2.0</version>
-        </dependency>
 
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>${mssql.jdbc.version}</version>
-        </dependency>
+2) Repository must extend JpaSpecificationExecutor
+package com.optum.fads.userroles.api.repo;
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
+public interface UiUserBaseRepository
+        extends JpaRepository<UiUserBase, String>,
+                JpaSpecificationExecutor<UiUserBase> {  // <-- required
+}
 
-        <!-- MapStruct -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
+Double-check you have both imports above.
 
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-            <scope>provided</scope>
-        </dependency>
+3) Make UserSpecification return the correct type
+package com.optum.fads.userroles.api.spec;
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-collections4</artifactId>
-            <version>4.5.0-M1</version>
-        </dependency>
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import jakarta.persistence.criteria.*;            // for Root/From/Join etc.
+import org.springframework.data.jpa.domain.Specification;  // <-- Spring Data type
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+import java.util.*;
 
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+public final class UserSpecification {
 
-    </dependencies>
+    private UserSpecification() {}
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.azure.spring</groupId>
-                <artifactId>spring-cloud-azure-dependencies</artifactId>
-                <version>${spring-cloud-azure.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    public static Specification<UiUserBase> containsAll(
+            Map<String, String> filters,
+            Map<String, String> fieldMap
+    ) {
+        if (filters == null || filters.isEmpty()) {
+            return null; // tells caller: no filtering
+        }
 
-    <build>
-        <plugins>
+        return (root, query, cb) -> {
+            query.distinct(true);
+            List<Predicate> predicates = new ArrayList<>();
 
-            <!-- ✅ FIXED: Added MapStruct annotation processor -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${org.mapstruct.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
+            for (Map.Entry<String, String> e : filters.entrySet()) {
+                String apiField = e.getKey();
+                String value    = e.getValue();
+                if (value == null || value.isBlank()) continue;
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+                String entityPath = fieldMap.get(apiField);
+                if (entityPath == null) continue;
 
-        </plugins>
-    </build>
+                Expression<String> path = resolvePath(root, entityPath); // LEFT joins under the hood
+                predicates.add(cb.like(cb.lower(path), "%" + value.toLowerCase(Locale.ROOT) + "%"));
+            }
 
-</project>
+            return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Expression<String> resolvePath(From<?, ?> root, String dotPath) {
+        String[] parts = dotPath.split("\\.");
+        From<?, ?> from = root;
+        Path<?> path = root;
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (i < parts.length - 1) {
+                from = safeJoin(from, part);
+                path = from;
+            } else {
+                path = path.get(part);
+            }
+        }
+        return (Expression<String>) path.as(String.class);
+    }
+
+    private static From<?, ?> safeJoin(From<?, ?> from, String attribute) {
+        for (Join<?, ?> j : from.getJoins()) {
+            if (j.getAttribute() != null && attribute.equals(j.getAttribute().getName())) {
+                return (From<?, ?>) j;
+            }
+        }
+        return from.join(attribute, JoinType.LEFT);
+    }
+}
+
+
+4) Guard the service call when filters are empty
+Some Spring Data versions have two findAll overloads (by example and by spec). To avoid ambiguity, only call the spec overload if we actually have a spec:
+package com.optum.fads.userroles.api.service;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.spec.UserSpecification;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+
+import java.util.Map;
+
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
+
+    private final UiUserBaseRepository repo;
+    private final UserListItemMapper mapper;
+
+    @Override
+    public Page<UserListItem> getUsers(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
+        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
+
+        Page<UiUserBase> page = (spec == null)
+                ? repo.findAll(pageable)                // no filters → use simple pageable
+                : repo.findAll(spec, pageable);         // filters → use Specification overload
+
+        return page.map(mapper::toDto);
+    }
+}
+
+
+5) Clean build with the right Java level
+You already set Java 17. Do a clean compile to ensure MapStruct and Spring Data codegen are fresh:
+mvn -e -X clean compile -DskipTests
+
+If the error persists, copy the exact text of the first error line (not just a photo). But in 90%+ of cases like your screenshot, it’s one of the import/overload issues above.
+
+Quick checklist
+
+
+ import org.springframework.data.jpa.domain.Specification; everywhere ✅
+
+
+ Repository extends JpaSpecificationExecutor<UiUserBase> ✅
+
+
+ UserSpecification.containsAll returns Specification<UiUserBase> ✅
+
+
+ Service calls repo.findAll(pageable) when spec == null ✅
+
+
+ mvn clean compile after changes ✅
+
+
+Do these and the compile error should disappear.
