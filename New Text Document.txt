@@ -1,6 +1,283 @@
-#!/bin/sh
+https://fads-dev.optum.com/fads/study/findAllByPageable/?pageNumber=1&recordsPerPage=10&sortBy=studyName&sortOrder=1
 
-#nohup /fads/bin/filebeat-ctl.sh > /dev/null 2>&1 &
-/fads/filebeat/filebeat-6.5.4-linux-x86_64/filebeat -e -v -c /fads/filebeat/filebeat.yml  > /dev/null 2>&1 &
 
-exec java $JAVA_OPTS -jar -Doracle.jdbc.timezoneAsRegion=false -Dspring.profiles.active=$PLATFORM  /fads/bin/fads-userroles-api.jar
+@GetMapping(value = { "/findAllByPageable/" }, headers = "Accept=application/json")
+	public Page<Study> findAllByPageable(
+	        @RequestParam(name = "pageNumber", required = true, defaultValue = "1") @Min(1) Integer pageNumber,
+	        @RequestParam(name = "recordsPerPage", required = true, defaultValue = "10") @Min(1) Integer recordsPerPage, 
+	        @RequestParam(name = "sortBy", required = false, defaultValue = "studyName") StudyEnum sortBy,
+	        @RequestParam(name = "sortOrder", required = false, defaultValue = "0") Integer sortOrder, 
+	        @RequestParam(name = "searchBy", required = false) List<String> searchBy,
+	        @RequestParam(name = "searchInput", required = false) List<String> searchInput
+	) {
+	    int pageIdx = (pageNumber != null && pageNumber > 0) ? pageNumber - 1 : 0;
+
+	    String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
+	    Sort sort = (Integer.valueOf(1).equals(sortOrder))
+	            ? Sort.by(Sort.Order.asc(sortValue).ignoreCase())
+	            : Sort.by(Sort.Order.desc(sortValue).ignoreCase());
+
+	    Pageable pageable = PageRequest.of(pageIdx, recordsPerPage, sort);
+
+	    Map<String, String> map = Collections.emptyMap();
+	    if (searchBy != null && !searchBy.isEmpty() && searchInput != null && !searchInput.isEmpty()) {
+	        int size = Math.min(searchBy.size(), searchInput.size());
+	        map = IntStream.range(0, size).boxed().collect(Collectors.toMap(
+	                searchBy::get,
+	                searchInput::get,
+	                (a, b) -> b,
+	                LinkedHashMap::new));
+	    }
+
+	    return studyService.findAllStudies(map, pageable);
+	}
+	
+	below is study service 
+	
+	@Autowired
+	private StudyOwnRepository studyOwnRepository;
+
+	@Autowired
+	private JobsRepository jobsRepository;
+
+	@Autowired
+	private FadsConfigRepository fadsConfigRepository;
+
+	@Autowired
+	private StudyMiniMapper studyMiniMapper;
+
+	@Autowired
+	private StudyDetailMapper studyDetailMapper;
+
+	@Autowired
+	private JobLuStatusRepository jobLuStatusRepository;
+
+
+	@Autowired
+	private UiUserBaseRepository uiUserBaseRepository;
+
+
+	@Transactional(readOnly = true)
+	@Override
+	public Page<Study> findAllStudies(final Map<String, String> filterOptions, final Pageable pageable) {
+		Specification<PrmStudyMasterT> finalSpecs = StudySpecification.findAllStudySpecification(filterOptions);
+		Page<PrmStudyMasterT> entityPage = studyOwnRepository.findAll(finalSpecs, pageable);
+		List<Study> dtoList = studyMiniMapper.converToStudyDTOs(entityPage.getContent());
+		return new PageImpl<Study>(dtoList, pageable, entityPage.getTotalElements());
+	}
+
+
+
+package com.optum.fads.pgp.study.mapper;
+
+import java.util.List;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Mappings;
+import org.mapstruct.ReportingPolicy;
+
+import com.optum.fads.pgp.persistence.domain.PrmStudyMasterT;
+import com.optum.fads.pgp.study.dto.Study;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface StudyMiniMapper {
+
+	@Mappings({ @Mapping(target = "studyId", source = "pbId"),
+			@Mapping(target = "studyName", source = "pbName"),
+			@Mapping(target = "createDate", source = "createDte"),
+			@Mapping(target = "updateDate", source = "updateDte"),
+	//		@Mapping(target = "user", source = "uiUserBase.uiSystemId"),
+			@Mapping(target = "createdBySystemId", source = "createdByUiUserBase.uiSystemId"),
+			// @Mapping(target = "createdUser", expression =
+			// "java(prmStudyMasterT.getCreatedByUiUserBase().getUiFirstName() + \" \" +
+			// prmStudyMasterT.getCreatedByUiUserBase().getUiLastName())"),
+			@Mapping(target = "createdUser", source = "createdByUiUserBase.userFullName"),
+			@Mapping(target = "updatedBySystemId", source = "updatedByUiUserBase.uiSystemId"),
+			// @Mapping(target = "updatedUser", expression =
+			// "java(prmStudyMasterT.getUpdatedByUiUserBase().getUiFirstName() + \" \" +
+			// prmStudyMasterT.getUpdatedByUiUserBase().getUiLastName())"),
+			@Mapping(target = "updatedUser", source = "updatedByUiUserBase.userFullName"),
+			@Mapping(target = "lastRunDate", source = "lastRunDate"),
+            @Mapping(target = "scheduleRunDateTime", source = "scheduleRunDateTime"),
+			@Mapping(target = "submitFlag", source = "submitFlag"), })
+	Study convertToStudy(PrmStudyMasterT prmStudyMasterT);
+
+	List<Study> converToStudyDTOs(List<PrmStudyMasterT> prmStudyMiniTs);
+
+}
+
+
+this above one is sample of some api like wise we have to convert below api in pageable and in sorting also same way defaultValue for soringwill be based on usern ame and pageable default value as per above 
+
+change the api end point also as per aboeve np 
+package com.optum.fads.userroles.api.mapper;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface UserListItemMapper {
+
+    @Mapping(target = "uiSystemId", source = "uiSystemId")
+    @Mapping(target = "uiUserId", source = "uiUserId")
+    @Mapping(target = "lastName", source = "uiLastName")
+    @Mapping(target = "firstName", source = "uiFirstName")
+    @Mapping(target = "title", source = "uiTitle")
+    @Mapping(target = "email", source = "uiEMailAddress")
+    @Mapping(target = "fadsGrpName", source = "seUsrGrp.fadsGrp.fadsGrpName")
+    @Mapping(target = "surGrpName", source = "seUsrGrp.fadsSurGrp.surGrpName")
+    @Mapping(target = "caseGrpName", source = "seUsrGrp.fadsCaseGrp.caseGrpName")
+    UserListItem toDto(UiUserBase entity);
+}
+
+package com.optum.fads.userroles.api.controllers;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.service.UserService;
+
+@RestController
+public class UserRolesController {
+
+    private final UserService userService;
+
+    public UserRolesController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @GetMapping("/api/getUserList")
+    public List<UserListItem> getUserList() {
+        return userService.getUserList();
+    }
+}
+
+
+package com.optum.fads.userroles.api.dto;
+
+public class UserListItem {
+    private final String uiSystemId;
+    private final String uiUserId;
+    private final String lastName;
+    private final String firstName;
+    private final String title;
+    private final String email;
+    private final String fadsGrpName;
+    private final String surGrpName;
+    private final String caseGrpName;
+
+    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
+                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
+        this.uiSystemId = uiSystemId;
+        this.uiUserId = uiUserId;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.title = title;
+        this.email = email;
+        this.fadsGrpName = fadsGrpName;
+        this.surGrpName = surGrpName;
+        this.caseGrpName = caseGrpName;
+    }
+
+	public String getUiSystemId() {
+		return uiSystemId;
+	}
+
+	public String getUiUserId() {
+		return uiUserId;
+	}
+
+	public String getLastName() {
+		return lastName;
+	}
+
+	public String getFirstName() {
+		return firstName;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public String getFadsGrpName() {
+		return fadsGrpName;
+	}
+
+	public String getSurGrpName() {
+		return surGrpName;
+	}
+
+	public String getCaseGrpName() {
+		return caseGrpName;
+	}
+
+    
+    
+    
+}
+
+
+package com.optum.fads.userroles.api.repo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+
+public interface UiUserBaseRepository extends JpaRepository<UiUserBase, String> {
+}
+
+
+
+
+package com.optum.fads.userroles.api.service;
+
+import java.util.List;
+
+import com.optum.fads.userroles.api.dto.UserListItem;
+
+
+public interface UserService {
+    List<UserListItem> getUserList();
+}
+
+
+package com.optum.fads.userroles.api.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
+
+    private final UiUserBaseRepository repo;
+    private final UserListItemMapper mapper;
+
+    @Override
+    public List<UserListItem> getUserList() {
+        return repo.findAll()
+                .stream()
+                .map(mapper::toDto)
+                .toList();
+    }
+}
