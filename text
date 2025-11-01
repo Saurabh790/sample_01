@@ -1,200 +1,62 @@
-package com.optum.fads.userroles.api.domain;
+server:
+  port: 8080
+  servlet:
+    context-path: /userroles   # Main app context
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+spring:
+  application:
+    name: fads-userroles-api
 
-import java.time.Instant;
+  datasource:
+    url: 
+    username: 
+    password:
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
 
-@Getter
-@Setter
-@Entity
-@Table(name = "UI_USER_BASE")
-public class UiUserBase {
-    @Id
-    @Size(max = 25)
-    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
-    private String uiSystemId;
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        globally_quoted_identifiers: true
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
 
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "UI_USER_ID", nullable = false, length = 50)
-    private String uiUserId;
+management:
+  endpoint:
+    metrics:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
-    @Size(max = 15)
-    @Column(name = "UI_TITLE", length = 15)
-    private String uiTitle;
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
 
-    @Size(max = 40)
-    @Column(name = "UI_LAST_NAME", length = 40)
-    private String uiLastName;
 
-    @Size(max = 20)
-    @Column(name = "UI_FIRST_NAME", length = 20)
-    private String uiFirstName;
+---
+spring:
+  config:
+    activate:
+      on-profile: build
 
-    @Column(name = "UI_USER_INACTIVE")
-    private Character uiUserInactive;
-
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "UI_E_MAIL_ADDRESS", nullable = false, length = 50)
-    private String uiEMailAddress;
-
-    @Size(max = 25)
-    @Column(name = "UI_CREATED_BY", length = 25)
-    private String uiCreatedBy;
-
-    @Column(name = "UI_CREATED_DT")
-    private Instant uiCreatedDt;
-
-    @OneToOne(mappedBy = "uiUserBase")
-    private SeUsrGrp seUsrGrp;
-
-}
-package com.optum.fads.userroles.api.domain;
-
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.Instant;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_USR_GRP")
-public class SeUsrGrp {
-    @Id
-    @Size(max = 25)
-    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
-    private String uiSystemId;
-
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false)
-    private UiUserBase uiUserBase;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_GRP_ID")
-    private SeFadsGrp fadsGrp;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_SUR_GRP_ID")
-    private SeSurGrp fadsSurGrp;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_CASE_GRP_ID")
-    private SeCaseGrp fadsCaseGrp;
-
-    @Size(max = 25)
-    @Column(name = "CREATED_BY", length = 25)
-    private String createdBy;
-
-    @Column(name = "CREATED_DT")
-    private Instant createdDt;
-
-    @Size(max = 25)
-    @Column(name = "UPDATED_BY", length = 25)
-    private String updatedBy;
-
-    @Column(name = "UPDATED_DT")
-    private Instant updatedDt;
-
-}
-package com.optum.fads.userroles.api.domain;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.math.BigDecimal;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_SUR_GRP")
-public class SeSurGrp {
-    @Id
-    @Column(name = "SUR_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
-
-    @Size(max = 40)
-    @Column(name = "SUR_GRP_NAME", length = 40)
-    private String surGrpName;
-
-}
-package com.optum.fads.userroles.api.domain;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.math.BigDecimal;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_FADS_GRP")
-public class SeFadsGrp {
-    @Id
-    @Column(name = "FADS_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
-
-    @Size(max = 40)
-    @Column(name = "FADS_GRP_NAME", length = 40)
-    private String fadsGrpName;
-
-}
-package com.optum.fads.userroles.api.domain;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.math.BigDecimal;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_CASE_GRP")
-public class SeCaseGrp {
-    @Id
-    @Column(name = "CASE_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
-
-    @Size(max = 40)
-    @Column(name = "CASE_GRP_NAME", length = 40)
-    private String caseGrpName;
-
-}
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project fads-user-roles-api: Compilation failure: Compilation failure:
-[ERROR] /C:/Users/sgupt664/FADS_DE302564/fads-user-roles-api/src/main/java/com/optum/fads/userroles/api/mapper/UserListItemMapper.java:[21,18] Unknown property "uiLastName" in result type UserListItem. Did you mean "lastName"?
-[ERROR] /C:/Users/sgupt664/FADS_DE302564/fads-user-roles-api/src/main/java/com/optum/fads/userroles/api/mapper/UserListItemMapper.java:[21,18] Unknown property "uiFirstName" in result type UserListItem. Did you mean "firstName"?
-[ERROR] /C:/Users/sgupt664/FADS_DE302564/fads-user-roles-api/src/main/java/com/optum/fads/userroles/api/mapper/UserListItemMapper.java:[21,18] Unknown property "uiTitle" in result type UserListItem. Did you mean "title"?
-[ERROR] /C:/Users/sgupt664/FADS_DE302564/fads-user-roles-api/src/main/java/com/optum/fads/userroles/api/mapper/UserListItemMapper.java:[21,18] Unknown property "uiEMailAddress" in result type UserListItem. Did you mean "uiSystemId"?
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-
-C:\Users\sgupt664\FADS_DE302564\fads-user-roles-api>
+logging:
+  level:
+    root: INFO
