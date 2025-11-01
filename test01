@@ -1,157 +1,206 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+UserRolesController.java
+package com.optum.fads.userroles.api.controllers;
 
-    <modelVersion>4.0.0</modelVersion>
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.service.UserService;
+import org.springframework.data.domain.*;
+import org.springframework.web.bind.annotation.*;
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.11</version>
-        <relativePath/>
-    </parent>
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-user-roles-api</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>User-Roles-API</name>
-    <description>User Roles API FOR FADS</description>
+@RestController
+@RequestMapping("/api/userroles")
+public class UserRolesController {
 
-    <properties>
-        <java.version>17</java.version>
-        <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-        <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-        <mssql.jdbc.version>12.6.1.jre11</mssql.jdbc.version>
-    </properties>
+    /**
+     * API field name -> entity path (whitelist).
+     * Use ONLY these keys in sortBy/searchBy.
+     */
+    private static final Map<String, String> FIELD_MAP;
+    static {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("uiSystemId", "uiSystemId");
+        m.put("uiUserId",   "uiUserId");
+        m.put("lastName",   "uiLastName");
+        m.put("firstName",  "uiFirstName");
+        m.put("title",      "uiTitle");
+        m.put("email",      "uiEMailAddress");
+        m.put("fadsGrpName","seUsrGrp.fadsGrp.fadsGrpName");
+        m.put("surGrpName", "seUsrGrp.fadsSurGrp.surGrpName");
+        m.put("caseGrpName","seUsrGrp.fadsCaseGrp.caseGrpName");
+        FIELD_MAP = Collections.unmodifiableMap(m);
+    }
 
-    <dependencies>
+    private final UserService userService;
+    public UserRolesController(UserService userService) {
+        this.userService = userService;
+    }
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
+    /**
+     * Working endpoint path (with your server context "/userroles"):
+     * http://localhost:8080/userroles/api/userroles/findAllByPageable
+     *
+     * Examples:
+     *  - Pagination only:
+     *    ?pageNumber=1&recordsPerPage=10
+     *
+     *  - Sort (1=ASC, 0=DESC). Multi-sort supported:
+     *    ?sortBy=lastName,firstName&sortOrder=0,1
+     *
+     *  - Filters (contains, case-insensitive). Multiple allowed:
+     *    ?searchBy=lastName&searchBy=fadsGrpName&searchInput=Gupta&searchInput=Admin
+     */
+    @GetMapping(value = "/findAllByPageable", headers = "Accept=application/json")
+    public Page<UserListItem> findAllByPageable(
+            @RequestParam(name = "pageNumber",     defaultValue = "1")  Integer pageNumber,
+            @RequestParam(name = "recordsPerPage", defaultValue = "10") Integer recordsPerPage,
+            @RequestParam(name = "sortBy",         defaultValue = "lastName") String sortByCsv,
+            @RequestParam(name = "sortOrder",      defaultValue = "1")  String sortOrderCsv,
+            @RequestParam(name = "searchBy",       required = false) List<String> searchBy,
+            @RequestParam(name = "searchInput",    required = false) List<String> searchInput
+    ) {
+        // --- page index (user gives 1-based) ---
+        int pageIdx = (pageNumber != null && pageNumber > 0) ? pageNumber - 1 : 0;
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
+        // --- build Sort ---
+        List<String> sortByList = Arrays.stream(sortByCsv.split(","))
+                .map(String::trim).filter(s -> !s.isBlank()).toList();
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
+        List<Integer> orderList = Arrays.stream(sortOrderCsv.split(","))
+                .map(String::trim).filter(s -> !s.isBlank())
+                .map(v -> "1".equals(v) ? 1 : 0).toList();
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+        // pad sort orders to match sort fields
+        List<Integer> paddedOrders = new ArrayList<>(orderList);
+        while (paddedOrders.size() < sortByList.size()) {
+            paddedOrders.add(paddedOrders.isEmpty() ? 1 : paddedOrders.get(paddedOrders.size() - 1));
+        }
 
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-        </dependency>
+        List<Sort.Order> orders = new ArrayList<>();
+        for (int i = 0; i < sortByList.size(); i++) {
+            String apiField = sortByList.get(i);
+            String entityPath = FIELD_MAP.get(apiField); // whitelist
+            if (entityPath != null) {
+                boolean asc = paddedOrders.get(i) == 1;
+                // IMPORTANT: removed .ignoreCase() to avoid SQL Server DISTINCT/ORDER BY conflict
+                orders.add(asc ? Sort.Order.asc(entityPath) : Sort.Order.desc(entityPath));
+            }
+        }
+        if (orders.isEmpty()) {
+            orders.add(Sort.Order.asc(FIELD_MAP.get("lastName")));
+        }
 
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>3.2.0</version>
-        </dependency>
+        Pageable pageable = PageRequest.of(pageIdx, recordsPerPage, Sort.by(orders));
 
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>${mssql.jdbc.version}</version>
-        </dependency>
+        // --- build filters map (searchBy[i] -> searchInput[i]) ---
+        Map<String, String> filters = Collections.emptyMap();
+        if (searchBy != null && searchInput != null && !searchBy.isEmpty() && !searchInput.isEmpty()) {
+            int size = Math.min(searchBy.size(), searchInput.size());
+            filters = IntStream.range(0, size).boxed().collect(Collectors.toMap(
+                    i -> searchBy.get(i),
+                    i -> searchInput.get(i),
+                    (a, b) -> b,
+                    LinkedHashMap::new));
+        }
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
+        return userService.getUsers(filters, pageable, FIELD_MAP);
+    }
+}
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
+UserSpecification.java
+package com.optum.fads.userroles.api.spec;
 
-        <!-- MapStruct -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import jakarta.persistence.criteria.*;
+import org.springframework.data.jpa.domain.Specification;
 
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-            <scope>provided</scope>
-        </dependency>
+import java.util.*;
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-collections4</artifactId>
-            <version>4.5.0-M1</version>
-        </dependency>
+public final class UserSpecification {
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+    private UserSpecification() {}
 
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+    /**
+     * Builds an AND of case-insensitive CONTAINS filters for provided fields.
+     * DISTINCT is enabled only if any filter touches a joined (nested) path.
+     */
+    public static Specification<UiUserBase> containsAll(
+            Map<String, String> filters,
+            Map<String, String> fieldMap
+    ) {
+        if (filters == null || filters.isEmpty()) {
+            return null; // no predicates
+        }
 
-    </dependencies>
+        return (root, query, cb) -> {
+            // DISTINCT only when a nested path (dot) implies joins
+            boolean needsDistinct = filters.keySet().stream()
+                    .map(fieldMap::get)
+                    .filter(Objects::nonNull)
+                    .anyMatch(path -> path.contains("."));
+            if (needsDistinct) {
+                query.distinct(true);
+            }
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.azure.spring</groupId>
-                <artifactId>spring-cloud-azure-dependencies</artifactId>
-                <version>${spring-cloud-azure.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+            List<Predicate> predicates = new ArrayList<>();
 
-    <build>
-        <plugins>
+            for (Map.Entry<String, String> e : filters.entrySet()) {
+                String apiField = e.getKey();
+                String value    = e.getValue();
+                if (value == null || value.isBlank()) continue;
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${org.mapstruct.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
+                String entityPath = fieldMap.get(apiField);
+                if (entityPath == null) continue; // ignore unknown field
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+                Expression<String> pathExpr = resolvePath(root, entityPath);
+                predicates.add(cb.like(cb.lower(pathExpr), "%" + value.toLowerCase(Locale.ROOT) + "%"));
+            }
 
-        </plugins>
-    </build>
+            return predicates.isEmpty()
+                    ? cb.conjunction()
+                    : cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
 
-</project>
+    /**
+     * Resolve dot-separated path, creating LEFT joins for intermediate segments.
+     * Example: "seUsrGrp.fadsGrp.fadsGrpName"
+     */
+    @SuppressWarnings("unchecked")
+    private static Expression<String> resolvePath(From<?, ?> root, String dotPath) {
+        String[] parts = dotPath.split("\\.");
+        From<?, ?> from = root;
+        Path<?> path = root;
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+
+            if (i < parts.length - 1) {
+                // intermediate: join if not already joined
+                from = safeJoin(from, part);
+                path = from;
+            } else {
+                // leaf: attribute
+                path = path.get(part);
+            }
+        }
+        return (Expression<String>) path.as(String.class);
+    }
+
+    private static From<?, ?> safeJoin(From<?, ?> from, String attribute) {
+        for (Join<?, ?> j : from.getJoins()) {
+            if (j.getAttribute() != null && attribute.equals(j.getAttribute().getName())) {
+                return (From<?, ?>) j;
+            }
+        }
+        return from.join(attribute, JoinType.LEFT);
+    }
+}
+
+
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
