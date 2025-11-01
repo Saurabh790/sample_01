@@ -30,20 +30,17 @@ spring:
     database-platform: org.hibernate.dialect.SQLServer2016Dialect
 
 management:
-  endpoint:
-    metrics:
-      enabled: true
   endpoints:
     web:
       exposure:
-        include:
-          - health
-          - info
-          - prometheus
+        include: "*"   # ✅ Expose all actuator endpoints (health, info, metrics, env, beans, mappings, etc.)
+  endpoint:
+    health:
+      show-details: always   # ✅ Show DB/Service/Component health details
   metrics:
     export:
       prometheus:
-        enabled: true
+        enabled: true  # ✅ Prometheus compatible metrics
 
 logging:
   level:
