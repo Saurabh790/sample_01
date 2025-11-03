@@ -1,66 +1,46 @@
-package com.optum.fads.userroles.api.dto;
 
-public class UserListItem {
-    private final String uiSystemId;
-    private final String uiUserId;
-    private final String lastName;
-    private final String firstName;
-    private final String title;
-    private final String email;
-    private final String fadsGrpName;
-    private final String surGrpName;
-    private final String caseGrpName;
+	@GetMapping(value = "/findAllByPageable", headers = "Accept=application/json")
+	public Page<UserListItem> findAllByPageable(
+			@RequestParam(name = "pageNumber", defaultValue = "1") Integer pageNumber,
+			@RequestParam(name = "recordsPerPage", defaultValue = "10") Integer recordsPerPage,
+			@RequestParam(name = "sortBy", defaultValue = "lastName") String sortByCsv,
+			@RequestParam(name = "sortOrder", defaultValue = "1") String sortOrderCsv,
+			@RequestParam(name = "searchBy", required = false) List<String> searchBy,
+			@RequestParam(name = "searchInput", required = false) List<String> searchInput) {
+		int pageIdx = (pageNumber != null && pageNumber > 0) ? pageNumber - 1 : 0;
 
-    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
-                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
-        this.uiSystemId = uiSystemId;
-        this.uiUserId = uiUserId;
-        this.lastName = lastName;
-        this.firstName = firstName;
-        this.title = title;
-        this.email = email;
-        this.fadsGrpName = fadsGrpName;
-        this.surGrpName = surGrpName;
-        this.caseGrpName = caseGrpName;
-    }
+		List<String> sortByList = Arrays.stream(sortByCsv.split(",")).map(String::trim).filter(s -> !s.isBlank())
+				.toList();
 
-	public String getUiSystemId() {
-		return uiSystemId;
+		List<Integer> orderList = Arrays.stream(sortOrderCsv.split(",")).map(String::trim).filter(s -> !s.isBlank())
+				.map(v -> "1".equals(v) ? 1 : 0).toList();
+
+		List<Integer> paddedOrders = new ArrayList<>(orderList);
+		while (paddedOrders.size() < sortByList.size()) {
+			paddedOrders.add(paddedOrders.isEmpty() ? 1 : paddedOrders.get(paddedOrders.size() - 1));
+		}
+
+		List<Sort.Order> orders = new ArrayList<>();
+		for (int i = 0; i < sortByList.size(); i++) {
+			String apiField = sortByList.get(i);
+			String entityPath = FIELD_MAP.get(apiField);
+			if (entityPath != null) {
+				boolean asc = paddedOrders.get(i) == 1;
+				orders.add(asc ? Sort.Order.asc(entityPath) : Sort.Order.desc(entityPath));
+			}
+		}
+		if (orders.isEmpty()) {
+			orders.add(Sort.Order.asc(FIELD_MAP.get("lastName")));
+		}
+
+		Pageable pageable = PageRequest.of(pageIdx, recordsPerPage, Sort.by(orders));
+
+		Map<String, String> filters = Collections.emptyMap();
+		if (searchBy != null && searchInput != null && !searchBy.isEmpty() && !searchInput.isEmpty()) {
+			int size = Math.min(searchBy.size(), searchInput.size());
+			filters = IntStream.range(0, size).boxed().collect(
+					Collectors.toMap(i -> searchBy.get(i), i -> searchInput.get(i), (a, b) -> b, LinkedHashMap::new));
+		}
+
+		return userService.getUsersList(filters, pageable, FIELD_MAP);
 	}
-
-	public String getUiUserId() {
-		return uiUserId;
-	}
-
-	public String getLastName() {
-		return lastName;
-	}
-
-	public String getFirstName() {
-		return firstName;
-	}
-
-	public String getTitle() {
-		return title;
-	}
-
-	public String getEmail() {
-		return email;
-	}
-
-	public String getFadsGrpName() {
-		return fadsGrpName;
-	}
-
-	public String getSurGrpName() {
-		return surGrpName;
-	}
-
-	public String getCaseGrpName() {
-		return caseGrpName;
-	}
-
-    
-    
-    
-}
