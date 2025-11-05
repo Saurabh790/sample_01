@@ -1,186 +1,349 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+package com.optum.fads.userroles.api.config;
 
-  <modelVersion>4.0.0</modelVersion>
+import java.util.Collections;
 
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.4.11</version>
-    <relativePath/>
-  </parent>
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-  <groupId>com.optum.fads</groupId>
-  <artifactId>fads-user-roles-api</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>User-Roles-API</name>
-  <description>User Roles API FOR FADS</description>
+import com.optum.fads.userroles.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.userroles.api.service.IUserDetailsService;
 
-  <properties>
-    <java.version>17</java.version>
-    <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-    <mssql.jdbc.version>12.6.1.jre11</mssql.jdbc.version>
-  </properties>
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+//public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
+	private static final String CSP_DEFAULT = "default-src 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';";
 
-  <dependencies>
+	private final IUserDetailsService userDetailsService;
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
+	public SecurityConfig(IUserDetailsService userDetailsService) {
+		this.userDetailsService = userDetailsService;
+	}
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
+	@Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+		http
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
+        .requestMatchers("/swagger-resources/**").permitAll()
+        .requestMatchers("/swagger-ui.html").permitAll()
+        .anyRequest().authenticated())
+        .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt
+                    .jwtAuthenticationConverter(userJwtAuthenticationConverter())
+                )
+            );
+              
+      return http.build();
+    }
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-client</artifactId>
-    </dependency>
+	@Bean
+	UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
+		return new UserJwtAuthenticationConverter(userDetailsService);
+	}
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	}
 
-    <dependency>
-      <groupId>com.azure.spring</groupId>
-      <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-    </dependency>
+	@Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
+		configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
+		configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
+	//	configuration.setAllowCredentials(true);
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
+}
 
-    <dependency>
-      <groupId>org.modelmapper</groupId>
-      <artifactId>modelmapper</artifactId>
-      <version>3.2.0</version>
-    </dependency>
 
-    <dependency>
-      <groupId>com.microsoft.sqlserver</groupId>
-      <artifactId>mssql-jdbc</artifactId>
-      <version>${mssql.jdbc.version}</version>
-    </dependency>
+package com.optum.fads.userroles.api.config;
 
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.18.0</version>
-    </dependency>
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-    <!-- Lombok -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <scope>provided</scope>
-    </dependency>
+@Configuration
+@EnableTransactionManagement
+public class ServiceConfig {
+}
 
-    <!-- MapStruct -->
-    <dependency>
-      <groupId>org.mapstruct</groupId>
-      <artifactId>mapstruct</artifactId>
-      <version>${org.mapstruct.version}</version>
-    </dependency>
 
-    <dependency>
-      <groupId>org.mapstruct</groupId>
-      <artifactId>mapstruct-processor</artifactId>
-      <version>${org.mapstruct.version}</version>
-      <scope>provided</scope>
-    </dependency>
 
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-collections4</artifactId>
-      <version>4.5.0-M1</version>
-    </dependency>
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
+package com.optum.fads.userroles.api.config;
 
-    <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-test</artifactId>
-      <scope>test</scope>
-    </dependency>
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-validation</artifactId>
-    </dependency>
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-actuator</artifactId>
-    </dependency>
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
 
-  </dependencies>
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+}
 
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>com.azure.spring</groupId>
-        <artifactId>spring-cloud-azure-dependencies</artifactId>
-        <version>${spring-cloud-azure.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
 
-  <build>
-    <finalName>fads-userroles-api</finalName>
+/**
+ * 
+ */
+package com.optum.fads.userroles.api.dto;
 
-    <plugins>
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-            </path>
-            <path>
-              <groupId>org.mapstruct</groupId>
-              <artifactId>mapstruct-processor</artifactId>
-              <version>${org.mapstruct.version}</version>
-            </path>
-          </annotationProcessorPaths>
-        </configuration>
-      </plugin>
+/**
+ * @author sbiry
+ *
+ */
+@Data
+@AllArgsConstructor
+public class AccessLevel {
+	
+	private String moduleId;
+	private String moduleCode;
+	private String moduleName;
+	private String access;
+}
 
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>repackage</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
 
-      <!-- ✅ Disable Sonar -->
-      <plugin>
-        <groupId>org.sonarsource.scanner.maven</groupId>
-        <artifactId>sonar-maven-plugin</artifactId>
-        <version>3.9.1.2184</version>
-        <configuration>
-          <skip>true</skip>
-        </configuration>
-      </plugin>
+/**
+ * 
+ */
+package com.optum.fads.userroles.api.dto;
 
-    </plugins>
-  </build>
+import java.util.Collection;
 
-</project>
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import lombok.Data;
+
+/**
+ * @author sgupta664
+ *
+ */
+@Data
+public class AppUser implements UserDetails {
+	private static final long serialVersionUID = 1L;
+
+	private String userId;
+	private String userSystemId;
+	private String userEmail;
+	private Role role = new Role();
+	
+	@Override
+	public Collection<? extends GrantedAuthority> getAuthorities() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	@Override
+	public String getPassword() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	@Override
+	public String getUsername() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	@Override
+	public boolean isAccountNonExpired() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	@Override
+	public boolean isAccountNonLocked() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	@Override
+	public boolean isCredentialsNonExpired() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	@Override
+	public boolean isEnabled() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	
+}
+
+
+
+
+package com.optum.fads.userroles.api.security;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import com.optum.fads.userroles.api.service.IUserDetailsService;
+
+
+@SuppressWarnings("unused")
+public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+
+	private static final String GROUPS_CLAIM = "groups";
+	private static final String ROLE_PREFIX = "ROLE_";
+
+	private final IUserDetailsService userDetailsService;
+
+	public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService) {
+		this.userDetailsService = userDetailsService;
+	}
+
+	@Override
+	public AbstractAuthenticationToken convert(Jwt jwt) {
+		Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
+		return Optional.ofNullable(userDetailsService.loadUserByUsername(getUniqueID(jwt)))
+				.map(u -> new UsernamePasswordAuthenticationToken(u, "n/a", authorities))
+				.orElseThrow(() -> new BadCredentialsException("No user found"));
+	}
+
+	private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+		return this.getGroups(jwt).stream().map(authority -> ROLE_PREFIX + authority.toUpperCase())
+				.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+	}
+
+	@SuppressWarnings("unchecked")
+	private Collection<String> getGroups(Jwt jwt) {
+		Object groups = jwt.getClaims().get(GROUPS_CLAIM);
+		if (groups instanceof Collection) {
+			return (Collection<String>) groups;
+		}
+
+		return Collections.emptyList();
+	}
+	private String getUniqueID(Jwt jwt) {
+		
+		if(jwt.getClaimAsString("email") != null ) {
+			return jwt.getClaimAsString("email");
+		}
+		if(jwt.getClaimAsString("preferred_username") != null ) {
+			return jwt.getClaimAsString("preferred_username");
+		}
+		
+		return null;
+	}
+	
+	
+}
+
+
+package com.optum.fads.userroles.api.service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.userroles.api.domain.SeSurGrpModAccess;
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.AccessLevel;
+import com.optum.fads.userroles.api.dto.AppUser;
+import com.optum.fads.userroles.api.dto.ModuleAccess;
+import com.optum.fads.userroles.api.dto.Role;
+import com.optum.fads.userroles.api.repo.UserRepository;
+
+@Service
+public class UserDetailsService implements IUserDetailsService {
+
+	@Autowired
+	UserRepository userRepository;
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		Optional<UiUserBase> optional = userRepository.findByUiEMailAddress(username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+		AppUser user = new AppUser();
+		UiUserBase uiUserBase = optional.get();
+
+		user.setUserEmail(uiUserBase.getUiEMailAddress());
+		user.setUserId(uiUserBase.getUiUserId());
+		user.setUserSystemId(uiUserBase.getUiSystemId());
+		Role role = new Role();
+		
+		
+		role.setId((uiUserBase.getSeUsrGrp().getFadsSurGrp().getId()).toString());
+		role.setRoleName(uiUserBase.getSeUsrGrp().getFadsSurGrp().getSurGrpName());
+		List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getFadsSurGrp().getSeSurGrpModAccesses();
+		
+		
+
+		List<AccessLevel> accesses = new ArrayList<AccessLevel>();
+		surAccesses.forEach(surModuleAccess -> {
+			accesses.add(new AccessLevel(surModuleAccess.getId().getSurModuleId(),
+					ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+					surModuleAccess.getSeSurModule().getSurModuleName(),
+					surModuleAccess.getSeSurAccess().getSurAccessId()));
+
+		});
+
+		role.setAllowedAccesses(accesses);
+		user.setRole(role);
+		return user;
+
+	}
+
+	
+
+}
