@@ -46,3 +46,73 @@ Caused by: org.springframework.util.PlaceholderResolutionException: Could not re
 [ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.4.11:run (default-cli) on project fads-user-roles-api: Process terminated with exit code: 1 -> [Help 1]
 [ERROR]
 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e
+
+
+
+server:
+  port: 8080
+  servlet:
+    context-path: /userroles   # Main app context
+
+spring:
+  application:
+    name: fads-userroles-api
+
+  datasource:
+    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
+    username: sqladmin@sql-pi-dev-cus-001
+    password: wjGbF#'P9Hrt=}[BnAZ8aT
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+  security:
+      oauth2:
+        resourceserver:
+          jwt:
+            jwk-set-uri: ${JWKS_URL}
+            jws-algorithms: ${JWS_ALG:RS256}	  
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        globally_quoted_identifiers: true
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"   
+  endpoint:
+    health:
+      show-details: always   
+  metrics:
+    export:
+      prometheus:
+        enabled: true  
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: build
+
+logging:
+  level:
+    root: INFO
+
+
