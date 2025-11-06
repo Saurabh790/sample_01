@@ -1,32 +1,1176 @@
-  master
-PS C:\Users\sgupt664\FADS_DE302564\fads-authorization-api> mvn clean install -Dmaven.test.skip=true
-[INFO] Scanning for projects...
-[WARNING]
-[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 252, column 34
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 258, column 21
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: net.minidev:json-smart:jar -> version 2.4.10 vs 2.5.2 @ line 302, column 15
-[WARNING]
-[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
-[WARNING]
-[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
-[WARNING]
-[INFO]
-[INFO] ---------------< com.optum.fads:fads-authorization-api >----------------
-[INFO] Building fads-authorization-api 1.0.0
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  0.934 s
-[INFO] Finished at: 2025-11-06T12:03:18+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Unknown lifecycle phase ".test.skip=true". You must specify a valid lifecycle phase or a goal in the format <plugin-prefix>:<goal> or <plugin-group-id>:<plugin-artifact-id>[:<plugin-version>]:<goal>. Available lifecycle phases are: pre-clean, clean, post-clean, validate, initialize, generate-sources, process-sources, generate-resources, process-resources, compile, process-classes, generate-test-sources, process-test-sources, generate-test-resources, process-test-resources, test-compile, process-test-classes, test, prepare-package, package, pre-integration-test, integration-test, post-integration-test, verify, install, deploy, pre-site, site, post-site, site-deploy. -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/LifecyclePhaseNotFoundException
-PS C:\Users\sgupt664\FADS_DE302564\fads-authorization-api>
+package com.optum.fads.authorization.api.service.impl;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.authorization.api.domain.FadsModElemConfig;
+import com.optum.fads.authorization.api.domain.SeCaseGrp;
+import com.optum.fads.authorization.api.domain.SeCaseGrpModAccess;
+import com.optum.fads.authorization.api.domain.SeCaseGrpNodeAccess;
+import com.optum.fads.authorization.api.domain.SeFadsGrp;
+import com.optum.fads.authorization.api.domain.SeFadsGrpCompAccess;
+import com.optum.fads.authorization.api.domain.SeFadsGrpModAccess;
+import com.optum.fads.authorization.api.domain.SeSurGrp;
+import com.optum.fads.authorization.api.domain.SeSurGrpModAccess;
+import com.optum.fads.authorization.api.domain.UiUserBase;
+import com.optum.fads.authorization.api.dto.AccessLevel;
+import com.optum.fads.authorization.api.dto.AppUser;
+import com.optum.fads.authorization.api.dto.CaseModule;
+import com.optum.fads.authorization.api.dto.CaseNode;
+import com.optum.fads.authorization.api.dto.CaseRole;
+import com.optum.fads.authorization.api.dto.CaseTypeModule;
+import com.optum.fads.authorization.api.dto.FadsComponent;
+import com.optum.fads.authorization.api.dto.FadsModule;
+import com.optum.fads.authorization.api.dto.FadsModuleElement;
+import com.optum.fads.authorization.api.dto.FadsRole;
+import com.optum.fads.authorization.api.dto.ModuleAccess;
+import com.optum.fads.authorization.api.dto.Role;
+import com.optum.fads.authorization.api.dto.SurAccessLevel;
+import com.optum.fads.authorization.api.dto.PgpRole;
+import com.optum.fads.authorization.api.repo.UserRepository;
+import com.optum.fads.authorization.api.service.FADSUserDetailsService;
+
+@Service
+public class FADSUserDetailsServiceImpl implements FADSUserDetailsService {
+
+	@Autowired
+	UserRepository userRepository;
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		Optional<UiUserBase> optional = userRepository.findByUiUserId(username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+		AppUser user = new AppUser();
+		UiUserBase uiUserBase = optional.get();
+
+		user.setUserEmail(uiUserBase.getUiEMailAddress());
+		user.setUserId(uiUserBase.getUiUserId());
+		user.setUserSystemId(uiUserBase.getUiSystemId());
+		user.setSystemId(uiUserBase.getUiSystemId());
+		user.setFirstName(uiUserBase.getUiFirstName());
+		user.setLastName(uiUserBase.getUiLastName());
+		Role role = new Role();
+		role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
+		role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
+		Set<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
+
+		List<AccessLevel> accesses = new ArrayList<AccessLevel>();
+		surAccesses.forEach(surModuleAccess -> {
+			accesses.add(new AccessLevel(surModuleAccess.getId().getSurModuleId(),
+					ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+					surModuleAccess.getSeSurModule().getSurModuleName(),
+					surModuleAccess.getSeSurAccess().getSurAccessId()));
+
+		});
+
+		role.setAllowedAccesses(accesses);
+		user.setRole(role);
+		
+
+
+        //FADS
+        SeFadsGrp seFadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
+        if (seFadsGrp != null) {
+            FadsRole fadsRole = new FadsRole();
+            fadsRole.setGroupId(seFadsGrp.getFadsGrpId());
+            fadsRole.setGroupName(seFadsGrp.getFadsGrpName());
+            Set<SeFadsGrpCompAccess> fadsGrpCompnts = seFadsGrp.getSeFadsGrpCompAccesses();
+            for (SeFadsGrpCompAccess seFadsGrpCompnt : fadsGrpCompnts) {
+                if (!seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId().equals("H")) {
+                    FadsComponent fadsComponent = new FadsComponent();
+                    fadsComponent.setComponentId(seFadsGrpCompnt.getId().getFadsCompId());
+                    fadsComponent.setComponentCd(seFadsGrpCompnt.getSeFadsComponent().getComponentCd());
+                    fadsComponent.setComponentName(seFadsGrpCompnt.getSeFadsComponent().getComponentName());
+					   fadsComponent.setComponentSeq(seFadsGrpCompnt.getSeFadsComponent().getComponentSeq());
+                    fadsComponent.setComponentAccess(seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId());
+
+                    Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
+                    List<SeFadsGrpModAccess> fadsFilterGrpMods = fadsGrpMods.stream().filter(
+                            p -> seFadsGrpCompnt.getId().getFadsCompId().equals(p.getSeFadsComponent().getComponentId()))
+                            .collect(Collectors.toList());
+                    for (SeFadsGrpModAccess fadsGrop : fadsFilterGrpMods) {
+                        if (!fadsGrop.getSeFadsAccess().getFadsAccessId().equals("H")) {
+                            FadsModule fadsModule = new FadsModule();
+                            fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
+                            fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
+                            fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
+							   fadsModule.setModuleSeq(fadsGrop.getSeFadsModule().getModuleSeq());
+                            fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
+
+                            List<FadsModElemConfig> elements = fadsGrop.getSeFadsModule().getFadsModElemConfigs().stream().filter(
+                                    ele -> ele.getSeFadsModule().getFadsModuleId().equals(fadsGrop.getId().getFadsModuleId()))
+                                    .collect(Collectors.toList());
+                            for (FadsModElemConfig fadsModConfig : elements) {
+                                boolean existElem = fadsModConfig.getSeFadsGrpElemNoAccesses().stream().anyMatch(
+										   s -> (s.getSeFadsGrp().getFadsGrpId().equals(seFadsGrp.getFadsGrpId())));
+								   		   //no need, get by it already: && (s.getId().getElementId().equals(modElement.getElementId()))
+								   if (!existElem) {
+									   FadsModuleElement modElement = new FadsModuleElement();
+									   modElement.setElementId(fadsModConfig.getElementId());
+									   modElement.setElementCd(fadsModConfig.getElementCd());
+									   modElement.setElementName(fadsModConfig.getElementName());
+									   modElement.setElementSeq(fadsModConfig.getElementSeq());
+									   fadsModule.getElements().add(modElement);
+                                }
+                            }
+                            Collections.sort((ArrayList<FadsModuleElement>) fadsModule.getElements(), (o1, o2) -> o1.getElementSeq() - o2.getElementSeq());
+                            fadsComponent.getModules().add(fadsModule);
+
+                            //TODO Delete after
+                            //fadsRole.getModulePermissions().add(fadsModule);
+                        }
+                    }
+                    Collections.sort((ArrayList<FadsModule>) fadsComponent.getModules(), (o1, o2) -> o1.getModuleSeq() - o2.getModuleSeq());
+                    fadsRole.getComponentPermissions().add(fadsComponent);
+                }
+            }
+            Collections.sort((ArrayList<FadsComponent>) fadsRole.getComponentPermissions(), (o1, o2) -> o1.getComponentSeq() - o2.getComponentSeq());
+
+
+/*
+            Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
+            for (SeFadsGrpModAccess fadsGrop : fadsGrpMods) {
+                FadsModule fadsModule = new FadsModule();
+                fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
+                fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
+                fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
+                fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
+                List<FadsModuleElement> moduleElements = new ArrayList<FadsModuleElement>();
+                if (fadsGrop.getSeFadsModule() != null && fadsGrop.getSeFadsAccess().getFadsAccessId() != null) {
+                    Set<FadsModElemConfig> fadsModElements = fadsGrop.getSeFadsModule().getFadsModElemConfigs();
+                    for (FadsModElemConfig fadsModConfig : fadsModElements) {
+                        FadsModuleElement modElement = new FadsModuleElement();
+                        modElement.setElementId(fadsModConfig.getElementId());
+                        modElement.setElementCd(fadsModConfig.getElementCd());
+                        modElement.setElementName(fadsModConfig.getElementName());
+*/
+             /*
+						 for(SeFadsGroupElemAccess fadsModElemAccess:fadsModConfig..getSeFadsModElemAccesses()) {
+							 if(fadsModElemAccess.getId().getFadsGrpId()==seFadsGrp.getFadsGrpId()) {
+								 modElement.setElementAccess(fadsModElemAccess.getSeFadsAccess().getFadsAccessId());
+							 }
+							 
+						 }*/
+/*
+                        moduleElements.add(modElement);
+                    }
+                }
+                fadsModule.setElements(moduleElements);
+                fadsRole.getModulePermissions().add(fadsModule);
+            }
+*/
+
+            role.setFadsRole(fadsRole);
+        }
+
+	   //SUR
+	   SeSurGrp seSurGrp= uiUserBase.getSeUsrGrp().getSeSurGrp();
+
+		   if(seSurGrp!=null){
+			   PgpRole pgpRole =   new PgpRole();
+			   pgpRole.setGroupId(seSurGrp.getSurGrpId());
+			   pgpRole.setRoleName(seSurGrp.getSurGrpName());
+			   Set<SeSurGrpModAccess> surGrops=  seSurGrp.getSeSurGrpModAccesses();
+
+			  for(SeSurGrpModAccess surGrop:surGrops){
+				  SurAccessLevel surAccessLevelDto = new SurAccessLevel(surGrop.getId().getSurModuleId(),
+						  ModuleAccess.getByName(surGrop.getId().getSurModuleId()).toString(),
+						  surGrop.getSeSurModule().getSurModuleName(),
+						  surGrop.getSeSurAccess().getSurAccessId());
+				//  surAccessLevelDto.setModuleId(surGrop.getId().getSurModuleId().toString());
+				//  surAccessLevelDto.setAccess(surGrop.getSeSurAccess().getSurAccessId());
+				  pgpRole.getPgpAccesses().add(surAccessLevelDto);
+			  }
+			  role.setPgpRole(pgpRole);
+	         }
+
+		  //CaseTracking
+		  SeCaseGrp seCaseGrp= uiUserBase.getSeUsrGrp().getSeCaseGrp();
+		  if(seCaseGrp!=null){
+			  CaseRole caseRole=new CaseRole();
+			  caseRole.setGroupId(seCaseGrp.getCaseGrpId());
+			  caseRole.setGroupName(seCaseGrp.getCaseGrpName());
+			  Set<SeCaseGrpModAccess>seCaseGrpModAccesses= seCaseGrp.getSeCaseGrpModAccesses();
+			  List<CaseTypeModule> caseTypeModules= new ArrayList<CaseTypeModule>();
+			  Map<String,String> caseTypes = new HashMap<>();
+			  Map<String,List<CaseModule>> modulePermissions = new HashMap<>();
+			  for(SeCaseGrpModAccess caseGrop:seCaseGrpModAccesses){
+				  CaseModule caseModule = new  CaseModule();
+				  CaseTypeModule caseTypeModule = new CaseTypeModule();
+				  caseModule.setModuleId(caseGrop.getSeCaseModule().getCaseModuleId());
+				  caseModule.setModuleCd(caseGrop.getSeCaseModule().getCaseModuleCd());
+				  caseModule.setModuleName(caseGrop.getSeCaseModule().getCaseModuleName());
+				  caseModule.setModuleAccess(caseGrop.getSeCaseAccess().getAccessId());
+				  if(!modulePermissions.containsKey(caseGrop.getCaLuCaseTypeT().getTypeCd())){
+					  modulePermissions.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
+		            }
+				  modulePermissions.get(caseGrop.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
+				  caseTypes.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), caseGrop.getCaLuCaseTypeT().getTypeDesc());
+
+			  }
+			  for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
+				   //System.out.println(entry.getKey() + " = " + entry.getValue());
+				  CaseTypeModule caseTypeModule=new CaseTypeModule();
+				  caseTypeModule.setCaseTypeId(entry.getKey());
+				  caseTypeModule.setCaseTypeName(entry.getValue());
+				  caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
+				  caseTypeModules.add(caseTypeModule);
+
+				}
+			  caseRole.setCaseTypeModules(caseTypeModules);
+
+			   Set<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses=  seCaseGrp.getSeCaseGrpNodeAccesses();
+			   Collection<CaseNode> nodePermissions= new ArrayList<CaseNode>();
+			  for(SeCaseGrpNodeAccess seCaseGrpNode:seCaseGrpNodeAccesses){
+					  CaseNode caseNodeDto = new CaseNode();
+					  caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
+					  caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
+					  caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
+					  caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
+					  nodePermissions.add(caseNodeDto);
+
+
+			  }
+			  caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
+
+			  role.setCaseRole(caseRole);
+	   }
+
+
+		//userDto.setNodes(nodes);
+	 user.setRole(role);
+		return user;
+
+	}
+
+	
+
+}
+
+
+
+this is one of the module where I am getting attached snap type response similar I want to build in my application currently its giving second snap shot type of rrresponse so basically I want fads role to be added in simialr fashion
+
+
+
+package com.optum.fads.authorization.api.entity;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+
+/**
+ * CaLuCaseTypeT entity.  @author Shyam Biry
+ */
+@EqualsAndHashCode
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_LU_CASE_TYPE_T")
+public class CaLuCaseTypeT {
+	@Id
+	@Column(name = "TYPE_CD", unique = true, nullable = false, length = 3)
+	private String typeCd;
+	
+	@Column(name = "TYPE_DESC", length = 50)
+	private String typeDesc;
+	@Column(name = "TYPE_VIEW", length = 1)
+	private String typeView;
+	@Column(name = "TYPE_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer typeSeq;
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "caLuCaseTypeT")
+	private Set<SeCaseGrpModAccess> seCaseGrpModAccesses = new HashSet<SeCaseGrpModAccess>(0);
+
+
+}
+
+
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+
+/**
+ * The persistent class for the SE_ACCESS_LEVELS database table.
+ * 
+ */
+@Entity
+@Table(name="SE_ACCESS_LEVELS")
+@Data
+@EqualsAndHashCode
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+public class SeAccessLevel implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="ACCESS_ID", unique=true, nullable=false, length=2)
+	private String accessId;
+
+	@Column(name="ACCESS_NAME", nullable=false, length=30)
+	private String accessName;
+
+
+}
+
+
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
+
+
+/**
+ * The persistent class for the SE_CASE_ACCESS database table.
+ * 
+ */
+@Entity
+@Table(name="SE_CASE_ACCESS")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeCaseAccess implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="ACCESS_ID")
+	private String accessId;
+
+	@Column(name="ACCESS_NAME")
+	private String accessName;
+
+	//bi-directional many-to-one association to SeCaseGrpModAccess
+	@OneToMany(mappedBy="seCaseAccess")
+	private List<SeCaseGrpModAccess> seCaseGrpModAccesses;
+
+	//bi-directional many-to-one association to SeCaseGrpNodeAccess
+	@OneToMany(mappedBy="seCaseAccess")
+	private List<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses;
+
+	
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
+
+
+/**
+ * The persistent class for the SE_CASE_GRP database table.
+ * 
+ */
+@Entity
+@Table(name="SE_CASE_GRP")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeCaseGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="CASE_GRP_ID")
+	private long caseGrpId;
+
+	@Column(name="CASE_GRP_NAME")
+	private String caseGrpName;
+
+	//bi-directional many-to-one association to SeCaseGrpModAccess
+	@OneToMany(mappedBy="seCaseGrp")
+	private List<SeCaseGrpModAccess> seCaseGrpModAccesses;
+
+	//bi-directional many-to-one association to SeCaseGrpNodeAccess
+	@OneToMany(mappedBy="seCaseGrp")
+	private List<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses;
+
+	//bi-directional many-to-one association to SeUsrGrp
+	@OneToMany(mappedBy="seCaseGrp")
+	private List<SeUsrGrp> seUsrGrps;
+
+	
+}
+
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+
+/**
+ * The persistent class for the SE_CASE_GRP_MOD_ACCESS database table.
+ * 
+ */
+@Entity
+@Table(name="SE_CASE_GRP_MOD_ACCESS")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+
+public class SeCaseGrpModAccess implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private SeCaseGrpModAccessPK id;
+
+	//bi-directional many-to-one association to SeCaseAccess
+	@ManyToOne
+	@JoinColumn(name="CASE_ACCESS_TYPE")
+	private SeCaseAccess seCaseAccess;
+
+	//bi-directional many-to-one association to SeCaseGrp
+	@ManyToOne
+	@JoinColumn(name="CASE_GRP_ID", insertable = false,  updatable = false )
+	private SeCaseGrp seCaseGrp;
+
+	//bi-directional many-to-one association to SeCaseModule
+	@ManyToOne
+	@JoinColumn(name="CASE_MODULE_ID", insertable = false,  updatable = false )
+	private SeCaseModule seCaseModule;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_TYPE", nullable = false, insertable = false, updatable = false)
+	private CaLuCaseTypeT caLuCaseTypeT;
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The primary key class for the SE_CASE_GRP_MOD_ACCESS database table.
+ * 
+ */
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+@Embeddable
+public class SeCaseGrpModAccessPK implements Serializable {
+	//default serial version id, required for serializable classes.
+	private static final long serialVersionUID = 1L;
+
+	@Column(name="CASE_GRP_ID", insertable=false, updatable=false)
+	private long caseGrpId;
+
+	@Column(name="CASE_TYPE", insertable=false, updatable=false)
+	private String caseType;
+
+	@Column(name="CASE_MODULE_ID", insertable=false, updatable=false)
+	private long caseModuleId;
+
+	
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The primary key class for the SE_CASE_GRP_NODE_ACCESS database table.
+ * 
+ */
+@Embeddable
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeCaseGrpNodeAccessPK implements Serializable {
+	//default serial version id, required for serializable classes.
+	private static final long serialVersionUID = 1L;
+
+	@Column(name="CASE_GRP_ID", insertable=false, updatable=false)
+	private long caseGrpId;
+
+	@Column(name="CASE_NODE_ID", insertable=false, updatable=false)
+	private String caseNodeId;
+
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The primary key class for the SE_CASE_GRP_NODE_ACCESS database table.
+ * 
+ */
+@Embeddable
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeCaseGrpNodeAccessPK implements Serializable {
+	//default serial version id, required for serializable classes.
+	private static final long serialVersionUID = 1L;
+
+	@Column(name="CASE_GRP_ID", insertable=false, updatable=false)
+	private long caseGrpId;
+
+	@Column(name="CASE_NODE_ID", insertable=false, updatable=false)
+	private String caseNodeId;
+
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
+
+
+/**
+ * The persistent class for the SE_CASE_MODULE database table.
+ * 
+ */
+@Entity
+@Table(name="SE_CASE_MODULE")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeCaseModule implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="CASE_MODULE_ID")
+	private long caseModuleId;
+
+	@Column(name="CASE_MODULE_CD")
+	private String caseModuleCd;
+
+	@Column(name="CASE_MODULE_NAME")
+	private String caseModuleName;
+
+	//bi-directional many-to-one association to SeCaseGrpModAccess
+	@OneToMany(mappedBy="seCaseModule")
+	private List<SeCaseGrpModAccess> seCaseGrpModAccesses;
+
+	
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
+
+
+/**
+ * The persistent class for the SE_SUR_ACCESS database table.
+ * 
+ */
+@Entity
+@Table(name="SE_SUR_ACCESS")
+@Data
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeSurAccess implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_ACCESS_ID")
+	private String surAccessId;
+
+	@Column(name="SUR_ACCESS_NAME")
+	private String surAccessName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurAccess")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
+
+
+/**
+ * The persistent class for the SE_SUR_GRP database table.
+ * 
+ */
+@Entity
+@Table(name="SE_SUR_GRP")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeSurGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_GRP_ID")
+	private long surGrpId;
+
+	@Column(name="SUR_GRP_NAME")
+	private String surGrpName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	//bi-directional many-to-one association to SeUsrGrp
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeUsrGrp> seUsrGrps;
+
+	
+
+}
+
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+
+/**
+ * The persistent class for the SE_SUR_GRP_MOD_ACCESS database table.
+ * 
+ */
+@Entity
+@Table(name="SE_SUR_GRP_MOD_ACCESS")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeSurGrpModAccess implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private SeSurGrpModAccessPK id;
+
+	//bi-directional many-to-one association to SeSurAccess
+	@ManyToOne
+	@JoinColumn(name="SUR_GRP_MOD_ACCESS")
+	private SeSurAccess seSurAccess;
+
+	//bi-directional many-to-one association to SeSurGrp
+	@ManyToOne
+	@JoinColumn(name="SUR_GRP_ID", insertable = false,  updatable = false )
+	private SeSurGrp seSurGrp;
+
+	//bi-directional many-to-one association to SeSurModule
+	@ManyToOne
+	@JoinColumn(name="SUR_MODULE_ID", insertable = false,  updatable = false )
+	private SeSurModule seSurModule;
+
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The primary key class for the SE_SUR_GRP_MOD_ACCESS database table.
+ * 
+ */
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+@Embeddable
+public class SeSurGrpModAccessPK implements Serializable {
+	//default serial version id, required for serializable classes.
+	private static final long serialVersionUID = 1L;
+
+	@Column(name="SUR_GRP_ID", insertable=false, updatable=false)
+	private long surGrpId;
+
+	@Column(name="SUR_MODULE_ID", insertable=false, updatable=false)
+	private String surModuleId;
+
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.List;
+
+
+/**
+ * The persistent class for the SE_SUR_MODULE database table.
+ * 
+ */
+@Entity
+@Table(name="SE_SUR_MODULE")
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+public class SeSurModule implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_MODULE_ID")
+	private String surModuleId;
+
+	@Column(name="SUR_MODULE_NAME")
+	private String surModuleName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurModule")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	
+
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the SE_USR_GRP database table.
+ * 
+ */
+@Entity
+@Table(name="SE_USR_GRP")
+@Data 
+public class SeUsrGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="UI_SYSTEM_ID", unique=true, nullable=false, length=25)
+	private String uiSystemId;
+
+	@ManyToOne
+	@JoinColumn(name="FADS_CASE_GRP_ID", insertable = false,  updatable = false )
+	private SeCaseGrp seCaseGrp;
+
+
+	@ManyToOne
+	@JoinColumn(name="FADS_SUR_GRP_ID")
+	private SeSurGrp seSurGrp;
+	
+	@OneToOne
+	@JoinColumn(name="UI_SYSTEM_ID", nullable=false, insertable=false, updatable=false)
+	private UiUserBase uiUserBase;
+
+
+	
+
+
+
+	
+}
+package com.optum.fads.authorization.api.entity;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the UI_USER_BASE database table.
+ * 
+ */
+@Entity
+@Table(name="UI_USER_BASE")
+@Data  
+public class UiUserBase implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="UI_SYSTEM_ID", unique=true, nullable=false, length=25)
+	private String uiSystemId;
+
+	@Column(name="UI_CREATED_BY", length=25)
+	private String uiCreatedBy;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name="UI_CREATED_DT")
+	private Date uiCreatedDt;
+
+	@Column(name="UI_E_MAIL_ADDRESS", nullable=false, length=50)
+	private String uiEMailAddress;
+
+	@Column(name="UI_FIRST_NAME", length=20)
+	private String uiFirstName;
+
+	@Column(name="UI_LAST_NAME", length=40)
+	private String uiLastName;
+
+	@Column(name="UI_PHONE", length=15)
+	private String uiPhone;
+
+	@Column(name="UI_TERMINATED_BY", length=25)
+	private String uiTerminatedBy;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name="UI_TERMINATED_DT")
+	private Date uiTerminatedDt;
+
+	@Column(name="UI_TITLE", length=15)
+	private String uiTitle;
+
+	@Column(name="UI_USER_ID", nullable=false, length=25)
+	private String uiUserId;
+
+	@Column(name="UI_USER_INACTIVE", length=1)
+	private String uiUserInactive;
+
+	@OneToOne(mappedBy="uiUserBase")
+	private SeUsrGrp seUsrGrp;
+
+}
+
+
+/**
+ * 
+ */
+package com.optum.fads.authorization.api.mapper;
+
+import com.optum.fads.authorization.api.dto.FADSUser;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Mappings;
+import org.mapstruct.ReportingPolicy;
+
+import com.optum.fads.authorization.api.entity.UiUserBase;
+
+/**
+ * @author sbiry
+ *
+ */
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface UserDetailMapper {
+
+	@Mappings({ 
+		@Mapping(source = "uiSystemId", target = "userSystemId"), 
+		@Mapping(source = "uiEMailAddress", target = "userEmail"),
+		@Mapping(source = "uiUserId", target = "userId"), 
+		@Mapping(source = "uiFirstName", target = "firstName"),
+		@Mapping(source = "uiLastName", target = "lastName")
+		})
+	public FADSUser toAppUser(UiUserBase uiUserBase);
+
+
+}
+package com.optum.fads.authorization.api.service.impl;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.authorization.api.dto.FADSUser;
+import com.optum.fads.authorization.api.dto.CaseModule;
+import com.optum.fads.authorization.api.dto.CaseNode;
+import com.optum.fads.authorization.api.dto.CaseRole;
+import com.optum.fads.authorization.api.dto.CaseTypeModule;
+import com.optum.fads.authorization.api.dto.ModuleAccess;
+import com.optum.fads.authorization.api.dto.PgpRole;
+import com.optum.fads.authorization.api.dto.SurAccessLevel;
+import com.optum.fads.authorization.api.entity.SeCaseGrp;
+import com.optum.fads.authorization.api.entity.SeCaseGrpModAccess;
+import com.optum.fads.authorization.api.entity.SeCaseGrpNodeAccess;
+import com.optum.fads.authorization.api.entity.SeSurGrpModAccess;
+import com.optum.fads.authorization.api.entity.UiUserBase;
+import com.optum.fads.authorization.api.mapper.UserDetailMapper;
+import com.optum.fads.authorization.api.repo.UserRepository;
+import com.optum.fads.authorization.api.service.IUserDetailsService;
+
+@Service
+public class UserDetailsService implements IUserDetailsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserDetailsService.class);
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private UserDetailMapper userDetailMapper;
+
+
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        logger.info("Attempting to load user by username: {}", username);
+		Optional<UiUserBase> optional = userRepository.findByUiEMailAddress(username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+		//
+		UiUserBase uiUserBase = optional.get();
+		FADSUser user = userDetailMapper.toAppUser(uiUserBase);
+
+		if (uiUserBase.getSeUsrGrp().getSeSurGrp() != null) {
+
+			List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
+			List<SurAccessLevel> accesses = new ArrayList<SurAccessLevel>();
+			surAccesses.forEach(surModuleAccess -> {
+
+				accesses.add(new SurAccessLevel(surModuleAccess.getId().getSurModuleId(),
+						ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+						surModuleAccess.getSeSurModule().getSurModuleName(),
+						surModuleAccess.getSeSurAccess().getSurAccessId()));
+
+			});
+			user.getRole().setPgpRole(PgpRole.builder().groupId(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId())
+					.roleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName()).pgpAccesses(accesses).build());
+		}
+		SeCaseGrp seCaseGrp = uiUserBase.getSeUsrGrp().getSeCaseGrp();
+		if (seCaseGrp != null) {
+			CaseRole caseRole = new CaseRole();
+			caseRole.setGroupId(seCaseGrp.getCaseGrpId());
+			caseRole.setRoleName(seCaseGrp.getCaseGrpName());
+			List<SeCaseGrpModAccess> seCaseGrpModAccesses = seCaseGrp.getSeCaseGrpModAccesses();
+			List<CaseTypeModule> caseTypeModules = new ArrayList<CaseTypeModule>();
+			Map<String, String> caseTypes = new HashMap<>();
+			Map<String, List<CaseModule>> modulePermissions = new HashMap<>();
+			for (SeCaseGrpModAccess caseGrp : seCaseGrpModAccesses) {
+				CaseModule caseModule = new CaseModule();
+				caseModule.setModuleId(caseGrp.getSeCaseModule().getCaseModuleId());
+				caseModule.setModuleCd(caseGrp.getSeCaseModule().getCaseModuleCd());
+				caseModule.setModuleName(caseGrp.getSeCaseModule().getCaseModuleName());
+				caseModule.setModuleAccess(caseGrp.getSeCaseAccess().getAccessId());
+				if (!modulePermissions.containsKey(caseGrp.getCaLuCaseTypeT().getTypeCd())) {
+					modulePermissions.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
+				}
+				modulePermissions.get(caseGrp.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
+				caseTypes.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), caseGrp.getCaLuCaseTypeT().getTypeDesc());
+
+			}
+			for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
+				CaseTypeModule caseTypeModule = new CaseTypeModule();
+				caseTypeModule.setCaseTypeId(entry.getKey());
+				caseTypeModule.setCaseTypeName(entry.getValue());
+				caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
+				caseTypeModules.add(caseTypeModule);
+
+			}
+			caseRole.setCaseTypeModules(caseTypeModules);
+
+			List<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses = seCaseGrp.getSeCaseGrpNodeAccesses();
+			Collection<CaseNode> nodePermissions = new ArrayList<CaseNode>();
+			for (SeCaseGrpNodeAccess seCaseGrpNode : seCaseGrpNodeAccesses) {
+				CaseNode caseNodeDto = new CaseNode();
+				caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
+				caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
+				caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
+				caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
+				nodePermissions.add(caseNodeDto);
+
+			}
+			caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
+			user.getRole().setCaseRole(caseRole);
+		}
+
+		return user;
+
+	}
+
+}
