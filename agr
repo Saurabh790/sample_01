@@ -1,90 +1,17 @@
-package com.optum.fads.authorization.api.entity;
+SELECT SUR_MODULE_ID, COUNT(*) 
+FROM SE_SUR_MODULE 
+GROUP BY SUR_MODULE_ID 
+HAVING COUNT(*) > 1;
 
-import jakarta.persistence.AttributeOverride;
-import jakarta.persistence.AttributeOverrides;
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.MappedSuperclass;
+-- duplicates in access:
+SELECT SUR_ACCESS_ID, COUNT(*) 
+FROM SE_SUR_ACCESS 
+GROUP BY SUR_ACCESS_ID 
+HAVING COUNT(*) > 1;
 
-/**
- * Base mapping for SE_SUR_GRP_MOD_ACCESS
- */
-@MappedSuperclass
-public abstract class AbstractSeSurGrpModAccess implements java.io.Serializable {
-
-    private SeSurGrpModAccessId id;
-    private SeSurAccess seSurAccess;   // via SUR_GRP_MOD_ACCESS -> SE_SUR_ACCESS.SUR_ACCESS_ID
-    private SeSurGrp seSurGrp;         // via SUR_GRP_ID
-    private SeSurModule seSurModule;   // via SUR_MODULE_ID
-
-    public AbstractSeSurGrpModAccess() {}
-
-    public AbstractSeSurGrpModAccess(SeSurGrpModAccessId id, SeSurGrp seSurGrp, SeSurModule seSurModule) {
-        this.id = id;
-        this.seSurGrp = seSurGrp;
-        this.seSurModule = seSurModule;
-    }
-
-    public AbstractSeSurGrpModAccess(SeSurGrpModAccessId id, SeSurAccess seSurAccess,
-                                     SeSurGrp seSurGrp, SeSurModule seSurModule) {
-        this.id = id;
-        this.seSurAccess = seSurAccess;
-        this.seSurGrp = seSurGrp;
-        this.seSurModule = seSurModule;
-    }
-
-    @EmbeddedId
-    @AttributeOverrides({
-        @AttributeOverride(name = "surGrpId",    column = @Column(name = "SUR_GRP_ID",    nullable = false)),
-        @AttributeOverride(name = "surModuleId", column = @Column(name = "SUR_MODULE_ID", nullable = false))
-    })
-    public SeSurGrpModAccessId getId() { return id; }
-    public void setId(SeSurGrpModAccessId id) { this.id = id; }
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-        name = "SUR_GRP_MOD_ACCESS",           // column present in your table
-        referencedColumnName = "SUR_ACCESS_ID",// PK column of SE_SUR_ACCESS
-        nullable = true
-    )
-    public SeSurAccess getSeSurAccess() { return seSurAccess; }
-    public void setSeSurAccess(SeSurAccess seSurAccess) { this.seSurAccess = seSurAccess; }
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "SUR_GRP_ID", nullable = false, insertable = false, updatable = false)
-    public SeSurGrp getSeSurGrp() { return seSurGrp; }
-    public void setSeSurGrp(SeSurGrp seSurGrp) { this.seSurGrp = seSurGrp; }
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "SUR_MODULE_ID", nullable = false, insertable = false, updatable = false)
-    public SeSurModule getSeSurModule() { return seSurModule; }
-    public void setSeSurModule(SeSurModule seSurModule) { this.seSurModule = seSurModule; }
-}
-java
-Copy code
-package com.optum.fads.authorization.api.entity;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-
-/**
- * Concrete entity for SE_SUR_GRP_MOD_ACCESS
- */
-@Entity
-@Table(name = "SE_SUR_GRP_MOD_ACCESS")
-public class SeSurGrpModAccess extends AbstractSeSurGrpModAccess implements java.io.Serializable {
-
-    public SeSurGrpModAccess() {}
-
-    public SeSurGrpModAccess(SeSurGrpModAccessId id, SeSurGrp seSurGrp, SeSurModule seSurModule) {
-        super(id, seSurGrp, seSurModule);
-    }
-
-    public SeSurGrpModAccess(SeSurGrpModAccessId id, SeSurAccess seSurAccess,
-                             SeSurGrp seSurGrp, SeSurModule seSurModule) {
-        super(id, seSurAccess, seSurGrp, seSurModule);
-    }
-}
+-- duplicates in the link for one group (replace :grp):
+SELECT SUR_GRP_ID, SUR_MODULE_ID, COUNT(*) 
+FROM SE_SUR_GRP_MOD_ACCESS
+WHERE SUR_GRP_ID = :grp
+GROUP BY SUR_GRP_ID, SUR_MODULE_ID
+HAVING COUNT(*) > 1;
