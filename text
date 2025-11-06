@@ -1,204 +1,152 @@
-package com.optum.fads.authorization.api.service.impl;
+package com.optum.fads.authorization.api.entity;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 
-import com.optum.fads.authorization.api.dto.*;
-import com.optum.fads.authorization.api.entity.*;
-import com.optum.fads.authorization.api.mapper.UserDetailMapper;
-import com.optum.fads.authorization.api.repo.UserRepository;
-import com.optum.fads.authorization.api.service.IUserDetailsService;
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_FADS_GRP")
+public class SeFadsGrp {
+    @Id
+    @Column(name = "FADS_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
 
-@Service
-public class UserDetailsService implements IUserDetailsService {
+    @Size(max = 40)
+    @Column(name = "FADS_GRP_NAME", length = 40)
+    private String fadsGrpName;
 
-    private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
+}
 
-    @Autowired private UserRepository userRepository;
-    @Autowired private UserDetailMapper userDetailMapper;
 
-    @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.info("Attempting to load user by username: {}", username);
 
-        UiUserBase uiUserBase = userRepository.findByUiEMailAddress(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+package com.optum.fads.authorization.api.entity;
 
-        FADSUser user = userDetailMapper.toAppUser(uiUserBase);
+import java.io.Serializable;
+import java.math.BigDecimal;
 
-        // --------- PGP / SUR ROLE ----------
-        SeSurGrp surGrp = uiUserBase.getSeUsrGrp() != null ? uiUserBase.getSeUsrGrp().getSeSurGrp() : null;
-        if (surGrp != null && surGrp.getSeSurGrpModAccesses() != null) {
-            List<SurAccessLevel> accesses = surGrp.getSeSurGrpModAccesses().stream()
-                    .map(sma -> new SurAccessLevel(
-                            sma.getId().getSurModuleId(),
-                            ModuleAccess.getByName(sma.getId().getSurModuleId()).toString(),
-                            safe(() -> sma.getSeSurModule().getSurModuleName()),
-                            safe(() -> sma.getSeSurAccess().getSurAccessId())
-                    ))
-                    .collect(Collectors.toList());
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 
-            user.getRole().setPgpRole(PgpRole.builder()
-                    .groupId(surGrp.getSurGrpId())
-                    .roleName(surGrp.getSurGrpName())
-                    .pgpAccesses(accesses)
-                    .build());
-        }
+import lombok.Data;
 
-        // --------- CASE ROLE ----------
-        SeCaseGrp caseGrp = uiUserBase.getSeUsrGrp() != null ? uiUserBase.getSeUsrGrp().getSeCaseGrp() : null;
-        if (caseGrp != null) {
-            CaseRole caseRole = new CaseRole();
-            caseRole.setGroupId(caseGrp.getCaseGrpId());
-            caseRole.setRoleName(caseGrp.getCaseGrpName());
 
-            // Modules by case type
-            Map<String, List<CaseModule>> byType = new LinkedHashMap<>();
-            Map<String, String> typeNames = new LinkedHashMap<>();
+/**
+ * The persistent class for the SE_USR_GRP database table.
+ * 
+ */
+@Entity
+@Table(name="SE_USR_GRP")
+@Data 
+public class SeUsrGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-            Set<SeCaseGrpModAccess> modAccesses = nz(caseGrp.getSeCaseGrpModAccesses());
-            for (SeCaseGrpModAccess ma : modAccesses) {
-                CaseModule m = new CaseModule();
-                m.setModuleId(safe(() -> ma.getSeCaseModule().getCaseModuleId()));
-                m.setModuleCd(safe(() -> ma.getSeCaseModule().getCaseModuleCd()));
-                m.setModuleName(safe(() -> ma.getSeCaseModule().getCaseModuleName()));
-                m.setModuleAccess(safe(() -> ma.getSeCaseAccess().getAccessId()));
+	@Id
+	@Column(name="UI_SYSTEM_ID", unique=true, nullable=false, length=25)
+	private String uiSystemId;
 
-                String typeCd = safe(() -> ma.getCaLuCaseTypeT().getTypeCd());
-                String typeDesc = safe(() -> ma.getCaLuCaseTypeT().getTypeDesc());
-                if (typeCd == null) continue;
+	@ManyToOne
+	@JoinColumn(name="FADS_CASE_GRP_ID", insertable = false,  updatable = false )
+	private SeCaseGrp seCaseGrp;
 
-                byType.computeIfAbsent(typeCd, k -> new ArrayList<>()).add(m);
-                typeNames.put(typeCd, typeDesc);
-            }
 
-            List<CaseTypeModule> caseTypeModules = new ArrayList<>();
-            typeNames.forEach((typeCd, typeName) -> {
-                CaseTypeModule ctm = new CaseTypeModule();
-                ctm.setCaseTypeId(typeCd);
-                ctm.setCaseTypeName(typeName);
-                ctm.setModulePermissions(byType.getOrDefault(typeCd, List.of()));
-                caseTypeModules.add(ctm);
-            });
-            caseRole.setCaseTypeModules(caseTypeModules);
+	@ManyToOne
+	@JoinColumn(name="FADS_SUR_GRP_ID")
+	private SeSurGrp seSurGrp;
+	
+	@OneToOne
+	@JoinColumn(name="UI_SYSTEM_ID", nullable=false, insertable=false, updatable=false)
+	private UiUserBase uiUserBase;
 
-            // Node permissions
-            Set<SeCaseGrpNodeAccess> nodeAccesses = nz(caseGrp.getSeCaseGrpNodeAccesses());
-            Collection<CaseNode> nodePermissions = new ArrayList<>();
-            for (SeCaseGrpNodeAccess na : nodeAccesses) {
-                CaseNode node = new CaseNode();
-                node.setNodeId(safe(() -> na.getId().getCaseNodeId()));
-                node.setNodeAccess(safe(() -> na.getSeCaseAccess().getAccessId()));
-                node.setRestrictAccess(na.getAnyRestrictApply());
-                node.setDeleteAccess(na.getCanDeleteCases());
-                nodePermissions.add(node);
-            }
-            caseRole.setNodePermissions(new HashSet<>(nodePermissions));
 
-            user.getRole().setCaseRole(caseRole);
-        }
+	
 
-        // --------- FADS ROLE ----------
-        SeFadsGrp fadsGrp = uiUserBase.getSeUsrGrp() != null ? uiUserBase.getSeUsrGrp().getSeFadsGrp() : null;
-        if (fadsGrp != null) {
-            FadsRole fadsRole = new FadsRole();
-            fadsRole.setGroupId(fadsGrp.getFadsGrpId());
-            fadsRole.setGroupName(fadsGrp.getFadsGrpName());
 
-            // Component permissions (skip access = "H")
-            Set<SeFadsGrpCompAccess> compAccesses = nz(fadsGrp.getSeFadsGrpCompAccesses());
-            // Pre-index module accesses per component to avoid scanning each time
-            Map<String, List<SeFadsGrpModAccess>> modByComp =
-                    nz(fadsGrp.getSeFadsGrpModAccesses()).stream()
-                            .collect(Collectors.groupingBy(a -> safe(() -> a.getSeFadsComponent().getComponentId()),
-                                    LinkedHashMap::new, Collectors.toList()));
 
-            List<FadsComponent> components = new ArrayList<>();
-            for (SeFadsGrpCompAccess ca : compAccesses) {
-                String compAccess = safe(() -> ca.getSeFadsAccess().getFadsAccessId());
-                if ("H".equalsIgnoreCase(compAccess)) {
-                    continue; // hidden/no access
-                }
+	
+}
 
-                FadsComponent comp = new FadsComponent();
-                String compId = safe(() -> ca.getId().getFadsCompId());
-                comp.setComponentId(compId);
-                comp.setComponentCd(safe(() -> ca.getSeFadsComponent().getComponentCd()));
-                comp.setComponentName(safe(() -> ca.getSeFadsComponent().getComponentName()));
-                comp.setComponentSeq(nvlInt(safe(() -> ca.getSeFadsComponent().getComponentSeq()), 0));
-                comp.setComponentAccess(compAccess);
 
-                // Modules for this component (skip access = "H")
-                List<SeFadsGrpModAccess> mods = modByComp.getOrDefault(compId, List.of());
-                List<FadsModule> fadsModules = new ArrayList<>();
-                for (SeFadsGrpModAccess ma : mods) {
-                    String moduleAccess = safe(() -> ma.getSeFadsAccess().getFadsAccessId());
-                    if ("H".equalsIgnoreCase(moduleAccess)) continue;
+package com.optum.fads.authorization.api.entity;
 
-                    FadsModule fm = new FadsModule();
-                    fm.setModuleId(safe(() -> ma.getId().getFadsModuleId()));
-                    fm.setModuleCd(safe(() -> ma.getSeFadsModule().getFadsModuleCd()));
-                    fm.setModuleName(safe(() -> ma.getSeFadsModule().getFadsModuleName()));
-                    fm.setModuleSeq(nvlInt(safe(() -> ma.getSeFadsModule().getModuleSeq()), 0));
-                    fm.setModuleAccess(moduleAccess);
+import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
 
-                    // Elements: include those NOT listed in "no-access" for this group
-                    List<FadsModuleElement> elements = new ArrayList<>();
-                    List<FadsModElemConfig> elemConfigs =
-                            nz(safe(() -> ma.getSeFadsModule().getFadsModElemConfigs()));
-                    for (FadsModElemConfig cfg : elemConfigs) {
-                        boolean blocked = nz(cfg.getSeFadsGrpElemNoAccesses()).stream()
-                                .anyMatch(na -> safe(() -> na.getSeFadsGrp().getFadsGrpId())
-                                        .equals(fadsGrp.getFadsGrpId()));
-                        if (blocked) continue;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
-                        FadsModuleElement el = new FadsModuleElement();
-                        el.setElementId(cfg.getElementId());
-                        el.setElementCd(cfg.getElementCd());
-                        el.setElementName(cfg.getElementName());
-                        el.setElementSeq(nvlInt(cfg.getElementSeq(), 0));
-                        elements.add(el);
-                    }
-                    // sort elements by elementSeq
-                    elements.sort(Comparator.comparingInt(FadsModuleElement::getElementSeq));
-                    fm.setElements(elements);
+import lombok.Data;
 
-                    fadsModules.add(fm);
-                }
 
-                // sort modules by moduleSeq
-                fadsModules.sort(Comparator.comparingInt(FadsModule::getModuleSeq));
-                comp.setModules(fadsModules);
+/**
+ * The persistent class for the UI_USER_BASE database table.
+ * 
+ */
+@Entity
+@Table(name="UI_USER_BASE")
+@Data  
+public class UiUserBase implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-                components.add(comp);
-            }
+	@Id
+	@Column(name="UI_SYSTEM_ID", unique=true, nullable=false, length=25)
+	private String uiSystemId;
 
-            // sort components by componentSeq
-            components.sort(Comparator.comparingInt(FadsComponent::getComponentSeq));
-            fadsRole.setComponentPermissions(components);
+	@Column(name="UI_CREATED_BY", length=25)
+	private String uiCreatedBy;
 
-            user.getRole().setFadsRole(fadsRole);
-        }
+	@Temporal(TemporalType.DATE)
+	@Column(name="UI_CREATED_DT")
+	private Date uiCreatedDt;
 
-        return user;
-    }
+	@Column(name="UI_E_MAIL_ADDRESS", nullable=false, length=50)
+	private String uiEMailAddress;
 
-    // --------- small helpers ---------
-    private static <T> T safe(SupplierX<T> s) {
-        try { return s.get(); } catch (Exception e) { return null; }
-    }
-    private static <T> Set<T> nz(Set<T> s) { return s != null ? s : Collections.emptySet(); }
-    private static int nvlInt(Integer v, int d) { return v != null ? v : d; }
+	@Column(name="UI_FIRST_NAME", length=20)
+	private String uiFirstName;
 
-    @FunctionalInterface
-    private interface SupplierX<T> { T get() throws Exception; }
+	@Column(name="UI_LAST_NAME", length=40)
+	private String uiLastName;
+
+	@Column(name="UI_PHONE", length=15)
+	private String uiPhone;
+
+	@Column(name="UI_TERMINATED_BY", length=25)
+	private String uiTerminatedBy;
+
+	@Temporal(TemporalType.DATE)
+	@Column(name="UI_TERMINATED_DT")
+	private Date uiTerminatedDt;
+
+	@Column(name="UI_TITLE", length=15)
+	private String uiTitle;
+
+	@Column(name="UI_USER_ID", nullable=false, length=25)
+	private String uiUserId;
+
+	@Column(name="UI_USER_INACTIVE", length=1)
+	private String uiUserInactive;
+
+	@OneToOne(mappedBy="uiUserBase")
+	private SeUsrGrp seUsrGrp;
+
 }
