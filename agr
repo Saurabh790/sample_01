@@ -1,17 +1,125 @@
-SELECT SUR_MODULE_ID, COUNT(*) 
-FROM SE_SUR_MODULE 
-GROUP BY SUR_MODULE_ID 
-HAVING COUNT(*) > 1;
+package com.optum.fads.authorization.api.service.impl;
 
--- duplicates in access:
-SELECT SUR_ACCESS_ID, COUNT(*) 
-FROM SE_SUR_ACCESS 
-GROUP BY SUR_ACCESS_ID 
-HAVING COUNT(*) > 1;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
--- duplicates in the link for one group (replace :grp):
-SELECT SUR_GRP_ID, SUR_MODULE_ID, COUNT(*) 
-FROM SE_SUR_GRP_MOD_ACCESS
-WHERE SUR_GRP_ID = :grp
-GROUP BY SUR_GRP_ID, SUR_MODULE_ID
-HAVING COUNT(*) > 1;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.authorization.api.dto.FADSUser;
+import com.optum.fads.authorization.api.dto.CaseModule;
+import com.optum.fads.authorization.api.dto.CaseNode;
+import com.optum.fads.authorization.api.dto.CaseRole;
+import com.optum.fads.authorization.api.dto.CaseTypeModule;
+import com.optum.fads.authorization.api.dto.ModuleAccess;
+import com.optum.fads.authorization.api.dto.PgpRole;
+import com.optum.fads.authorization.api.dto.SurAccessLevel;
+import com.optum.fads.authorization.api.entity.SeCaseGrp;
+import com.optum.fads.authorization.api.entity.SeCaseGrpModAccess;
+import com.optum.fads.authorization.api.entity.SeCaseGrpNodeAccess;
+import com.optum.fads.authorization.api.entity.SeSurGrpModAccess;
+import com.optum.fads.authorization.api.entity.UiUserBase;
+import com.optum.fads.authorization.api.mapper.UserDetailMapper;
+import com.optum.fads.authorization.api.repo.UserRepository;
+import com.optum.fads.authorization.api.service.IUserDetailsService;
+
+@Service
+public class UserDetailsService implements IUserDetailsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserDetailsService.class);
+
+	@Autowired
+	private UserRepository userRepository;
+
+	@Autowired
+	private UserDetailMapper userDetailMapper;
+
+
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        logger.info("Attempting to load user by username: {}", username);
+		Optional<UiUserBase> optional = userRepository.findByUiEMailAddress(username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+		//
+		UiUserBase uiUserBase = optional.get();
+		FADSUser user = userDetailMapper.toAppUser(uiUserBase);
+
+		if (uiUserBase.getSeUsrGrp().getSeSurGrp() != null) {
+
+			List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
+			List<SurAccessLevel> accesses = new ArrayList<SurAccessLevel>();
+			surAccesses.forEach(surModuleAccess -> {
+
+				accesses.add(new SurAccessLevel(surModuleAccess.getId().getSurModuleId(),
+						ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+						surModuleAccess.getSeSurModule().getSurModuleName(),
+						surModuleAccess.getSeSurAccess().getSurAccessId()));
+
+			});
+			user.getRole().setPgpRole(PgpRole.builder().groupId(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId())
+					.roleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName()).pgpAccesses(accesses).build());
+		}
+		SeCaseGrp seCaseGrp = uiUserBase.getSeUsrGrp().getSeCaseGrp();
+		if (seCaseGrp != null) {
+			CaseRole caseRole = new CaseRole();
+			caseRole.setGroupId(seCaseGrp.getCaseGrpId());
+			caseRole.setRoleName(seCaseGrp.getCaseGrpName());
+			List<SeCaseGrpModAccess> seCaseGrpModAccesses = seCaseGrp.getSeCaseGrpModAccesses();
+			List<CaseTypeModule> caseTypeModules = new ArrayList<CaseTypeModule>();
+			Map<String, String> caseTypes = new HashMap<>();
+			Map<String, List<CaseModule>> modulePermissions = new HashMap<>();
+			for (SeCaseGrpModAccess caseGrp : seCaseGrpModAccesses) {
+				CaseModule caseModule = new CaseModule();
+				caseModule.setModuleId(caseGrp.getSeCaseModule().getCaseModuleId());
+				caseModule.setModuleCd(caseGrp.getSeCaseModule().getCaseModuleCd());
+				caseModule.setModuleName(caseGrp.getSeCaseModule().getCaseModuleName());
+				caseModule.setModuleAccess(caseGrp.getSeCaseAccess().getAccessId());
+				if (!modulePermissions.containsKey(caseGrp.getCaLuCaseTypeT().getTypeCd())) {
+					modulePermissions.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
+				}
+				modulePermissions.get(caseGrp.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
+				caseTypes.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), caseGrp.getCaLuCaseTypeT().getTypeDesc());
+
+			}
+			for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
+				CaseTypeModule caseTypeModule = new CaseTypeModule();
+				caseTypeModule.setCaseTypeId(entry.getKey());
+				caseTypeModule.setCaseTypeName(entry.getValue());
+				caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
+				caseTypeModules.add(caseTypeModule);
+
+			}
+			caseRole.setCaseTypeModules(caseTypeModules);
+
+			List<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses = seCaseGrp.getSeCaseGrpNodeAccesses();
+			Collection<CaseNode> nodePermissions = new ArrayList<CaseNode>();
+			for (SeCaseGrpNodeAccess seCaseGrpNode : seCaseGrpNodeAccesses) {
+				CaseNode caseNodeDto = new CaseNode();
+				caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
+				caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
+				caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
+				caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
+				nodePermissions.add(caseNodeDto);
+
+			}
+			caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
+			user.getRole().setCaseRole(caseRole);
+		}
+
+		return user;
+
+	}
+
+}
