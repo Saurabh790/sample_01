@@ -1,125 +1,59 @@
-package com.optum.fads.authorization.api.service.impl;
+package com.optum.fads.authorization.api.entity;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.io.Serializable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.*;
+import lombok.Data;
 
-import com.optum.fads.authorization.api.dto.FADSUser;
-import com.optum.fads.authorization.api.dto.CaseModule;
-import com.optum.fads.authorization.api.dto.CaseNode;
-import com.optum.fads.authorization.api.dto.CaseRole;
-import com.optum.fads.authorization.api.dto.CaseTypeModule;
-import com.optum.fads.authorization.api.dto.ModuleAccess;
-import com.optum.fads.authorization.api.dto.PgpRole;
-import com.optum.fads.authorization.api.dto.SurAccessLevel;
-import com.optum.fads.authorization.api.entity.SeCaseGrp;
-import com.optum.fads.authorization.api.entity.SeCaseGrpModAccess;
-import com.optum.fads.authorization.api.entity.SeCaseGrpNodeAccess;
-import com.optum.fads.authorization.api.entity.SeSurGrpModAccess;
-import com.optum.fads.authorization.api.entity.UiUserBase;
-import com.optum.fads.authorization.api.mapper.UserDetailMapper;
-import com.optum.fads.authorization.api.repo.UserRepository;
-import com.optum.fads.authorization.api.service.IUserDetailsService;
+@Entity
+@Table(name = "SE_USR_GRP")
+@Data
+public class SeUsrGrp implements Serializable {
+    private static final long serialVersionUID = 1L;
 
-@Service
-public class UserDetailsService implements IUserDetailsService {
+    @Id
+    @Column(name = "UI_SYSTEM_ID", unique = true, nullable = false, length = 25)
+    private String uiSystemId;
 
-    private static final Logger logger = LoggerFactory.getLogger(UserDetailsService.class);
+    @ManyToOne
+    @JoinColumn(name = "FADS_CASE_GRP_ID", insertable = false, updatable = false)
+    private SeCaseGrp seCaseGrp;
 
-	@Autowired
-	private UserRepository userRepository;
+    @ManyToOne
+    @JoinColumn(name = "FADS_SUR_GRP_ID")
+    private SeSurGrp seSurGrp;
 
-	@Autowired
-	private UserDetailMapper userDetailMapper;
+    // ✅ ADD THIS: link to FADS group (column must exist in SE_USR_GRP)
+    @ManyToOne
+    @JoinColumn(name = "FADS_GRP_ID")
+    private SeFadsGrp seFadsGrp;
+
+    @OneToOne
+    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false, insertable = false, updatable = false)
+    private UiUserBase uiUserBase;
+}
 
 
+@Entity
+@Table(name = "SE_FADS_GRP")
+@Getter @Setter
+public class SeFadsGrp {
+    @Id
+    @Column(name = "FADS_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
 
-	@Override
-	@Transactional(readOnly = true)
-	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        logger.info("Attempting to load user by username: {}", username);
-		Optional<UiUserBase> optional = userRepository.findByUiEMailAddress(username);
-		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
-		//
-		UiUserBase uiUserBase = optional.get();
-		FADSUser user = userDetailMapper.toAppUser(uiUserBase);
+    @Column(name = "FADS_GRP_NAME", length = 40)
+    private String fadsGrpName;
+}
 
-		if (uiUserBase.getSeUsrGrp().getSeSurGrp() != null) {
 
-			List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
-			List<SurAccessLevel> accesses = new ArrayList<SurAccessLevel>();
-			surAccesses.forEach(surModuleAccess -> {
+// ---------- FADS ROLE (only groupId & groupName) ----------
+if (uiUserBase.getSeUsrGrp() != null && uiUserBase.getSeUsrGrp().getSeFadsGrp() != null) {
+    var fadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
 
-				accesses.add(new SurAccessLevel(surModuleAccess.getId().getSurModuleId(),
-						ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
-						surModuleAccess.getSeSurModule().getSurModuleName(),
-						surModuleAccess.getSeSurAccess().getSurAccessId()));
+    var fadsRole = new com.optum.fads.authorization.api.dto.FadsRole();
+    fadsRole.setGroupId(fadsGrp.getId() != null ? fadsGrp.getId().longValue() : null);
+    fadsRole.setGroupName(fadsGrp.getFadsGrpName());
 
-			});
-			user.getRole().setPgpRole(PgpRole.builder().groupId(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId())
-					.roleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName()).pgpAccesses(accesses).build());
-		}
-		SeCaseGrp seCaseGrp = uiUserBase.getSeUsrGrp().getSeCaseGrp();
-		if (seCaseGrp != null) {
-			CaseRole caseRole = new CaseRole();
-			caseRole.setGroupId(seCaseGrp.getCaseGrpId());
-			caseRole.setRoleName(seCaseGrp.getCaseGrpName());
-			List<SeCaseGrpModAccess> seCaseGrpModAccesses = seCaseGrp.getSeCaseGrpModAccesses();
-			List<CaseTypeModule> caseTypeModules = new ArrayList<CaseTypeModule>();
-			Map<String, String> caseTypes = new HashMap<>();
-			Map<String, List<CaseModule>> modulePermissions = new HashMap<>();
-			for (SeCaseGrpModAccess caseGrp : seCaseGrpModAccesses) {
-				CaseModule caseModule = new CaseModule();
-				caseModule.setModuleId(caseGrp.getSeCaseModule().getCaseModuleId());
-				caseModule.setModuleCd(caseGrp.getSeCaseModule().getCaseModuleCd());
-				caseModule.setModuleName(caseGrp.getSeCaseModule().getCaseModuleName());
-				caseModule.setModuleAccess(caseGrp.getSeCaseAccess().getAccessId());
-				if (!modulePermissions.containsKey(caseGrp.getCaLuCaseTypeT().getTypeCd())) {
-					modulePermissions.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
-				}
-				modulePermissions.get(caseGrp.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
-				caseTypes.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), caseGrp.getCaLuCaseTypeT().getTypeDesc());
-
-			}
-			for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
-				CaseTypeModule caseTypeModule = new CaseTypeModule();
-				caseTypeModule.setCaseTypeId(entry.getKey());
-				caseTypeModule.setCaseTypeName(entry.getValue());
-				caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
-				caseTypeModules.add(caseTypeModule);
-
-			}
-			caseRole.setCaseTypeModules(caseTypeModules);
-
-			List<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses = seCaseGrp.getSeCaseGrpNodeAccesses();
-			Collection<CaseNode> nodePermissions = new ArrayList<CaseNode>();
-			for (SeCaseGrpNodeAccess seCaseGrpNode : seCaseGrpNodeAccesses) {
-				CaseNode caseNodeDto = new CaseNode();
-				caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
-				caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
-				caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
-				caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
-				nodePermissions.add(caseNodeDto);
-
-			}
-			caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
-			user.getRole().setCaseRole(caseRole);
-		}
-
-		return user;
-
-	}
-
+    user.getRole().setFadsRole(fadsRole);
 }
