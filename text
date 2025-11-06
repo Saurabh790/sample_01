@@ -1,86 +1,83 @@
+package  com.optum.fads.authorization.api.entity;
 
-2025-11-06T16:15:40.880+05:30 ERROR 5380 --- [fads-authorization-api] [nio-8080-exec-2] o.a.c.c.C.[.[.[.[dispatcherServlet]      : Servlet.service() for servlet [dispatcherServlet] in context with path [/authorization] threw exception
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 
-org.hibernate.HibernateException: Duplicate row was found and `ASSERT` was specified
-        at org.hibernate.sql.results.spi.ListResultsConsumer.readUniqueAssert(ListResultsConsumer.java:264) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.sql.results.spi.ListResultsConsumer.consume(ListResultsConsumer.java:198) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.sql.results.spi.ListResultsConsumer.consume(ListResultsConsumer.java:35) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.doExecuteQuery(JdbcSelectExecutorStandardImpl.java:224) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.executeQuery(JdbcSelectExecutorStandardImpl.java:102) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.executeQuery(JdbcSelectExecutor.java:91) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:165) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.loader.ast.internal.SingleIdLoadPlan.load(SingleIdLoadPlan.java:145) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.loader.ast.internal.SingleIdLoadPlan.load(SingleIdLoadPlan.java:117) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.loader.ast.internal.SingleIdEntityLoaderStandardImpl.load(SingleIdEntityLoaderStandardImpl.java:74) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.persister.entity.AbstractEntityPersister.doLoad(AbstractEntityPersister.java:3895) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.persister.entity.AbstractEntityPersister.load(AbstractEntityPersister.java:3884) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.loadFromDatasource(DefaultLoadEventListener.java:604) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.loadFromCacheOrDatasource(DefaultLoadEventListener.java:590) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.load(DefaultLoadEventListener.java:560) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.doLoad(DefaultLoadEventListener.java:544) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.load(DefaultLoadEventListener.java:206) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.doOnLoad(DefaultLoadEventListener.java:105) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.internal.DefaultLoadEventListener.onLoad(DefaultLoadEventListener.java:69) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.event.service.internal.EventListenerGroupImpl.fireEventOnEachListener(EventListenerGroupImpl.java:138) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.internal.SessionImpl.fireLoadNoChecks(SessionImpl.java:1229) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.internal.SessionImpl.immediateLoad(SessionImpl.java:1048) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.proxy.AbstractLazyInitializer.initialize(AbstractLazyInitializer.java:186) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.proxy.AbstractLazyInitializer.getImplementation(AbstractLazyInitializer.java:328) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.proxy.pojo.bytebuddy.ByteBuddyInterceptor.intercept(ByteBuddyInterceptor.java:44) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at org.hibernate.proxy.ProxyConfiguration$InterceptorDispatcher.intercept(ProxyConfiguration.java:102) ~[hibernate-core-6.6.18.Final.jar:6.6.18.Final]
-        at com.optum.fads.authorization.api.entity.SeSurModule$HibernateProxy.getSurModuleName(Unknown Source) ~[classes/:na]
-        at com.optum.fads.authorization.api.service.impl.UserDetailsService.lambda$loadUserByUsername$1(UserDetailsService.java:66) ~[classes/:na]
-        at java.base/java.lang.Iterable.forEach(Iterable.java:75) ~[na:na]
-        at com.optum.fads.authorization.api.service.impl.UserDetailsService.loadUserByUsername(UserDetailsService.java:62) ~[classes/:na]
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:359) ~[spring-aop-6.2.8.jar:6.2.8]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196) ~[spring-aop-6.2.8.jar:6.2.8]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163) ~[spring-aop-6.2.8.jar:6.2.8]
-        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380) ~[spring-tx-6.2.8.jar:6.2.8]
-        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119) ~[spring-tx-6.2.8.jar:6.2.8]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.2.8.jar:6.2.8]
-        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:728) ~[spring-aop-6.2.8.jar:6.2.8]
-        at com.optum.fads.authorization.api.service.impl.UserDetailsService$$SpringCGLIB$$0.loadUserByUsername(<generated>) ~[classes/:na]
-        at com.optum.fads.authorization.api.security.UserJwtAuthenticationConverter.convert(UserJwtAuthenticationConverter.java:35) ~[classes/:na]
-        at com.optum.fads.authorization.api.security.UserJwtAuthenticationConverter.convert(UserJwtAuthenticationConverter.java:20) ~[classes/:na]
-        at org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider.authenticate(JwtAuthenticationProvider.java:89) ~[spring-security-oauth2-resource-server-6.4.7.jar:6.4.7]
-        at org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:182) ~[spring-security-core-6.4.7.jar:6.4.7]
-        at org.springframework.security.authentication.ObservationAuthenticationManager.lambda$authenticate$1(ObservationAuthenticationManager.java:54) ~[spring-security-core-6.4.7.jar:6.4.7]
-        at io.micrometer.observation.Observation.observe(Observation.java:564) ~[micrometer-observation-1.14.8.jar:1.14.8]
-        at org.springframework.security.authentication.ObservationAuthenticationManager.authenticate(ObservationAuthenticationManager.java:53) ~[spring-security-core-6.4.7.jar:6.4.7]
-        at org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.doFilterInternal(BearerTokenAuthenticationFilter.java:137) ~[spring-security-oauth2-resource-server-6.4.7.jar:6.4.7]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.8.jar:6.2.8]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.8.jar:6.2.8]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.8.jar:6.2.8]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.8.jar:6.2.8]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.4.7.jar:6.4.7]
-        at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterCha
+/**
+ * SeSurGrpModAccess entity.  @author Shyam Biry
+ */
+@Entity
+@Table(name = "SE_SUR_GRP_MOD_ACCESS")
+public class SeSurGrpModAccess extends AbstractSeSurGrpModAccess implements java.io.Serializable {
+
+	// Constructors
+
+	/** default constructor */
+	public SeSurGrpModAccess() {
+	}
+
+	/** minimal constructor */
+	public SeSurGrpModAccess(SeSurGrpModAccessId id, SeSurGrp seSurGrp, SeSurModule seSurModule) {
+		super(id, seSurGrp, seSurModule);
+	}
+
+	/** full constructor */
+	public SeSurGrpModAccess(SeSurGrpModAccessId id, SeSurAccess seSurAccess, SeSurGrp seSurGrp,
+			SeSurModule seSurModule) {
+		super(id, seSurAccess, seSurGrp, seSurModule);
+	}
+
+}
+
+
+package  com.optum.fads.authorization.api.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+/**
+ * SeCaseGrpModAccess entity.  @author Shyam Biry
+ */
+@Entity
+@Table(name = "SE_CASE_GRP_MOD_ACCESS")
+public class SeCaseGrpModAccess extends AbstractSeCaseGrpModAccess implements java.io.Serializable {
+
+	// Constructors
+
+	/** default constructor */
+	public SeCaseGrpModAccess() {
+	}
+
+	/** full constructor */
+	public SeCaseGrpModAccess(SeCaseGrpModAccessId id, SeCaseGrp seCaseGrp, CaLuCaseTypeT caLuCaseTypeT,
+			SeCaseAccess seCaseAccess, SeCaseModule seCaseModule) {
+		super(id, seCaseGrp, caLuCaseTypeT, seCaseAccess, seCaseModule);
+	}
+
+}
+
+package  com.optum.fads.authorization.api.entity;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+/**
+ * SeCaseGrpNodeAccess entity.  @author Shyam Biry
+ */
+@Entity
+@Table(name = "SE_CASE_GRP_NODE_ACCESS")
+public class SeCaseGrpNodeAccess extends AbstractSeCaseGrpNodeAccess implements java.io.Serializable {
+
+	// Constructors
+
+	/** default constructor */
+	public SeCaseGrpNodeAccess() {
+	}
+
+	/** full constructor */
+	public SeCaseGrpNodeAccess(SeCaseGrpNodeAccessId id, CaLuPrmNodeT caLuPrmNodeT, SeCaseAccess seCaseAccess,
+			SeCaseGrp seCaseGrp, String anyRestrictApply, String canDeleteCases) {
+		super(id, caLuPrmNodeT, seCaseAccess, seCaseGrp, anyRestrictApply, canDeleteCases);
+	}
+
+}
