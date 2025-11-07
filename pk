@@ -1,196 +1,50 @@
-1) DTOs you need (if you don’t already have them)
-// FadsRole.java
-@Data
+package com.optum.fads.authorization.api.dto;
+
+import lombok.*;
+import java.io.Serializable;
+
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FadsRole {
-    private Long  groupId;
+@Builder
+public class FadsRole implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private long groupId;
     private String groupName;
-    private List<FadsComponent> componentPermissions = new ArrayList<>();
-}
 
-// FadsComponent.java
-@Data
+    // if later you store permissions list, they must also be Serializable
+}
+2. Update your Role DTO (DO NOT change other fields!)
+Just add Serializable and UID:
+
+java
+Copy code
+package com.optum.fads.authorization.api.dto;
+
+import org.springframework.security.core.GrantedAuthority;
+import lombok.*;
+import java.io.Serializable;
+
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class FadsComponent {
-    private Long   componentId;
-    private String componentCd;
-    private String componentName;
-    private Integer componentSeq;
-    private String componentAccess; // e.g., R/W/H etc.
-    private List<FadsModule> modules = new ArrayList<>();
-}
+@Builder
+public class Role implements GrantedAuthority, Serializable {
 
-// FadsModule.java
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class FadsModule {
-    private Long   moduleId;
-    private String moduleCd;
-    private String moduleName;
-    private Integer moduleSeq;
-    private String moduleAccess;
-    private List<FadsModuleElement> elements = new ArrayList<>();
-}
+    private static final long serialVersionUID = 1L;
 
-// FadsModuleElement.java
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class FadsModuleElement {
-    private Long   elementId;
-    private String elementCd;
-    private String elementName;
-    private Integer elementSeq;
-}
-
-
-And add a field to your Role (or whatever your top-level user DTO is) so it can carry this:
-
-@Data
-public class Role {
-    private String id;
+    private long groupId;
     private String roleName;
-    // existing fields...
-    private FadsRole fadsRole;  // <--- add this
-}
 
-2) Domain relations you must have
+    private CaseRole caseRole;
+    private PgpRole pgpRole;
+    private FadsRole fadsRole; // ✅ Sonar is now happy
 
-To build the FADS tree directly from DB (like your authorization app), your JPA model needs these (names can vary; adjust calls accordingly):
-
-SeFadsGrp with:
-
-Set<SeFadsGrpCompAccess> seFadsGrpCompAccesses
-
-Set<SeFadsGrpModAccess> seFadsGrpModAccesses
-
-SeFadsGrpCompAccess → seFadsComponent, seFadsAccess
-
-SeFadsGrpModAccess → seFadsModule, seFadsComponent, seFadsAccess
-
-SeFadsModule → Set<FadsModElemConfig> fadsModElemConfigs
-
-FadsModElemConfig → elementId/elementCd/elementName/elementSeq
-
-plus a collection such as seFadsGrpElemNoAccesses to exclude elements for the current group
-
-If your user-roles project doesn’t have these entities, you have two choices:
-
-Add the entities/relations (best if user-roles owns the same schema), or
-
-Call the authorization service endpoint and merge its fadsRole block into your response.
-
-3) Build the FADS role in your UserDetailsService
-
-Here’s a condensed, null-safe version modelled after your working authorization code. Drop this into your UserDetailsService (user-roles app) where you are already creating AppUser and Role:
-
-private void enrichWithFadsRole(UiUserBase uiUserBase, Role role) {
-    var usrGrp = uiUserBase.getSeUsrGrp();
-    if (usrGrp == null || usrGrp.getFadsGrp() == null) return;
-
-    var fadsGrp = usrGrp.getFadsGrp(); // SeFadsGrp
-    FadsRole fadsRole = new FadsRole();
-    fadsRole.setGroupId(toLong(fadsGrp.getId()));          // adjust getter/type
-    fadsRole.setGroupName(fadsGrp.getFadsGrpName());
-
-    // 1) Components
-    for (var compAcc : safe(fadsGrp.getSeFadsGrpCompAccesses())) {
-        // Skip hidden “H” (if that’s your convention)
-        if (compAcc.getSeFadsAccess() != null && "H".equals(compAcc.getSeFadsAccess().getFadsAccessId())) {
-            continue;
-        }
-
-        var comp = compAcc.getSeFadsComponent();
-        if (comp == null) continue;
-
-        FadsComponent dtoComp = new FadsComponent();
-        dtoComp.setComponentId(comp.getComponentId());
-        dtoComp.setComponentCd(comp.getComponentCd());
-        dtoComp.setComponentName(comp.getComponentName());
-        dtoComp.setComponentSeq(comp.getComponentSeq());
-        dtoComp.setComponentAccess(
-            compAcc.getSeFadsAccess() != null ? compAcc.getSeFadsAccess().getFadsAccessId() : null
-        );
-
-        // 2) Modules under this component
-        var allModAccesses = safe(fadsGrp.getSeFadsGrpModAccesses()).stream()
-            .filter(ma -> ma.getSeFadsComponent() != null
-                       && Objects.equals(ma.getSeFadsComponent().getComponentId(), comp.getComponentId()))
-            .toList();
-
-        for (var modAcc : allModAccesses) {
-            // Skip hidden “H” if needed
-            if (modAcc.getSeFadsAccess() != null && "H".equals(modAcc.getSeFadsAccess().getFadsAccessId())) {
-                continue;
-            }
-            var mod = modAcc.getSeFadsModule();
-            if (mod == null) continue;
-
-            FadsModule dtoMod = new FadsModule();
-            dtoMod.setModuleId(mod.getFadsModuleId());
-            dtoMod.setModuleCd(mod.getFadsModuleCd());
-            dtoMod.setModuleName(mod.getFadsModuleName());
-            dtoMod.setModuleSeq(mod.getModuleSeq());
-            dtoMod.setModuleAccess(
-                modAcc.getSeFadsAccess() != null ? modAcc.getSeFadsAccess().getFadsAccessId() : null
-            );
-
-            // 3) Elements for the module (minus “no-access” for this group)
-            for (var cfg : safe(mod.getFadsModElemConfigs())) {
-                boolean blockedForThisGroup = cfg.getSeFadsGrpElemNoAccesses() != null
-                        && cfg.getSeFadsGrpElemNoAccesses().stream()
-                           .anyMatch(na -> na.getSeFadsGrp() != null
-                                        && Objects.equals(
-                                              na.getSeFadsGrp().getFadsGrpId(),
-                                              fadsGrp.getFadsGrpId() // adjust getter
-                                           ));
-
-                if (!blockedForThisGroup) {
-                    FadsModuleElement el = new FadsModuleElement();
-                    el.setElementId(cfg.getElementId());
-                    el.setElementCd(cfg.getElementCd());
-                    el.setElementName(cfg.getElementName());
-                    el.setElementSeq(cfg.getElementSeq());
-                    dtoMod.getElements().add(el);
-                }
-            }
-
-            // Sort elements by seq
-            dtoMod.getElements().sort(Comparator.comparing(FadsModuleElement::getElementSeq,
-                                                           Comparator.nullsLast(Integer::compareTo)));
-            dtoComp.getModules().add(dtoMod);
-        }
-
-        // Sort modules by seq
-        dtoComp.getModules().sort(Comparator.comparing(FadsModule::getModuleSeq,
-                                                       Comparator.nullsLast(Integer::compareTo)));
-        fadsRole.getComponentPermissions().add(dtoComp);
+    @Override
+    public String getAuthority() {
+        return roleName;
     }
-
-    // Sort components by seq
-    fadsRole.getComponentPermissions().sort(Comparator.comparing(FadsComponent::getComponentSeq,
-                                                                 Comparator.nullsLast(Integer::compareTo)));
-
-    role.setFadsRole(fadsRole);
 }
-
-private static Long toLong(Object n) {
-    if (n == null) return null;
-    if (n instanceof Number num) return num.longValue();
-    try { return Long.valueOf(n.toString()); } catch (Exception e) { return null; }
-}
-
-private static <T> Collection<T> safe(Collection<T> c) {
-    return c == null ? Collections.emptyList() : c;
-}
-
-
-Then call it from your existing loadUserByUsername after you create the Role object:
-
-Role role = new Role();
-// ... fill your role basics (id/name, pgpRole, caseRole, etc.)
-enrichWithFadsRole(uiUserBase, role);   // <--- add this
-user.setRole(role);
