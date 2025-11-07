@@ -1,59 +1,72 @@
 package com.optum.fads.authorization.api.entity;
 
-import java.io.Serializable;
-
 import jakarta.persistence.*;
-import lombok.Data;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-@Entity
-@Table(name = "SE_USR_GRP")
-@Data
-public class SeUsrGrp implements Serializable {
-    private static final long serialVersionUID = 1L;
+import java.io.Serializable;
+import java.math.BigDecimal;
 
-    @Id
-    @Column(name = "UI_SYSTEM_ID", unique = true, nullable = false, length = 25)
-    private String uiSystemId;
-
-    @ManyToOne
-    @JoinColumn(name = "FADS_CASE_GRP_ID", insertable = false, updatable = false)
-    private SeCaseGrp seCaseGrp;
-
-    @ManyToOne
-    @JoinColumn(name = "FADS_SUR_GRP_ID")
-    private SeSurGrp seSurGrp;
-
-    // ✅ ADD THIS: link to FADS group (column must exist in SE_USR_GRP)
-    @ManyToOne
-    @JoinColumn(name = "FADS_GRP_ID")
-    private SeFadsGrp seFadsGrp;
-
-    @OneToOne
-    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false, insertable = false, updatable = false)
-    private UiUserBase uiUserBase;
-}
-
-
+@Getter
+@Setter
 @Entity
 @Table(name = "SE_FADS_GRP")
-@Getter @Setter
-public class SeFadsGrp {
+public class SeFadsGrp implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     @Id
     @Column(name = "FADS_GRP_ID", nullable = false, precision = 5)
     private BigDecimal id;
 
+    @Size(max = 40)
     @Column(name = "FADS_GRP_NAME", length = 40)
     private String fadsGrpName;
 }
 
+package com.optum.fads.authorization.api.dto;
 
-// ---------- FADS ROLE (only groupId & groupName) ----------
-if (uiUserBase.getSeUsrGrp() != null && uiUserBase.getSeUsrGrp().getSeFadsGrp() != null) {
-    var fadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
+import lombok.*;
 
-    var fadsRole = new com.optum.fads.authorization.api.dto.FadsRole();
-    fadsRole.setGroupId(fadsGrp.getId() != null ? fadsGrp.getId().longValue() : null);
-    fadsRole.setGroupName(fadsGrp.getFadsGrpName());
+import java.io.Serializable;
 
-    user.getRole().setFadsRole(fadsRole);
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class FadsRole implements Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private Long groupId;
+    private String groupName;
+    // If you later add collections (e.g., componentPermissions), make those element types Serializable as well.
+}
+
+
+package com.optum.fads.authorization.api.dto;
+
+import org.springframework.security.core.GrantedAuthority;
+import lombok.*;
+
+import java.io.Serializable;
+
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Role implements GrantedAuthority, Serializable {
+    private static final long serialVersionUID = 1L;
+
+    private long groupId;
+    private String roleName;
+
+    // These referenced types should be Serializable too
+    private FadsRole fadsRole;
+    private CaseRole caseRole;
+    private PgpRole pgpRole;
+
+    @Override
+    public String getAuthority() {
+        return roleName;
+    }
 }
