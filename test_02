@@ -1,38 +1,278 @@
-package com.optum.fads.authorization.api.dto;
+package com.optum.fads.userroles.api.utility;
 
-import java.util.ArrayList;
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import jakarta.persistence.criteria.*;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.util.*;
+
+public final class UserSpecification {
+
+    private UserSpecification() {
+    }
+
+    /**
+     * Builds a Specification that applies all provided filters using
+     * case-insensitive "starts with" semantics.
+     */
+    public static Specification<UiUserBase> containsAll(Map<String, String> filters, Map<String, String> fieldMap) {
+        if (filters == null || filters.isEmpty()) {
+            return null; // nothing to filter
+        }
+
+        return (root, query, cb) -> {
+            // if any path is nested (has a dot), we must distinct to avoid duplicates
+            boolean needsDistinct = filters.keySet().stream()
+                    .map(fieldMap::get)
+                    .filter(Objects::nonNull)
+                    .anyMatch(path -> path.contains("."));
+            if (needsDistinct) {
+                query.distinct(true);
+            }
+
+            List<Predicate> predicates = new ArrayList<>();
+
+            for (Map.Entry<String, String> e : filters.entrySet()) {
+                String apiField = e.getKey();
+                String value = e.getValue();
+                if (value == null || value.isBlank()) continue;
+
+                String entityPath = fieldMap.get(apiField);
+                if (entityPath == null) continue;
+
+                Expression<String> pathExpr = resolvePath(root, entityPath);
+
+                // ✅ STARTS-WITH (case-insensitive)
+                predicates.add(
+                        cb.like(
+                                cb.lower(pathExpr),
+                                value.toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+            }
+
+            return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Expression<String> resolvePath(From<?, ?> root, String dotPath) {
+        String[] parts = dotPath.split("\\.");
+        From<?, ?> from = root;
+        Path<?> path = root;
+
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (i < parts.length - 1) {
+                from = safeJoin(from, part);
+                path = from;
+            } else {
+                path = path.get(part);
+            }
+        }
+        return (Expression<String>) path.as(String.class);
+    }
+
+    private static From<?, ?> safeJoin(From<?, ?> from, String attribute) {
+        for (Join<?, ?> j : from.getJoins()) {
+            if (j.getAttribute() != null && attribute.equals(j.getAttribute().getName())) {
+                return (From<?, ?>) j;
+            }
+        }
+        return from.join(attribute, JoinType.LEFT);
+    }
+}
+UserHistoryImpl.java (updated)
+java
+Copy code
+package com.optum.fads.userroles.api.service.Impl;
+
 import java.util.List;
 
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import com.optum.fads.userroles.api.domain.UiUserHistory;
+import com.optum.fads.userroles.api.dto.UserListItemHistory;
+import com.optum.fads.userroles.api.dto.UserHistoryResponse;
+import com.optum.fads.userroles.api.mapper.UserListItemHistoryMapper;
+import com.optum.fads.userroles.api.repo.UiUserHistoryRepository;
+import com.optum.fads.userroles.api.service.IUserHistory;
 
-/**
- * @author sbiry
- *
- */
-@Getter 
-@Setter 
-@EqualsAndHashCode 
-@NoArgsConstructor 
-@ToString 
-@Data
-public class Role implements GrantedAuthority {
+import lombok.RequiredArgsConstructor;
 
-	private static final long serialVersionUID = 1L;
-	private long groupId;
-	private String roleName;
-	private  CaseRole caseRole;
-	private  PgpRole pgpRole;
+@Service
+@RequiredArgsConstructor
+public class UserHistoryImpl implements IUserHistory {
 
-	@Override
-	public String getAuthority() {
-		return roleName;
-	}
+    // Field name constants to avoid duplication
+    private static final String FIELD_UI_USER_ID = "uiUserId";
+    private static final String FIELD_UI_LAST_NAME = "uiLastName";
+    private static final String FIELD_UI_FIRST_NAME = "uiFirstName";
+    private static final String FIELD_UI_EMAIL_ADDRESS = "uiEMailAddress";
+    private static final String FIELD_UI_SYSTEM_ID = "uiSystemId";
 
+    private final UiUserHistoryRepository repository;
+    private final UserListItemHistoryMapper mapper;
+
+    @Override
+    public UserHistoryResponse getAllUserHistory(Pageable pageable, String searchBy, String searchInput) {
+        if (pageable == null) {
+            throw new IllegalArgumentException("Pageable cannot be null");
+        }
+
+        Page<UiUserHistory> page;
+
+        // Use specification when searching
+        if (StringUtils.hasText(searchBy) && StringUtils.hasText(searchInput)) {
+            Specification<UiUserHistory> spec = createSearchSpecification(searchBy, searchInput);
+            page = repository.findAll(spec, pageable);
+        } else {
+            page = repository.findAll(pageable);
+        }
+
+        List<UserListItemHistory> data = page.getContent()
+                .stream()
+                .map(mapper::toDto)
+                .toList();
+
+        return new UserHistoryResponse(data, page.getTotalElements());
+    }
+
+    /**
+     * Creates a search specification based on searchBy field and searchInput value.
+     * All text fields use case-insensitive "starts with".
+     */
+    private Specification<UiUserHistory> createSearchSpecification(String searchBy, String searchInput) {
+        return (root, query, cb) -> {
+            final String entityField = mapSearchFieldToEntityPath(searchBy);
+            final String prefix = searchInput.toLowerCase() + "%"; // ✅ STARTS-WITH
+
+            return switch (entityField) {
+                // simple string fields on the root
+                case FIELD_UI_USER_ID, FIELD_UI_LAST_NAME, FIELD_UI_FIRST_NAME, FIELD_UI_EMAIL_ADDRESS ->
+                        cb.like(cb.lower(root.get(entityField)), prefix);
+
+                // nested: uiSystem.uiSystemId
+                case "uiSystem." + FIELD_UI_SYSTEM_ID ->
+                        cb.like(cb.lower(root.get("uiSystem").get(FIELD_UI_SYSTEM_ID)), prefix);
+
+                // nested: changeUsr.uiSystemId
+                case "changeUsr." + FIELD_UI_SYSTEM_ID ->
+                        cb.like(cb.lower(root.get("changeUsr").get(FIELD_UI_SYSTEM_ID)), prefix);
+
+                // exact numeric matches
+                case "id.histSeqNum" -> {
+                    try {
+                        java.math.BigDecimal searchValue = new java.math.BigDecimal(searchInput);
+                        yield cb.equal(root.get("id").get("histSeqNum"), searchValue);
+                    } catch (NumberFormatException e) {
+                        yield cb.disjunction();
+                    }
+                }
+
+                case "fadsGrp.id", "fadsSurGrp.id", "fadsCaseGrp.id" -> {
+                    try {
+                        java.math.BigDecimal searchValue = new java.math.BigDecimal(searchInput);
+                        String[] parts = entityField.split("\\.");
+                        yield cb.equal(root.get(parts[0]).get(parts[1]), searchValue);
+                    } catch (NumberFormatException e) {
+                        yield cb.disjunction();
+                    }
+                }
+
+                // fallback: email starts-with
+                default -> cb.like(cb.lower(root.get(FIELD_UI_EMAIL_ADDRESS)), prefix);
+            };
+        };
+    }
+
+    /**
+     * Maps search field names to entity field paths.
+     */
+    private String mapSearchFieldToEntityPath(String searchField) {
+        return switch (searchField) {
+            case "histSeqNum"    -> "id.histSeqNum";
+            case "changeUsr"     -> "changeUsr." + FIELD_UI_SYSTEM_ID;
+            case FIELD_UI_SYSTEM_ID -> "uiSystem." + FIELD_UI_SYSTEM_ID;
+            case "fadsGrpId"     -> "fadsGrp.id";
+            case "fadsSurGrpId"  -> "fadsSurGrp.id";
+            case "fadsCaseGrpId" -> "fadsCaseGrp.id";
+            case FIELD_UI_USER_ID -> FIELD_UI_USER_ID;
+            case FIELD_UI_LAST_NAME -> FIELD_UI_LAST_NAME;
+            case FIELD_UI_FIRST_NAME -> FIELD_UI_FIRST_NAME;
+            case FIELD_UI_EMAIL_ADDRESS -> FIELD_UI_EMAIL_ADDRESS;
+            default              -> FIELD_UI_EMAIL_ADDRESS; // default search field
+        };
+    }
 }
+Endpoints you now have
+Assuming your app runs at http://localhost:8080 and you did not add a @RequestMapping class-level prefix:
+
+Users list (paged + sort + filter)
+GET /findAllByPageable
+Query params:
+
+pageNumber (default 1)
+
+recordsPerPage (default 10)
+
+sortBy — CSV of API fields (e.g., lastName,firstName)
+
+sortOrder — CSV of 1 (asc) or 0 (desc) aligned with sortBy (e.g., 1,0)
+
+searchBy — repeatable list (e.g., searchBy=lastName&searchBy=email)
+
+searchInput — repeatable list aligned to searchBy (e.g., searchInput=Gupta&searchInput=@optum.com)
+
+Examples:
+
+/findAllByPageable
+
+/findAllByPageable?sortBy=lastName&sortOrder=1
+
+/findAllByPageable?pageNumber=3&recordsPerPage=25&sortBy=firstName,lastName&sortOrder=1,0
+
+/findAllByPageable?searchBy=lastName&searchInput=gu
+(matches lastName starting with “gu”)
+
+User history (paged + sort + search)
+GET /api/getUserHistory
+Query params:
+
+pageNumber (default 1)
+
+recordsPerPage (default 10)
+
+sortBy (default changeDt) – use one of the controller’s supported fields
+
+sortOrder (default -1 for DESC, use 1 for ASC)
+
+searchBy (optional) – accepted values per mapSearchFieldToEntityPath
+
+searchInput (optional) – text or number depending on field
+
+Examples:
+
+/api/getUserHistory
+
+/api/getUserHistory?sortBy=histSeqNum&sortOrder=1
+
+/api/getUserHistory?searchBy=uiLastName&searchInput=gu
+(matches last name starting with “gu”)
+
+/api/getUserHistory?searchBy=uiSystemId&searchInput=GS233
+(matches uiSystem.uiSystemId starting with “GS233”)
+
+/api/getUserHistory?searchBy=fadsGrpId&searchInput=10
+(exact numeric match)
+
+Notes
+The search is now prefix-only (“starts with”) across both current users and history.
+
+Because filtering happens in the database before paging, it will match items on any page — even if the match would have been on the “90th page” without filtering.
+
+If you want me to add a query switch (e.g., matchMode=startsWith|contains|exact) without touching your current clients, I can show you a backward-compatible way to do that too.
