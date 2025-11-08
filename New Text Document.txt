@@ -1,179 +1,342 @@
-package com.optum.fads.authorization.api.dto;
-
-import lombok.Data;
-import org.springframework.security.core.GrantedAuthority;
-
-@Data
-public class Role implements GrantedAuthority {
-
-    private static final long serialVersionUID = 1L;
-
-    private long groupId;
-    private String roleName;
-
-    private CaseRole caseRole;
-    private PgpRole pgpRole;
-
-    // ✅ Add this
-    private FadsRole fadsRole;
-
-    @Override
-    public String getAuthority() {
-        return roleName;
-    }
-}
-
-
-package com.optum.fads.authorization.api.dto;
-
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-public class FadsRole {
-
-    private Long groupId;
-    private String groupName;
-
-    // No componentPermissions or anything else (you said only these two fields)
-}
-
-
-package com.optum.fads.authorization.api.service.impl;
+package com.optum.fads.userroles.api.controllers;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.service.UserService;
+
+@RestController
+public class UserRolesController {
+
+	
+	private static final Map<String, String> FIELD_MAP;
+	static {
+		Map<String, String> m = new LinkedHashMap<>();
+		m.put("uiSystemId", "uiSystemId");
+		m.put("uiUserId", "uiUserId");
+		m.put("lastName", "uiLastName");
+		m.put("firstName", "uiFirstName");
+		m.put("title", "uiTitle");
+		m.put("email", "uiEMailAddress");
+		m.put("fadsGrpName", "seUsrGrp.fadsGrp.fadsGrpName");
+		m.put("surGrpName", "seUsrGrp.fadsSurGrp.surGrpName");
+		m.put("caseGrpName", "seUsrGrp.fadsCaseGrp.caseGrpName");
+		FIELD_MAP = Collections.unmodifiableMap(m);
+	}
+
+	private final UserService userService;
+
+	public UserRolesController(UserService userService) {
+		this.userService = userService;
+	}
+
+	@GetMapping(value = "/findAllByPageable", headers = "Accept=application/json")
+	public Page<UserListItem> findAllByPageable(
+	        @RequestParam(name = "pageNumber",     defaultValue = "1")  Integer pageNumber,
+	        @RequestParam(name = "recordsPerPage", defaultValue = "10") Integer recordsPerPage,
+	        @RequestParam(name = "sortBy",         defaultValue = "lastName") String sortByCsv,
+	        @RequestParam(name = "sortOrder",      defaultValue = "1")  String sortOrderCsv,
+	        @RequestParam(name = "searchBy",       required = false) List<String> searchBy,
+	        @RequestParam(name = "searchInput",    required = false) List<String> searchInput
+	) {
+	    int pageIdx   = (pageNumber != null && pageNumber > 0) ? pageNumber - 1 : 0;
+	    Pageable pg   = buildPageable(sortByCsv, sortOrderCsv, pageIdx, recordsPerPage);
+	    Map<String,String> filters = buildFilters(searchBy, searchInput);
+	    return userService.getUsersList(filters, pg, FIELD_MAP);
+	}
+
+
+	private Pageable buildPageable(String sortByCsv, String sortOrderCsv, int pageIdx, int size) {
+	    List<Sort.Order> orders = buildSort(sortByCsv, sortOrderCsv);
+	    if (orders.isEmpty()) {
+	        orders = List.of(Sort.Order.asc(FIELD_MAP.get("lastName")));
+	    }
+	    return PageRequest.of(pageIdx, size, Sort.by(orders));
+	}
+
+	private List<Sort.Order> buildSort(String sortByCsv, String sortOrderCsv) {
+	    List<String> sortBy = Arrays.stream(sortByCsv.split(","))
+	            .map(String::trim).filter(s -> !s.isBlank()).toList();
+
+	    List<Integer> orders = Arrays.stream(sortOrderCsv.split(","))
+	            .map(String::trim).filter(s -> !s.isBlank())
+	            .map(v -> "1".equals(v) ? 1 : 0).toList();
+
+	    List<Integer> padded = padOrders(orders, sortBy.size());
+
+	    List<Sort.Order> result = new ArrayList<>();
+	    for (int i = 0; i < sortBy.size(); i++) {
+	        String apiField   = sortBy.get(i);
+	        String entityPath = FIELD_MAP.get(apiField);
+	        if (entityPath == null) continue;
+	        boolean asc = padded.get(i) == 1;
+	        result.add(asc ? Sort.Order.asc(entityPath) : Sort.Order.desc(entityPath));
+	    }
+	    return result;
+	}
+
+	private List<Integer> padOrders(List<Integer> orders, int targetSize) {
+	    if (orders.isEmpty()) {
+	        return Collections.nCopies(targetSize, 1); 
+	    }
+	    List<Integer> out = new ArrayList<>(orders);
+	    while (out.size() < targetSize) {
+	        out.add(out.get(out.size() - 1)); 
+	    }
+	    return out;
+	}
+
+	private Map<String,String> buildFilters(List<String> searchBy, List<String> searchInput) {
+	    if (searchBy == null || searchInput == null || searchBy.isEmpty() || searchInput.isEmpty()) {
+	        return Collections.emptyMap();
+	    }
+	    int size = Math.min(searchBy.size(), searchInput.size());
+	    Map<String,String> map = new LinkedHashMap<>(size);
+	    for (int i = 0; i < size; i++) {
+	        map.put(searchBy.get(i), searchInput.get(i));
+	    }
+	    return map;
+	}
+}
+
+
+
+package com.optum.fads.userroles.api.dto;
+
+public class UserListItem {
+    private final String uiSystemId;
+    private final String uiUserId;
+    private final String lastName;
+    private final String firstName;
+    private final String title;
+    private final String email;
+    private final String fadsGrpName;
+    private final String surGrpName;
+    private final String caseGrpName;
+
+    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
+                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
+        this.uiSystemId = uiSystemId;
+        this.uiUserId = uiUserId;
+        this.lastName = lastName;
+        this.firstName = firstName;
+        this.title = title;
+        this.email = email;
+        this.fadsGrpName = fadsGrpName;
+        this.surGrpName = surGrpName;
+        this.caseGrpName = caseGrpName;
+    }
+
+	public String getUiSystemId() {
+		return uiSystemId;
+	}
+
+	public String getUiUserId() {
+		return uiUserId;
+	}
+
+	public String getLastName() {
+		return lastName;
+	}
+
+	public String getFirstName() {
+		return firstName;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public String getFadsGrpName() {
+		return fadsGrpName;
+	}
+
+	public String getSurGrpName() {
+		return surGrpName;
+	}
+
+	public String getCaseGrpName() {
+		return caseGrpName;
+	}
+
+    
+    
+    
+}
+package com.optum.fads.userroles.api.mapper;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.ReportingPolicy;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface UserListItemMapper {
+
+    @Mapping(target = "uiSystemId", source = "uiSystemId")
+    @Mapping(target = "uiUserId", source = "uiUserId")
+    @Mapping(target = "lastName", source = "uiLastName")
+    @Mapping(target = "firstName", source = "uiFirstName")
+    @Mapping(target = "title", source = "uiTitle")
+    @Mapping(target = "email", source = "uiEMailAddress")
+    @Mapping(target = "fadsGrpName", source = "seUsrGrp.fadsGrp.fadsGrpName")
+    @Mapping(target = "surGrpName", source = "seUsrGrp.fadsSurGrp.surGrpName")
+    @Mapping(target = "caseGrpName", source = "seUsrGrp.fadsCaseGrp.caseGrpName")
+    UserListItem toDto(UiUserBase entity);
+}
+package com.optum.fads.userroles.api.repo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+
+public interface UiUserBaseRepository
+        extends JpaRepository<UiUserBase, String>,
+                JpaSpecificationExecutor<UiUserBase> {
+}
+
+package com.optum.fads.userroles.api.service;
+
+import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+import com.optum.fads.userroles.api.dto.UserListItem;
+
+public interface UserService {
+    Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap);
+}
+
+
+package com.optum.fads.userroles.api.service;
+
+import java.util.Map;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.optum.fads.authorization.api.dto.FADSUser;
-import com.optum.fads.authorization.api.dto.CaseModule;
-import com.optum.fads.authorization.api.dto.CaseNode;
-import com.optum.fads.authorization.api.dto.CaseRole;
-import com.optum.fads.authorization.api.dto.CaseTypeModule;
-import com.optum.fads.authorization.api.dto.ModuleAccess;
-import com.optum.fads.authorization.api.dto.PgpRole;
-import com.optum.fads.authorization.api.dto.SurAccessLevel;
-import com.optum.fads.authorization.api.dto.FadsRole;             // <-- add
-import com.optum.fads.authorization.api.entity.SeCaseGrp;
-import com.optum.fads.authorization.api.entity.SeCaseGrpModAccess;
-import com.optum.fads.authorization.api.entity.SeCaseGrpNodeAccess;
-import com.optum.fads.authorization.api.entity.SeSurGrpModAccess;
-import com.optum.fads.authorization.api.entity.SeFadsGrp;         // <-- add
-import com.optum.fads.authorization.api.entity.UiUserBase;
-import com.optum.fads.authorization.api.mapper.UserDetailMapper;
-import com.optum.fads.authorization.api.repo.UserRepository;
-import com.optum.fads.authorization.api.service.IUserDetailsService;
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.utility.UserSpecification;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
-public class UserDetailsService implements IUserDetailsService {
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
 
-    private static final Logger logger = LoggerFactory.getLogger(UserDetailsService.class);
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private UserDetailMapper userDetailMapper;
+    private final UiUserBaseRepository repo;
+    private final UserListItemMapper mapper;
 
     @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        logger.info("Attempting to load user by username: {}", username);
-        Optional<UiUserBase> optional = userRepository.findByUiEMailAddress(username);
-        optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
+        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
 
-        UiUserBase uiUserBase = optional.get();
-        FADSUser user = userDetailMapper.toAppUser(uiUserBase);
-
-        // -------- FADS ROLE – minimal (ONLY groupId, groupName) --------
-        if (uiUserBase.getSeUsrGrp() != null) {
-            SeFadsGrp fadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
-            if (fadsGrp != null) {
-                FadsRole fadsRole = new FadsRole();
-                fadsRole.setGroupId(fadsGrp.getFadsGrpId());
-                fadsRole.setGroupName(fadsGrp.getFadsGrpName());
-                // do NOT populate componentPermissions/modules/elements
-                user.getRole().setFadsRole(fadsRole);
-            }
-        }
-        // ----------------------------------------------------------------
-
-        if (uiUserBase.getSeUsrGrp().getSeSurGrp() != null) {
-            List<SeSurGrpModAccess> surAccesses =
-                    uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
-            List<SurAccessLevel> accesses = new ArrayList<>();
-            surAccesses.forEach(surModuleAccess -> {
-                accesses.add(new SurAccessLevel(
-                        surModuleAccess.getId().getSurModuleId(),
-                        ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
-                        surModuleAccess.getSeSurModule().getSurModuleName(),
-                        surModuleAccess.getSeSurAccess().getSurAccessId()
-                ));
-            });
-            user.getRole().setPgpRole(PgpRole.builder()
-                    .groupId(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId())
-                    .roleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName())
-                    .pgpAccesses(accesses)
-                    .build());
-        }
-
-        SeCaseGrp seCaseGrp = uiUserBase.getSeUsrGrp().getSeCaseGrp();
-        if (seCaseGrp != null) {
-            CaseRole caseRole = new CaseRole();
-            caseRole.setGroupId(seCaseGrp.getCaseGrpId());
-            caseRole.setRoleName(seCaseGrp.getCaseGrpName());
-            List<SeCaseGrpModAccess> seCaseGrpModAccesses = seCaseGrp.getSeCaseGrpModAccesses();
-            List<CaseTypeModule> caseTypeModules = new ArrayList<>();
-            Map<String, String> caseTypes = new HashMap<>();
-            Map<String, List<CaseModule>> modulePermissions = new HashMap<>();
-            for (SeCaseGrpModAccess caseGrp : seCaseGrpModAccesses) {
-                CaseModule caseModule = new CaseModule();
-                caseModule.setModuleId(caseGrp.getSeCaseModule().getCaseModuleId());
-                caseModule.setModuleCd(caseGrp.getSeCaseModule().getCaseModuleCd());
-                caseModule.setModuleName(caseGrp.getSeCaseModule().getCaseModuleName());
-                caseModule.setModuleAccess(caseGrp.getSeCaseAccess().getAccessId());
-                if (!modulePermissions.containsKey(caseGrp.getCaLuCaseTypeT().getTypeCd())) {
-                    modulePermissions.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
-                }
-                modulePermissions.get(caseGrp.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
-                caseTypes.put(caseGrp.getCaLuCaseTypeT().getTypeCd(), caseGrp.getCaLuCaseTypeT().getTypeDesc());
-            }
-            for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
-                CaseTypeModule caseTypeModule = new CaseTypeModule();
-                caseTypeModule.setCaseTypeId(entry.getKey());
-                caseTypeModule.setCaseTypeName(entry.getValue());
-                caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
-                caseTypeModules.add(caseTypeModule);
-            }
-            caseRole.setCaseTypeModules(caseTypeModules);
-
-            List<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses = seCaseGrp.getSeCaseGrpNodeAccesses();
-            Collection<CaseNode> nodePermissions = new ArrayList<>();
-            for (SeCaseGrpNodeAccess seCaseGrpNode : seCaseGrpNodeAccesses) {
-                CaseNode caseNodeDto = new CaseNode();
-                caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
-                caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
-                caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
-                caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
-                nodePermissions.add(caseNodeDto);
-            }
-            caseRole.setNodePermissions(new HashSet<>(nodePermissions));
-            user.getRole().setCaseRole(caseRole);
-        }
-
-        return user;
+        Page<UiUserBase> page = (spec == null)
+                ? repo.findAll(pageable)            
+                : repo.findAll(spec, pageable);         
+        return page.map(mapper::toDto);
     }
+}
+
+package com.optum.fads.userroles.api.utility;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import jakarta.persistence.criteria.*;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.util.*;
+
+public final class UserSpecification {
+
+	private UserSpecification() {
+	}
+
+	
+	public static Specification<UiUserBase> containsAll(Map<String, String> filters, Map<String, String> fieldMap) {
+		if (filters == null || filters.isEmpty()) {
+			return null; 
+		}
+
+		return (root, query, cb) -> {
+			boolean needsDistinct = filters.keySet().stream().map(fieldMap::get).filter(Objects::nonNull)
+					.anyMatch(path -> path.contains("."));
+			if (needsDistinct) {
+				query.distinct(true);
+			}
+
+			List<Predicate> predicates = new ArrayList<>();
+
+			for (Map.Entry<String, String> e : filters.entrySet()) {
+				String apiField = e.getKey();
+				String value = e.getValue();
+				if (value == null || value.isBlank())
+					continue;
+
+				String entityPath = fieldMap.get(apiField);
+				if (entityPath == null)
+					continue; 
+
+				Expression<String> pathExpr = resolvePath(root, entityPath);
+				predicates.add(cb.like(cb.lower(pathExpr), "%" + value.toLowerCase(Locale.ROOT) + "%"));
+			}
+
+			return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+		};
+	}
+
+	
+	@SuppressWarnings("unchecked")
+	private static Expression<String> resolvePath(From<?, ?> root, String dotPath) {
+		String[] parts = dotPath.split("\\.");
+		From<?, ?> from = root;
+		Path<?> path = root;
+
+		for (int i = 0; i < parts.length; i++) {
+			String part = parts[i];
+
+			if (i < parts.length - 1) {
+				from = safeJoin(from, part);
+				path = from;
+			} else {
+				path = path.get(part);
+			}
+		}
+		return (Expression<String>) path.as(String.class);
+	}
+
+	private static From<?, ?> safeJoin(From<?, ?> from, String attribute) {
+		for (Join<?, ?> j : from.getJoins()) {
+			if (j.getAttribute() != null && attribute.equals(j.getAttribute().getName())) {
+				return (From<?, ?>) j;
+			}
+		}
+		return from.join(attribute, JoinType.LEFT);
+	}
 }
