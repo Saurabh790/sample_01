@@ -1,155 +1,93 @@
-package com.optum.fads.userroles.api.dto;
+package com.optum.fads.userroles.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
-public class CreateUserRoleRequest {
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_SUR_GRP")
+public class SeSurGrp {
+    @Id
+    @Column(name = "SUR_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
 
-    private String uiSystemId;     // Required
-    private String uiUserId;       // Required
-    private String firstName;
-    private String lastName;
-    private String email;
+    @Size(max = 40)
+    @Column(name = "SUR_GRP_NAME", length = 40)
+    private String surGrpName;
 
-    private BigDecimal fadsGrpId;      // SE_FADS_GRP.FADS_GRP_ID
-    private BigDecimal fadsSurGrpId;   // SE_SUR_GRP.SUR_GRP_ID
-    private BigDecimal fadsCaseGrpId;  // SE_CASE_GRP.CASE_GRP_ID
-
-    public String getUiSystemId() { return uiSystemId; }
-    public String getUiUserId() { return uiUserId; }
-    public String getFirstName() { return firstName; }
-    public String getLastName() { return lastName; }
-    public String getEmail() { return email; }
-    public BigDecimal getFadsGrpId() { return fadsGrpId; }
-    public BigDecimal getFadsSurGrpId() { return fadsSurGrpId; }
-    public BigDecimal getFadsCaseGrpId() { return fadsCaseGrpId; }
 }
-✅ 2. Add Repository for SeUsrGrp
-java
-Copy code
-package com.optum.fads.userroles.api.repo;
 
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface SeUsrGrpRepository extends JpaRepository<SeUsrGrp, String> {
+package com.optum.fads.userroles.api.domain;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.Instant;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_USR_GRP")
+public class SeUsrGrp {
+    @Id
+    @Size(max = 25)
+    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
+    private String uiSystemId;
+
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false)
+    private UiUserBase uiUserBase;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FADS_GRP_ID")
+    private SeFadsGrp fadsGrp;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FADS_SUR_GRP_ID")
+    private SeSurGrp fadsSurGrp;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FADS_CASE_GRP_ID")
+    private SeCaseGrp fadsCaseGrp;
+
+
 }
-✅ 3. Service Layer to Create User With Roles
-java
-Copy code
-package com.optum.fads.userroles.api.service;
 
-import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+package com.optum.fads.userroles.api.domain;
 
-public interface UserRoleCreateService {
-    void createOrUpdateUser(CreateUserRoleRequest request);
-}
-Implementation
-java
-Copy code
-package com.optum.fads.userroles.api.service.impl;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import com.optum.fads.userroles.api.entity.SeFadsGrp;
-import com.optum.fads.userroles.api.entity.SeSurGrp;
-import com.optum.fads.userroles.api.entity.SeCaseGrp;
-import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
-import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
-import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import java.math.BigDecimal;
 
-@Service
-@RequiredArgsConstructor
-public class UserRoleCreateServiceImpl implements UserRoleCreateService {
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_CASE_GRP")
+public class SeCaseGrp {
+    @Id
+    @Column(name = "CASE_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
 
-    private final UiUserBaseRepository userRepo;
-    private final SeUsrGrpRepository usrGrpRepo;
+    @Size(max = 40)
+    @Column(name = "CASE_GRP_NAME", length = 40)
+    private String caseGrpName;
 
-    @Override
-    @Transactional
-    public void createOrUpdateUser(CreateUserRoleRequest req) {
-
-        UiUserBase user = userRepo.findById(req.getUiSystemId())
-                .orElseGet(UiUserBase::new);
-
-        user.setUiSystemId(req.getUiSystemId());
-        user.setUiUserId(req.getUiUserId());
-        user.setUiFirstName(req.getFirstName());
-        user.setUiLastName(req.getLastName());
-        user.setUiEMailAddress(req.getEmail());
-
-        userRepo.save(user);
-
-        SeUsrGrp grp = usrGrpRepo.findById(req.getUiSystemId())
-                .orElseGet(SeUsrGrp::new);
-
-        grp.setUiSystemId(req.getUiSystemId());
-
-        if (req.getFadsGrpId() != null) {
-            SeFadsGrp f = new SeFadsGrp();
-            f.setId(req.getFadsGrpId());
-            grp.setFadsGrp(f);
-        }
-        if (req.getFadsSurGrpId() != null) {
-            SeSurGrp s = new SeSurGrp();
-            s.setSurGrpId(req.getFadsSurGrpId());
-            grp.setSeSurGrp(s);
-        }
-        if (req.getFadsCaseGrpId() != null) {
-            SeCaseGrp c = new SeCaseGrp();
-            c.setCaseGrpId(req.getFadsCaseGrpId());
-            grp.setSeCaseGrp(c);
-        }
-
-        usrGrpRepo.save(grp);
-    }
-}
-✅ 4. REST Controller
-java
-Copy code
-package com.optum.fads.userroles.api.controllers;
-
-import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
-import com.optum.fads.userroles.api.service.UserRoleCreateService;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/userroles")
-public class UserRolesCreateController {
-
-    private final UserRoleCreateService service;
-
-    public UserRolesCreateController(UserRoleCreateService service) {
-        this.service = service;
-    }
-
-    @PostMapping
-    public String create(@RequestBody CreateUserRoleRequest req) {
-        service.createOrUpdateUser(req);
-        return "User Created / Updated Successfully";
-    }
-
-    @PutMapping
-    public String update(@RequestBody CreateUserRoleRequest req) {
-        service.createOrUpdateUser(req);
-        return "User Updated Successfully";
-    }
-}
-✅ Test Example Request (Postman / Swagger)
-bash
-Copy code
-POST http://localhost:8080/api/userroles
-Content-Type: application/json
-
-{
-  "uiSystemId": "GS1001",
-  "uiUserId": "JSMITH",
-  "firstName": "John",
-  "lastName": "Smith",
-  "email": "john.smith@optum.com",
-  "fadsGrpId": 10,
-  "fadsSurGrpId": 21,
-  "fadsCaseGrpId": 5
 }
