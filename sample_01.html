@@ -1,159 +1,229 @@
-!-- Add under <dependencies> -->
-<dependency>
-  <groupId>org.springframework.boot</groupId>
-  <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-</dependency>
-If you don’t need browser login/client features, you can remove the spring-boot-starter-oauth2-client dependency; it’s not required for JWT resource servers.
+package com.optum.fads.userroles.api.domain;
 
-2) application.yaml – point to your JWKS or issuer
-You already have:
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-yaml
-Copy code
-spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${JWKS_URL}
-          jws-algorithms: ${JWS_ALG:RS256}
-Make sure JWKS_URL is actually set in your environment (CI/host). If your IdP supports discovery, prefer issuer:
+import java.math.BigDecimal;
 
-yaml
-Copy code
-spring:
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: https://<your-idp-tenant>/.well-known/openid-configuration
-Either issuer-uri or jwk-set-uri is required (not both). If you keep jwk-set-uri, ensure it returns a valid JWKS.
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_CASE_GRP")
+public class SeCaseGrp {
+    @Id
+    @Column(name = "CASE_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
 
-3) Tighten SecurityConfig
-A couple of small but important tweaks:
+    @Size(max = 40)
+    @Column(name = "CASE_GRP_NAME", length = 40)
+    private String caseGrpName;
 
-Enable cors() so your CorsConfigurationSource bean is used.
-
-(Optional) Add a CSP header if you plan to serve any UI.
-
-You don’t need a PasswordEncoder for JWT resource server (no passwords are used); it’s harmless though.
-
-java
-Copy code
-@Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
-public class SecurityConfig {
-
-    private final IUserDetailsService userDetailsService;
-
-    public SecurityConfig(IUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> {})   // <-- ensure your CorsConfigurationSource is actually used
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/**", "/swagger-resources/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(userJwtAuthenticationConverter()))
-            );
-        // Optionally add CSP if serving HTML
-        // http.headers(h -> h.contentSecurityPolicy(csp -> csp.policyDirectives(CSP_DEFAULT)));
-        return http.build();
-    }
-
-    @Bean
-    UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
-        return new UserJwtAuthenticationConverter(userDetailsService);
-    }
-
-    // You can delete this if you don't use passwords anywhere.
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration cfg = new CorsConfiguration();
-        // If you truly need "*", use origin patterns:
-        cfg.setAllowedOriginPatterns(Collections.singletonList("*"));
-        cfg.setAllowedMethods(Collections.singletonList("*"));
-        cfg.setAllowedHeaders(Collections.singletonList("*"));
-        // cfg.setAllowCredentials(true); // only if you need cookies/Authorization with specific origins
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
-        return source;
-    }
-
-    private static final String CSP_DEFAULT =
-        "default-src 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';";
 }
-4) Make AppUser a well-formed UserDetails
-Right now it returns null/false for everything. Even though authorities come from the Authentication token, it’s cleaner (and avoids surprises) to return sensible values:
 
-java
-Copy code
-@Data
-public class AppUser implements UserDetails {
-    private static final long serialVersionUID = 1L;
+package com.optum.fads.userroles.api.domain;
 
-    private String userId;
-    private String userSystemId;
-    private String userEmail;
-    private Role role = new Role();
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.emptyList(); // authorities are on the Authentication
-    }
+import java.math.BigDecimal;
 
-    @Override public String getPassword() { return ""; }
-    @Override public String getUsername() { return userEmail != null ? userEmail : userId; }
-    @Override public boolean isAccountNonExpired() { return true; }
-    @Override public boolean isAccountNonLocked() { return true; }
-    @Override public boolean isCredentialsNonExpired() { return true; }
-    @Override public boolean isEnabled() { return true; }
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_FADS_GRP")
+public class SeFadsGrp {
+    @Id
+    @Column(name = "FADS_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
+
+    @Size(max = 40)
+    @Column(name = "FADS_GRP_NAME", length = 40)
+    private String fadsGrpName;
+
 }
-5) Claims mapping (roles/groups)
-Your converter reads groups and prefixes with ROLE_. Verify your IdP actually issues a groups (or roles) claim in the access token (not the ID token). If it’s roles, change:
+package com.optum.fads.userroles.api.domain;
 
-java
-Copy code
-private static final String GROUPS_CLAIM = "roles"; // if your token uses "roles"
-You can also support both:
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-java
-Copy code
-private Collection<String> getGroups(Jwt jwt) {
-    Object groups = jwt.getClaims().getOrDefault("groups", jwt.getClaims().get("roles"));
-    if (groups instanceof Collection<?> c) {
-        return c.stream().map(Object::toString).toList();
-    }
-    return Collections.emptyList();
+import java.math.BigDecimal;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_SUR_GRP")
+public class SeSurGrp {
+    @Id
+    @Column(name = "SUR_GRP_ID", nullable = false, precision = 5)
+    private BigDecimal id;
+
+    @Size(max = 40)
+    @Column(name = "SUR_GRP_NAME", length = 40)
+    private String surGrpName;
+
 }
-6) Repository call & lazy loads
-You already marked loadUserByUsername as @Transactional(readOnly = true) which is good because you traverse nested lazy associations (uiUserBase.getSeUsrGrp()...). If you see LazyInitializationExceptions later, consider using an @EntityGraph on UserRepository.findByUiEMailAddress(...) to fetch the needed graphs eagerly.
+package com.optum.fads.userroles.api.domain;
 
-7) Environment and secrets
-You have DB creds in application.yaml. Strongly consider moving them to your secret store (Azure Key Vault) and never commit plaintext passwords. Also set JWKS_URL/issuer-uri via environment variables or CI secrets.
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
 
-TL;DR checklist
- Add spring-boot-starter-oauth2-resource-server to the pom. ← fixes your error
+import java.time.Instant;
 
- Keep either issuer-uri or jwk-set-uri configured (and the env var present).
+@Getter
+@Setter
+@Entity
+@Table(name = "SE_USR_GRP")
+public class SeUsrGrp {
+    @Id
+    @Size(max = 25)
+    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
+    private String uiSystemId;
 
- Enable http.cors().
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false)
+    private UiUserBase uiUserBase;
 
- Make AppUser return sane values.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FADS_GRP_ID")
+    private SeFadsGrp fadsGrp;
 
- Verify your token contains groups (or adapt to roles).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FADS_SUR_GRP_ID")
+    private SeSurGrp fadsSurGrp;
 
-If you share your token’s JWT claims (just the header+claims, redact sensitive values), I can fine-tune the converter (which claim to read, authority prefixing, etc.).
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "FADS_CASE_GRP_ID")
+    private SeCaseGrp fadsCaseGrp;
+
+
+}
+package com.optum.fads.userroles.api.domain;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.Instant;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "UI_USER_BASE")
+public class UiUserBase {
+    @Id
+    @Size(max = 25)
+    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
+    private String uiSystemId;
+
+    @Size(max = 50)
+    @NotNull
+    @Column(name = "UI_USER_ID", nullable = false, length = 50)
+    private String uiUserId;
+
+    @Size(max = 15)
+    @Column(name = "UI_TITLE", length = 15)
+    private String uiTitle;
+
+    @Size(max = 40)
+    @Column(name = "UI_LAST_NAME", length = 40)
+    private String uiLastName;
+
+    @Size(max = 20)
+    @Column(name = "UI_FIRST_NAME", length = 20)
+    private String uiFirstName;
+
+    @Column(name = "UI_USER_INACTIVE")
+    private Character uiUserInactive;
+
+    @Size(max = 50)
+    @NotNull
+    @Column(name = "UI_E_MAIL_ADDRESS", nullable = false, length = 50)
+    private String uiEMailAddress;
+
+    @Size(max = 25)
+    @Column(name = "UI_CREATED_BY", length = 25)
+    private String uiCreatedBy;
+
+    @Column(name = "UI_CREATED_DT")
+    private Instant uiCreatedDt;
+
+    @OneToOne(mappedBy = "uiUserBase")
+    private SeUsrGrp seUsrGrp;
+
+}
+package com.optum.fads.userroles.api.domain;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.Instant;
+
+@Getter
+@Setter
+@Entity
+@Table(name = "UI_USER_BASE")
+public class UiUserBase {
+    @Id
+    @Size(max = 25)
+    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
+    private String uiSystemId;
+
+    @Size(max = 50)
+    @NotNull
+    @Column(name = "UI_USER_ID", nullable = false, length = 50)
+    private String uiUserId;
+
+    @Size(max = 15)
+    @Column(name = "UI_TITLE", length = 15)
+    private String uiTitle;
+
+    @Size(max = 40)
+    @Column(name = "UI_LAST_NAME", length = 40)
+    private String uiLastName;
+
+    @Size(max = 20)
+    @Column(name = "UI_FIRST_NAME", length = 20)
+    private String uiFirstName;
+
+    @Column(name = "UI_USER_INACTIVE")
+    private Character uiUserInactive;
+
+    @Size(max = 50)
+    @NotNull
+    @Column(name = "UI_E_MAIL_ADDRESS", nullable = false, length = 50)
+    private String uiEMailAddress;
+
+    @Size(max = 25)
+    @Column(name = "UI_CREATED_BY", length = 25)
+    private String uiCreatedBy;
+
+    @Column(name = "UI_CREATED_DT")
+    private Instant uiCreatedDt;
+
+    @OneToOne(mappedBy = "uiUserBase")
+    private SeUsrGrp seUsrGrp;
+
+}
