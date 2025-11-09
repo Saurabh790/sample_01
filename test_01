@@ -1,93 +1,70 @@
-package com.optum.fads.userroles.api.domain;
+// UserRoleCreateServiceImpl.java (only the bottom part changes)
+@Service
+@RequiredArgsConstructor
+public class UserRoleCreateServiceImpl implements UserRoleCreateService {
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+    private final UiUserBaseRepository userRepo;
+    private final SeUsrGrpRepository usrGrpRepo;
 
-import java.math.BigDecimal;
+    @PersistenceContext
+    private EntityManager em;
 
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_SUR_GRP")
-public class SeSurGrp {
-    @Id
-    @Column(name = "SUR_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
+    @Override
+    @Transactional
+    public void createOrUpdateUser(CreateUserRoleRequest req) {
 
-    @Size(max = 40)
-    @Column(name = "SUR_GRP_NAME", length = 40)
-    private String surGrpName;
+        // 1) upsert UI_USER_BASE
+        UiUserBase user = userRepo.findById(req.getUiSystemId()).orElseGet(UiUserBase::new);
+        user.setUiSystemId(req.getUiSystemId());
+        user.setUiUserId(req.getUiUserId());
+        user.setUiFirstName(req.getFirstName());
+        user.setUiLastName(req.getLastName());
+        user.setUiEMailAddress(req.getEmail());
+        userRepo.save(user); // safe
 
-}
+        // 2) INSERT vs UPDATE for SE_USR_GRP
+        boolean exists = usrGrpRepo.existsById(req.getUiSystemId());
 
+        SeUsrGrp grp;
+        if (exists) {
+            // UPDATE path – managed entity; just mutate it, no save() needed
+            grp = usrGrpRepo.findById(req.getUiSystemId()).orElseThrow();
+        } else {
+            // INSERT path – new entity; we will em.persist(..)
+            grp = new SeUsrGrp();
+            grp.setUiSystemId(req.getUiSystemId());
+            grp.setUiUserBase(user); // required because of @MapsId
+        }
 
-package com.optum.fads.userroles.api.domain;
+        // set relationships using your existing entities’ API (id field = setId)
+        if (req.getFadsGrpId() != null) {
+            SeFadsGrp f = new SeFadsGrp();
+            f.setId(req.getFadsGrpId());
+            grp.setFadsGrp(f);
+        } else {
+            grp.setFadsGrp(null);
+        }
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+        if (req.getFadsSurGrpId() != null) {
+            SeSurGrp s = new SeSurGrp();
+            s.setId(req.getFadsSurGrpId());
+            grp.setFadsSurGrp(s);
+        } else {
+            grp.setFadsSurGrp(null);
+        }
 
-import java.time.Instant;
+        if (req.getFadsCaseGrpId() != null) {
+            SeCaseGrp c = new SeCaseGrp();
+            c.setId(req.getFadsCaseGrpId());
+            grp.setFadsCaseGrp(c);
+        } else {
+            grp.setFadsCaseGrp(null);
+        }
 
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_USR_GRP")
-public class SeUsrGrp {
-    @Id
-    @Size(max = 25)
-    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
-    private String uiSystemId;
-
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false)
-    private UiUserBase uiUserBase;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_GRP_ID")
-    private SeFadsGrp fadsGrp;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_SUR_GRP_ID")
-    private SeSurGrp fadsSurGrp;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_CASE_GRP_ID")
-    private SeCaseGrp fadsCaseGrp;
-
-
-}
-
-package com.optum.fads.userroles.api.domain;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.math.BigDecimal;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_CASE_GRP")
-public class SeCaseGrp {
-    @Id
-    @Column(name = "CASE_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
-
-    @Size(max = 40)
-    @Column(name = "CASE_GRP_NAME", length = 40)
-    private String caseGrpName;
-
+        if (exists) {
+            // managed; changes will flush automatically
+        } else {
+            em.persist(grp); // force INSERT (no merge, no stale)
+        }
+    }
 }
