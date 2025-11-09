@@ -1,5 +1,25 @@
+package com.optum.fads.userroles.api.service.Impl;
+
+import com.optum.fads.userroles.api.domain.SeCaseGrp;
+import com.optum.fads.userroles.api.domain.SeFadsGrp;
+import com.optum.fads.userroles.api.domain.SeSurGrp;
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.service.UserRoleCreateService;
+import com.optum.fads.userroles.api.web.CreateUserRoleRequest;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserRoleCreateServiceImpl implements UserRoleCreateService {
 
     private final UiUserBaseRepository userRepo;
@@ -11,69 +31,69 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
     @Override
     @Transactional
     public void createOrUpdateUser(CreateUserRoleRequest req) {
+        if (req == null || !StringUtils.hasText(req.getUiSystemId())) {
+            throw new IllegalArgumentException("uiSystemId is required");
+        }
 
-        // 1) UPSERT UI_USER_BASE (managed instance returned)
-        UiUserBase user = userRepo.findById(req.getUiSystemId()).orElseGet(UiUserBase::new);
-        user.setUiSystemId(req.getUiSystemId());
+        final String uiSystemId = req.getUiSystemId();
+        log.info("Create/Update user & group for uiSystemId={}", uiSystemId);
+
+        // -------- Upsert UI_USER_BASE (managed entity) --------
+        UiUserBase user = userRepo.findById(uiSystemId).orElseGet(() -> {
+            UiUserBase u = new UiUserBase();
+            u.setUiSystemId(uiSystemId);
+            return u;
+        });
+
+        // set/overwrite simple fields from request
         user.setUiUserId(req.getUiUserId());
         user.setUiFirstName(req.getFirstName());
         user.setUiLastName(req.getLastName());
         user.setUiEMailAddress(req.getEmail());
-        user = userRepo.save(user); // 'user' is managed in the PC
 
-        // 2) INSERT vs UPDATE for SE_USR_GRP
-        boolean exists = usrGrpRepo.existsById(req.getUiSystemId());
-        SeUsrGrp grp;
+        // save returns a managed instance (merge-or-persist as needed)
+        user = userRepo.save(user);
 
-        if (exists) {
-            // UPDATE path: get the managed entity and mutate it
-            grp = usrGrpRepo.findById(req.getUiSystemId()).orElseThrow();
-        } else {
-            // INSERT path: create new and attach the *managed* UiUserBase
-            grp = new SeUsrGrp();
-            grp.setUiSystemId(req.getUiSystemId());
+        // -------- Upsert SE_USR_GRP (managed entity) --------
+        SeUsrGrp grp = usrGrpRepo.findById(uiSystemId).orElseGet(() -> {
+            SeUsrGrp g = new SeUsrGrp();
+            g.setUiSystemId(uiSystemId);   // PK == same as user
+            g.setUiUserBase(user);         // FK to UI_USER_BASE
+            return g;
+        });
 
-            // CRITICAL: reuse managed instance (or use getReference) — do NOT new UiUserBase()
-            grp.setUiUserBase(user);
-            // alternatively:
-            // grp.setUiUserBase(em.getReference(UiUserBase.class, req.getUiSystemId()));
-        }
+        // Always keep the link to the (now) managed user
+        grp.setUiUserBase(user);
 
-        // set optional relationships by id without reloading full rows
+        // IMPORTANT: For @ManyToOne lookups, use managed references (no transient objects)
         if (req.getFadsGrpId() != null) {
-            SeFadsGrp f = new SeFadsGrp();
-            f.setId(req.getFadsGrpId());
-            grp.setFadsGrp(f);
+            grp.setFadsGrp(em.getReference(SeFadsGrp.class, req.getFadsGrpId()));
         } else {
             grp.setFadsGrp(null);
         }
 
         if (req.getFadsSurGrpId() != null) {
-            SeSurGrp s = new SeSurGrp();
-            s.setId(req.getFadsSurGrpId());
-            grp.setFadsSurGrp(s);
+            grp.setFadsSurGrp(em.getReference(SeSurGrp.class, req.getFadsSurGrpId()));
         } else {
             grp.setFadsSurGrp(null);
         }
 
         if (req.getFadsCaseGrpId() != null) {
-            SeCaseGrp c = new SeCaseGrp();
-            c.setId(req.getFadsCaseGrpId());
-            grp.setFadsCaseGrp(c);
+            grp.setFadsCaseGrp(em.getReference(SeCaseGrp.class, req.getFadsCaseGrpId()));
         } else {
             grp.setFadsCaseGrp(null);
         }
 
-        if (exists) {
-            // managed entity – flush will update automatically
-        } else {
-            em.persist(grp); // will INSERT without trying to persist another UiUserBase
-        }
+        // save/merge the group row
+        usrGrpRepo.save(grp);
+
+        log.info("Create/Update completed for uiSystemId={}", uiSystemId);
     }
 }
 
+
 {
-  "uiSystemId": "GS1001",
+  "uiSystemId": "GS1002",
   "uiUserId": "JSMITH",
   "firstName": "John",
   "lastName": "Smith",
