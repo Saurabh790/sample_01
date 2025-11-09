@@ -1,17 +1,9 @@
 package com.optum.fads.userroles.api.service.impl;
 
-import com.optum.fads.userroles.api.domain.SeCaseGrp;
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import com.optum.fads.userroles.api.domain.SeSurGrp;
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.domain.*;
 import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
 import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
-import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
-import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
-import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
-import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.repo.*;
 import com.optum.fads.userroles.api.service.UserRoleCreateService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -51,14 +43,15 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
         if (req == null || !StringUtils.hasText(req.getUiSystemId())) {
             throw new IllegalArgumentException("uiSystemId is required");
         }
+        // keep a plain local; no lambdas/method-refs below
         final String id = req.getUiSystemId().trim();
 
-        // 1) Upsert UI_USER_BASE
-        UiUserBase user = userRepo.findById(id).orElseGet(() -> {
-            UiUserBase u = new UiUserBase();
-            u.setUiSystemId(id);
-            return u;
-        });
+        // 1) Upsert UI_USER_BASE (no lambdas)
+        UiUserBase user = userRepo.findById(id).orElse(null);
+        if (user == null) {
+            user = new UiUserBase();
+            user.setUiSystemId(id);
+        }
         user.setUiUserId(req.getUiUserId());
         user.setUiFirstName(req.getFirstName());
         user.setUiLastName(req.getLastName());
@@ -67,29 +60,28 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
         user.setUiUserInactive(req.getUserInactive());
         user = userRepo.save(user); // managed
 
-        // 2) Upsert SE_USR_GRP
-        SeUsrGrp grp = usrGrpRepo.findById(id).orElseGet(() -> {
-            SeUsrGrp g = new SeUsrGrp();
-            g.setUiSystemId(id);
-            g.setUiUserBase(user); // @MapsId link
-            return g;
-        });
+        // 2) Upsert SE_USR_GRP (no lambdas)
+        SeUsrGrp grp = usrGrpRepo.findById(id).orElse(null);
+        if (grp == null) {
+            grp = new SeUsrGrp();
+            grp.setUiSystemId(id);
+        }
         // keep the @MapsId link fresh
         grp.setUiUserBase(user);
 
-        // (Optional) validate that provided group IDs exist; gives a clear 400-ish error
-        validateLookupExists(req.getFadsGrpId(), fadsGrpRepo, "FADS_GRP_ID");
-        validateLookupExists(req.getFadsSurGrpId(), surGrpRepo, "FADS_SUR_GRP_ID");
-        validateLookupExists(req.getFadsCaseGrpId(), caseGrpRepo, "FADS_CASE_GRP_ID");
+        // (Optional) validate lookups exist to avoid FK issues
+        validateExists(req.getFadsGrpId(),    "FADS_GRP_ID",    fadsGrpRepo);
+        validateExists(req.getFadsSurGrpId(), "FADS_SUR_GRP_ID", surGrpRepo);
+        validateExists(req.getFadsCaseGrpId(), "FADS_CASE_GRP_ID", caseGrpRepo);
 
-        // 3) attach MANAGED references (avoids transient/detached errors)
-        grp.setFadsGrp(     refIfPresent(req.getFadsGrpId(),     SeFadsGrp.class));
-        grp.setFadsSurGrp(  refIfPresent(req.getFadsSurGrpId(),  SeSurGrp.class));
-        grp.setFadsCaseGrp( refIfPresent(req.getFadsCaseGrpId(), SeCaseGrp.class));
+        // 3) attach MANAGED references via EntityManager.getReference (no lambdas)
+        grp.setFadsGrp(     ref(SeFadsGrp.class, req.getFadsGrpId()));
+        grp.setFadsSurGrp(  ref(SeSurGrp.class,  req.getFadsSurGrpId()));
+        grp.setFadsCaseGrp( ref(SeCaseGrp.class, req.getFadsCaseGrpId()));
 
         usrGrpRepo.save(grp);
 
-        // 4) Build response (include names for convenience)
+        // 4) Build response (no streams/lambdas)
         CreateUserRoleResponse out = new CreateUserRoleResponse();
         out.setUiSystemId(user.getUiSystemId());
         out.setUiUserId(user.getUiUserId());
@@ -101,26 +93,28 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
 
         if (req.getFadsGrpId() != null) {
             out.setFadsGrpId(req.getFadsGrpId());
-            out.setFadsGrpName(fadsGrpRepo.findById(req.getFadsGrpId()).map(SeFadsGrp::getFadsGrpName).orElse(null));
+            SeFadsGrp fg = fadsGrpRepo.findById(req.getFadsGrpId()).orElse(null);
+            out.setFadsGrpName(fg != null ? fg.getFadsGrpName() : null);
         }
         if (req.getFadsSurGrpId() != null) {
             out.setFadsSurGrpId(req.getFadsSurGrpId());
-            out.setFadsSurGrpName(surGrpRepo.findById(req.getFadsSurGrpId()).map(SeSurGrp::getSurGrpName).orElse(null));
+            SeSurGrp sg = surGrpRepo.findById(req.getFadsSurGrpId()).orElse(null);
+            out.setFadsSurGrpName(sg != null ? sg.getSurGrpName() : null);
         }
         if (req.getFadsCaseGrpId() != null) {
             out.setFadsCaseGrpId(req.getFadsCaseGrpId());
-            out.setFadsCaseGrpName(caseGrpRepo.findById(req.getFadsCaseGrpId()).map(SeCaseGrp::getCaseGrpName).orElse(null));
+            SeCaseGrp cg = caseGrpRepo.findById(req.getFadsCaseGrpId()).orElse(null);
+            out.setFadsCaseGrpName(cg != null ? cg.getCaseGrpName() : null);
         }
         return out;
     }
 
-    private <T> T refIfPresent(BigDecimal id, Class<T> type) {
+    private <T> T ref(Class<T> type, BigDecimal id) {
         return id == null ? null : em.getReference(type, id);
     }
 
-    private <E, ID> void validateLookupExists(ID id,
-                                              org.springframework.data.repository.CrudRepository<E, ID> repo,
-                                              String field) {
+    private <E, ID> void validateExists(ID id, String field,
+                                        org.springframework.data.repository.CrudRepository<E, ID> repo) {
         if (id != null && !repo.existsById(id)) {
             throw new IllegalArgumentException(field + " " + id + " does not exist.");
         }
