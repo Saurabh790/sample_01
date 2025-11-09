@@ -1,71 +1,224 @@
-package com.optum.fads.userroles.api.service.Impl;
+1) DTOs
+package com.optum.fads.userroles.api.dto;
+
+import java.math.BigDecimal;
+
+public class CreateUserRoleRequest {
+    private String uiSystemId;     // PK
+    private String uiUserId;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String title;          // optional
+    private Character userInactive;// optional: 'Y'/'N' or null
+    private BigDecimal fadsGrpId;      // SE_FADS_GRP.FADS_GRP_ID
+    private BigDecimal fadsSurGrpId;   // SE_SUR_GRP.SUR_GRP_ID
+    private BigDecimal fadsCaseGrpId;  // SE_CASE_GRP.CASE_GRP_ID
+
+    // getters/setters
+    public String getUiSystemId() { return uiSystemId; }
+    public void setUiSystemId(String uiSystemId) { this.uiSystemId = uiSystemId; }
+    public String getUiUserId() { return uiUserId; }
+    public void setUiUserId(String uiUserId) { this.uiUserId = uiUserId; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public Character getUserInactive() { return userInactive; }
+    public void setUserInactive(Character userInactive) { this.userInactive = userInactive; }
+    public BigDecimal getFadsGrpId() { return fadsGrpId; }
+    public void setFadsGrpId(BigDecimal fadsGrpId) { this.fadsGrpId = fadsGrpId; }
+    public BigDecimal getFadsSurGrpId() { return fadsSurGrpId; }
+    public void setFadsSurGrpId(BigDecimal fadsSurGrpId) { this.fadsSurGrpId = fadsSurGrpId; }
+    public BigDecimal getFadsCaseGrpId() { return fadsCaseGrpId; }
+    public void setFadsCaseGrpId(BigDecimal fadsCaseGrpId) { this.fadsCaseGrpId = fadsCaseGrpId; }
+}
+
+package com.optum.fads.userroles.api.dto;
+
+import java.math.BigDecimal;
+
+public class CreateUserRoleResponse {
+    // echo back the saved state + friendly names (if found)
+    private String uiSystemId;
+    private String uiUserId;
+    private String firstName;
+    private String lastName;
+    private String email;
+    private String title;
+    private Character userInactive;
+
+    private BigDecimal fadsGrpId;
+    private String     fadsGrpName;
+
+    private BigDecimal fadsSurGrpId;
+    private String     fadsSurGrpName;
+
+    private BigDecimal fadsCaseGrpId;
+    private String     fadsCaseGrpName;
+
+    // getters/setters
+    public String getUiSystemId() { return uiSystemId; }
+    public void setUiSystemId(String uiSystemId) { this.uiSystemId = uiSystemId; }
+    public String getUiUserId() { return uiUserId; }
+    public void setUiUserId(String uiUserId) { this.uiUserId = uiUserId; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public Character getUserInactive() { return userInactive; }
+    public void setUserInactive(Character userInactive) { this.userInactive = userInactive; }
+    public BigDecimal getFadsGrpId() { return fadsGrpId; }
+    public void setFadsGrpId(BigDecimal fadsGrpId) { this.fadsGrpId = fadsGrpId; }
+    public String getFadsGrpName() { return fadsGrpName; }
+    public void setFadsGrpName(String fadsGrpName) { this.fadsGrpName = fadsGrpName; }
+    public BigDecimal getFadsSurGrpId() { return fadsSurGrpId; }
+    public void setFadsSurGrpId(BigDecimal fadsSurGrpId) { this.fadsSurGrpId = fadsSurGrpId; }
+    public String getFadsSurGrpName() { return fadsSurGrpName; }
+    public void setFadsSurGrpName(String fadsSurGrpName) { this.fadsSurGrpName = fadsSurGrpName; }
+    public BigDecimal getFadsCaseGrpId() { return fadsCaseGrpId; }
+    public void setFadsCaseGrpId(BigDecimal fadsCaseGrpId) { this.fadsCaseGrpId = fadsCaseGrpId; }
+    public String getFadsCaseGrpName() { return fadsCaseGrpName; }
+    public void setFadsCaseGrpName(String fadsCaseGrpName) { this.fadsCaseGrpName = fadsCaseGrpName; }
+}
+
+2) Repositories
+package com.optum.fads.userroles.api.repo;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface UiUserBaseRepository extends JpaRepository<UiUserBase, String> { }
+
+package com.optum.fads.userroles.api.repo;
+
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface SeUsrGrpRepository extends JpaRepository<SeUsrGrp, String> { }
+
+package com.optum.fads.userroles.api.repo;
+
+import com.optum.fads.userroles.api.domain.SeFadsGrp;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.math.BigDecimal;
+
+public interface SeFadsGrpRepository extends JpaRepository<SeFadsGrp, BigDecimal> { }
+
+package com.optum.fads.userroles.api.repo;
+
+import com.optum.fads.userroles.api.domain.SeSurGrp;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.math.BigDecimal;
+
+public interface SeSurGrpRepository extends JpaRepository<SeSurGrp, BigDecimal> { }
+
+package com.optum.fads.userroles.api.repo;
 
 import com.optum.fads.userroles.api.domain.SeCaseGrp;
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import com.optum.fads.userroles.api.domain.SeSurGrp;
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.math.BigDecimal;
+
+public interface SeCaseGrpRepository extends JpaRepository<SeCaseGrp, BigDecimal> { }
+
+3) Service
+package com.optum.fads.userroles.api.service;
+
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
+
+public interface UserRoleCreateService {
+    CreateUserRoleResponse createOrUpdateUser(CreateUserRoleRequest request);
+}
+
+package com.optum.fads.userroles.api.service.impl;
+
+import com.optum.fads.userroles.api.domain.*;
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
+import com.optum.fads.userroles.api.repo.*;
 import com.optum.fads.userroles.api.service.UserRoleCreateService;
-import com.optum.fads.userroles.api.web.CreateUserRoleRequest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.Optional;
+
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class UserRoleCreateServiceImpl implements UserRoleCreateService {
 
     private final UiUserBaseRepository userRepo;
     private final SeUsrGrpRepository usrGrpRepo;
+    private final SeFadsGrpRepository fadsGrpRepo;
+    private final SeSurGrpRepository  surGrpRepo;
+    private final SeCaseGrpRepository caseGrpRepo;
 
     @PersistenceContext
     private EntityManager em;
 
+    public UserRoleCreateServiceImpl(
+            UiUserBaseRepository userRepo,
+            SeUsrGrpRepository usrGrpRepo,
+            SeFadsGrpRepository fadsGrpRepo,
+            SeSurGrpRepository surGrpRepo,
+            SeCaseGrpRepository caseGrpRepo) {
+        this.userRepo   = userRepo;
+        this.usrGrpRepo = usrGrpRepo;
+        this.fadsGrpRepo = fadsGrpRepo;
+        this.surGrpRepo  = surGrpRepo;
+        this.caseGrpRepo = caseGrpRepo;
+    }
+
     @Override
     @Transactional
-    public void createOrUpdateUser(CreateUserRoleRequest req) {
+    public CreateUserRoleResponse createOrUpdateUser(CreateUserRoleRequest req) {
         if (req == null || !StringUtils.hasText(req.getUiSystemId())) {
             throw new IllegalArgumentException("uiSystemId is required");
         }
-
         final String uiSystemId = req.getUiSystemId();
-        log.info("Create/Update user & group for uiSystemId={}", uiSystemId);
 
-        // -------- Upsert UI_USER_BASE (managed entity) --------
+        // 1) UPSERT UiUserBase (managed)
         UiUserBase user = userRepo.findById(uiSystemId).orElseGet(() -> {
             UiUserBase u = new UiUserBase();
             u.setUiSystemId(uiSystemId);
             return u;
         });
-
-        // set/overwrite simple fields from request
         user.setUiUserId(req.getUiUserId());
         user.setUiFirstName(req.getFirstName());
         user.setUiLastName(req.getLastName());
         user.setUiEMailAddress(req.getEmail());
+        user.setUiTitle(req.getTitle());
+        user.setUiUserInactive(req.getUserInactive());
 
-        // save returns a managed instance (merge-or-persist as needed)
-        user = userRepo.save(user);
+        user = userRepo.save(user); // returns managed
 
-        // -------- Upsert SE_USR_GRP (managed entity) --------
+        // 2) UPSERT SeUsrGrp (managed)
         SeUsrGrp grp = usrGrpRepo.findById(uiSystemId).orElseGet(() -> {
             SeUsrGrp g = new SeUsrGrp();
-            g.setUiSystemId(uiSystemId);   // PK == same as user
-            g.setUiUserBase(user);         // FK to UI_USER_BASE
+            g.setUiSystemId(uiSystemId);
+            g.setUiUserBase(user); // @MapsId link
             return g;
         });
+        grp.setUiUserBase(user); // keep the link fresh
 
-        // Always keep the link to the (now) managed user
-        grp.setUiUserBase(user);
+        // 3) Attach MANAGED references for lookups (avoid transient errors)
+        //    If an ID is null -> set relation null
+        //    If provided -> get a lazy proxy with getReference()
+        //    For user-friendly names in response, we’ll also Optional.findById() below.
 
-        // IMPORTANT: For @ManyToOne lookups, use managed references (no transient objects)
         if (req.getFadsGrpId() != null) {
             grp.setFadsGrp(em.getReference(SeFadsGrp.class, req.getFadsGrpId()));
         } else {
@@ -84,13 +237,92 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
             grp.setFadsCaseGrp(null);
         }
 
-        // save/merge the group row
+        // Defensive: sanitize any detached/transient objects that may have leaked in
+        if (grp.getFadsGrp() != null && !em.contains(grp.getFadsGrp())) {
+            var id = grp.getFadsGrp().getId();
+            grp.setFadsGrp(id == null ? null : em.getReference(SeFadsGrp.class, id));
+        }
+        if (grp.getFadsSurGrp() != null && !em.contains(grp.getFadsSurGrp())) {
+            var id = grp.getFadsSurGrp().getId();
+            grp.setFadsSurGrp(id == null ? null : em.getReference(SeSurGrp.class, id));
+        }
+        if (grp.getFadsCaseGrp() != null && !em.contains(grp.getFadsCaseGrp())) {
+            var id = grp.getFadsCaseGrp().getId();
+            grp.setFadsCaseGrp(id == null ? null : em.getReference(SeCaseGrp.class, id));
+        }
+
         usrGrpRepo.save(grp);
 
-        log.info("Create/Update completed for uiSystemId={}", uiSystemId);
+        // 4) Build response with friendly names (optional lookups)
+        CreateUserRoleResponse out = new CreateUserRoleResponse();
+        out.setUiSystemId(user.getUiSystemId());
+        out.setUiUserId(user.getUiUserId());
+        out.setFirstName(user.getUiFirstName());
+        out.setLastName(user.getUiLastName());
+        out.setEmail(user.getUiEMailAddress());
+        out.setTitle(user.getUiTitle());
+        out.setUserInactive(user.getUiUserInactive());
+
+        if (req.getFadsGrpId() != null) {
+            out.setFadsGrpId(req.getFadsGrpId());
+            Optional<SeFadsGrp> f = fadsGrpRepo.findById(req.getFadsGrpId());
+            out.setFadsGrpName(f.map(SeFadsGrp::getFadsGrpName).orElse(null));
+        }
+        if (req.getFadsSurGrpId() != null) {
+            out.setFadsSurGrpId(req.getFadsSurGrpId());
+            Optional<SeSurGrp> s = surGrpRepo.findById(req.getFadsSurGrpId());
+            out.setFadsSurGrpName(s.map(SeSurGrp::getSurGrpName).orElse(null));
+        }
+        if (req.getFadsCaseGrpId() != null) {
+            out.setFadsCaseGrpId(req.getFadsCaseGrpId());
+            Optional<SeCaseGrp> c = caseGrpRepo.findById(req.getFadsCaseGrpId());
+            out.setFadsCaseGrpName(c.map(SeCaseGrp::getCaseGrpName).orElse(null));
+        }
+
+        return out;
     }
 }
 
+
+Why this fixes your errors
+
+Prevents TransientObjectException: we never attach brand-new SeFadsGrp/SeSurGrp/SeCaseGrp objects; we use em.getReference(...) so Hibernate keeps a managed proxy.
+
+Prevents NonUniqueObjectException / EntityExistsException: we upsert (findById then save) for both UiUserBase and SeUsrGrp, and we don’t call persist on something already loaded in the same persistence context.
+
+⚠️ Note: Ensure your @ManyToOne mappings in SeUsrGrp do not specify cascade = CascadeType.ALL. The code above assumes no cascading to lookup tables (which is correct for lookups).
+
+4) Controller (endpoints)
+
+This adds a create/update endpoint. Keep your existing list/search endpoints unchanged.
+
+package com.optum.fads.userroles.api.controllers;
+
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
+import com.optum.fads.userroles.api.service.UserRoleCreateService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api") // base under /userroles context -> /userroles/api
+public class UserRolesCreateController {
+
+    private final UserRoleCreateService service;
+
+    public UserRolesCreateController(UserRoleCreateService service) {
+        this.service = service;
+    }
+
+    @PostMapping(value = "/users", headers = "Accept=application/json")
+    public ResponseEntity<CreateUserRoleResponse> createOrUpdate(@RequestBody CreateUserRoleRequest request) {
+        CreateUserRoleResponse resp = service.createOrUpdateUser(request);
+        return ResponseEntity.ok(resp);
+    }
+}
+
+
+Example request body (the one you posted):
 
 {
   "uiSystemId": "GS1002",
@@ -98,8 +330,12 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
   "firstName": "John",
   "lastName": "Smith",
   "email": "john.smith@optum.com",
+  "title": "Mgr",
+  "userInactive": "N",
   "fadsGrpId": 10,
   "fadsSurGrpId": 21,
   "fadsCaseGrpId": 5
 }
 
+
+Result: upsert user row in UI_USER_BASE and upsert group row in SE_USR_GRP with managed relations to your 3 lookup tables.
