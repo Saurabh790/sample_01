@@ -1,65 +1,155 @@
-✅ Fix AbstractSeSurGrpModAccess
+package com.optum.fads.userroles.api.dto;
 
-Before (likely your current code):
+import java.math.BigDecimal;
 
-@OneToOne
-@JoinColumn(name = "SUR_MODULE_ID", insertable=false, updatable=false)
-private SeSurModule seSurModule;
+public class CreateUserRoleRequest {
 
+    private String uiSystemId;     // Required
+    private String uiUserId;       // Required
+    private String firstName;
+    private String lastName;
+    private String email;
 
-After (correct)
+    private BigDecimal fadsGrpId;      // SE_FADS_GRP.FADS_GRP_ID
+    private BigDecimal fadsSurGrpId;   // SE_SUR_GRP.SUR_GRP_ID
+    private BigDecimal fadsCaseGrpId;  // SE_CASE_GRP.CASE_GRP_ID
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "SUR_MODULE_ID", nullable = false)
-private SeSurModule seSurModule;
+    public String getUiSystemId() { return uiSystemId; }
+    public String getUiUserId() { return uiUserId; }
+    public String getFirstName() { return firstName; }
+    public String getLastName() { return lastName; }
+    public String getEmail() { return email; }
+    public BigDecimal getFadsGrpId() { return fadsGrpId; }
+    public BigDecimal getFadsSurGrpId() { return fadsSurGrpId; }
+    public BigDecimal getFadsCaseGrpId() { return fadsCaseGrpId; }
+}
+✅ 2. Add Repository for SeUsrGrp
+java
+Copy code
+package com.optum.fads.userroles.api.repo;
 
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-Also ensure:
+public interface SeUsrGrpRepository extends JpaRepository<SeUsrGrp, String> {
+}
+✅ 3. Service Layer to Create User With Roles
+java
+Copy code
+package com.optum.fads.userroles.api.service;
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "SUR_GRP_ID", nullable = false)
-private SeSurGrp seSurGrp;
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
 
-✅ Fix AbstractSeCaseGrpModAccess
+public interface UserRoleCreateService {
+    void createOrUpdateUser(CreateUserRoleRequest request);
+}
+Implementation
+java
+Copy code
+package com.optum.fads.userroles.api.service.impl;
 
-Before:
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import com.optum.fads.userroles.api.entity.SeFadsGrp;
+import com.optum.fads.userroles.api.entity.SeSurGrp;
+import com.optum.fads.userroles.api.entity.SeCaseGrp;
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-@OneToOne
-@JoinColumn(name = "CASE_MODULE_ID")
-private SeCaseModule seCaseModule;
+@Service
+@RequiredArgsConstructor
+public class UserRoleCreateServiceImpl implements UserRoleCreateService {
 
+    private final UiUserBaseRepository userRepo;
+    private final SeUsrGrpRepository usrGrpRepo;
 
-After:
+    @Override
+    @Transactional
+    public void createOrUpdateUser(CreateUserRoleRequest req) {
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "CASE_MODULE_ID", nullable = false)
-private SeCaseModule seCaseModule;
+        UiUserBase user = userRepo.findById(req.getUiSystemId())
+                .orElseGet(UiUserBase::new);
 
+        user.setUiSystemId(req.getUiSystemId());
+        user.setUiUserId(req.getUiUserId());
+        user.setUiFirstName(req.getFirstName());
+        user.setUiLastName(req.getLastName());
+        user.setUiEMailAddress(req.getEmail());
 
-Also ensure:
+        userRepo.save(user);
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "CASE_GRP_ID", nullable = false)
-private SeCaseGrp seCaseGrp;
+        SeUsrGrp grp = usrGrpRepo.findById(req.getUiSystemId())
+                .orElseGet(SeUsrGrp::new);
 
-✅ Fix AbstractSeCaseGrpNodeAccess
+        grp.setUiSystemId(req.getUiSystemId());
 
-Before:
+        if (req.getFadsGrpId() != null) {
+            SeFadsGrp f = new SeFadsGrp();
+            f.setId(req.getFadsGrpId());
+            grp.setFadsGrp(f);
+        }
+        if (req.getFadsSurGrpId() != null) {
+            SeSurGrp s = new SeSurGrp();
+            s.setSurGrpId(req.getFadsSurGrpId());
+            grp.setSeSurGrp(s);
+        }
+        if (req.getFadsCaseGrpId() != null) {
+            SeCaseGrp c = new SeCaseGrp();
+            c.setCaseGrpId(req.getFadsCaseGrpId());
+            grp.setSeCaseGrp(c);
+        }
 
-@OneToOne
-@JoinColumn(name = "CASE_NODE_ID")
-private CaLuPrmNodeT caLuPrmNodeT;
+        usrGrpRepo.save(grp);
+    }
+}
+✅ 4. REST Controller
+java
+Copy code
+package com.optum.fads.userroles.api.controllers;
 
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+import com.optum.fads.userroles.api.service.UserRoleCreateService;
+import org.springframework.web.bind.annotation.*;
 
-After:
+@RestController
+@RequestMapping("/api/userroles")
+public class UserRolesCreateController {
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "CASE_NODE_ID", nullable = false)
-private CaLuPrmNodeT caLuPrmNodeT;
+    private final UserRoleCreateService service;
 
+    public UserRolesCreateController(UserRoleCreateService service) {
+        this.service = service;
+    }
 
-Also ensure:
+    @PostMapping
+    public String create(@RequestBody CreateUserRoleRequest req) {
+        service.createOrUpdateUser(req);
+        return "User Created / Updated Successfully";
+    }
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "CASE_GRP_ID", nullable = false)
-private SeCaseGrp seCaseGrp;
+    @PutMapping
+    public String update(@RequestBody CreateUserRoleRequest req) {
+        service.createOrUpdateUser(req);
+        return "User Updated Successfully";
+    }
+}
+✅ Test Example Request (Postman / Swagger)
+bash
+Copy code
+POST http://localhost:8080/api/userroles
+Content-Type: application/json
+
+{
+  "uiSystemId": "GS1001",
+  "uiUserId": "JSMITH",
+  "firstName": "John",
+  "lastName": "Smith",
+  "email": "john.smith@optum.com",
+  "fadsGrpId": 10,
+  "fadsSurGrpId": 21,
+  "fadsCaseGrpId": 5
+}
