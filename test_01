@@ -1,4 +1,3 @@
-// UserRoleCreateServiceImpl.java (only the bottom part changes)
 @Service
 @RequiredArgsConstructor
 public class UserRoleCreateServiceImpl implements UserRoleCreateService {
@@ -13,30 +12,34 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
     @Transactional
     public void createOrUpdateUser(CreateUserRoleRequest req) {
 
-        // 1) upsert UI_USER_BASE
+        // 1) UPSERT UI_USER_BASE (managed instance returned)
         UiUserBase user = userRepo.findById(req.getUiSystemId()).orElseGet(UiUserBase::new);
         user.setUiSystemId(req.getUiSystemId());
         user.setUiUserId(req.getUiUserId());
         user.setUiFirstName(req.getFirstName());
         user.setUiLastName(req.getLastName());
         user.setUiEMailAddress(req.getEmail());
-        userRepo.save(user); // safe
+        user = userRepo.save(user); // 'user' is managed in the PC
 
         // 2) INSERT vs UPDATE for SE_USR_GRP
         boolean exists = usrGrpRepo.existsById(req.getUiSystemId());
-
         SeUsrGrp grp;
+
         if (exists) {
-            // UPDATE path – managed entity; just mutate it, no save() needed
+            // UPDATE path: get the managed entity and mutate it
             grp = usrGrpRepo.findById(req.getUiSystemId()).orElseThrow();
         } else {
-            // INSERT path – new entity; we will em.persist(..)
+            // INSERT path: create new and attach the *managed* UiUserBase
             grp = new SeUsrGrp();
             grp.setUiSystemId(req.getUiSystemId());
-            grp.setUiUserBase(user); // required because of @MapsId
+
+            // CRITICAL: reuse managed instance (or use getReference) — do NOT new UiUserBase()
+            grp.setUiUserBase(user);
+            // alternatively:
+            // grp.setUiUserBase(em.getReference(UiUserBase.class, req.getUiSystemId()));
         }
 
-        // set relationships using your existing entities’ API (id field = setId)
+        // set optional relationships by id without reloading full rows
         if (req.getFadsGrpId() != null) {
             SeFadsGrp f = new SeFadsGrp();
             f.setId(req.getFadsGrpId());
@@ -62,9 +65,21 @@ public class UserRoleCreateServiceImpl implements UserRoleCreateService {
         }
 
         if (exists) {
-            // managed; changes will flush automatically
+            // managed entity – flush will update automatically
         } else {
-            em.persist(grp); // force INSERT (no merge, no stale)
+            em.persist(grp); // will INSERT without trying to persist another UiUserBase
         }
     }
 }
+
+{
+  "uiSystemId": "GS1001",
+  "uiUserId": "JSMITH",
+  "firstName": "John",
+  "lastName": "Smith",
+  "email": "john.smith@optum.com",
+  "fadsGrpId": 10,
+  "fadsSurGrpId": 21,
+  "fadsCaseGrpId": 5
+}
+
