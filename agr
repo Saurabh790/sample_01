@@ -1,424 +1,75 @@
-package com.optum.fads.userroles.api.controllers;
+package com.optum.fads.userroles.api.service.impl;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.optum.fads.userroles.api.dto.UserHistoryResponse;
-import com.optum.fads.userroles.api.service.IUserHistory;
-
-@RestController
-public class UserRolesHistoryController {
-
-    private static final String DEFAULT_SORT_FIELD = "changeDt";
-    
-    private final IUserHistory userHistoryService;
-
-    public UserRolesHistoryController(IUserHistory userHistoryService) {
-        this.userHistoryService = userHistoryService;
-    }
-
-    @GetMapping("/api/getUserHistory")
-    public UserHistoryResponse getAllUserHistory(
-            @RequestParam(defaultValue = "1") int pageNumber,
-            @RequestParam(defaultValue = "10") int recordsPerPage,
-            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
-            @RequestParam(defaultValue = "-1") int sortOrder,
-            @RequestParam(required = false) String searchBy,
-            @RequestParam(required = false) String searchInput) {
-        
-        // Map DTO field names to entity field names
-        String entitySortField = mapToEntityField(sortBy);
-        
-        // Create Sort object based on sortBy and sortOrder
-        Sort.Direction direction = sortOrder == -1 ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Sort sort = Sort.by(direction, entitySortField);
-        
-        // Convert to zero-based page index for Spring Data
-        Pageable pageable = PageRequest.of(pageNumber - 1, recordsPerPage, sort);
-        
-        // Call service with search parameters
-        return userHistoryService.getAllUserHistory(pageable, searchBy, searchInput);
-    }
-
-    /**
-     * Maps DTO field names to entity field names for sorting
-     */
-    private String mapToEntityField(String dtoField) {
-        return switch (dtoField) {
-            case "histSeqNum" -> "id.histSeqNum";
-            case "changeUsr" -> "changeUsr.uiSystemId";
-            case "uiSystemId" -> "uiSystem.uiSystemId";
-            case "fadsGrpId" -> "fadsGrp.id";
-            case "fadsSurGrpId" -> "fadsSurGrp.id";
-            case "fadsCaseGrpId" -> "fadsCaseGrp.id";
-            case "uiUserId" -> "uiUserId";
-            case "uiLastName" -> "uiLastName";
-            case "uiFirstName" -> "uiFirstName";
-            case "uiEmailAddress" -> "uiEMailAddress";
-            case DEFAULT_SORT_FIELD -> DEFAULT_SORT_FIELD;
-            default -> DEFAULT_SORT_FIELD; // default sort field
-        };
-    }
-}
-
-
-package com.optum.fads.userroles.api.dto;
-
-import java.util.List;
-
-public class UserHistoryResponse {
-    private final List<UserListItemHistory> data;
-    private final long totalRecordsCount;
-
-    public UserHistoryResponse(List<UserListItemHistory> data, long totalRecordsCount) {
-        this.data = data;
-        this.totalRecordsCount = totalRecordsCount;
-    }
-
-    public List<UserListItemHistory> getData() {
-        return data;
-    }
-
-    public long getTotalRecordsCount() {
-        return totalRecordsCount;
-    }
-}
-
-package com.optum.fads.userroles.api.dto;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-
-public class UserListItemHistory {
-    
-    private final String uiSystemId;           // UI_SYSTEM_ID - UI_USER_BASE.SYSTEM_ID
-    private final BigDecimal histSeqNum;       // HIST_SQ_NUM - Autopopulate (group by UI_SYSTEM_ID)
-    private final LocalDateTime changeDt;      // CHANGE_DT - System Date
-    private final String changeUsr;            // CHANGE_USR - UI_USER_BASE.SYSTEM_ID
-    private final BigDecimal fadsGrpId;        // FADS_GRP_ID - SE_USR_GRP.FADS_GRP_ID
-    private final BigDecimal fadsSurGrpId;     // FADS_SUR_GRP_ID - SE_USR_GRP.FADS_SUR_GRP_ID (on UI_SYSTEM_ID)
-    private final BigDecimal fadsCaseGrpId;    // FADS_CASE_GRP_ID - SE_USR_GRP.FADS_CASE_GRP_ID
-    private final String uiUserId;             // UI_USER_ID - UI_USER_BASE.UI_USER_ID
-    private final String uiLastName;           // UI_LAST_NAME - UI_USER_BASE.UI_LAST_NAME
-    private final String uiFirstName;          // UI_FIRST_NAME - UI_USER_BASE.UI_FIRST_NAME
-    private final String uiEmailAddress;       // UI_EMAIL_ADDRESS - UI_USER_BASE.UI_EMAIL_ADDRESS
-
-    private UserListItemHistory(Builder builder) {
-        this.uiSystemId = builder.uiSystemId;
-        this.histSeqNum = builder.histSeqNum;
-        this.changeDt = builder.changeDt;
-        this.changeUsr = builder.changeUsr;
-        this.fadsGrpId = builder.fadsGrpId;
-        this.fadsSurGrpId = builder.fadsSurGrpId;
-        this.fadsCaseGrpId = builder.fadsCaseGrpId;
-        this.uiUserId = builder.uiUserId;
-        this.uiLastName = builder.uiLastName;
-        this.uiFirstName = builder.uiFirstName;
-        this.uiEmailAddress = builder.uiEmailAddress;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private String uiSystemId;
-        private BigDecimal histSeqNum;
-        private LocalDateTime changeDt;
-        private String changeUsr;
-        private BigDecimal fadsGrpId;
-        private BigDecimal fadsSurGrpId;
-        private BigDecimal fadsCaseGrpId;
-        private String uiUserId;
-        private String uiLastName;
-        private String uiFirstName;
-        private String uiEmailAddress;
-
-        private Builder() {}
-
-        public Builder uiSystemId(String uiSystemId) {
-            this.uiSystemId = uiSystemId;
-            return this;
-        }
-
-        public Builder histSeqNum(BigDecimal histSeqNum) {
-            this.histSeqNum = histSeqNum;
-            return this;
-        }
-
-        public Builder changeDt(LocalDateTime changeDt) {
-            this.changeDt = changeDt;
-            return this;
-        }
-
-        public Builder changeUsr(String changeUsr) {
-            this.changeUsr = changeUsr;
-            return this;
-        }
-
-        public Builder fadsGrpId(BigDecimal fadsGrpId) {
-            this.fadsGrpId = fadsGrpId;
-            return this;
-        }
-
-        public Builder fadsSurGrpId(BigDecimal fadsSurGrpId) {
-            this.fadsSurGrpId = fadsSurGrpId;
-            return this;
-        }
-
-        public Builder fadsCaseGrpId(BigDecimal fadsCaseGrpId) {
-            this.fadsCaseGrpId = fadsCaseGrpId;
-            return this;
-        }
-
-        public Builder uiUserId(String uiUserId) {
-            this.uiUserId = uiUserId;
-            return this;
-        }
-
-        public Builder uiLastName(String uiLastName) {
-            this.uiLastName = uiLastName;
-            return this;
-        }
-
-        public Builder uiFirstName(String uiFirstName) {
-            this.uiFirstName = uiFirstName;
-            return this;
-        }
-
-        public Builder uiEmailAddress(String uiEmailAddress) {
-            this.uiEmailAddress = uiEmailAddress;
-            return this;
-        }
-
-        public UserListItemHistory build() {
-            return new UserListItemHistory(this);
-        }
-    }
-
-    public String getUiSystemId() {
-        return uiSystemId;
-    }
-
-    public BigDecimal getHistSeqNum() {
-        return histSeqNum;
-    }
-
-    public LocalDateTime getChangeDt() {
-        return changeDt;
-    }
-
-    public String getChangeUsr() {
-        return changeUsr;
-    }
-
-    public BigDecimal getFadsGrpId() {
-        return fadsGrpId;
-    }
-
-    public BigDecimal getFadsSurGrpId() {
-        return fadsSurGrpId;
-    }
-
-    public BigDecimal getFadsCaseGrpId() {
-        return fadsCaseGrpId;
-    }
-
-    public String getUiUserId() {
-        return uiUserId;
-    }
-
-    public String getUiLastName() {
-        return uiLastName;
-    }
-
-    public String getUiFirstName() {
-        return uiFirstName;
-    }
-
-    public String getUiEmailAddress() {
-        return uiEmailAddress;
-    }
-}
-
-
-package com.optum.fads.userroles.api.mapper;
-
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
-
-import com.optum.fads.userroles.api.domain.UiUserHistory;
-import com.optum.fads.userroles.api.dto.UserListItemHistory;
-
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface UserListItemHistoryMapper {
-    
-    @Mapping(target = "uiSystemId", source = "uiSystem.uiSystemId")
-    @Mapping(target = "histSeqNum", source = "id.histSeqNum")
-    @Mapping(target = "changeDt", source = "changeDt")
-    @Mapping(target = "changeUsr", source = "changeUsr.uiSystemId")
-    @Mapping(target = "fadsGrpId", source = "fadsGrp.id")
-    @Mapping(target = "fadsSurGrpId", source = "fadsSurGrp.id")
-    @Mapping(target = "fadsCaseGrpId", source = "fadsCaseGrp.id")
-    @Mapping(target = "uiUserId", source = "uiUserId")
-    @Mapping(target = "uiLastName", source = "uiLastName")
-    @Mapping(target = "uiFirstName", source = "uiFirstName")
-    @Mapping(target = "uiEmailAddress", source = "uiEMailAddress")
-    UserListItemHistory toDto(UiUserHistory entity);
-}
-
-package com.optum.fads.userroles.api.repo;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import com.optum.fads.userroles.api.domain.UiUserHistory;
-import com.optum.fads.userroles.api.domain.UiUserHistoryId;
-
-public interface UiUserHistoryRepository extends JpaRepository<UiUserHistory, UiUserHistoryId>, JpaSpecificationExecutor<UiUserHistory> {
-    
-}
-package com.optum.fads.userroles.api.service;
-
-import org.springframework.data.domain.Pageable;
-
-import com.optum.fads.userroles.api.dto.UserHistoryResponse;
-
-public interface IUserHistory {
-    /**
-     * Retrieves all user history items with pagination and search
-     * @param pageable pagination information
-     * @param searchBy field name to search by
-     * @param searchInput search value
-     * @return UserHistoryResponse containing paginated and filtered historical user data and total count
-     */
-    UserHistoryResponse getAllUserHistory(Pageable pageable, String searchBy, String searchInput);
-}
-
-
-package com.optum.fads.userroles.api.service.Impl;
-
-import java.util.List;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
-import com.optum.fads.userroles.api.domain.UiUserHistory;
-import com.optum.fads.userroles.api.dto.UserListItemHistory;
-import com.optum.fads.userroles.api.dto.UserHistoryResponse;
-import com.optum.fads.userroles.api.mapper.UserListItemHistoryMapper;
-import com.optum.fads.userroles.api.repo.UiUserHistoryRepository;
-import com.optum.fads.userroles.api.service.IUserHistory;
-
+import com.optum.fads.userroles.api.domain.SeCaseGrp;
+import com.optum.fads.userroles.api.domain.SeFadsGrp;
+import com.optum.fads.userroles.api.domain.SeSurGrp;
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
+import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.service.UserRoleCreateService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class UserHistoryImpl implements IUserHistory {
+public class UserRoleCreateServiceImpl implements UserRoleCreateService {
 
-    // Field name constants to avoid duplication
-    private static final String FIELD_UI_USER_ID = "uiUserId";
-    private static final String FIELD_UI_LAST_NAME = "uiLastName";
-    private static final String FIELD_UI_FIRST_NAME = "uiFirstName";
-    private static final String FIELD_UI_EMAIL_ADDRESS = "uiEMailAddress";
-    private static final String FIELD_UI_SYSTEM_ID = "uiSystemId";
-
-    private final UiUserHistoryRepository repository;
-    private final UserListItemHistoryMapper mapper;
+    private final UiUserBaseRepository userRepo;
+    private final SeUsrGrpRepository usrGrpRepo;
 
     @Override
-    public UserHistoryResponse getAllUserHistory(Pageable pageable, String searchBy, String searchInput) {
-        if (pageable == null) {
-            throw new IllegalArgumentException("Pageable cannot be null");
-        }
-        
-        Page<UiUserHistory> page;
-        
-        // If search parameters are provided, use specification for filtering
-        if (StringUtils.hasText(searchBy) && StringUtils.hasText(searchInput)) {
-            Specification<UiUserHistory> spec = createSearchSpecification(searchBy, searchInput);
-            page = repository.findAll(spec, pageable);
+    @Transactional
+    public void createOrUpdateUser(CreateUserRoleRequest req) {
+        // --- upsert UI_USER_BASE ---
+        UiUserBase user = userRepo.findById(req.getUiSystemId())
+                .orElseGet(UiUserBase::new);
+
+        user.setUiSystemId(req.getUiSystemId());
+        user.setUiUserId(req.getUiUserId());
+        user.setUiFirstName(req.getFirstName());
+        user.setUiLastName(req.getLastName());
+        user.setUiEMailAddress(req.getEmail());
+
+        userRepo.save(user);
+
+        // --- upsert SE_USR_GRP (shares PK via @MapsId) ---
+        SeUsrGrp grp = usrGrpRepo.findById(req.getUiSystemId())
+                .orElseGet(SeUsrGrp::new);
+
+        // PK and @MapsId owner
+        grp.setUiSystemId(req.getUiSystemId());
+        grp.setUiUserBase(user);
+
+        // FADS_GRP_ID
+        if (req.getFadsGrpId() != null) {
+            SeFadsGrp f = new SeFadsGrp();
+            f.setId(req.getFadsGrpId());
+            grp.setFadsGrp(f);
         } else {
-            // If no search parameters, use regular findAll
-            page = repository.findAll(pageable);
+            grp.setFadsGrp(null);
         }
-        
-        List<UserListItemHistory> data = page.getContent()
-                .stream()
-                .map(mapper::toDto)
-                .toList();
-        
-        return new UserHistoryResponse(data, page.getTotalElements());
-    }
 
-    /**
-     * Creates a search specification based on searchBy field and searchInput value
-     */
-    private Specification<UiUserHistory> createSearchSpecification(String searchBy, String searchInput) {
-        return (root, query, criteriaBuilder) -> {
-            String entityField = mapSearchFieldToEntityPath(searchBy);
-            String searchPattern = "%" + searchInput.toLowerCase() + "%";
-            
-            return switch (entityField) {
-                case FIELD_UI_USER_ID, FIELD_UI_LAST_NAME, FIELD_UI_FIRST_NAME, FIELD_UI_EMAIL_ADDRESS -> 
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get(entityField)), searchPattern);
-                
-                case "uiSystem." + FIELD_UI_SYSTEM_ID -> 
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("uiSystem").get(FIELD_UI_SYSTEM_ID)), searchPattern);
-                
-                case "changeUsr." + FIELD_UI_SYSTEM_ID -> 
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get("changeUsr").get(FIELD_UI_SYSTEM_ID)), searchPattern);
-                
-                case "id.histSeqNum" -> {
-                    try {
-                        java.math.BigDecimal searchValue = new java.math.BigDecimal(searchInput);
-                        yield criteriaBuilder.equal(root.get("id").get("histSeqNum"), searchValue);
-                    } catch (NumberFormatException e) {
-                        // If search input is not a valid number, return a predicate that matches nothing
-                        yield criteriaBuilder.disjunction();
-                    }
-                }
-                
-                case "fadsGrp.id", "fadsSurGrp.id", "fadsCaseGrp.id" -> {
-                    try {
-                        java.math.BigDecimal searchValue = new java.math.BigDecimal(searchInput);
-                        String[] parts = entityField.split("\\.");
-                        yield criteriaBuilder.equal(root.get(parts[0]).get(parts[1]), searchValue);
-                    } catch (NumberFormatException e) {
-                        // If search input is not a valid number, return a predicate that matches nothing
-                        yield criteriaBuilder.disjunction();
-                    }
-                }
-                
-                default -> 
-                    criteriaBuilder.like(criteriaBuilder.lower(root.get(FIELD_UI_EMAIL_ADDRESS)), searchPattern);
-            };
-        };
-    }
+        // FADS_SUR_GRP_ID
+        if (req.getFadsSurGrpId() != null) {
+            SeSurGrp s = new SeSurGrp();
+            s.setId(req.getFadsSurGrpId());  // <-- your entity uses 'id'
+            grp.setFadsSurGrp(s);            // <-- your SeUsrGrp property name
+        } else {
+            grp.setFadsSurGrp(null);
+        }
 
-    /**
-     * Maps search field names to entity field paths
-     */
-    private String mapSearchFieldToEntityPath(String searchField) {
-        return switch (searchField) {
-            case "histSeqNum" -> "id.histSeqNum";
-            case "changeUsr" -> "changeUsr." + FIELD_UI_SYSTEM_ID;
-            case FIELD_UI_SYSTEM_ID -> "uiSystem." + FIELD_UI_SYSTEM_ID;
-            case "fadsGrpId" -> "fadsGrp.id";
-            case "fadsSurGrpId" -> "fadsSurGrp.id";
-            case "fadsCaseGrpId" -> "fadsCaseGrp.id";
-            case FIELD_UI_USER_ID -> FIELD_UI_USER_ID;
-            case FIELD_UI_LAST_NAME -> FIELD_UI_LAST_NAME;
-            case FIELD_UI_FIRST_NAME -> FIELD_UI_FIRST_NAME;
-            case FIELD_UI_EMAIL_ADDRESS -> FIELD_UI_EMAIL_ADDRESS;
-            default -> FIELD_UI_EMAIL_ADDRESS; // default search field
-        };
+        // FADS_CASE_GRP_ID
+        if (req.getFadsCaseGrpId() != null) {
+            SeCaseGrp c = new SeCaseGrp();
+            c.setId(req.getFadsCaseGrpId()); // <-- your entity uses 'id'
+            grp.setFadsCaseGrp(c);           // <-- your SeUsrGrp property name
+        } else {
+            grp.setFadsCaseGrp(null);
+        }
+
+        usrGrpRepo.save(grp);
     }
 }
