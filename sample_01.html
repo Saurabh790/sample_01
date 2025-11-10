@@ -1,229 +1,142 @@
-package com.optum.fads.userroles.api.domain;
+ackage com.optum.fads.userroles.api.dto;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/** One-shot response for all dropdowns */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AllDropdownsResponse {
+    private List<GroupDropdownItem> fadsGroups;
+    private List<GroupDropdownItem> surGroups;
+    private List<GroupDropdownItem> caseGroups;
+}
+java
+Copy code
+package com.optum.fads.userroles.api.dto;
 
 import java.math.BigDecimal;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_CASE_GRP")
-public class SeCaseGrp {
-    @Id
-    @Column(name = "CASE_GRP_ID", nullable = false, precision = 5)
+/** Generic id+name item used by each dropdown */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class GroupDropdownItem {
     private BigDecimal id;
-
-    @Size(max = 40)
-    @Column(name = "CASE_GRP_NAME", length = 40)
-    private String caseGrpName;
-
+    private String name;
 }
+2) Service
+Interface
 
-package com.optum.fads.userroles.api.domain;
+java
+Copy code
+package com.optum.fads.userroles.api.service;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
 
-import java.math.BigDecimal;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_FADS_GRP")
-public class SeFadsGrp {
-    @Id
-    @Column(name = "FADS_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
-
-    @Size(max = 40)
-    @Column(name = "FADS_GRP_NAME", length = 40)
-    private String fadsGrpName;
-
+public interface GroupDropdownService {
+    AllDropdownsResponse getAllDropdowns();
 }
-package com.optum.fads.userroles.api.domain;
+Implementation
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+java
+Copy code
+package com.optum.fads.userroles.api.service.impl;
 
-import java.math.BigDecimal;
+import com.optum.fads.userroles.api.domain.SeCaseGrp;
+import com.optum.fads.userroles.api.domain.SeFadsGrp;
+import com.optum.fads.userroles.api.domain.SeSurGrp;
+import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
+import com.optum.fads.userroles.api.dto.GroupDropdownItem;
+import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
+import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
+import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
+import com.optum.fads.userroles.api.service.GroupDropdownService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_SUR_GRP")
-public class SeSurGrp {
-    @Id
-    @Column(name = "SUR_GRP_ID", nullable = false, precision = 5)
-    private BigDecimal id;
+import java.util.Comparator;
+import java.util.List;
 
-    @Size(max = 40)
-    @Column(name = "SUR_GRP_NAME", length = 40)
-    private String surGrpName;
+@Service
+@RequiredArgsConstructor
+public class GroupDropdownServiceImpl implements GroupDropdownService {
 
+    private final SeFadsGrpRepository fadsRepo;
+    private final SeSurGrpRepository surRepo;
+    private final SeCaseGrpRepository caseRepo;
+
+    @Override
+    public AllDropdownsResponse getAllDropdowns() {
+        // map to id+name and sort by name (UI-friendly)
+        List<GroupDropdownItem> fads =
+                fadsRepo.findAll().stream()
+                        .map(g -> new GroupDropdownItem(g.getId(), g.getFadsGrpName()))
+                        .sorted(Comparator.comparing(GroupDropdownItem::getName, String.CASE_INSENSITIVE_ORDER))
+                        .toList();
+
+        List<GroupDropdownItem> sur =
+                surRepo.findAll().stream()
+                        .map(g -> new GroupDropdownItem(g.getId(), g.getSurGrpName()))
+                        .sorted(Comparator.comparing(GroupDropdownItem::getName, String.CASE_INSENSITIVE_ORDER))
+                        .toList();
+
+        List<GroupDropdownItem> cases =
+                caseRepo.findAll().stream()
+                        .map(g -> new GroupDropdownItem(g.getId(), g.getCaseGrpName()))
+                        .sorted(Comparator.comparing(GroupDropdownItem::getName, String.CASE_INSENSITIVE_ORDER))
+                        .toList();
+
+        return new AllDropdownsResponse(fads, sur, cases);
+    }
 }
-package com.optum.fads.userroles.api.domain;
+3) Controller (single endpoint)
+java
+Copy code
+package com.optum.fads.userroles.api.controllers;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
+import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
+import com.optum.fads.userroles.api.service.GroupDropdownService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
+@RestController
+@RequestMapping("/userroles")
+@RequiredArgsConstructor
+public class GroupDropdownController {
 
-@Getter
-@Setter
-@Entity
-@Table(name = "SE_USR_GRP")
-public class SeUsrGrp {
-    @Id
-    @Size(max = 25)
-    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
-    private String uiSystemId;
+    private final GroupDropdownService service;
 
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "UI_SYSTEM_ID", nullable = false)
-    private UiUserBase uiUserBase;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_GRP_ID")
-    private SeFadsGrp fadsGrp;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_SUR_GRP_ID")
-    private SeSurGrp fadsSurGrp;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "FADS_CASE_GRP_ID")
-    private SeCaseGrp fadsCaseGrp;
-
-
+    /** GET http://localhost:8080/userroles/dropdowns */
+    @GetMapping("/dropdowns")
+    public AllDropdownsResponse getAllDropdowns() {
+        return service.getAllDropdowns();
+    }
 }
-package com.optum.fads.userroles.api.domain;
+Expected JSON
+GET http://localhost:8080/userroles/dropdowns
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.Instant;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "UI_USER_BASE")
-public class UiUserBase {
-    @Id
-    @Size(max = 25)
-    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
-    private String uiSystemId;
-
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "UI_USER_ID", nullable = false, length = 50)
-    private String uiUserId;
-
-    @Size(max = 15)
-    @Column(name = "UI_TITLE", length = 15)
-    private String uiTitle;
-
-    @Size(max = 40)
-    @Column(name = "UI_LAST_NAME", length = 40)
-    private String uiLastName;
-
-    @Size(max = 20)
-    @Column(name = "UI_FIRST_NAME", length = 20)
-    private String uiFirstName;
-
-    @Column(name = "UI_USER_INACTIVE")
-    private Character uiUserInactive;
-
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "UI_E_MAIL_ADDRESS", nullable = false, length = 50)
-    private String uiEMailAddress;
-
-    @Size(max = 25)
-    @Column(name = "UI_CREATED_BY", length = 25)
-    private String uiCreatedBy;
-
-    @Column(name = "UI_CREATED_DT")
-    private Instant uiCreatedDt;
-
-    @OneToOne(mappedBy = "uiUserBase")
-    private SeUsrGrp seUsrGrp;
-
-}
-package com.optum.fads.userroles.api.domain;
-
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
-import java.time.Instant;
-
-@Getter
-@Setter
-@Entity
-@Table(name = "UI_USER_BASE")
-public class UiUserBase {
-    @Id
-    @Size(max = 25)
-    @Column(name = "UI_SYSTEM_ID", nullable = false, length = 25)
-    private String uiSystemId;
-
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "UI_USER_ID", nullable = false, length = 50)
-    private String uiUserId;
-
-    @Size(max = 15)
-    @Column(name = "UI_TITLE", length = 15)
-    private String uiTitle;
-
-    @Size(max = 40)
-    @Column(name = "UI_LAST_NAME", length = 40)
-    private String uiLastName;
-
-    @Size(max = 20)
-    @Column(name = "UI_FIRST_NAME", length = 20)
-    private String uiFirstName;
-
-    @Column(name = "UI_USER_INACTIVE")
-    private Character uiUserInactive;
-
-    @Size(max = 50)
-    @NotNull
-    @Column(name = "UI_E_MAIL_ADDRESS", nullable = false, length = 50)
-    private String uiEMailAddress;
-
-    @Size(max = 25)
-    @Column(name = "UI_CREATED_BY", length = 25)
-    private String uiCreatedBy;
-
-    @Column(name = "UI_CREATED_DT")
-    private Instant uiCreatedDt;
-
-    @OneToOne(mappedBy = "uiUserBase")
-    private SeUsrGrp seUsrGrp;
-
+json
+Copy code
+{
+  "fadsGroups": [
+    { "id": 10, "name": "Optum Admin" },
+    { "id": 11, "name": "Optum Developer" }
+  ],
+  "surGroups": [
+    { "id": 21, "name": "Supervisor West" },
+    { "id": 22, "name": "Supervisor East" }
+  ],
+  "caseGroups": [
+    { "id": 5, "name": "Case Review" },
+    { "id": 6, "name": "Case Audit" }
+  ]
 }
