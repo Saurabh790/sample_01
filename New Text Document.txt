@@ -15,12 +15,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
 import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.service.GroupDropdownService;
 import com.optum.fads.userroles.api.service.UserService;
 
 @RestController
 public class UserRolesController {
 
+	private final GroupDropdownService service;
 	
 	private static final Map<String, String> FIELD_MAP;
 	static {
@@ -110,233 +113,9 @@ public class UserRolesController {
 	    }
 	    return map;
 	}
-}
-
-
-
-package com.optum.fads.userroles.api.dto;
-
-public class UserListItem {
-    private final String uiSystemId;
-    private final String uiUserId;
-    private final String lastName;
-    private final String firstName;
-    private final String title;
-    private final String email;
-    private final String fadsGrpName;
-    private final String surGrpName;
-    private final String caseGrpName;
-
-    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
-                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
-        this.uiSystemId = uiSystemId;
-        this.uiUserId = uiUserId;
-        this.lastName = lastName;
-        this.firstName = firstName;
-        this.title = title;
-        this.email = email;
-        this.fadsGrpName = fadsGrpName;
-        this.surGrpName = surGrpName;
-        this.caseGrpName = caseGrpName;
-    }
-
-	public String getUiSystemId() {
-		return uiSystemId;
-	}
-
-	public String getUiUserId() {
-		return uiUserId;
-	}
-
-	public String getLastName() {
-		return lastName;
-	}
-
-	public String getFirstName() {
-		return firstName;
-	}
-
-	public String getTitle() {
-		return title;
-	}
-
-	public String getEmail() {
-		return email;
-	}
-
-	public String getFadsGrpName() {
-		return fadsGrpName;
-	}
-
-	public String getSurGrpName() {
-		return surGrpName;
-	}
-
-	public String getCaseGrpName() {
-		return caseGrpName;
-	}
-
-    
-    
-    
-}
-package com.optum.fads.userroles.api.mapper;
-
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.dto.UserListItem;
-
-
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface UserListItemMapper {
-
-    @Mapping(target = "uiSystemId", source = "uiSystemId")
-    @Mapping(target = "uiUserId", source = "uiUserId")
-    @Mapping(target = "lastName", source = "uiLastName")
-    @Mapping(target = "firstName", source = "uiFirstName")
-    @Mapping(target = "title", source = "uiTitle")
-    @Mapping(target = "email", source = "uiEMailAddress")
-    @Mapping(target = "fadsGrpName", source = "seUsrGrp.fadsGrp.fadsGrpName")
-    @Mapping(target = "surGrpName", source = "seUsrGrp.fadsSurGrp.surGrpName")
-    @Mapping(target = "caseGrpName", source = "seUsrGrp.fadsCaseGrp.caseGrpName")
-    UserListItem toDto(UiUserBase entity);
-}
-package com.optum.fads.userroles.api.repo;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-
-public interface UiUserBaseRepository
-        extends JpaRepository<UiUserBase, String>,
-                JpaSpecificationExecutor<UiUserBase> {
-}
-
-package com.optum.fads.userroles.api.service;
-
-import java.util.Map;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
-import com.optum.fads.userroles.api.dto.UserListItem;
-
-public interface UserService {
-    Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap);
-}
-
-
-package com.optum.fads.userroles.api.service;
-
-import java.util.Map;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.mapper.UserListItemMapper;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
-import com.optum.fads.userroles.api.utility.UserSpecification;
-
-import lombok.RequiredArgsConstructor;
-
-@Service
-@RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
-
-    private final UiUserBaseRepository repo;
-    private final UserListItemMapper mapper;
-
-    @Override
-    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
-        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
-
-        Page<UiUserBase> page = (spec == null)
-                ? repo.findAll(pageable)            
-                : repo.findAll(spec, pageable);         
-        return page.map(mapper::toDto);
-    }
-}
-
-package com.optum.fads.userroles.api.utility;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import jakarta.persistence.criteria.*;
-import org.springframework.data.jpa.domain.Specification;
-
-import java.util.*;
-
-public final class UserSpecification {
-
-	private UserSpecification() {
-	}
-
 	
-	public static Specification<UiUserBase> containsAll(Map<String, String> filters, Map<String, String> fieldMap) {
-		if (filters == null || filters.isEmpty()) {
-			return null; 
-		}
-
-		return (root, query, cb) -> {
-			boolean needsDistinct = filters.keySet().stream().map(fieldMap::get).filter(Objects::nonNull)
-					.anyMatch(path -> path.contains("."));
-			if (needsDistinct) {
-				query.distinct(true);
-			}
-
-			List<Predicate> predicates = new ArrayList<>();
-
-			for (Map.Entry<String, String> e : filters.entrySet()) {
-				String apiField = e.getKey();
-				String value = e.getValue();
-				if (value == null || value.isBlank())
-					continue;
-
-				String entityPath = fieldMap.get(apiField);
-				if (entityPath == null)
-					continue; 
-
-				Expression<String> pathExpr = resolvePath(root, entityPath);
-				predicates.add(cb.like(cb.lower(pathExpr), "%" + value.toLowerCase(Locale.ROOT) + "%"));
-			}
-
-			return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
-		};
-	}
-
-	
-	@SuppressWarnings("unchecked")
-	private static Expression<String> resolvePath(From<?, ?> root, String dotPath) {
-		String[] parts = dotPath.split("\\.");
-		From<?, ?> from = root;
-		Path<?> path = root;
-
-		for (int i = 0; i < parts.length; i++) {
-			String part = parts[i];
-
-			if (i < parts.length - 1) {
-				from = safeJoin(from, part);
-				path = from;
-			} else {
-				path = path.get(part);
-			}
-		}
-		return (Expression<String>) path.as(String.class);
-	}
-
-	private static From<?, ?> safeJoin(From<?, ?> from, String attribute) {
-		for (Join<?, ?> j : from.getJoins()) {
-			if (j.getAttribute() != null && attribute.equals(j.getAttribute().getName())) {
-				return (From<?, ?>) j;
-			}
-		}
-		return from.join(attribute, JoinType.LEFT);
-	}
+	 @GetMapping("/dropdowns")
+	    public AllDropdownsResponse getAllDropdowns() {
+	        return service.getAllDropdowns();
+	    }
 }
