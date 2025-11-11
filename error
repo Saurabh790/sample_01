@@ -1,223 +1,266 @@
-2025-11-09T22:39:23.664+05:30  INFO 29948 --- [fads-userroles-api] [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2025-11-09T22:39:23.666+05:30  INFO 29948 --- [fads-userroles-api] [nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
-Hibernate:
-    select
-        uub1_0.[ui_system_id],
-        sug1_0.[ui_system_id],
-        sug1_0.[fads_case_grp_id],
-        sug1_0.[fads_grp_id],
-        sug1_0.[fads_sur_grp_id],
-        uub1_0.[ui_created_by],
-        uub1_0.[ui_created_dt],
-        uub1_0.[ui_e_mail_address],
-        uub1_0.[ui_first_name],
-        uub1_0.[ui_last_name],
-        uub1_0.[ui_title],
-        uub1_0.[ui_user_id],
-        uub1_0.[ui_user_inactive]
-    from
-        [ui_user_base] uub1_0
-    left join
-        [se_usr_grp] sug1_0
-            on uub1_0.[ui_system_id]=sug1_0.[ui_system_id]
-    where
-        uub1_0.[ui_system_id]=?
-Hibernate:
-    select
-        uub1_0.[ui_system_id],
-        sug1_0.[ui_system_id],
-        sug1_0.[fads_case_grp_id],
-        sug1_0.[fads_grp_id],
-        sug1_0.[fads_sur_grp_id],
-        uub1_0.[ui_created_by],
-        uub1_0.[ui_created_dt],
-        uub1_0.[ui_e_mail_address],
-        uub1_0.[ui_first_name],
-        uub1_0.[ui_last_name],
-        uub1_0.[ui_title],
-        uub1_0.[ui_user_id],
-        uub1_0.[ui_user_inactive]
-    from
-        [ui_user_base] uub1_0
-    left join
-        [se_usr_grp] sug1_0
-            on uub1_0.[ui_system_id]=sug1_0.[ui_system_id]
-    where
-        uub1_0.[ui_system_id]=?
-Hibernate:
-    select
-        count_big(*)
-    from
-        [se_usr_grp] sug1_0
-    where
-        sug1_0.[ui_system_id]=?
-Hibernate:
-    select
-        null,
-        scg1_0.[case_grp_name]
-    from
-        [se_case_grp] scg1_0
-    where
-        scg1_0.[case_grp_id]=?
-Hibernate:
-    select
-        null,
-        sfg1_0.[fads_grp_name]
-    from
-        [se_fads_grp] sfg1_0
-    where
-        sfg1_0.[fads_grp_id]=?
-Hibernate:
-    select
-        null,
-        ssg1_0.[sur_grp_name]
-    from
-        [se_sur_grp] ssg1_0
-    where
-        ssg1_0.[sur_grp_id]=?
-2025-11-09T22:39:24.531+05:30 ERROR 29948 --- [fads-userroles-api] [nio-8080-exec-2] o.a.c.c.C.[.[.[.[dispatcherServlet]      : Servlet.service() for servlet [dispatcherServlet] in context with path [/userroles] threw exception [Request processing failed: org.springframework.dao.InvalidDataAccessApiUsageException: org.hibernate.TransientObjectException: persistent instance references an unsaved transient instance of 'com.optum.fads.userroles.api.domain.SeFadsGrp' (save the transient instance before flushing)] with root cause
+1) DTO (response wrapper like history)
+package com.optum.fads.userroles.api.dto;
 
-org.hibernate.TransientObjectException: persistent instance references an unsaved transient instance of 'com.optum.fads.userroles.api.domain.SeFadsGrp' (save the transient instance before flushing)
-        at org.hibernate.engine.spi.CascadingActions$9.cascade(CascadingActions.java:389) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.spi.CascadingActions$9.cascade(CascadingActions.java:379) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.internal.Cascade.cascadeToOne(Cascade.java:572) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.internal.Cascade.cascadeAssociation(Cascade.java:494) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.internal.Cascade.cascadeProperty(Cascade.java:255) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.internal.Cascade.cascade(Cascade.java:194) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.event.internal.AbstractFlushingEventListener.prepareEntityFlushes(AbstractFlushingEventListener.java:169) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.event.internal.AbstractFlushingEventListener.preFlush(AbstractFlushingEventListener.java:107) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.event.internal.AbstractFlushingEventListener.flushEverythingToExecutions(AbstractFlushingEventListener.java:82) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.event.internal.DefaultFlushEventListener.onFlush(DefaultFlushEventListener.java:40) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.event.service.internal.EventListenerGroupImpl.fireEventOnEachListener(EventListenerGroupImpl.java:127) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.internal.SessionImpl.doFlush(SessionImpl.java:1429) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.internal.SessionImpl.managedFlush(SessionImpl.java:491) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.internal.SessionImpl.flushBeforeTransactionCompletion(SessionImpl.java:2354) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.internal.SessionImpl.beforeTransactionCompletion(SessionImpl.java:1978) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.jdbc.internal.JdbcCoordinatorImpl.beforeTransactionCompletion(JdbcCoordinatorImpl.java:439) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl.beforeCompletionCallback(JdbcResourceLocalTransactionCoordinatorImpl.java:169) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl$TransactionDriverControlImpl.commit(JdbcResourceLocalTransactionCoordinatorImpl.java:267) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.hibernate.engine.transaction.internal.TransactionImpl.commit(TransactionImpl.java:101) ~[hibernate-core-6.6.33.Final.jar:6.6.33.Final]
-        at org.springframework.orm.jpa.JpaTransactionManager.doCommit(JpaTransactionManager.java:563) ~[spring-orm-6.2.12.jar:6.2.12]
-        at org.springframework.transaction.support.AbstractPlatformTransactionManager.processCommit(AbstractPlatformTransactionManager.java:795) ~[spring-tx-6.2.12.jar:6.2.12]
-        at org.springframework.transaction.support.AbstractPlatformTransactionManager.commit(AbstractPlatformTransactionManager.java:758) ~[spring-tx-6.2.12.jar:6.2.12]
-        at org.springframework.transaction.interceptor.TransactionAspectSupport.commitTransactionAfterReturning(TransactionAspectSupport.java:698) ~[spring-tx-6.2.12.jar:6.2.12]
-        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:416) ~[spring-tx-6.2.12.jar:6.2.12]
-        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119) ~[spring-tx-6.2.12.jar:6.2.12]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.2.12.jar:6.2.12]
-        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:728) ~[spring-aop-6.2.12.jar:6.2.12]
-        at com.optum.fads.userroles.api.service.Impl.UserRoleCreateServiceImpl$$SpringCGLIB$$0.createOrUpdateUser(<generated>) ~[classes/:na]
-        at com.optum.fads.userroles.api.controllers.UserRolesCreateController.create(UserRolesCreateController.java:19) ~[classes/:na]
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
-        at org.springframework.web.method.support.InvocableHandlerMethod.doInvoke(InvocableHandlerMethod.java:258) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.method.support.InvocableHandlerMethod.invokeForRequest(InvocableHandlerMethod.java:191) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.mvc.method.annotation.ServletInvocableHandlerMethod.invokeAndHandle(ServletInvocableHandlerMethod.java:118) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.invokeHandlerMethod(RequestMappingHandlerAdapter.java:991) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter.handleInternal(RequestMappingHandlerAdapter.java:896) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.mvc.method.AbstractHandlerMethodAdapter.handle(AbstractHandlerMethodAdapter.java:87) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1089) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.DispatcherServlet.doService(DispatcherServlet.java:979) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.FrameworkServlet.processRequest(FrameworkServlet.java:1014) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.FrameworkServlet.doPost(FrameworkServlet.java:914) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:590) ~[tomcat-embed-core-10.1.48.jar:6.0]
-        at org.springframework.web.servlet.FrameworkServlet.service(FrameworkServlet.java:885) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at jakarta.servlet.http.HttpServlet.service(HttpServlet.java:658) ~[tomcat-embed-core-10.1.48.jar:6.0]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:193) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.tomcat.websocket.server.WsFilter.doFilter(WsFilter.java:51) ~[tomcat-embed-websocket-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:162) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:108) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.security.web.FilterChainProxy.lambda$doFilterInternal$3(FilterChainProxy.java:231) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$FilterObservation$SimpleFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:490) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$1(ObservationFilterChainDecorator.java:351) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator.lambda$wrapSecured$0(ObservationFilterChainDecorator.java:83) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:129) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.access.intercept.AuthorizationFilter.doFilter(AuthorizationFilter.java:101) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:126) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.access.ExceptionTranslationFilter.doFilter(ExceptionTranslationFilter.java:120) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.authentication.AnonymousAuthenticationFilter.doFilter(AnonymousAuthenticationFilter.java:100) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter.doFilter(SecurityContextHolderAwareRequestFilter.java:179) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.savedrequest.RequestCacheAwareFilter.doFilter(RequestCacheAwareFilter.java:63) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:228) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:241) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:334) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:225) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:138) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.4.12.jar:6.4.12]
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$4(HandlerMappingIntrospector.java:267) ~[spring-webmvc-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:238) ~[spring-security-config-6.4.12.jar:6.4.12]
-        at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:362) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:278) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:162) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:162) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:162) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:110) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:162) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.2.12.jar:6.2.12]
-        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:162) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:138) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:165) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:88) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:482) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:113) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:83) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:72) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:342) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:399) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:903) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1774) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:973) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:491) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.48.jar:10.1.48]
-        at java.base/java.lang.Thread.run(Thread.java:840) ~[na:na]
+import java.util.List;
+
+public class UserListResponse {
+    private final List<UserListItem> data;
+    private final long totalRecordsCount;
+
+    public UserListResponse(List<UserListItem> data, long totalRecordsCount) {
+        this.data = data;
+        this.totalRecordsCount = totalRecordsCount;
+    }
+
+    public List<UserListItem> getData() { return data; }
+    public long getTotalRecordsCount() { return totalRecordsCount; }
+}
+
+(Your existing UserListItem stays as-is.)
+
+2) Controller (history-style)
+package com.optum.fads.userroles.api.controllers;
+
+import com.optum.fads.userroles.api.dto.UserListResponse;
+import com.optum.fads.userroles.api.service.IUserList;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+public class UserRolesControllerV2 {
+
+    private static final String DEFAULT_SORT_FIELD = "lastName";
+
+    private final IUserList userListService;
+
+    public UserRolesControllerV2(IUserList userListService) {
+        this.userListService = userListService;
+    }
+
+    @GetMapping("/api/users")
+    public UserListResponse getUsers(
+            @RequestParam(defaultValue = "1")  int pageNumber,
+            @RequestParam(defaultValue = "10") int recordsPerPage,
+            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
+            @RequestParam(defaultValue = "1")  int sortOrder,
+            @RequestParam(required = false)     String searchBy,
+            @RequestParam(required = false)     String searchInput
+    ) {
+
+        // map DTO sort to entity path (dot-notation ok for Sort)
+        String entitySortField = mapToEntityField(sortBy);
+
+        Sort.Direction direction = (sortOrder == -1) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sort = Sort.by(direction, entitySortField);
+
+        Pageable pageable = PageRequest.of(Math.max(pageNumber - 1, 0), recordsPerPage, sort);
+
+        return userListService.getAllUsers(pageable, searchBy, searchInput);
+    }
+
+    /**
+     * Map API sort fields → entity field paths (like history controller).
+     * Supports nested sort on joined associations.
+     */
+    private String mapToEntityField(String dtoField) {
+        return switch (dtoField) {
+            case "uiSystemId" -> "uiSystemId";
+            case "uiUserId"   -> "uiUserId";
+            case "lastName"   -> "uiLastName";
+            case "firstName"  -> "uiFirstName";
+            case "title"      -> "uiTitle";
+            case "email"      -> "uiEMailAddress";
+            // nested names:
+            case "fadsGrpName" -> "seUsrGrp.fadsGrp.fadsGrpName";
+            case "surGrpName"  -> "seUsrGrp.fadsSurGrp.surGrpName";
+            case "caseGrpName" -> "seUsrGrp.fadsCaseGrp.caseGrpName";
+            default -> DEFAULT_SORT_FIELD.equals(dtoField) ? "uiLastName" : "uiLastName";
+        };
+    }
+}
+
+
+You can keep your old controller if you want; just don’t register both endpoints with the same path.
+
+
+3) Service interface (history-style)
+package com.optum.fads.userroles.api.service;
+
+import com.optum.fads.userroles.api.dto.UserListResponse;
+import org.springframework.data.domain.Pageable;
+
+public interface IUserList {
+    UserListResponse getAllUsers(Pageable pageable, String searchBy, String searchInput);
+}
+
+
+4) Service implementation (joins + spec, mirrors history)
+package com.optum.fads.userroles.api.service.impl;
+
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.dto.UserListResponse;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.service.IUserList;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.Locale;
+
+@Service
+public class UserListImpl implements IUserList {
+
+    private static final String FIELD_UI_SYSTEM_ID = "uiSystemId";
+    private static final String FIELD_UI_USER_ID   = "uiUserId";
+    private static final String FIELD_LAST_NAME    = "uiLastName";
+    private static final String FIELD_FIRST_NAME   = "uiFirstName";
+    private static final String FIELD_TITLE        = "uiTitle";
+    private static final String FIELD_EMAIL        = "uiEMailAddress";
+
+    // nested “name” fields in SE_USR_GRP → groups
+    private static final String FIELD_FADS_NAME = "fadsGrpName";
+    private static final String FIELD_SUR_NAME  = "surGrpName";
+    private static final String FIELD_CASE_NAME = "caseGrpName";
+
+    private final UiUserBaseRepository repository;
+    private final UserListItemMapper mapper;
+
+    public UserListImpl(UiUserBaseRepository repository, UserListItemMapper mapper) {
+        this.repository = repository;
+        this.mapper = mapper;
+    }
+
+    @Override
+    public UserListResponse getAllUsers(Pageable pageable, String searchBy, String searchInput) {
+        Page<UiUserBase> page;
+
+        if (StringUtils.hasText(searchBy) && StringUtils.hasText(searchInput)) {
+            Specification<UiUserBase> spec = createSearchSpecification(searchBy, searchInput);
+            page = repository.findAll(spec, pageable);
+        } else {
+            page = repository.findAll(pageable);
+        }
+
+        List<UserListItem> data = page.getContent().stream().map(mapper::toDto).toList();
+        return new UserListResponse(data, page.getTotalElements());
+    }
+
+    /**
+     * Build a single-field search spec (like your history service),
+     * with LEFT joins for group name fields.
+     */
+    private Specification<UiUserBase> createSearchSpecification(String searchBy, String searchInput) {
+        final String pattern = "%" + searchInput.toLowerCase(Locale.ROOT) + "%";
+
+        return (root, query, cb) -> {
+            // If we will join, force distinct
+            boolean needsJoin =
+                    FIELD_FADS_NAME.equals(searchBy) ||
+                    FIELD_SUR_NAME.equals(searchBy)  ||
+                    FIELD_CASE_NAME.equals(searchBy);
+            if (needsJoin) {
+                query.distinct(true);
+            }
+
+            switch (searchBy) {
+                case FIELD_UI_SYSTEM_ID:
+                case FIELD_UI_USER_ID:
+                case FIELD_LAST_NAME:
+                case FIELD_FIRST_NAME:
+                case FIELD_TITLE:
+                case FIELD_EMAIL:
+                    return cb.like(cb.lower(root.get(searchByToEntityColumn(searchBy))), pattern);
+
+                case FIELD_FADS_NAME: {
+                    // join seUsrGrp → fadsGrp → fadsGrpName
+                    Join<?, ?> jUsrGrp = root.join("seUsrGrp", JoinType.LEFT);
+                    Join<?, ?> jFads   = jUsrGrp.join("fadsGrp", JoinType.LEFT);
+                    return cb.like(cb.lower(jFads.get("fadsGrpName")), pattern);
+                }
+                case FIELD_SUR_NAME: {
+                    Join<?, ?> jUsrGrp = root.join("seUsrGrp", JoinType.LEFT);
+                    Join<?, ?> jSur    = jUsrGrp.join("fadsSurGrp", JoinType.LEFT);
+                    return cb.like(cb.lower(jSur.get("surGrpName")), pattern);
+                }
+                case FIELD_CASE_NAME: {
+                    Join<?, ?> jUsrGrp = root.join("seUsrGrp", JoinType.LEFT);
+                    Join<?, ?> jCase   = jUsrGrp.join("fadsCaseGrp", JoinType.LEFT);
+                    return cb.like(cb.lower(jCase.get("caseGrpName")), pattern);
+                }
+
+                default:
+                    // Safe default search: email contains
+                    return cb.like(cb.lower(root.get(FIELD_EMAIL)), pattern);
+            }
+        };
+    }
+
+    /** map request searchBy to entity column names (simple fields only) */
+    private String searchByToEntityColumn(String searchBy) {
+        return switch (searchBy) {
+            case FIELD_UI_SYSTEM_ID -> FIELD_UI_SYSTEM_ID;
+            case FIELD_UI_USER_ID   -> FIELD_UI_USER_ID;
+            case FIELD_LAST_NAME    -> FIELD_LAST_NAME;
+            case FIELD_FIRST_NAME   -> FIELD_FIRST_NAME;
+            case FIELD_TITLE        -> FIELD_TITLE;
+            case FIELD_EMAIL        -> FIELD_EMAIL;
+            default -> FIELD_EMAIL;
+        };
+    }
+}
+
+
+Note: .distinct(true) prevents duplicates when sorting/ filtering on joined tables.
+
+
+5) Repository, Entities, Mapper
+
+
+Your existing entities, UiUserBaseRepository (extends JpaSpecificationExecutor), and UserListItemMapper are already compatible with this approach. Keep them as you posted.
+
+
+
+6) Example requests
+GET /api/users?pageNumber=1&recordsPerPage=20&sortBy=fadsGrpName&sortOrder=1
+
+GET /api/users?searchBy=lastName&searchInput=smith&sortBy=firstName&sortOrder=1
+
+GET /api/users?searchBy=fadsGrpName&searchInput=Audit
+
+
+7) What to remove from the old user API
+
+
+The FIELD_MAP and the generic UserSpecification helper class (not needed now).
+
+
+The /findAllByPageable path if you don’t need it — or keep both during migration.
+
+
+
+Why this mirrors your History API
+
+
+Same controller structure (map sort field, build Pageable)
+
+
+Same parameter shape (searchBy, searchInput)
+
+
+Same service approach (single-field Specification, targeted joins)
+
+
+Same response contract ({ data, totalRecordsCount })
+
+
+If you want multi-field search later, we can extend createSearchSpecification to AND multiple predicates (like your first approach), but the skeleton above stays true to your history-style implementation.
