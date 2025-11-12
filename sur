@@ -1,242 +1,66 @@
-package com.optum.fads.authorization.api.service.impl;
+server:
+  port: 8080
+  servlet:
+    context-path: /userroles   # Main app context
 
-import java.util.*;
-import java.util.stream.Collectors;
+spring:
+  application:
+    name: fads-userroles-api
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+  datasource:
+    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
+    username: sqladmin@sql-pi-dev-cus-001
+    password: wjGbF#'P9Hrt=}[BnAZ8aT
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
 
-import com.optum.fads.authorization.api.dto.CaseModule;
-import com.optum.fads.authorization.api.dto.CaseNode;
-import com.optum.fads.authorization.api.dto.CaseRole;
-import com.optum.fads.authorization.api.dto.CaseTypeModule;
-import com.optum.fads.authorization.api.dto.FADSUser;
-import com.optum.fads.authorization.api.dto.FadsComponent;
-import com.optum.fads.authorization.api.dto.FadsModule;
-import com.optum.fads.authorization.api.dto.FadsModuleElement;
-import com.optum.fads.authorization.api.dto.FadsRole;
-import com.optum.fads.authorization.api.dto.ModuleAccess;
-import com.optum.fads.authorization.api.dto.PgpRole;
-import com.optum.fads.authorization.api.dto.SurAccessLevel;
-import com.optum.fads.authorization.api.entity.*;
-import com.optum.fads.authorization.api.mapper.UserDetailMapper;
-import com.optum.fads.authorization.api.repo.UserRepository;
-import com.optum.fads.authorization.api.service.IUserDetailsService;
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        globally_quoted_identifiers: true
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+	
+  security:
+	oauth2:
+	  resourceserver:
+	    jwt:
+	      jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+	      jws-algorithms: RS256
 
-import lombok.RequiredArgsConstructor;
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"   
+  endpoint:
+    health:
+      show-details: always   
+  metrics:
+    export:
+      prometheus:
+        enabled: true  
 
-@Service
-@RequiredArgsConstructor
-public class UserDetailsService implements IUserDetailsService {
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
 
-    private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
 
-    private final UserRepository userRepository;
-    private final UserDetailMapper userDetailMapper;
+---
+spring:
+  config:
+    activate:
+      on-profile: build
 
-    @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.info("Loading user by username: {}", username);
-
-        UiUserBase uiUserBase = userRepository.findByUiEMailAddress(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
-
-        // Base user fields via MapStruct
-        FADSUser user = userDetailMapper.toAppUser(uiUserBase);
-
-        // -------------------------
-        // PGP / SUR ROLE (existing)
-        // -------------------------
-        SeUsrGrp usrGrp = uiUserBase.getSeUsrGrp();
-        if (usrGrp != null && usrGrp.getSeSurGrp() != null) {
-            SeSurGrp surGrp = usrGrp.getSeSurGrp();
-
-            List<SurAccessLevel> surAccesses = surGrp.getSeSurGrpModAccesses()
-                    .stream()
-                    .map(ma -> new SurAccessLevel(
-                            ma.getId().getSurModuleId(),
-                            ModuleAccess.getByName(ma.getId().getSurModuleId()).toString(),
-                            ma.getSeSurModule().getSurModuleName(),
-                            ma.getSeSurAccess().getSurAccessId()))
-                    .toList();
-
-            user.getRole().setPgpRole(PgpRole.builder()
-                    .groupId(surGrp.getSurGrpId())
-                    .roleName(surGrp.getSurGrpName())
-                    .pgpAccesses(surAccesses)
-                    .build());
-        }
-
-        // -------------------------
-        // CASE TRACKING ROLE (existing)
-        // -------------------------
-        if (usrGrp != null && usrGrp.getSeCaseGrp() != null) {
-            SeCaseGrp caseGrp = usrGrp.getSeCaseGrp();
-            CaseRole caseRole = new CaseRole();
-            caseRole.setGroupId(caseGrp.getCaseGrpId());
-            caseRole.setRoleName(caseGrp.getCaseGrpName());
-
-            // Build modules per case type
-            Map<String, String> caseTypes = new HashMap<>();
-            Map<String, List<CaseModule>> modulePermissions = new HashMap<>();
-
-            for (SeCaseGrpModAccess gma : caseGrp.getSeCaseGrpModAccesses()) {
-                String typeCd = gma.getCaLuCaseTypeT().getTypeCd();
-                caseTypes.put(typeCd, gma.getCaLuCaseTypeT().getTypeDesc());
-
-                modulePermissions
-                        .computeIfAbsent(typeCd, k -> new ArrayList<>())
-                        .add(buildCaseModule(gma));
-            }
-
-            List<CaseTypeModule> typeModules = caseTypes.entrySet().stream()
-                    .map(e -> {
-                        CaseTypeModule tm = new CaseTypeModule();
-                        tm.setCaseTypeId(e.getKey());
-                        tm.setCaseTypeName(e.getValue());
-                        tm.setModulePermissions(modulePermissions.getOrDefault(e.getKey(), List.of()));
-                        return tm;
-                    })
-                    .toList();
-
-            caseRole.setCaseTypeModules(typeModules);
-
-            // Node permissions
-            Collection<CaseNode> nodePerms = caseGrp.getSeCaseGrpNodeAccesses().stream()
-                    .map(na -> {
-                        CaseNode n = new CaseNode();
-                        n.setNodeId(na.getId().getCaseNodeId());
-                        n.setNodeAccess(na.getSeCaseAccess().getAccessId());
-                        n.setRestrictAccess(na.getAnyRestrictApply());
-                        n.setDeleteAccess(na.getCanDeleteCases());
-                        return n;
-                    })
-                    .collect(Collectors.toCollection(HashSet::new));
-
-            caseRole.setNodePermissions(nodePerms);
-            user.getRole().setCaseRole(caseRole);
-        }
-
-        // -------------------------
-        // FADS ROLE (new block)
-        // -------------------------
-        if (usrGrp != null && usrGrp.getSeFadsGrp() != null) {
-            SeFadsGrp fadsGrp = usrGrp.getSeFadsGrp();
-
-            FadsRole fadsRole = new FadsRole();
-            fadsRole.setGroupId(fadsGrp.getFadsGrpId());
-            fadsRole.setGroupName(fadsGrp.getFadsGrpName());
-
-            // Components with access (exclude hidden H)
-            for (SeFadsGrpCompAccess compAccess : fadsGrp.getSeFadsGrpCompAccesses()) {
-                if ("H".equalsIgnoreCase(compAccess.getSeFadsAccess().getFadsAccessId())) {
-                    continue;
-                }
-
-                FadsComponent component = new FadsComponent();
-                component.setComponentId(compAccess.getId().getFadsCompId());
-                component.setComponentCd(compAccess.getSeFadsComponent().getComponentCd());
-                component.setComponentName(compAccess.getSeFadsComponent().getComponentName());
-                component.setComponentSeq(compAccess.getSeFadsComponent().getComponentSeq());
-                component.setComponentAccess(compAccess.getSeFadsAccess().getFadsAccessId());
-
-                // Modules for this component (exclude hidden H)
-                List<SeFadsGrpModAccess> grpModsForComponent = fadsGrp.getSeFadsGrpModAccesses()
-                        .stream()
-                        .filter(m -> Objects.equals(
-                                compAccess.getId().getFadsCompId(),
-                                m.getSeFadsComponent().getComponentId()))
-                        .filter(m -> !"H".equalsIgnoreCase(m.getSeFadsAccess().getFadsAccessId()))
-                        .toList();
-
-                for (SeFadsGrpModAccess modAccess : grpModsForComponent) {
-                    FadsModule module = new FadsModule();
-                    module.setModuleId(modAccess.getId().getFadsModuleId());
-                    module.setModuleCd(modAccess.getSeFadsModule().getFadsModuleCd());
-                    module.setModuleName(modAccess.getSeFadsModule().getFadsModuleName());
-                    module.setModuleSeq(modAccess.getSeFadsModule().getModuleSeq());
-                    module.setModuleAccess(modAccess.getSeFadsAccess().getFadsAccessId());
-
-                    // Elements visible to this group (exclude elements with explicit "no access")
-                    List<FadsModuleElement> elements = modAccess.getSeFadsModule()
-                            .getFadsModElemConfigs()
-                            .stream()
-                            .filter(cfg ->
-                                cfg.getSeFadsModule().getFadsModuleId()
-                                        .equals(modAccess.getId().getFadsModuleId()))
-                            .filter(cfg ->
-                                cfg.getSeFadsGrpElemNoAccesses()
-                                  .stream()
-                                  .noneMatch(na -> na.getSeFadsGrp().getFadsGrpId()
-                                          .equals(fadsGrp.getFadsGrpId())))
-                            .map(cfg -> {
-                                FadsModuleElement e = new FadsModuleElement();
-                                e.setElementId(cfg.getElementId());
-                                e.setElementCd(cfg.getElementCd());
-                                e.setElementName(cfg.getElementName());
-                                e.setElementSeq(cfg.getElementSeq());
-                                return e;
-                            })
-                            .sorted(Comparator.comparingInt(FadsModuleElement::getElementSeq))
-                            .toList();
-
-                    module.setElements(new ArrayList<>(elements));
-                    component.getModules().add(module);
-                }
-
-                // sort modules by sequence
-                component.getModules().sort(Comparator.comparingInt(FadsModule::getModuleSeq));
-                fadsRole.getComponentPermissions().add(component);
-            }
-
-            // sort components by sequence
-            fadsRole.getComponentPermissions()
-                    .sort(Comparator.comparingInt(FadsComponent::getComponentSeq));
-
-            user.getRole().setFadsRole(fadsRole);
-        }
-
-        return user;
-    }
-
-    private static CaseModule buildCaseModule(SeCaseGrpModAccess gma) {
-        CaseModule m = new CaseModule();
-        m.setModuleId(gma.getSeCaseModule().getCaseModuleId());
-        m.setModuleCd(gma.getSeCaseModule().getCaseModuleCd());
-        m.setModuleName(gma.getSeCaseModule().getCaseModuleName());
-        m.setModuleAccess(gma.getSeCaseAccess().getAccessId());
-        return m;
-    }
-}
-UserDetailMapper.java
-java
-Copy code
-package com.optum.fads.authorization.api.mapper;
-
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
-
-import com.optum.fads.authorization.api.dto.FADSUser;
-import com.optum.fads.authorization.api.entity.UiUserBase;
-
-/**
- * Maps the core UiUserBase fields into FADSUser. Role blocks are
- * populated in the service, not here.
- */
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface UserDetailMapper {
-
-    @Mapping(source = "uiSystemId",   target = "userSystemId")
-    @Mapping(source = "uiEMailAddress", target = "userEmail")
-    @Mapping(source = "uiUserId",     target = "userId")
-    @Mapping(source = "uiFirstName",  target = "firstName")
-    @Mapping(source = "uiLastName",   target = "lastName")
-    FADSUser toAppUser(UiUserBase uiUserBase);
-}
-What changed vs yo
+logging:
+  level:
+    root: INFO
