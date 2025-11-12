@@ -10,14 +10,14 @@ spring:
   datasource:
     url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
     username: sqladmin@sql-pi-dev-cus-001
-    password: wjGbF#'P9Hrt=}[BnAZ8aT
+    password: 'wjGbF#''P9Hrt=}[BnAZ8aT'
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
     hikari:
       maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
       minimum-idle: ${MIN_POOL_IDLE:1}
       connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
 
   jpa:
     hibernate:
@@ -28,32 +28,32 @@ spring:
         format_sql: true
         globally_quoted_identifiers: true
     database-platform: org.hibernate.dialect.SQLServer2016Dialect
-	
+
   security:
-	oauth2:
-	  resourceserver:
-	    jwt:
-	      jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
-	      jws-algorithms: RS256
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms:
+            - RS256
 
 management:
   endpoints:
     web:
       exposure:
-        include: "*"   
+        include: "*"
   endpoint:
     health:
-      show-details: always   
+      show-details: always
   metrics:
     export:
       prometheus:
-        enabled: true  
+        enabled: true
 
 logging:
   level:
     org.springframework.web: INFO
     org.springframework.security: INFO
-
 
 ---
 spring:
