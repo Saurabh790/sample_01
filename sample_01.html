@@ -1,142 +1,18 @@
-ackage com.optum.fads.userroles.api.dto;
+package com.optum.fads.userroles.api.repo;
 
-import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.Optional;
 
-/** One-shot response for all dropdowns */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class AllDropdownsResponse {
-    private List<GroupDropdownItem> fadsGroups;
-    private List<GroupDropdownItem> surGroups;
-    private List<GroupDropdownItem> caseGroups;
-}
-java
-Copy code
-package com.optum.fads.userroles.api.dto;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.math.BigDecimal;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
 
-/** Generic id+name item used by each dropdown */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class GroupDropdownItem {
-    private BigDecimal id;
-    private String name;
-}
-2) Service
-Interface
-
-java
-Copy code
-package com.optum.fads.userroles.api.service;
-
-import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
-
-public interface GroupDropdownService {
-    AllDropdownsResponse getAllDropdowns();
-}
-Implementation
-
-java
-Copy code
-package com.optum.fads.userroles.api.service.impl;
-
-import com.optum.fads.userroles.api.domain.SeCaseGrp;
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import com.optum.fads.userroles.api.domain.SeSurGrp;
-import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
-import com.optum.fads.userroles.api.dto.GroupDropdownItem;
-import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
-import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
-import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
-import com.optum.fads.userroles.api.service.GroupDropdownService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
-import java.util.Comparator;
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class GroupDropdownServiceImpl implements GroupDropdownService {
-
-    private final SeFadsGrpRepository fadsRepo;
-    private final SeSurGrpRepository surRepo;
-    private final SeCaseGrpRepository caseRepo;
-
+public interface SeUsrGrpRepository extends JpaRepository<SeUserGroup, String>, JpaSpecificationExecutor<SeUserGroup> { 
+    boolean existsByUiSystemId(String uiSystemId);
+    
     @Override
-    public AllDropdownsResponse getAllDropdowns() {
-        // map to id+name and sort by name (UI-friendly)
-        List<GroupDropdownItem> fads =
-                fadsRepo.findAll().stream()
-                        .map(g -> new GroupDropdownItem(g.getId(), g.getFadsGrpName()))
-                        .sorted(Comparator.comparing(GroupDropdownItem::getName, String.CASE_INSENSITIVE_ORDER))
-                        .toList();
-
-        List<GroupDropdownItem> sur =
-                surRepo.findAll().stream()
-                        .map(g -> new GroupDropdownItem(g.getId(), g.getSurGrpName()))
-                        .sorted(Comparator.comparing(GroupDropdownItem::getName, String.CASE_INSENSITIVE_ORDER))
-                        .toList();
-
-        List<GroupDropdownItem> cases =
-                caseRepo.findAll().stream()
-                        .map(g -> new GroupDropdownItem(g.getId(), g.getCaseGrpName()))
-                        .sorted(Comparator.comparing(GroupDropdownItem::getName, String.CASE_INSENSITIVE_ORDER))
-                        .toList();
-
-        return new AllDropdownsResponse(fads, sur, cases);
-    }
+    @EntityGraph(attributePaths = "fadsGrp")
+    Optional<SeUsrGrp> findById(String uiSystemId);
+    
 }
-3) Controller (single endpoint)
-java
-Copy code
-package com.optum.fads.userroles.api.controllers;
 
-import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
-import com.optum.fads.userroles.api.service.GroupDropdownService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/userroles")
-@RequiredArgsConstructor
-public class GroupDropdownController {
-
-    private final GroupDropdownService service;
-
-    /** GET http://localhost:8080/userroles/dropdowns */
-    @GetMapping("/dropdowns")
-    public AllDropdownsResponse getAllDropdowns() {
-        return service.getAllDropdowns();
-    }
-}
-Expected JSON
-GET http://localhost:8080/userroles/dropdowns
-
-json
-Copy code
-{
-  "fadsGroups": [
-    { "id": 10, "name": "Optum Admin" },
-    { "id": 11, "name": "Optum Developer" }
-  ],
-  "surGroups": [
-    { "id": 21, "name": "Supervisor West" },
-    { "id": 22, "name": "Supervisor East" }
-  ],
-  "caseGroups": [
-    { "id": 5, "name": "Case Review" },
-    { "id": 6, "name": "Case Audit" }
-  ]
-}
