@@ -1,12 +1,105 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /userroles  # Main app context
+
+spring:
+  application:
+    name: fads-userroles-api
+
+  datasource:
+    # JDBC URL and driver (non-secret)
+    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    # These are **Key Vault secret names** (NOT actual values).
+    # ServiceConfig will call secretClient.getSecret(...) using these names.
+    username: fads-userroles-db-username        # <- KV secret name
+    password: fads-userroles-db-password        # <- KV secret name
+
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
+
+  # Matches CommonConfig @Value(...)
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
+          # endpoint: https://kv-anly-pi-tst-cus-001.vault.azure.net/
+        credential:
+          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+          client-id:                         # << fill in
+          client-secret:                     # << fill in
+          # client-id: cec3005b-b518-48c6-b67e-cde75d6864a5
+          # client-secret:
+          # tenant-id:
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        globally_quoted_identifiers: true
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms:
+            - RS256
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: build
+
+logging:
+  level:
+    root: INFO
+In Azure Key Vault, create:
+
+Secret fads-userroles-db-username → actual DB username
+
+Secret fads-userroles-db-password → actual DB password
+
+2. CommonConfig (Key Vault + ModelMapper)
+This is your class, just aligned with the YAML property names above:
+
+java
+Copy code
 /*
 //***********************************************
 // Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
 //***********************************************
 */
-
 package com.optum.fads.userroles.api.config;
 
 import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
@@ -27,7 +120,6 @@ import org.springframework.context.annotation.Scope;
 /**
  * The CommonConfig holds spring based configuration
  */
-
 @Configuration
 public class CommonConfig {
 
@@ -35,17 +127,18 @@ public class CommonConfig {
 
     @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
     private String azureKeyVaultUrl;
+
     @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
     private String azureKeyVaultTenant;
+
     @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
     private String azureKeyVaultSecret;
+
     @Value("${spring.cloud.azure.keyvault.credential.client-id}")
     private String azureKeyVaultClientId;
 
     /**
      * Model Mapper for mapping objects
-     *
-     * @return modelMapper
      */
     @Bean
     @Scope(SCOPE_PROTOTYPE)
@@ -75,135 +168,24 @@ public class CommonConfig {
                 .buildClient();
     }
 }
+Now the placeholders like ${spring.cloud.azure.keyvault.secrets.endpoint} will resolve without error.
 
+3. ServiceConfig (DataSource from Key Vault)
+Updated to:
 
+Use secret names from spring.datasource.username / password.
 
+Use correct property names (no userName typo).
+
+Scan your userroles packages, not authorization.
+
+java
+Copy code
 package com.optum.fads.userroles.api.config;
-
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
-import com.optum.fads.userroles.api.service.IUserDetailsService;
-import com.optum.fads.userroles.api.utility.UserJwtAuthenticationConverter;
-
-@Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
-public class SecurityConfig {
-
-    private final IUserDetailsService userDetailsService;
-
-    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
-
-    public SecurityConfig(IUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
-        http.csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
-                        .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .decoder(jwtDecoder())
-                                .jwtAuthenticationConverter(userJwtAuthenticationConverter())
-                        )
-                );
-
-        return http.build();
-    }
-
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        // Custom JWT decoder that skips signature validation
-        return token -> {
-            try {
-                JWT jwt = JWTParser.parse(token);
-
-                // Convert claims, handling Date to Instant conversion
-                Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
-
-                // Convert Date objects to Instant for timestamp claims
-                convertDateToInstant(claims, "iat");  // issued at
-                convertDateToInstant(claims, "exp");  // expires at
-                convertDateToInstant(claims, "nbf");  // not before
-                convertDateToInstant(claims, "auth_time");  // authentication time
-
-                return Jwt.withTokenValue(token)
-                        .headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
-                        .claims(claimsMap -> claimsMap.putAll(claims))
-                        .build();
-            } catch (Exception e) {
-                throw new JwtException("Failed to parse JWT", e);
-            }
-        };
-    }
-
-    private void convertDateToInstant(Map<String, Object> claims, String claimName) {
-        Object value = claims.get(claimName);
-        if (value instanceof Date) {
-            claims.put(claimName, ((Date) value).toInstant());
-        }
-    }
-
-    @Bean
-    UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
-        logger.debug("Creating UserJwtAuthenticationConverter bean");
-        return new UserJwtAuthenticationConverter(userDetailsService);
-    }
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        logger.debug("Creating PasswordEncoder bean using DelegatingPasswordEncoder");
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        logger.debug("Creating CorsConfigurationSource bean");
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
-        configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
-        configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
-        //	configuration.setAllowCredentials(true);
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        logger.info("CORS configuration registered for all paths");
-        return source;
-    }
-}
-
-package com.optum.fads.userroles.api.config;
-
 
 import javax.sql.DataSource;
 
+import com.azure.security.keyvault.secrets.SecretClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -215,22 +197,20 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import com.azure.security.keyvault.secrets.SecretClient;
-
 @Configuration
 @EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.optum.fads.authorization.api.repo")
-@ComponentScan(basePackages = { "com.optum.fads.authorization.api" })
-public class ServiceConfig 
-{
-    private static final Logger logger =
-            LoggerFactory.getLogger(ServiceConfig.class);
+@EnableJpaRepositories(basePackages = "com.optum.fads.userroles.api.repo")
+@ComponentScan(basePackages = { "com.optum.fads.userroles.api" })
+public class ServiceConfig {
 
-    @Value("${spring.datasource.userName}")
-    private String userName;
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
+
+    // These are **secret names** stored in YAML (spring.datasource.username/password)
+    @Value("${spring.datasource.username}")
+    private String userNameSecretName;
 
     @Value("${spring.datasource.password}")
-    private String password;
+    private String passwordSecretName;
 
     @Value("${spring.datasource.url}")
     private String url;
@@ -244,151 +224,32 @@ public class ServiceConfig
         this.secretClient = secretClient;
     }
 
-	@Bean(name = "fadsDataSource")
-	public DataSource customDataSource() {
+    @Bean(name = "fadsDataSource")
+    @Primary
+    public DataSource customDataSource() {
 
         logger.info("Initializing custom DataSource bean");
 
-        try{
-        String userNameValue = secretClient.getSecret(userName).getValue();
-        logger.info("UserName **** : " + userNameValue);
-        String passwordValue = secretClient.getSecret(password).getValue();
+        try {
+            // Fetch actual credentials from Key Vault using secret names
+            String userNameValue = secretClient.getSecret(userNameSecretName).getValue();
+            logger.info("Retrieved DB username from Key Vault using secret: {}", userNameSecretName);
 
-        logger.debug("Building DriverManagerDataSource with provided configuration");
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName(driverClassName);
-        dataSource.setUsername(userNameValue);
-        dataSource.setPassword(passwordValue);
-        dataSource.setUrl(url);
+            String passwordValue = secretClient.getSecret(passwordSecretName).getValue();
 
-        logger.info("DataSource bean created successfully");
-        return dataSource;
+            logger.debug("Building DriverManagerDataSource with provided configuration");
+            DriverManagerDataSource dataSource = new DriverManagerDataSource();
+            dataSource.setDriverClassName(driverClassName);
+            dataSource.setUsername(userNameValue);
+            dataSource.setPassword(passwordValue);
+            dataSource.setUrl(url);
+
+            logger.info("DataSource bean created successfully");
+            return dataSource;
 
         } catch (Exception e) {
-        logger.error("Failed to create DataSource bean", e);
-        throw new RuntimeException("Error initializing DataSource", e);
+            logger.error("Failed to create DataSource bean", e);
+            throw new RuntimeException("Error initializing DataSource", e);
         }
-
     }
 }
-
-
-
-
-
-2025-11-13T13:18:29.037+05:30  INFO 26116 --- [fads-userroles-api] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.48]
-2025-11-13T13:18:29.262+05:30  INFO 26116 --- [fads-userroles-api] [           main] o.a.c.c.C.[.[localhost].[/userroles]     : Initializing Spring embedded WebApplicationContext
-2025-11-13T13:18:29.264+05:30  INFO 26116 --- [fads-userroles-api] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3046 ms
-2025-11-13T13:18:29.503+05:30  WARN 26116 --- [fads-userroles-api] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'dataSourceScriptDatabaseInitializer' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'dataSourceScriptDatabaseInitializer' defined in class path resource [org/springframework/boot/autoconfigure/sql/init/DataSourceInitializationConfiguration.class]: Unsatisfied dependency expressed through method 'dataSourceScriptDatabaseInitializer' parameter 0: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\fads-latest\fads-user-roles-api\target\classes\com\optum\fads\userroles\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-2025-11-13T13:18:29.508+05:30  INFO 26116 --- [fads-userroles-api] [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
-2025-11-13T13:18:29.602+05:30  INFO 26116 --- [fads-userroles-api] [           main] .s.b.a.l.ConditionEvaluationReportLogger :
-
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2025-11-13T13:18:29.627+05:30 ERROR 26116 --- [fads-userroles-api] [           main] o.s.boot.SpringApplication               : Application run failed
-
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'dataSourceScriptDatabaseInitializer' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'dataSourceScriptDatabaseInitializer' defined in class path resource [org/springframework/boot/autoconfigure/sql/init/DataSourceInitializationConfiguration.class]: Unsatisfied dependency expressed through method 'dataSourceScriptDatabaseInitializer' parameter 0: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\fads-latest\fads-user-roles-api\target\classes\com\optum\fads\userroles\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:328) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973) ~[spring-context-6.2.12.jar:6.2.12]
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627) ~[spring-context-6.2.12.jar:6.2.12]
-        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.4.11.jar:3.4.11]
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752) ~[spring-boot-3.4.11.jar:3.4.11]
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439) ~[spring-boot-3.4.11.jar:3.4.11]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318) ~[spring-boot-3.4.11.jar:3.4.11]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361) ~[spring-boot-3.4.11.jar:3.4.11]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350) ~[spring-boot-3.4.11.jar:3.4.11]
-        at com.optum.fads.userroles.api.UserRolesApiApplication.main(UserRolesApiApplication.java:9) ~[classes/:na]
-Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'dataSourceScriptDatabaseInitializer' defined in class path resource [org/springframework/boot/autoconfigure/sql/init/DataSourceInitializationConfiguration.class]: Unsatisfied dependency expressed through method 'dataSourceScriptDatabaseInitializer' parameter 0: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\fads-latest\fads-user-roles-api\target\classes\com\optum\fads\userroles\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:546) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:315) ~[spring-beans-6.2.12.jar:6.2.12]
-        ... 10 common frames omitted
-Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\fads-latest\fads-user-roles-api\target\classes\com\optum\fads\userroles\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:240) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1395) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1232) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:413) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1770) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791) ~[spring-beans-6.2.12.jar:6.2.12]
-        ... 20 common frames omitted
-Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:515) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:413) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1708) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791) ~[spring-beans-6.2.12.jar:6.2.12]
-        ... 43 common frames omitted
-Caused by: org.springframework.util.PlaceholderResolutionException: Could not resolve placeholder 'spring.cloud.azure.keyvault.secrets.endpoint' in value "${spring.cloud.azure.keyvault.secrets.endpoint}"
-        at org.springframework.util.PlaceholderResolutionException.withValue(PlaceholderResolutionException.java:81) ~[spring-core-6.2.12.jar:6.2.12]
-        at org.springframework.util.PlaceholderParser$ParsedValue.resolve(PlaceholderParser.java:298) ~[spring-core-6.2.12.jar:6.2.12]
-        at org.springframework.util.PlaceholderParser.replacePlaceholders(PlaceholderParser.java:131) ~[spring-core-6.2.12.jar:6.2.12]
-        at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:114) ~[spring-core-6.2.12.jar:6.2.12]
-        at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:293) ~[spring-core-6.2.12.jar:6.2.12]
-        at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:264) ~[spring-core-6.2.12.jar:6.2.12]
-        at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:186) ~[spring-context-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:970) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1675) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:785) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:768) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146) ~[spring-beans-6.2.12.jar:6.2.12]
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509) ~[spring-beans-6.2.12.jar:6.2.12]
-        ... 63 common frames omitted
-
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  12.250 s
-[INFO] Finished at: 2025-11-13T13:18:29+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.4.11:run (default-cli) on project fads-user-roles-api: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
-
-C:\Users\sgupt664\fads-latest\fads-user-roles-api>
