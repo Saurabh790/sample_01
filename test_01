@@ -1,341 +1,201 @@
-1) DTOs
-package com.optum.fads.userroles.api.dto;
+server:
+  port: 8080
+  servlet:
+    context-path: /userroles  # Main app context
 
-import java.math.BigDecimal;
+spring:
+  application:
+    name: fads-userroles-api
 
-public class CreateUserRoleRequest {
-    private String uiSystemId;     // PK
-    private String uiUserId;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String title;          // optional
-    private Character userInactive;// optional: 'Y'/'N' or null
-    private BigDecimal fadsGrpId;      // SE_FADS_GRP.FADS_GRP_ID
-    private BigDecimal fadsSurGrpId;   // SE_SUR_GRP.SUR_GRP_ID
-    private BigDecimal fadsCaseGrpId;  // SE_CASE_GRP.CASE_GRP_ID
+  datasource:
+    # --- DB connectivity (non-secret parts) ---
+    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
-    // getters/setters
-    public String getUiSystemId() { return uiSystemId; }
-    public void setUiSystemId(String uiSystemId) { this.uiSystemId = uiSystemId; }
-    public String getUiUserId() { return uiUserId; }
-    public void setUiUserId(String uiUserId) { this.uiUserId = uiUserId; }
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public Character getUserInactive() { return userInactive; }
-    public void setUserInactive(Character userInactive) { this.userInactive = userInactive; }
-    public BigDecimal getFadsGrpId() { return fadsGrpId; }
-    public void setFadsGrpId(BigDecimal fadsGrpId) { this.fadsGrpId = fadsGrpId; }
-    public BigDecimal getFadsSurGrpId() { return fadsSurGrpId; }
-    public void setFadsSurGrpId(BigDecimal fadsSurGrpId) { this.fadsSurGrpId = fadsSurGrpId; }
-    public BigDecimal getFadsCaseGrpId() { return fadsCaseGrpId; }
-    public void setFadsCaseGrpId(BigDecimal fadsCaseGrpId) { this.fadsCaseGrpId = fadsCaseGrpId; }
-}
+    # These are **Key Vault secret names**, NOT actual values.
+    # ServiceConfig will call SecretClient.getSecret(...) using these names.
+    username-secret-name: fads-userroles-db-username
+    password-secret-name: fads-userroles-db-password
 
-package com.optum.fads.userroles.api.dto;
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
 
-import java.math.BigDecimal;
+  azure:
+    keyvault:
+      secrets:
+        endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
+        # endpoint: https://kv-anly-pi-tst-cus-001.vault.azure.net/
+      credential:
+        client-id:                       # << fill in
+        client-secret:                   # << fill in
+        tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+        # client-id: cec3005b-b518-48c6-b67e-cde75d6864a5
+        # client-secret:
+        # tenant-id:
 
-public class CreateUserRoleResponse {
-    // echo back the saved state + friendly names (if found)
-    private String uiSystemId;
-    private String uiUserId;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String title;
-    private Character userInactive;
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        globally_quoted_identifiers: true
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
 
-    private BigDecimal fadsGrpId;
-    private String     fadsGrpName;
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms:
+            - RS256
 
-    private BigDecimal fadsSurGrpId;
-    private String     fadsSurGrpName;
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
-    private BigDecimal fadsCaseGrpId;
-    private String     fadsCaseGrpName;
+logging:
+  level:
+    org.springframework.web: INFO
+    org.springframework.security: INFO
 
-    // getters/setters
-    public String getUiSystemId() { return uiSystemId; }
-    public void setUiSystemId(String uiSystemId) { this.uiSystemId = uiSystemId; }
-    public String getUiUserId() { return uiUserId; }
-    public void setUiUserId(String uiUserId) { this.uiUserId = uiUserId; }
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public Character getUserInactive() { return userInactive; }
-    public void setUserInactive(Character userInactive) { this.userInactive = userInactive; }
-    public BigDecimal getFadsGrpId() { return fadsGrpId; }
-    public void setFadsGrpId(BigDecimal fadsGrpId) { this.fadsGrpId = fadsGrpId; }
-    public String getFadsGrpName() { return fadsGrpName; }
-    public void setFadsGrpName(String fadsGrpName) { this.fadsGrpName = fadsGrpName; }
-    public BigDecimal getFadsSurGrpId() { return fadsSurGrpId; }
-    public void setFadsSurGrpId(BigDecimal fadsSurGrpId) { this.fadsSurGrpId = fadsSurGrpId; }
-    public String getFadsSurGrpName() { return fadsSurGrpName; }
-    public void setFadsSurGrpName(String fadsSurGrpName) { this.fadsSurGrpName = fadsSurGrpName; }
-    public BigDecimal getFadsCaseGrpId() { return fadsCaseGrpId; }
-    public void setFadsCaseGrpId(BigDecimal fadsCaseGrpId) { this.fadsCaseGrpId = fadsCaseGrpId; }
-    public String getFadsCaseGrpName() { return fadsCaseGrpName; }
-    public void setFadsCaseGrpName(String fadsCaseGrpName) { this.fadsCaseGrpName = fadsCaseGrpName; }
-}
+---
+spring:
+  config:
+    activate:
+      on-profile: build
 
-2) Repositories
-package com.optum.fads.userroles.api.repo;
+logging:
+  level:
+    root: INFO
+⚠️ In Azure Key Vault, create two secrets:
 
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import org.springframework.data.jpa.repository.JpaRepository;
+fads-userroles-db-username → real DB username
 
-public interface UiUserBaseRepository extends JpaRepository<UiUserBase, String> { }
+fads-userroles-db-password → real DB password
 
-package com.optum.fads.userroles.api.repo;
+2. ServiceConfig class
+This class:
 
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import org.springframework.data.jpa.repository.JpaRepository;
+Reads the secret names from spring.datasource.username-secret-name and spring.datasource.password-secret-name
 
-public interface SeUsrGrpRepository extends JpaRepository<SeUsrGrp, String> { }
+Uses SecretClient to fetch the real values
 
-package com.optum.fads.userroles.api.repo;
+Builds a HikariDataSource
 
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import org.springframework.data.jpa.repository.JpaRepository;
+Enables JPA repositories and component scanning under com.optum.fads.userroles.api
 
-import java.math.BigDecimal;
+java
+Copy code
+package com.optum.fads.userroles.api.config;
 
-public interface SeFadsGrpRepository extends JpaRepository<SeFadsGrp, BigDecimal> { }
+import javax.sql.DataSource;
 
-package com.optum.fads.userroles.api.repo;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.optum.fads.userroles.api.domain.SeSurGrp;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import java.math.BigDecimal;
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.userroles.api.repo")
+@ComponentScan(basePackages = { "com.optum.fads.userroles.api" })
+public class ServiceConfig {
 
-public interface SeSurGrpRepository extends JpaRepository<SeSurGrp, BigDecimal> { }
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
 
-package com.optum.fads.userroles.api.repo;
+    // ---- JDBC / pool configuration (non-secret) ----
 
-import com.optum.fads.userroles.api.domain.SeCaseGrp;
-import org.springframework.data.jpa.repository.JpaRepository;
+    @Value("${spring.datasource.url}")
+    private String url;
 
-import java.math.BigDecimal;
+    @Value("${spring.datasource.driver-class-name}")
+    private String driverClassName;
 
-public interface SeCaseGrpRepository extends JpaRepository<SeCaseGrp, BigDecimal> { }
+    @Value("${spring.datasource.hikari.maximum-pool-size:50}")
+    private int maximumPoolSize;
 
-3) Service
-package com.optum.fads.userroles.api.service;
+    @Value("${spring.datasource.hikari.minimum-idle:1}")
+    private int minimumIdle;
 
-import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
-import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
+    @Value("${spring.datasource.hikari.connection-timeout:60000}")
+    private long connectionTimeout;
 
-public interface UserRoleCreateService {
-    CreateUserRoleResponse createOrUpdateUser(CreateUserRoleRequest request);
-}
+    @Value("${spring.datasource.hikari.idle-timeout:60000}")
+    private long idleTimeout;
 
-package com.optum.fads.userroles.api.service.impl;
+    @Value("${spring.datasource.hikari.leak-detection-threshold:0}")
+    private long leakDetectionThreshold;
 
-import com.optum.fads.userroles.api.domain.*;
-import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
-import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
-import com.optum.fads.userroles.api.repo.*;
-import com.optum.fads.userroles.api.service.UserRoleCreateService;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+    // ---- Key Vault secret names (from YAML) ----
 
-import java.util.Optional;
+    @Value("${spring.datasource.username-secret-name}")
+    private String usernameSecretName;
 
-@Service
-public class UserRoleCreateServiceImpl implements UserRoleCreateService {
+    @Value("${spring.datasource.password-secret-name}")
+    private String passwordSecretName;
 
-    private final UiUserBaseRepository userRepo;
-    private final SeUsrGrpRepository usrGrpRepo;
-    private final SeFadsGrpRepository fadsGrpRepo;
-    private final SeSurGrpRepository  surGrpRepo;
-    private final SeCaseGrpRepository caseGrpRepo;
+    private final SecretClient secretClient;
 
-    @PersistenceContext
-    private EntityManager em;
-
-    public UserRoleCreateServiceImpl(
-            UiUserBaseRepository userRepo,
-            SeUsrGrpRepository usrGrpRepo,
-            SeFadsGrpRepository fadsGrpRepo,
-            SeSurGrpRepository surGrpRepo,
-            SeCaseGrpRepository caseGrpRepo) {
-        this.userRepo   = userRepo;
-        this.usrGrpRepo = usrGrpRepo;
-        this.fadsGrpRepo = fadsGrpRepo;
-        this.surGrpRepo  = surGrpRepo;
-        this.caseGrpRepo = caseGrpRepo;
+    public ServiceConfig(SecretClient secretClient) {
+        this.secretClient = secretClient;
     }
 
-    @Override
-    @Transactional
-    public CreateUserRoleResponse createOrUpdateUser(CreateUserRoleRequest req) {
-        if (req == null || !StringUtils.hasText(req.getUiSystemId())) {
-            throw new IllegalArgumentException("uiSystemId is required");
+    @Bean(name = "fadsDataSource")
+    @Primary // Mark this as the primary DataSource
+    public DataSource customDataSource() {
+
+        logger.info("Initializing custom HikariDataSource bean");
+
+        try {
+            // Fetch actual credentials from Azure Key Vault
+            String userNameValue = secretClient.getSecret(usernameSecretName).getValue();
+            String passwordValue = secretClient.getSecret(passwordSecretName).getValue();
+
+            logger.info("Successfully retrieved DB credentials from Key Vault (username secret: {})",
+                    usernameSecretName);
+
+            // Configure HikariCP
+            HikariDataSource dataSource = new HikariDataSource();
+            dataSource.setJdbcUrl(url);
+            dataSource.setDriverClassName(driverClassName);
+            dataSource.setUsername(userNameValue);
+            dataSource.setPassword(passwordValue);
+
+            dataSource.setMaximumPoolSize(maximumPoolSize);
+            dataSource.setMinimumIdle(minimumIdle);
+            dataSource.setConnectionTimeout(connectionTimeout);
+            dataSource.setIdleTimeout(idleTimeout);
+            dataSource.setLeakDetectionThreshold(leakDetectionThreshold);
+
+            logger.info("HikariDataSource bean created successfully");
+            return dataSource;
+
+        } catch (Exception e) {
+            logger.error("Failed to create DataSource bean", e);
+            throw new RuntimeException("Error initializing DataSource", e);
         }
-        final String uiSystemId = req.getUiSystemId();
-
-        // 1) UPSERT UiUserBase (managed)
-        UiUserBase user = userRepo.findById(uiSystemId).orElseGet(() -> {
-            UiUserBase u = new UiUserBase();
-            u.setUiSystemId(uiSystemId);
-            return u;
-        });
-        user.setUiUserId(req.getUiUserId());
-        user.setUiFirstName(req.getFirstName());
-        user.setUiLastName(req.getLastName());
-        user.setUiEMailAddress(req.getEmail());
-        user.setUiTitle(req.getTitle());
-        user.setUiUserInactive(req.getUserInactive());
-
-        user = userRepo.save(user); // returns managed
-
-        // 2) UPSERT SeUsrGrp (managed)
-        SeUsrGrp grp = usrGrpRepo.findById(uiSystemId).orElseGet(() -> {
-            SeUsrGrp g = new SeUsrGrp();
-            g.setUiSystemId(uiSystemId);
-            g.setUiUserBase(user); // @MapsId link
-            return g;
-        });
-        grp.setUiUserBase(user); // keep the link fresh
-
-        // 3) Attach MANAGED references for lookups (avoid transient errors)
-        //    If an ID is null -> set relation null
-        //    If provided -> get a lazy proxy with getReference()
-        //    For user-friendly names in response, we’ll also Optional.findById() below.
-
-        if (req.getFadsGrpId() != null) {
-            grp.setFadsGrp(em.getReference(SeFadsGrp.class, req.getFadsGrpId()));
-        } else {
-            grp.setFadsGrp(null);
-        }
-
-        if (req.getFadsSurGrpId() != null) {
-            grp.setFadsSurGrp(em.getReference(SeSurGrp.class, req.getFadsSurGrpId()));
-        } else {
-            grp.setFadsSurGrp(null);
-        }
-
-        if (req.getFadsCaseGrpId() != null) {
-            grp.setFadsCaseGrp(em.getReference(SeCaseGrp.class, req.getFadsCaseGrpId()));
-        } else {
-            grp.setFadsCaseGrp(null);
-        }
-
-        // Defensive: sanitize any detached/transient objects that may have leaked in
-        if (grp.getFadsGrp() != null && !em.contains(grp.getFadsGrp())) {
-            var id = grp.getFadsGrp().getId();
-            grp.setFadsGrp(id == null ? null : em.getReference(SeFadsGrp.class, id));
-        }
-        if (grp.getFadsSurGrp() != null && !em.contains(grp.getFadsSurGrp())) {
-            var id = grp.getFadsSurGrp().getId();
-            grp.setFadsSurGrp(id == null ? null : em.getReference(SeSurGrp.class, id));
-        }
-        if (grp.getFadsCaseGrp() != null && !em.contains(grp.getFadsCaseGrp())) {
-            var id = grp.getFadsCaseGrp().getId();
-            grp.setFadsCaseGrp(id == null ? null : em.getReference(SeCaseGrp.class, id));
-        }
-
-        usrGrpRepo.save(grp);
-
-        // 4) Build response with friendly names (optional lookups)
-        CreateUserRoleResponse out = new CreateUserRoleResponse();
-        out.setUiSystemId(user.getUiSystemId());
-        out.setUiUserId(user.getUiUserId());
-        out.setFirstName(user.getUiFirstName());
-        out.setLastName(user.getUiLastName());
-        out.setEmail(user.getUiEMailAddress());
-        out.setTitle(user.getUiTitle());
-        out.setUserInactive(user.getUiUserInactive());
-
-        if (req.getFadsGrpId() != null) {
-            out.setFadsGrpId(req.getFadsGrpId());
-            Optional<SeFadsGrp> f = fadsGrpRepo.findById(req.getFadsGrpId());
-            out.setFadsGrpName(f.map(SeFadsGrp::getFadsGrpName).orElse(null));
-        }
-        if (req.getFadsSurGrpId() != null) {
-            out.setFadsSurGrpId(req.getFadsSurGrpId());
-            Optional<SeSurGrp> s = surGrpRepo.findById(req.getFadsSurGrpId());
-            out.setFadsSurGrpName(s.map(SeSurGrp::getSurGrpName).orElse(null));
-        }
-        if (req.getFadsCaseGrpId() != null) {
-            out.setFadsCaseGrpId(req.getFadsCaseGrpId());
-            Optional<SeCaseGrp> c = caseGrpRepo.findById(req.getFadsCaseGrpId());
-            out.setFadsCaseGrpName(c.map(SeCaseGrp::getCaseGrpName).orElse(null));
-        }
-
-        return out;
     }
 }
-
-
-Why this fixes your errors
-
-Prevents TransientObjectException: we never attach brand-new SeFadsGrp/SeSurGrp/SeCaseGrp objects; we use em.getReference(...) so Hibernate keeps a managed proxy.
-
-Prevents NonUniqueObjectException / EntityExistsException: we upsert (findById then save) for both UiUserBase and SeUsrGrp, and we don’t call persist on something already loaded in the same persistence context.
-
-⚠️ Note: Ensure your @ManyToOne mappings in SeUsrGrp do not specify cascade = CascadeType.ALL. The code above assumes no cascading to lookup tables (which is correct for lookups).
-
-4) Controller (endpoints)
-
-This adds a create/update endpoint. Keep your existing list/search endpoints unchanged.
-
-package com.optum.fads.userroles.api.controllers;
-
-import com.optum.fads.userroles.api.dto.CreateUserRoleRequest;
-import com.optum.fads.userroles.api.dto.CreateUserRoleResponse;
-import com.optum.fads.userroles.api.service.UserRoleCreateService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api") // base under /userroles context -> /userroles/api
-public class UserRolesCreateController {
-
-    private final UserRoleCreateService service;
-
-    public UserRolesCreateController(UserRoleCreateService service) {
-        this.service = service;
-    }
-
-    @PostMapping(value = "/users", headers = "Accept=application/json")
-    public ResponseEntity<CreateUserRoleResponse> createOrUpdate(@RequestBody CreateUserRoleRequest request) {
-        CreateUserRoleResponse resp = service.createOrUpdateUser(request);
-        return ResponseEntity.ok(resp);
-    }
-}
-
-
-Example request body (the one you posted):
-
-{
-  "uiSystemId": "GS1002",
-  "uiUserId": "JSMITH",
-  "firstName": "John",
-  "lastName": "Smith",
-  "email": "john.smith@optum.com",
-  "title": "Mgr",
-  "userInactive": "N",
-  "fadsGrpId": 10,
-  "fadsSurGrpId": 21,
-  "fadsCaseGrpId": 5
-}
-
-
-Result: upsert user row in UI_USER_BASE and upsert group row in SE_USR_GRP with managed relations to your 3 lookup tables.
