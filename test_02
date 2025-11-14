@@ -1,29 +1,34 @@
 @Test
-	void testFindAllByPageable_withValidParams() {
-		// Arrange
-		int pageNumber = 1;
-		int recordsPerPage = 10;
-		String sortBy = "lastName";
-		String sortOrder = "1";
-		List<String> searchBy = List.of("lastName");
-		List<String> searchInput = List.of("Doe");
+void testFindAllByPageable_withValidParams() {
+    // Arrange
+    int pageNumber = 1;
+    int recordsPerPage = 10;
+    String sortBy = "lastName";
+    int sortOrder = 1;              // <-- controller expects int, not String
+    String searchBy = "lastName";   // <-- single String, not List
+    String searchInput = "Doe";     // <-- single String, not List
 
-		Pageable expectedPageable = PageRequest.of(0, 10, Sort.by(Sort.Order.asc("uiLastName")));
-		Map<String, String> expectedFilters = Map.of("lastName", "Doe");
+    Pageable expectedPageable =
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "uiLastName")); // lastName -> uiLastName
 
-		UserListItem user = new UserListItem("systemId123", "userId456", "Doe", "John", "Developer",
-				"john.doe@example.com", "FADS Group", "SUR Group", "CASE Group");
-		Page<UserListItem> mockPage = new PageImpl<>(List.of(user));
+    UserListResponse expectedResponse = new UserListResponse();
 
-		when(userService.getUsersList(expectedFilters, expectedPageable, FIELD_MAP)).thenReturn(mockPage);
+    when(userListService.getAllUsers(expectedPageable, searchBy, searchInput))
+            .thenReturn(expectedResponse);
 
-		// Act
-		Page<UserListItem> result = userRolesController.findAllByPageable(pageNumber,
-				recordsPerPage, sortBy, sortOrder,
-				searchBy, searchInput);
+    // Act
+    UserListResponse result = userRolesController.getUsers(
+            pageNumber,
+            recordsPerPage,
+            sortBy,
+            sortOrder,
+            searchBy,
+            searchInput
+    );
 
-		// Assert
-		assertNotNull(result);
-		assertEquals(1, result.getContent().size());
-		verify(userService, times(1)).getUsersList(expectedFilters, expectedPageable, FIELD_MAP);
-	}
+    // Assert
+    assertNotNull(result);
+    assertSame(expectedResponse, result);
+    verify(userListService, times(1))
+            .getAllUsers(expectedPageable, searchBy, searchInput);
+}
