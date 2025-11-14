@@ -1,66 +1,173 @@
-server:
-  port: 8080
-  servlet:
-    context-path: /userroles   # Main app context
+package com.optum.fads.userroles.api.service.Impl;
 
-spring:
-  application:
-    name: fads-userroles-api
+import java.util.Map;
 
-  datasource:
-    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
-    username: sqladmin@sql-pi-dev-cus-001
-    password: 'wjGbF#''P9Hrt=}[BnAZ8aT'
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        globally_quoted_identifiers: true
-    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.domain.SeCaseGrp;
+import com.optum.fads.userroles.api.domain.SeFadsGrp;
+import com.optum.fads.userroles.api.domain.SeSurGrp;
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import com.optum.fads.userroles.api.dto.UserForAdmin;
+import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
+import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
+import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
+import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.service.UserService;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.utility.UserSpecification;
+import com.optum.fads.userroles.api.dto.UserListItemHistoryRequest;
 
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
-          jws-algorithms:
-            - RS256
+import lombok.RequiredArgsConstructor;
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  endpoint:
-    health:
-      show-details: always
-  metrics:
-    export:
-      prometheus:
-        enabled: true
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
 
-logging:
-  level:
-    org.springframework.web: INFO
-    org.springframework.security: INFO
+    private final UiUserBaseRepository repo;
+    private final SeUsrGrpRepository seUsrGrpRepository;
+    private final UserListItemMapper mapper;
+    private final SeFadsGrpRepository seFadsGrpRepository;
+    private final SeSurGrpRepository seSurGrpRepository;
+    private final SeCaseGrpRepository seCaseGrpRepository;
+    private final UserHistoryImpl userHistory;
 
----
-spring:
-  config:
-    activate:
-      on-profile: build
+    @Override
+    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
+        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
 
-logging:
-  level:
-    root: INFO
+        Page<UiUserBase> page = (spec == null)
+                ? repo.findAll(pageable)            
+                : repo.findAll(spec, pageable);         
+        return page.map(mapper::toDto);
+    }
+
+    @Override
+    @Transactional
+    public void saveNewUser(UserForAdmin user) {
+        // Check if user already exists
+        boolean exists = repo.existsByUiUserId(user.getUserId());
+        if (exists) {
+            throw new IllegalArgumentException("User with uiUserId " + user.getUserId() + " already exists.");
+        }
+
+        boolean groupExists = seUsrGrpRepository.existsByUiSystemId(user.getSystemId());
+        if (groupExists) {
+            throw new IllegalArgumentException("User group with uiSystemId " + user.getSystemId() + " already exists.");
+        }
+
+        UiUserBase entity = mapper.toEntity(user);
+        UiUserBase savedUser = repo.save(entity);
+
+        repo.flush();
+
+        SeUsrGrp seUsrGrp = new SeUsrGrp();
+        
+        seUsrGrp.setUiUserBase(savedUser);
+        
+        if (user.getFadsGroup() != null) {
+            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsGrp(fadsGrp);
+        }
+
+        if (user.getSurGroup() != null) {
+            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsSurGrp(surGrp);
+        }
+
+        if (user.getCaseGroup() != null) {
+            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsCaseGrp(caseGrp);
+        }
+
+        seUsrGrpRepository.save(seUsrGrp);
+
+        UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
+        userHistory.createHistory(userListItemHistoryRequest);
+    }
+
+    @Override
+    @Transactional
+    public void updateUser(UserForAdmin user) {
+        // Check if user exists
+        boolean exists = repo.existsById(user.getSystemId());
+        if (!exists) {
+            throw new IllegalArgumentException("User not found with systemId: " + user.getSystemId());
+        }
+        
+        UiUserBase entity = mapper.toEntity(user);
+        UiUserBase savedUser = repo.save(entity);
+        
+        repo.flush();
+        
+        SeUsrGrp existingUserGroup = seUsrGrpRepository.findById(user.getSystemId())
+            .orElse(null);
+            
+        if (existingUserGroup != null) {
+            existingUserGroup.setUiUserBase(savedUser);
+
+            updateGroupAssignments(existingUserGroup, user);
+            seUsrGrpRepository.save(existingUserGroup);
+
+            UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
+
+            userHistory.createHistory(userListItemHistoryRequest);
+        } else {
+            SeUsrGrp seUsrGrp = new SeUsrGrp();
+            seUsrGrp.setUiUserBase(savedUser);
+
+            updateGroupAssignments(seUsrGrp, user);
+            seUsrGrpRepository.save(seUsrGrp);
+        }
+    }
+
+    private static UserListItemHistoryRequest getUserListItemHistoryRequest(UserForAdmin user) {
+        UserListItemHistoryRequest userListItemHistoryRequest = new UserListItemHistoryRequest();
+        userListItemHistoryRequest.setUiUserId(user.getUserId());
+        userListItemHistoryRequest.setUiSystemId(user.getSystemId());
+        userListItemHistoryRequest.setChangeUsr(user.getChangeUsr() != null ? user.getChangeUsr() : user.getSystemId());
+        userListItemHistoryRequest.setUiFirstName(user.getFirstName());
+        userListItemHistoryRequest.setUiLastName(user.getLastName());
+        userListItemHistoryRequest.setFadsCaseGrpId(user.getCaseGroup());
+        userListItemHistoryRequest.setFadsGrpId(user.getFadsGroup());
+        userListItemHistoryRequest.setFadsSurGrpId(user.getSurGroup());
+        userListItemHistoryRequest.setUiEmailAddress(user.getEmail());
+        return userListItemHistoryRequest;
+    }
+
+    private void updateGroupAssignments(SeUsrGrp seUsrGrp, UserForAdmin user) {
+        if (user.getFadsGroup() != null) {
+            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsGrp(fadsGrp);
+        } else {
+            seUsrGrp.setFadsGrp(null);
+        }
+        
+        if (user.getSurGroup() != null) {
+            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsSurGrp(surGrp);
+        } else {
+            seUsrGrp.setFadsSurGrp(null);
+        }
+        
+        if (user.getCaseGroup() != null) {
+            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsCaseGrp(caseGrp);
+        } else {
+            seUsrGrp.setFadsCaseGrp(null);
+        }
+    }
+}
