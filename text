@@ -1,28 +1,18 @@
-@GetMapping("/findAllByPageable")
-public UserListResponse getUsers(
-        @RequestParam(defaultValue = "1") int pageNumber,
-        @RequestParam(defaultValue = "10") int recordsPerPage,
-        @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
-        @RequestParam(defaultValue = "1") int sortOrder,
-        @RequestParam(required = false) String searchBy,
-        @RequestParam(required = false) String searchInput) {
+ @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
-    String entitySortField = mapToEntityField(sortBy);
+    	http.csrf(csrf -> csrf
+    	        .ignoringRequestMatchers("/actuator/**", "/api/**")
+    	)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(jwtDecoder())
+                                .jwtAuthenticationConverter(userJwtAuthenticationConverter())
+                        )
+                );
 
-    Sort.Direction direction = (sortOrder == -1) ? Sort.Direction.DESC : Sort.Direction.ASC;
-    Sort sort = Sort.by(direction, entitySortField);
-
-    // ✅ FIX FOR CODEQL: sanitize user input before arithmetic
-    int safePageNumber = (pageNumber < 1) ? 1 : pageNumber;
-    int safeRecords = (recordsPerPage < 1) ? 10 : recordsPerPage;
-
-    Pageable pageable = PageRequest.of(safePageNumber - 1, safeRecords, sort);
-
-    return userListService.getAllUsers(pageable, searchBy, searchInput);
-}
-
-
-http.csrf(csrf -> csrf
-        .ignoringRequestMatchers("/actuator/**", "/api/**")
-);
-
+        return http.build();
+    }
