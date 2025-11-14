@@ -1,17 +1,27 @@
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+package com.optum.fads.userroles.api.dto;
 
-import java.util.Optional;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import org.springframework.security.core.GrantedAuthority;
 
-public interface SeUsrGrpRepository 
-        extends JpaRepository<SeUsrGrp, String>, JpaSpecificationExecutor<SeUsrGrp> {
+import lombok.Data;
 
-    boolean existsByUiSystemId(String uiSystemId);
+/**
+ * @author sbiry
+ */
+@Data
+public class Role implements GrantedAuthority, Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private String id;
+    private String roleName;
+    private List<AccessLevel> allowedAccesses = new ArrayList<>();
 
     @Override
-    @EntityGraph(attributePaths = "fadsGrp")
-    Optional<SeUsrGrp> findById(String uiSystemId);
+    public String getAuthority() {
+        return id;
+    }
 }
