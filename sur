@@ -1,173 +1,26 @@
-package com.optum.fads.userroles.api.service.Impl;
+private Specification<UiUserBase> createSearchSpecification(String searchBy, String searchInput) {
+    final String pattern = "%" + searchInput.toLowerCase(Locale.ROOT) + "%";
 
-import java.util.Map;
+    return (root, query, cb) -> {
+        query.distinct(true);
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+        return switch (searchBy) {
+            case FIELD_UI_SYSTEM_ID, FIELD_UI_USER_ID,
+                 FIELD_LAST_NAME, FIELD_FIRST_NAME,
+                 FIELD_TITLE, FIELD_EMAIL ->
+                    cb.like(cb.lower(root.get(searchByToEntityColumn(searchBy))), pattern);
 
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.domain.SeCaseGrp;
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import com.optum.fads.userroles.api.domain.SeSurGrp;
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
-import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
-import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
-import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
-import com.optum.fads.userroles.api.service.UserService;
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.mapper.UserListItemMapper;
-import com.optum.fads.userroles.api.utility.UserSpecification;
-import com.optum.fads.userroles.api.dto.UserListItemHistoryRequest;
+            case FIELD_FADS_NAME ->
+                    cb.like(cb.lower(root.get("seUsrGrp").get("fadsGrp").get(FIELD_FADS_NAME)), pattern);
 
-import lombok.RequiredArgsConstructor;
+            case FIELD_SUR_NAME ->
+                    cb.like(cb.lower(root.get("seUsrGrp").get("fadsSurGrp").get(FIELD_SUR_NAME)), pattern);
 
-@Service
-@RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+            case FIELD_CASE_NAME ->
+                    cb.like(cb.lower(root.get("seUsrGrp").get("fadsCaseGrp").get(FIELD_CASE_NAME)), pattern);
 
-    private final UiUserBaseRepository repo;
-    private final SeUsrGrpRepository seUsrGrpRepository;
-    private final UserListItemMapper mapper;
-    private final SeFadsGrpRepository seFadsGrpRepository;
-    private final SeSurGrpRepository seSurGrpRepository;
-    private final SeCaseGrpRepository seCaseGrpRepository;
-    private final UserHistoryImpl userHistory;
-
-    @Override
-    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
-        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
-
-        Page<UiUserBase> page = (spec == null)
-                ? repo.findAll(pageable)            
-                : repo.findAll(spec, pageable);         
-        return page.map(mapper::toDto);
-    }
-
-    @Override
-    @Transactional
-    public void saveNewUser(UserForAdmin user) {
-        // Check if user already exists
-        boolean exists = repo.existsByUiUserId(user.getUserId());
-        if (exists) {
-            throw new IllegalArgumentException("User with uiUserId " + user.getUserId() + " already exists.");
-        }
-
-        boolean groupExists = seUsrGrpRepository.existsByUiSystemId(user.getSystemId());
-        if (groupExists) {
-            throw new IllegalArgumentException("User group with uiSystemId " + user.getSystemId() + " already exists.");
-        }
-
-        UiUserBase entity = mapper.toEntity(user);
-        UiUserBase savedUser = repo.save(entity);
-
-        repo.flush();
-
-        SeUsrGrp seUsrGrp = new SeUsrGrp();
-        
-        seUsrGrp.setUiUserBase(savedUser);
-        
-        if (user.getFadsGroup() != null) {
-            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsGrp(fadsGrp);
-        }
-
-        if (user.getSurGroup() != null) {
-            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsSurGrp(surGrp);
-        }
-
-        if (user.getCaseGroup() != null) {
-            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsCaseGrp(caseGrp);
-        }
-
-        seUsrGrpRepository.save(seUsrGrp);
-
-        UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
-        userHistory.createHistory(userListItemHistoryRequest);
-    }
-
-    @Override
-    @Transactional
-    public void updateUser(UserForAdmin user) {
-        // Check if user exists
-        boolean exists = repo.existsById(user.getSystemId());
-        if (!exists) {
-            throw new IllegalArgumentException("User not found with systemId: " + user.getSystemId());
-        }
-        
-        UiUserBase entity = mapper.toEntity(user);
-        UiUserBase savedUser = repo.save(entity);
-        
-        repo.flush();
-        
-        SeUsrGrp existingUserGroup = seUsrGrpRepository.findById(user.getSystemId())
-            .orElse(null);
-            
-        if (existingUserGroup != null) {
-            existingUserGroup.setUiUserBase(savedUser);
-
-            updateGroupAssignments(existingUserGroup, user);
-            seUsrGrpRepository.save(existingUserGroup);
-
-            UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
-
-            userHistory.createHistory(userListItemHistoryRequest);
-        } else {
-            SeUsrGrp seUsrGrp = new SeUsrGrp();
-            seUsrGrp.setUiUserBase(savedUser);
-
-            updateGroupAssignments(seUsrGrp, user);
-            seUsrGrpRepository.save(seUsrGrp);
-        }
-    }
-
-    private static UserListItemHistoryRequest getUserListItemHistoryRequest(UserForAdmin user) {
-        UserListItemHistoryRequest userListItemHistoryRequest = new UserListItemHistoryRequest();
-        userListItemHistoryRequest.setUiUserId(user.getUserId());
-        userListItemHistoryRequest.setUiSystemId(user.getSystemId());
-        userListItemHistoryRequest.setChangeUsr(user.getChangeUsr() != null ? user.getChangeUsr() : user.getSystemId());
-        userListItemHistoryRequest.setUiFirstName(user.getFirstName());
-        userListItemHistoryRequest.setUiLastName(user.getLastName());
-        userListItemHistoryRequest.setFadsCaseGrpId(user.getCaseGroup());
-        userListItemHistoryRequest.setFadsGrpId(user.getFadsGroup());
-        userListItemHistoryRequest.setFadsSurGrpId(user.getSurGroup());
-        userListItemHistoryRequest.setUiEmailAddress(user.getEmail());
-        return userListItemHistoryRequest;
-    }
-
-    private void updateGroupAssignments(SeUsrGrp seUsrGrp, UserForAdmin user) {
-        if (user.getFadsGroup() != null) {
-            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsGrp(fadsGrp);
-        } else {
-            seUsrGrp.setFadsGrp(null);
-        }
-        
-        if (user.getSurGroup() != null) {
-            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsSurGrp(surGrp);
-        } else {
-            seUsrGrp.setFadsSurGrp(null);
-        }
-        
-        if (user.getCaseGroup() != null) {
-            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsCaseGrp(caseGrp);
-        } else {
-            seUsrGrp.setFadsCaseGrp(null);
-        }
-    }
+            default ->
+                    cb.like(cb.lower(root.get(FIELD_EMAIL)), pattern);
+        };
+    };
 }
