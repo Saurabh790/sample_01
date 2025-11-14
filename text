@@ -1,35 +1,128 @@
-@Test
-void testFindAllByPageable_withValidParams() {
-    // Arrange
-    int pageNumber = 1;
-    int recordsPerPage = 10;
-    String sortBy = "lastName";
-    int sortOrder = 1;              // controller expects int
-    String searchBy = "lastName";   // single String
-    String searchInput = "Doe";     // single String
+package com.optum.fads.userroles.api.service.Impl;
 
-    Pageable expectedPageable =
-            PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "uiLastName")); // lastName -> uiLastName
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
-    UserListResponse expectedResponse = new UserListResponse();
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
-    // ✅ use userListService (matches controller) instead of userService
-    when(userListService.getAllUsers(expectedPageable, searchBy, searchInput))
-            .thenReturn(expectedResponse);
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.dto.UserListResponse;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.repo.SeUsrGrpRepositoryD;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.service.IUserList;
 
-    // Act
-    UserListResponse result = userRolesController.getUsers(
-            pageNumber,
-            recordsPerPage,
-            sortBy,
-            sortOrder,
-            searchBy,
-            searchInput
-    );
 
-    // Assert
-    assertNotNull(result);
-    assertSame(expectedResponse, result);
-    verify(userListService, times(1))
-            .getAllUsers(expectedPageable, searchBy, searchInput);
+@Service
+public class UserListImpl implements IUserList {
+
+	private static final Logger logger = LoggerFactory.getLogger(UserListImpl.class);
+	private static final String FIELD_UI_SYSTEM_ID = "uiSystemId";
+	private static final String FIELD_UI_USER_ID = "uiUserId";
+	private static final String FIELD_LAST_NAME = "uiLastName";
+	private static final String FIELD_FIRST_NAME = "uiFirstName";
+	private static final String FIELD_TITLE = "uiTitle";
+	private static final String FIELD_EMAIL = "uiEMailAddress";
+
+	private static final String FIELD_FADS_NAME = "fadsGrpName";
+	private static final String FIELD_SUR_NAME = "surGrpName";
+	private static final String FIELD_CASE_NAME = "caseGrpName";
+
+	private static final Set<BigDecimal> RESTRICTED_SET = Set.of(new BigDecimal("2"), new BigDecimal("3"));
+
+	private final UiUserBaseRepository repository;
+	private final SeUsrGrpRepositoryD SeUsrGrpRepositoryD;
+	private final UserListItemMapper mapper;
+
+	public UserListImpl(UiUserBaseRepository repository, SeUsrGrpRepositoryD SeUsrGrpRepositoryD,
+			UserListItemMapper mapper) {
+		this.repository = repository;
+		this.SeUsrGrpRepositoryD = SeUsrGrpRepositoryD;
+		this.mapper = mapper;
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public UserListResponse getAllUsers(Pageable pageable, String searchBy, String searchInput) {
+		Specification<UiUserBase> spec = gateByLoggedInUsersFadsGroup();
+
+		if (StringUtils.hasText(searchBy) && StringUtils.hasText(searchInput)) {
+			spec = spec.and(createSearchSpecification(searchBy, searchInput));
+		}
+
+		Page<UiUserBase> page = repository.findAll(spec, pageable);
+		List<UserListItem> data = page.getContent().stream().map(mapper::toDto).toList();
+
+		return new UserListResponse(data, page.getTotalElements());
+	}
+
+	private Specification<UiUserBase> gateByLoggedInUsersFadsGroup() {
+		BigDecimal currentFadsId = resolveLoggedInFadsGrpId();
+
+		if (currentFadsId == null || !RESTRICTED_SET.contains(currentFadsId)) {
+			return Specification.where(null);
+		}
+
+		return (root, query, cb) -> {
+			query.distinct(true);
+			return root.get("seUsrGrp").get("fadsGrp").get("id").in(RESTRICTED_SET);
+		};
+	}
+
+	private BigDecimal resolveLoggedInFadsGrpId() {
+		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		if (auth == null || !StringUtils.hasText(auth.getName()))
+			return null;
+		logger.info("auth details "+auth);
+		String uiSystemId = auth.getName(); 
+		System.out.println ("auth details in sysout "+auth);
+		return SeUsrGrpRepositoryD.findById(uiSystemId).map(s -> s.getFadsGrp() != null ? s.getFadsGrp().getId() : null)
+				.orElse(null);
+	}
+
+	private Specification<UiUserBase> createSearchSpecification(String searchBy, String searchInput) {
+		final String pattern = "%" + searchInput.toLowerCase(Locale.ROOT) + "%";
+
+		return (root, query, cb) -> {
+			query.distinct(true);
+
+			return switch (searchBy) {
+			case FIELD_UI_SYSTEM_ID, FIELD_UI_USER_ID, FIELD_LAST_NAME, FIELD_FIRST_NAME, FIELD_TITLE, FIELD_EMAIL ->
+				cb.like(cb.lower(root.get(searchByToEntityColumn(searchBy))), pattern);
+
+			case FIELD_FADS_NAME -> cb.like(cb.lower(root.get("seUsrGrp").get("fadsGrp").get("fadsGrpName")), pattern);
+
+			case FIELD_SUR_NAME -> cb.like(cb.lower(root.get("seUsrGrp").get("fadsSurGrp").get("surGrpName")), pattern);
+
+			case FIELD_CASE_NAME ->
+				cb.like(cb.lower(root.get("seUsrGrp").get("fadsCaseGrp").get("caseGrpName")), pattern);
+
+			default -> cb.like(cb.lower(root.get(FIELD_EMAIL)), pattern);
+			};
+		};
+	}
+
+	private String searchByToEntityColumn(String searchBy) {
+		return switch (searchBy) {
+		case FIELD_UI_SYSTEM_ID -> FIELD_UI_SYSTEM_ID;
+		case FIELD_UI_USER_ID -> FIELD_UI_USER_ID;
+		case FIELD_LAST_NAME -> FIELD_LAST_NAME;
+		case FIELD_FIRST_NAME -> FIELD_FIRST_NAME;
+		case FIELD_TITLE -> FIELD_TITLE;
+		case FIELD_EMAIL -> FIELD_EMAIL;
+		default -> FIELD_EMAIL;
+		};
+	}
 }
