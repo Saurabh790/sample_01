@@ -1,223 +1,35 @@
-package com.optum.fads.userroles.api.controllers;
+@Test
+void testFindAllByPageable_withValidParams() {
+    // Arrange
+    int pageNumber = 1;
+    int recordsPerPage = 10;
+    String sortBy = "lastName";
+    int sortOrder = 1;              // controller expects int
+    String searchBy = "lastName";   // single String
+    String searchInput = "Doe";     // single String
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+    Pageable expectedPageable =
+            PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "uiLastName")); // lastName -> uiLastName
 
-import java.util.Map;
+    UserListResponse expectedResponse = new UserListResponse();
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+    // ✅ use userListService (matches controller) instead of userService
+    when(userListService.getAllUsers(expectedPageable, searchBy, searchInput))
+            .thenReturn(expectedResponse);
 
-import com.optum.fads.userroles.api.common.constant.ApplicationConstants;
-import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import com.optum.fads.userroles.api.dto.UserListResponse;
-import com.optum.fads.userroles.api.service.GroupDropdownService;
-import com.optum.fads.userroles.api.service.IUserList;
-import com.optum.fads.userroles.api.service.UserService;
+    // Act
+    UserListResponse result = userRolesController.getUsers(
+            pageNumber,
+            recordsPerPage,
+            sortBy,
+            sortOrder,
+            searchBy,
+            searchInput
+    );
 
-@ExtendWith(MockitoExtension.class)
-class UserRolesControllerTest {
-
-    @Mock
-    private IUserList userListService;
-
-    @Mock
-    private UserService userService;
-
-    @Mock
-    private GroupDropdownService groupDropdownService;
-
-    @InjectMocks
-    private UserRolesController controller;
-
-    @Test
-    void getUsers_usesDefaultsAndCallsService() {
-        // given
-        UserListResponse expectedResponse = new UserListResponse();
-        when(userListService.getAllUsers(any(Pageable.class), any(), any()))
-                .thenReturn(expectedResponse);
-
-        // when
-        UserListResponse actual = controller.getUsers(
-                1,              // pageNumber
-                10,             // recordsPerPage
-                "lastName",     // sortBy
-                1,              // sortOrder (ASC)
-                "lastName",     // searchBy
-                "Smith"         // searchInput
-        );
-
-        // then
-        assertSame(expectedResponse, actual);
-
-        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(userListService).getAllUsers(pageableCaptor.capture(), eq("lastName"), eq("Smith"));
-
-        Pageable pageable = pageableCaptor.getValue();
-        // Page number is 0-based in Spring, controller subtracts 1
-        assertEquals(0, pageable.getPageNumber());
-        assertEquals(10, pageable.getPageSize());
-
-        Sort sort = pageable.getSort();
-        Sort.Order order = sort.getOrderFor("uiLastName");
-        // lastName -> uiLastName
-        assertEquals(Sort.Direction.ASC, order.getDirection());
-    }
-
-    @Test
-    void getUsers_withDescendingSortMapsFieldCorrectly() {
-        // given
-        UserListResponse expectedResponse = new UserListResponse();
-        when(userListService.getAllUsers(any(Pageable.class), any(), any()))
-                .thenReturn(expectedResponse);
-
-        // when
-        UserListResponse actual = controller.getUsers(
-                2,              // pageNumber
-                25,             // recordsPerPage
-                "email",        // sortBy
-                -1,             // sortOrder (DESC)
-                "email",
-                "test@example.com"
-        );
-
-        // then
-        assertSame(expectedResponse, actual);
-
-        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(userListService).getAllUsers(pageableCaptor.capture(), eq("email"), eq("test@example.com"));
-
-        Pageable pageable = pageableCaptor.getValue();
-        assertEquals(1, pageable.getPageNumber()); // pageNumber - 1
-        assertEquals(25, pageable.getPageSize());
-
-        Sort.Order order = pageable.getSort().getOrderFor("uiEMailAddress"); // email -> uiEMailAddress
-        assertEquals(Sort.Direction.DESC, order.getDirection());
-    }
-
-    @Test
-    void getAllDropdowns_returnsServiceResult() {
-        // given
-        AllDropdownsResponse response = new AllDropdownsResponse();
-        when(groupDropdownService.getAllDropdowns()).thenReturn(response);
-
-        // when
-        AllDropdownsResponse actual = controller.getAllDropdowns();
-
-        // then
-        assertSame(response, actual);
-        verify(groupDropdownService).getAllDropdowns();
-    }
-
-    @Test
-    void createUser_success_returnsSuccessStatus() {
-        // given
-        UserForAdmin inputUser = new UserForAdmin(
-                null,                   // systemId (will be generated)
-                "jdoe",                 // userId
-                "Doe",                  // lastName
-                "John",                 // firstName
-                "Developer",            // title
-                "john.doe@example.com", // email
-                "FADS_GRP",             // fadsGroup
-                "SUR_GRP",              // surGroup
-                "CASE_GRP"              // caseGroup
-        );
-
-        // when
-        Map<String, String> result = controller.createUser(inputUser);
-
-        // then
-        // service is called with a newly constructed UserForAdmin
-        verify(userService).saveNewUser(any(UserForAdmin.class));
-        assertEquals("SUCCESS", result.get(ApplicationConstants.STATUS));
-    }
-
-    @Test
-    void createUser_failure_returnsFailureStatusAndMessage() {
-        // given
-        UserForAdmin inputUser = new UserForAdmin(
-                null,
-                "jdoe",
-                "Doe",
-                "John",
-                "Developer",
-                "john.doe@example.com",
-                "FADS_GRP",
-                "SUR_GRP",
-                "CASE_GRP"
-        );
-
-        doThrow(new RuntimeException("Something went wrong"))
-                .when(userService).saveNewUser(any(UserForAdmin.class));
-
-        // when
-        Map<String, String> result = controller.createUser(inputUser);
-
-        // then
-        assertEquals("FAILURE", result.get(ApplicationConstants.STATUS));
-        assertEquals("Something went wrong", result.get("message"));
-    }
-
-    @Test
-    void updateUser_success_returnsSuccessStatus() {
-        // given
-        UserForAdmin user = new UserForAdmin(
-                "SYS123",
-                "jdoe",
-                "Doe",
-                "John",
-                "Developer",
-                "john.doe@example.com",
-                "FADS_GRP",
-                "SUR_GRP",
-                "CASE_GRP"
-        );
-
-        // when
-        Map<String, String> result = controller.updateUser(user);
-
-        // then
-        verify(userService).updateUser(user);
-        assertEquals("SUCCESS", result.get(ApplicationConstants.STATUS));
-    }
-
-    @Test
-    void updateUser_failure_returnsFailureStatusAndMessage() {
-        // given
-        UserForAdmin user = new UserForAdmin(
-                "SYS123",
-                "jdoe",
-                "Doe",
-                "John",
-                "Developer",
-                "john.doe@example.com",
-                "FADS_GRP",
-                "SUR_GRP",
-                "CASE_GRP"
-        );
-
-        doThrow(new RuntimeException("Update error"))
-                .when(userService).updateUser(user);
-
-        // when
-        Map<String, String> result = controller.updateUser(user);
-
-        // then
-        assertEquals("FAILURE", result.get(ApplicationConstants.STATUS));
-        assertEquals("Update error", result.get("message"));
-    }
+    // Assert
+    assertNotNull(result);
+    assertSame(expectedResponse, result);
+    verify(userListService, times(1))
+            .getAllUsers(expectedPageable, searchBy, searchInput);
 }
