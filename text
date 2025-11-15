@@ -1,49 +1,173 @@
-@Test
-void testUpdateUser_withGroupAssignments() {
-    // ... (everything above unchanged)
+package com.optum.fads.userroles.api.service.Impl;
 
-    // Verify SeUserGroup group assignments
-    ArgumentCaptor<SeUsrGrp> seUserGroupCaptor = ArgumentCaptor.forClass(SeUsrGrp.class);
-    verify(seUsrGrpRepository, times(1)).save(seUserGroupCaptor.capture());
+import java.util.Map;
 
-    SeUsrGrp capturedSeUserGroup = seUserGroupCaptor.getValue();
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-    // These can stay as-is if the entity fields are BigDecimal and setters accept Integer;
-    // what matters is that expected and actual are same type.
-    assertEquals(BigDecimal.valueOf(5),  capturedSeUserGroup.getFadsGrp());
-    assertEquals(BigDecimal.valueOf(10), capturedSeUserGroup.getFadsSurGrp());
-    assertEquals(BigDecimal.valueOf(15), capturedSeUserGroup.getFadsCaseGrp());
+import com.optum.fads.userroles.api.domain.UiUserBase;
+import com.optum.fads.userroles.api.domain.SeCaseGrp;
+import com.optum.fads.userroles.api.domain.SeFadsGrp;
+import com.optum.fads.userroles.api.domain.SeSurGrp;
+import com.optum.fads.userroles.api.domain.SeUsrGrp;
+import com.optum.fads.userroles.api.dto.UserForAdmin;
+import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
+import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
+import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
+import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
+import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
+import com.optum.fads.userroles.api.service.UserService;
+import com.optum.fads.userroles.api.dto.UserListItem;
+import com.optum.fads.userroles.api.mapper.UserListItemMapper;
+import com.optum.fads.userroles.api.utility.UserSpecification;
+import com.optum.fads.userroles.api.dto.UserListItemHistoryRequest;
 
-    // Verify history record creation
-    ArgumentCaptor<UserListItemHistoryRequest> historyCaptor =
-            ArgumentCaptor.forClass(UserListItemHistoryRequest.class);
-    verify(userHistory, times(1)).createHistory(historyCaptor.capture());
+import lombok.RequiredArgsConstructor;
 
-    UserListItemHistoryRequest historyRequest = historyCaptor.getValue();
-    assertEquals("john.doe@example.com", historyRequest.getUiUserId());
-    assertEquals("JD12345678", historyRequest.getUiSystemId());
+@Service
+@RequiredArgsConstructor
+public class UserServiceImpl implements UserService {
 
-    // 🔧 use BigDecimal to match historyRequest field types
-    assertEquals(BigDecimal.valueOf(5),  historyRequest.getFadsGrpId());
-    assertEquals(BigDecimal.valueOf(10), historyRequest.getFadsSurGrpId());
-    assertEquals(BigDecimal.valueOf(15), historyRequest.getFadsCaseGrpId());
+    private final UiUserBaseRepository repo;
+    private final SeUsrGrpRepository seUsrGrpRepository;
+    private final UserListItemMapper mapper;
+    private final SeFadsGrpRepository seFadsGrpRepository;
+    private final SeSurGrpRepository seSurGrpRepository;
+    private final SeCaseGrpRepository seCaseGrpRepository;
+    private final UserHistoryImpl userHistory;
+
+    @Override
+    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
+        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
+
+        Page<UiUserBase> page = (spec == null)
+                ? repo.findAll(pageable)            
+                : repo.findAll(spec, pageable);         
+        return page.map(mapper::toDto);
+    }
+
+    @Override
+    @Transactional
+    public void saveNewUser(UserForAdmin user) {
+        // Check if user already exists
+        boolean exists = repo.existsByUiUserId(user.getUserId());
+        if (exists) {
+            throw new IllegalArgumentException("User with uiUserId " + user.getUserId() + " already exists.");
+        }
+
+        boolean groupExists = seUsrGrpRepository.existsByUiSystemId(user.getSystemId());
+        if (groupExists) {
+            throw new IllegalArgumentException("User group with uiSystemId " + user.getSystemId() + " already exists.");
+        }
+
+        UiUserBase entity = mapper.toEntity(user);
+        UiUserBase savedUser = repo.save(entity);
+
+        repo.flush();
+
+        SeUsrGrp seUsrGrp = new SeUsrGrp();
+        
+        seUsrGrp.setUiUserBase(savedUser);
+        
+        if (user.getFadsGroup() != null) {
+            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsGrp(fadsGrp);
+        }
+
+        if (user.getSurGroup() != null) {
+            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsSurGrp(surGrp);
+        }
+
+        if (user.getCaseGroup() != null) {
+            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsCaseGrp(caseGrp);
+        }
+
+        seUsrGrpRepository.save(seUsrGrp);
+
+        UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
+        userHistory.createHistory(userListItemHistoryRequest);
+    }
+
+    @Override
+    @Transactional
+    public void updateUser(UserForAdmin user) {
+        // Check if user exists
+        boolean exists = repo.existsById(user.getSystemId());
+        if (!exists) {
+            throw new IllegalArgumentException("User not found with systemId: " + user.getSystemId());
+        }
+        
+        UiUserBase entity = mapper.toEntity(user);
+        UiUserBase savedUser = repo.save(entity);
+        
+        repo.flush();
+        
+        SeUsrGrp existingUserGroup = seUsrGrpRepository.findById(user.getSystemId())
+            .orElse(null);
+            
+        if (existingUserGroup != null) {
+            existingUserGroup.setUiUserBase(savedUser);
+
+            updateGroupAssignments(existingUserGroup, user);
+            seUsrGrpRepository.save(existingUserGroup);
+
+            UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
+
+            userHistory.createHistory(userListItemHistoryRequest);
+        } else {
+            SeUsrGrp seUsrGrp = new SeUsrGrp();
+            seUsrGrp.setUiUserBase(savedUser);
+
+            updateGroupAssignments(seUsrGrp, user);
+            seUsrGrpRepository.save(seUsrGrp);
+        }
+    }
+
+    private static UserListItemHistoryRequest getUserListItemHistoryRequest(UserForAdmin user) {
+        UserListItemHistoryRequest userListItemHistoryRequest = new UserListItemHistoryRequest();
+        userListItemHistoryRequest.setUiUserId(user.getUserId());
+        userListItemHistoryRequest.setUiSystemId(user.getSystemId());
+        userListItemHistoryRequest.setChangeUsr(user.getChangeUsr() != null ? user.getChangeUsr() : user.getSystemId());
+        userListItemHistoryRequest.setUiFirstName(user.getFirstName());
+        userListItemHistoryRequest.setUiLastName(user.getLastName());
+        userListItemHistoryRequest.setFadsCaseGrpId(user.getCaseGroup());
+        userListItemHistoryRequest.setFadsGrpId(user.getFadsGroup());
+        userListItemHistoryRequest.setFadsSurGrpId(user.getSurGroup());
+        userListItemHistoryRequest.setUiEmailAddress(user.getEmail());
+        return userListItemHistoryRequest;
+    }
+
+    private void updateGroupAssignments(SeUsrGrp seUsrGrp, UserForAdmin user) {
+        if (user.getFadsGroup() != null) {
+            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsGrp(fadsGrp);
+        } else {
+            seUsrGrp.setFadsGrp(null);
+        }
+        
+        if (user.getSurGroup() != null) {
+            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsSurGrp(surGrp);
+        } else {
+            seUsrGrp.setFadsSurGrp(null);
+        }
+        
+        if (user.getCaseGroup() != null) {
+            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
+                .orElse(null);
+            seUsrGrp.setFadsCaseGrp(caseGrp);
+        } else {
+            seUsrGrp.setFadsCaseGrp(null);
+        }
+    }
 }
-
-
-@Test
-void testSaveNewUser_success() {
-    // ... (everything above unchanged)
-
-    // Verify SeUserGroup creation and save
-    ArgumentCaptor<SeUsrGrp> seUserGroupCaptor = ArgumentCaptor.forClass(SeUsrGrp.class);
-    verify(seUsrGrpRepository, times(1)).save(seUserGroupCaptor.capture());
-
-    SeUsrGrp capturedSeUserGroup = seUserGroupCaptor.getValue();
-    assertEquals(savedEntity, capturedSeUserGroup.getUiUserBase());
-
-    // 🔧 use BigDecimal instead of Integer to match entity field type
-    assertEquals(BigDecimal.valueOf(1),  capturedSeUserGroup.getFadsGrp());
-    assertEquals(BigDecimal.valueOf(2),  capturedSeUserGroup.getFadsSurGrp());
-    assertEquals(BigDecimal.valueOf(3),  capturedSeUserGroup.getFadsCaseGrp());
-}
-
