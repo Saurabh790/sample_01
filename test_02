@@ -1,3 +1,65 @@
-assertEquals(Integer.valueOf(1), capturedSeUserGroup.getFadsGrp());
-assertEquals(Integer.valueOf(2), capturedSeUserGroup.getFadsSurGrp());
-assertEquals(Integer.valueOf(3), capturedSeUserGroup.getFadsCaseGrp());
+@Test
+	void testSaveNewUser_success() {
+		// Arrange
+		UserForAdmin inputUser = new UserForAdmin();
+		inputUser.setSystemId("JD12345678");
+		inputUser.setUserId("john.doe@example.com");
+		inputUser.setFirstName("John");
+		inputUser.setLastName("Doe");
+		inputUser.setTitle("Developer");
+		inputUser.setEmail("john.doe@example.com");
+		inputUser.setFadsGroup(1);
+		inputUser.setSurGroup(2);
+		inputUser.setCaseGroup(3);
+
+		UiUserBase entityToSave = new UiUserBase();
+		entityToSave.setUiSystemId("JD12345678");
+		entityToSave.setUiUserId("john.doe@example.com");
+
+		UiUserBase savedEntity = new UiUserBase();
+		savedEntity.setUiSystemId("JD12345678");
+		savedEntity.setUiUserId("john.doe@example.com");
+
+		// Mock repository calls
+		when(repo.existsByUiUserId("john.doe@example.com")).thenReturn(false);
+		when(seUsrGrpRepository.existsByUiSystemId("JD12345678")).thenReturn(false);
+		when(mapper.toEntity(inputUser)).thenReturn(entityToSave);
+		when(repo.save(entityToSave)).thenReturn(savedEntity);
+		when(seUsrGrpRepository.save(any(SeUsrGrp.class))).thenReturn(new SeUsrGrp());
+
+		// Act
+		assertDoesNotThrow(() -> userService.saveNewUser(inputUser));
+
+		// Assert
+		verify(repo, times(1)).existsByUiUserId("john.doe@example.com");
+		verify(seUsrGrpRepository, times(1)).existsByUiSystemId("JD12345678");
+		verify(mapper, times(1)).toEntity(inputUser);
+		verify(repo, times(1)).save(entityToSave);
+		verify(repo, times(1)).flush();
+		
+		 ArgumentCaptor<SeUsrGrp> seUserGroupCaptor = ArgumentCaptor.forClass(SeUsrGrp.class);
+		    verify(seUsrGrpRepository, times(1)).save(seUserGroupCaptor.capture());
+
+		    SeUsrGrp capturedSeUserGroup = seUserGroupCaptor.getValue();
+		    assertEquals(savedEntity, capturedSeUserGroup.getUiUserBase());
+
+		    assertEquals(Integer.valueOf(1), capturedSeUserGroup.getFadsGrp());
+		    assertEquals(Integer.valueOf(2), capturedSeUserGroup.getFadsSurGrp());
+		    assertEquals(Integer.valueOf(3), capturedSeUserGroup.getFadsCaseGrp());
+	}
+	
+	
+	
+	
+	org.opentest4j.AssertionFailedError: expected: <1> but was: <null>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:177)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1145)
+	at com.optum.fads.userroles.api.service.Impl.UserServiceImplTest.testSaveNewUser_success(UserServiceImplTest.java:183)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
