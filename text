@@ -28,3 +28,22 @@ void testUpdateUser_withGroupAssignments() {
     assertEquals(BigDecimal.valueOf(10), historyRequest.getFadsSurGrpId());
     assertEquals(BigDecimal.valueOf(15), historyRequest.getFadsCaseGrpId());
 }
+
+
+@Test
+void testSaveNewUser_success() {
+    // ... (everything above unchanged)
+
+    // Verify SeUserGroup creation and save
+    ArgumentCaptor<SeUsrGrp> seUserGroupCaptor = ArgumentCaptor.forClass(SeUsrGrp.class);
+    verify(seUsrGrpRepository, times(1)).save(seUserGroupCaptor.capture());
+
+    SeUsrGrp capturedSeUserGroup = seUserGroupCaptor.getValue();
+    assertEquals(savedEntity, capturedSeUserGroup.getUiUserBase());
+
+    // 🔧 use BigDecimal instead of Integer to match entity field type
+    assertEquals(BigDecimal.valueOf(1),  capturedSeUserGroup.getFadsGrp());
+    assertEquals(BigDecimal.valueOf(2),  capturedSeUserGroup.getFadsSurGrp());
+    assertEquals(BigDecimal.valueOf(3),  capturedSeUserGroup.getFadsCaseGrp());
+}
+
