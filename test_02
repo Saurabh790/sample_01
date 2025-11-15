@@ -1,14 +1,71 @@
-private String mapToEntityField(String dtoField) {
-    return switch (dtoField) {
-        case "uiSystemId" -> "uiSystemId";
-        case "uiUserId"  -> "uiUserId";
-        case DEFAULT_SORT_FIELD -> "uiLastName";              // was "lastName"
-        case "firstName" -> "uiFirstName";
-        case "title"     -> "uiTitle";
-        case "email"     -> "uiEMailAddress";
-        case "fadsGrpName" -> "seUsrGrp.fadsGrp.fadsGrpName";
-        case "surGrpName"  -> "seUsrGrp.fadsSurGrp.surGrpName";
-        case "caseGrpName" -> "seUsrGrp.fadsCaseGrp.caseGrpName";
-        default -> "uiLastName";                              // simplified
-    };
-}
+org.opentest4j.AssertionFailedError: expected: <5> but was: <null>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:177)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1145)
+	at com.optum.fads.userroles.api.service.Impl.UserServiceImplTest.testUpdateUser_withGroupAssignments(UserServiceImplTest.java:360)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+
+this error while running bwlow method 
+@Test
+	void testUpdateUser_withGroupAssignments() {
+		// Arrange
+		UserForAdmin inputUser = new UserForAdmin();
+		inputUser.setSystemId("JD12345678");
+		inputUser.setUserId("john.doe@example.com");
+		inputUser.setFadsGroup(5);
+		inputUser.setSurGroup(10);
+		inputUser.setCaseGroup(15);
+
+		UiUserBase entityFromMapper = new UiUserBase();
+		entityFromMapper.setUiSystemId("JD12345678");
+
+		UiUserBase savedUser = new UiUserBase();
+		savedUser.setUiSystemId("JD12345678");
+
+		SeUsrGrp existingUserGroup = new SeUsrGrp();
+		existingUserGroup.setUiUserBase(savedUser);
+
+		when(repo.existsById("JD12345678")).thenReturn(true);
+		when(mapper.toEntity(inputUser)).thenReturn(entityFromMapper);
+		when(repo.save(entityFromMapper)).thenReturn(savedUser);
+		when(seUsrGrpRepository.findById("JD12345678")).thenReturn(Optional.of(existingUserGroup));
+		when(seUsrGrpRepository.save(any(SeUsrGrp.class))).thenReturn(existingUserGroup);
+
+		// Act
+		assertDoesNotThrow(() -> userService.updateUser(inputUser));
+
+		// Assert
+		verify(repo, times(1)).existsById("JD12345678");
+		verify(mapper, times(1)).toEntity(inputUser);
+		verify(repo, times(1)).save(entityFromMapper);
+		verify(repo, times(1)).flush();
+		verify(seUsrGrpRepository, times(1)).findById("JD12345678");
+		
+		// Verify SeUserGroup group assignments
+		ArgumentCaptor<SeUsrGrp> seUserGroupCaptor = ArgumentCaptor.forClass(SeUsrGrp.class);
+	    verify(seUsrGrpRepository, times(1)).save(seUserGroupCaptor.capture());
+
+	    SeUsrGrp capturedSeUserGroup = seUserGroupCaptor.getValue();
+
+	    assertEquals(BigDecimal.valueOf(5),  capturedSeUserGroup.getFadsGrp());
+	    assertEquals(BigDecimal.valueOf(10), capturedSeUserGroup.getFadsSurGrp());
+	    assertEquals(BigDecimal.valueOf(15), capturedSeUserGroup.getFadsCaseGrp());
+
+	    ArgumentCaptor<UserListItemHistoryRequest> historyCaptor =
+	            ArgumentCaptor.forClass(UserListItemHistoryRequest.class);
+	    verify(userHistory, times(1)).createHistory(historyCaptor.capture());
+
+	    UserListItemHistoryRequest historyRequest = historyCaptor.getValue();
+	    assertEquals("john.doe@example.com", historyRequest.getUiUserId());
+	    assertEquals("JD12345678", historyRequest.getUiSystemId());
+
+	    assertEquals(BigDecimal.valueOf(5),  historyRequest.getFadsGrpId());
+	    assertEquals(BigDecimal.valueOf(10), historyRequest.getFadsSurGrpId());
+	    assertEquals(BigDecimal.valueOf(15), historyRequest.getFadsCaseGrpId());
+	}
