@@ -1,12 +1,13 @@
-org.opentest4j.AssertionFailedError: expected: java.math.BigDecimal@1c758545<5> but was: java.lang.Integer@117bcfdc<5>
-	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
-	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
-	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
-	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)
-	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:177)
-	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1145)
-	at com.optum.fads.userroles.api.service.Impl.UserServiceImplTest.testUpdateUser_withGroupAssignments(UserServiceImplTest.java:404)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+// Verify history record creation
+ArgumentCaptor<UserListItemHistoryRequest> historyCaptor =
+        ArgumentCaptor.forClass(UserListItemHistoryRequest.class);
+verify(userHistory, times(1)).createHistory(historyCaptor.capture());
 
+UserListItemHistoryRequest historyRequest = historyCaptor.getValue();
+assertEquals("john.doe@example.com", historyRequest.getUiUserId());
+assertEquals("JD12345678", historyRequest.getUiSystemId());
+
+// ✅ use Integer because getters return Integer
+assertEquals(Integer.valueOf(5),  historyRequest.getFadsGrpId());
+assertEquals(Integer.valueOf(10), historyRequest.getFadsSurGrpId());
+assertEquals(Integer.valueOf(15), historyRequest.getFadsCaseGrpId());
