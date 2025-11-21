@@ -1,389 +1,263 @@
-package com.optum.fads.userroles.api.controllers;
 
-import java.security.SecureRandom;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+org.springframework.dao.InvalidDataAccessResourceUsageException: JDBC exception executing SQL [select uub1_0.ui_system_id,uub1_0.ui_created_by,uub1_0.ui_created_dt,uub1_0.ui_e_mail_address,uub1_0.ui_first_name,uub1_0.ui_last_name,uub1_0.ui_phone,uub1_0.ui_terminated_by,uub1_0.ui_terminated_dt,uub1_0.ui_title,uub1_0.ui_user_id,uub1_0.ui_user_inactive,uub1_0.UI_FIRST_NAME + ' ' + uub1_0.UI_LAST_NAME from ui_user_base uub1_0 where uub1_0.ui_e_mail_address=?] [Invalid column name 'ui_phone'.] [n/a]; SQL [n/a]
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:277) ~[spring-orm-6.1.11.jar:6.1.11]
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241) ~[spring-orm-6.1.11.jar:6.1.11]
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:550) ~[spring-orm-6.1.11.jar:6.1.11]
+        at org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:335) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.data.jpa.repository.support.CrudMethodMetadataPostProcessor$CrudMethodMetadataPopulatingMethodInterceptor.invoke(CrudMethodMetadataPostProcessor.java:135) ~[spring-data-jpa-3.2.8.jar:3.2.8]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.interceptor.ExposeInvocationInterceptor.invoke(ExposeInvocationInterceptor.java:97) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:223) ~[spring-aop-6.1.11.jar:6.1.11]
+        at jdk.proxy2/jdk.proxy2.$Proxy148.findByUiEMailAddress(Unknown Source) ~[na:na]
+        at com.optum.fads.pgp.behavior.api.service.impl.UserDetailsService.loadUserByUsername(UserDetailsService.java:31) ~[classes/:na]
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
+        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:354) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:196) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.CglibAopProxy$CglibMethodInvocation.proceed(CglibAopProxy.java:768) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:379) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.CglibAopProxy$CglibMethodInvocation.proceed(CglibAopProxy.java:768) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.CglibAopProxy$DynamicAdvisedInterceptor.intercept(CglibAopProxy.java:720) ~[spring-aop-6.1.11.jar:6.1.11]
+        at com.optum.fads.pgp.behavior.api.service.impl.UserDetailsService$$SpringCGLIB$$0.loadUserByUsername(<generated>) ~[classes/:na]
+        at com.optum.fads.pgp.behavior.api.config.UserJwtAuthenticationConverter.convert(UserJwtAuthenticationConverter.java:37) ~[classes/:na]
+        at com.optum.fads.pgp.behavior.api.config.UserJwtAuthenticationConverter.convert(UserJwtAuthenticationConverter.java:1) ~[classes/:na]
+        at org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider.authenticate(JwtAuthenticationProvider.java:89) ~[spring-security-oauth2-resource-server-6.2.5.jar:6.2.5]
+        at org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:182) ~[spring-security-core-6.2.5.jar:6.2.5]
+        at org.springframework.security.authentication.ObservationAuthenticationManager.lambda$authenticate$1(ObservationAuthenticationManager.java:54) ~[spring-security-core-6.2.5.jar:6.2.5]
+        at io.micrometer.observation.Observation.observe(Observation.java:565) ~[micrometer-observation-1.12.8.jar:1.12.8]
+        at org.springframework.security.authentication.ObservationAuthenticationManager.authenticate(ObservationAuthenticationManager.java:53) ~[spring-security-core-6.2.5.jar:6.2.5]
+        at org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.doFilterInternal(BearerTokenAuthenticationFilter.java:137) ~[spring-security-oauth2-resource-server-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:107) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:93) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:117) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:82) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.context.SecurityContextHolderFilter.doFilter(SecurityContextHolderFilter.java:69) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:62) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:227) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.session.DisableEncodeUrlFilter.doFilterInternal(DisableEncodeUrlFilter.java:42) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.wrapFilter(ObservationFilterChainDecorator.java:240) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$AroundFilterObservation$SimpleAroundFilterObservation.lambda$wrap$0(ObservationFilterChainDecorator.java:323) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$ObservationFilter.doFilter(ObservationFilterChainDecorator.java:224) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.ObservationFilterChainDecorator$VirtualFilterChain.doFilter(ObservationFilterChainDecorator.java:137) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:233) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:191) ~[spring-security-web-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.servlet.handler.HandlerMappingIntrospector.lambda$createCacheFilter$3(HandlerMappingIntrospector.java:195) ~[spring-webmvc-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.CompositeFilter$VirtualFilterChain.doFilter(CompositeFilter.java:113) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.CompositeFilter.doFilter(CompositeFilter.java:74) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.security.config.annotation.web.configuration.WebMvcSecurityConfiguration$CompositeFilterChainProxy.doFilter(WebMvcSecurityConfiguration.java:230) ~[spring-security-config-6.2.5.jar:6.2.5]
+        at org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:352) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:268) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.springframework.web.filter.RequestContextFilter.doFilterInternal(RequestContextFilter.java:100) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.springframework.web.filter.FormContentFilter.doFilterInternal(FormContentFilter.java:93) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.springframework.web.filter.ServerHttpObservationFilter.doFilterInternal(ServerHttpObservationFilter.java:113) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.springframework.web.filter.CharacterEncodingFilter.doFilterInternal(CharacterEncodingFilter.java:201) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:116) ~[spring-web-6.1.11.jar:6.1.11]
+        at org.apache.catalina.core.ApplicationFilterChain.internalDoFilter(ApplicationFilterChain.java:164) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:140) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.StandardWrapperValve.invoke(StandardWrapperValve.java:167) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.StandardContextValve.invoke(StandardContextValve.java:90) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.authenticator.AuthenticatorBase.invoke(AuthenticatorBase.java:483) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.StandardHostValve.invoke(StandardHostValve.java:116) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.valves.ErrorReportValve.invoke(ErrorReportValve.java:93) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.core.StandardEngineValve.invoke(StandardEngineValve.java:74) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.catalina.connector.CoyoteAdapter.service(CoyoteAdapter.java:344) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.coyote.http11.Http11Processor.service(Http11Processor.java:398) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.coyote.AbstractProcessorLight.process(AbstractProcessorLight.java:63) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.coyote.AbstractProtocol$ConnectionHandler.process(AbstractProtocol.java:903) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.tomcat.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1769) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.tomcat.util.net.SocketProcessorBase.run(SocketProcessorBase.java:52) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.tomcat.util.threads.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1189) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:658) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63) ~[tomcat-embed-core-10.1.44.jar:10.1.44]
+        at java.base/java.lang.Thread.run(Thread.java:840) ~[na:na]
+Caused by: org.hibernate.exception.SQLGrammarException: JDBC exception executing SQL [select uub1_0.ui_system_id,uub1_0.ui_created_by,uub1_0.ui_created_dt,uub1_0.ui_e_mail_address,uub1_0.ui_first_name,uub1_0.ui_last_name,uub1_0.ui_phone,uub1_0.ui_terminated_by,uub1_0.ui_terminated_dt,uub1_0.ui_title,uub1_0.ui_user_id,uub1_0.ui_user_inactive,uub1_0.UI_FIRST_NAME + ' ' + uub1_0.UI_LAST_NAME from ui_user_base uub1_0 where uub1_0.ui_e_mail_address=?] [Invalid column name 'ui_phone'.] [n/a]
+        at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:91) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:58) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:94) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.executeQuery(DeferredResultSetAccess.java:264) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.getResultSet(DeferredResultSetAccess.java:167) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.jdbc.internal.JdbcValuesResultSetImpl.advanceNext(JdbcValuesResultSetImpl.java:218) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.jdbc.internal.JdbcValuesResultSetImpl.processNext(JdbcValuesResultSetImpl.java:98) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.jdbc.internal.AbstractJdbcValues.next(AbstractJdbcValues.java:19) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.internal.RowProcessingStateStandardImpl.next(RowProcessingStateStandardImpl.java:66) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.spi.ListResultsConsumer.consume(ListResultsConsumer.java:202) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.results.spi.ListResultsConsumer.consume(ListResultsConsumer.java:33) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.doExecuteQuery(JdbcSelectExecutorStandardImpl.java:209) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.executeQuery(JdbcSelectExecutorStandardImpl.java:83) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:76) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:65) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.query.sqm.internal.ConcreteSqmSelectQueryPlan.lambda$new$2(ConcreteSqmSelectQueryPlan.java:137) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.query.sqm.internal.ConcreteSqmSelectQueryPlan.withCacheableSqmInterpretation(ConcreteSqmSelectQueryPlan.java:381) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.query.sqm.internal.ConcreteSqmSelectQueryPlan.performList(ConcreteSqmSelectQueryPlan.java:303) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.query.sqm.internal.QuerySqmImpl.doList(QuerySqmImpl.java:509) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.query.spi.AbstractSelectionQuery.list(AbstractSelectionQuery.java:427) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.hibernate.query.spi.AbstractSelectionQuery.getSingleResult(AbstractSelectionQuery.java:564) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution$SingleEntityExecution.doExecute(JpaQueryExecution.java:223) ~[spring-data-jpa-3.2.8.jar:3.2.8]
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution.execute(JpaQueryExecution.java:92) ~[spring-data-jpa-3.2.8.jar:3.2.8]
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.doExecute(AbstractJpaQuery.java:149) ~[spring-data-jpa-3.2.8.jar:3.2.8]
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.execute(AbstractJpaQuery.java:137) ~[spring-data-jpa-3.2.8.jar:3.2.8]
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170) ~[spring-data-commons-3.2.8.jar:3.2.8]
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158) ~[spring-data-commons-3.2.8.jar:3.2.8]
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:164) ~[spring-data-commons-3.2.8.jar:3.2.8]
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:143) ~[spring-data-commons-3.2.8.jar:3.2.8]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:70) ~[spring-data-commons-3.2.8.jar:3.2.8]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:379) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119) ~[spring-tx-6.1.11.jar:6.1.11]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184) ~[spring-aop-6.1.11.jar:6.1.11]
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138) ~[spring-tx-6.1.11.jar:6.1.11]
+        ... 109 common frames omitted
+Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Invalid column name 'ui_phone'.
+        at com.microsoft.sqlserver.jdbc.SQLServerException.makeFromDatabaseError(SQLServerException.java:259) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerStatement.getNextResult(SQLServerStatement.java:1695) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement.doExecutePreparedStatement(SQLServerPreparedStatement.java:648) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement$PrepStmtExecCmd.doExecute(SQLServerPreparedStatement.java:567) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.TDSCommand.execute(IOBuffer.java:7675) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerConnection.executeCommand(SQLServerConnection.java:4137) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerStatement.executeCommand(SQLServerStatement.java:272) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerStatement.executeStatement(SQLServerStatement.java:246) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.microsoft.sqlserver.jdbc.SQLServerPreparedStatement.executeQuery(SQLServerPreparedStatement.java:485) ~[mssql-jdbc-12.4.2.jre11.jar:na]
+        at com.zaxxer.hikari.pool.ProxyPreparedStatement.executeQuery(ProxyPreparedStatement.java:52) ~[HikariCP-5.0.1.jar:na]
+        at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeQuery(HikariProxyPreparedStatement.java) ~[HikariCP-5.0.1.jar:na]
+        at org.hibernate.sql.results.jdbc.internal.DeferredResultSetAccess.executeQuery(DeferredResultSetAccess.java:246) ~[hibernate-core-6.4.9.Final.jar:6.4.9.Final]
+        ... 141 common frames omitted
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
 
-import com.optum.fads.userroles.api.dto.AllDropdownsResponse;
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import com.optum.fads.userroles.api.dto.UserListResponse;
-import com.optum.fads.userroles.api.service.GroupDropdownService;
-import com.optum.fads.userroles.api.service.IUserList;
-import com.optum.fads.userroles.api.service.UserService;
 
-@RestController
-public class UserRolesController {
 
-	private static final Map<String, String> FIELD_MAP;
-	static {
-		Map<String, String> m = new LinkedHashMap<>();
-		m.put("uiSystemId", "uiSystemId");
-		m.put("uiUserId", "uiUserId");
-		m.put("lastName", "uiLastName");
-		m.put("firstName", "uiFirstName");
-		m.put("title", "uiTitle");
-		m.put("email", "uiEMailAddress");
-		m.put("fadsGrpName", "seUsrGrp.fadsGrp.fadsGrpName");
-		m.put("surGrpName", "seUsrGrp.fadsSurGrp.surGrpName");
-		m.put("caseGrpName", "seUsrGrp.fadsCaseGrp.caseGrpName");
-		FIELD_MAP = Collections.unmodifiableMap(m);
-	}
 
-	private final IUserList userListService;
-	private final UserService userService;
-	private final GroupDropdownService groupDropdownService;
-	private static final String DEFAULT_SORT_FIELD = "lastName";
 
-	public UserRolesController(IUserList userListService, GroupDropdownService groupDropdownService,
-			UserService userService) {
-		this.userListService = userListService;
-		this.userService = userService;
-		this.groupDropdownService = groupDropdownService;
-	}
 
-	@GetMapping("/findAllByPageable")
-	public UserListResponse getUsers(@RequestParam(defaultValue = "1") int pageNumber,
-			@RequestParam(defaultValue = "10") int recordsPerPage,
-			@RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
-			@RequestParam(defaultValue = "1") int sortOrder, @RequestParam(required = false) String searchBy,
-			@RequestParam(required = false) String searchInput) {
 
-		String entitySortField = mapToEntityField(sortBy);
+package com.optum.fads.pgp.behavior.api.domain;
 
-		Sort.Direction direction = (sortOrder == -1) ? Sort.Direction.DESC : Sort.Direction.ASC;
-		Sort sort = Sort.by(direction, entitySortField);
-
-		Pageable pageable = PageRequest.of(Math.max(pageNumber - 1, 0), recordsPerPage, sort);
-
-		return userListService.getAllUsers(pageable, searchBy, searchInput);
-	}
-
-	
-
-	private String mapToEntityField(String dtoField) {
-		return switch (dtoField) {
-		case "uiSystemId" -> "uiSystemId";
-		case "uiUserId" -> "uiUserId";
-		case "lastName" -> "uiLastName";
-		case "firstName" -> "uiFirstName";
-		case "title" -> "uiTitle";
-		case "email" -> "uiEMailAddress";
-		case "fadsGrpName" -> "seUsrGrp.fadsGrp.fadsGrpName";
-		case "surGrpName" -> "seUsrGrp.fadsSurGrp.surGrpName";
-		case "caseGrpName" -> "seUsrGrp.fadsCaseGrp.caseGrpName";
-		default -> DEFAULT_SORT_FIELD.equals(dtoField) ? "uiLastName" : "uiLastName";
-		};
-	}
-
-}
-package com.optum.fads.userroles.api.dto;
-
-public class UserListItem {
-    private final String uiSystemId;
-    private final String uiUserId;
-    private final String lastName;
-    private final String firstName;
-    private final String title;
-    private final String email;
-    private final String fadsGrpName;
-    private final String surGrpName;
-    private final String caseGrpName;
-
-    public UserListItem(String uiSystemId, String uiUserId, String lastName, String firstName,
-                        String title, String email, String fadsGrpName, String surGrpName, String caseGrpName) {
-        this.uiSystemId = uiSystemId;
-        this.uiUserId = uiUserId;
-        this.lastName = lastName;
-        this.firstName = firstName;
-        this.title = title;
-        this.email = email;
-        this.fadsGrpName = fadsGrpName;
-        this.surGrpName = surGrpName;
-        this.caseGrpName = caseGrpName;
-    }
-
-	public String getUiSystemId() {
-		return uiSystemId;
-	}
-
-	public String getUiUserId() {
-		return uiUserId;
-	}
-
-	public String getLastName() {
-		return lastName;
-	}
-
-	public String getFirstName() {
-		return firstName;
-	}
-
-	public String getTitle() {
-		return title;
-	}
-
-	public String getEmail() {
-		return email;
-	}
-
-	public String getFadsGrpName() {
-		return fadsGrpName;
-	}
-
-	public String getSurGrpName() {
-		return surGrpName;
-	}
-
-	public String getCaseGrpName() {
-		return caseGrpName;
-	}
-
-    
-    
-    
-}
-package com.optum.fads.userroles.api.dto;
-
+import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
 
-public class UserListResponse {
-	private final List<UserListItem> data;
-	private final long totalRecordsCount;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
-	public UserListResponse(List<UserListItem> data, long totalRecordsCount) {
-		this.data = data;
-		this.totalRecordsCount = totalRecordsCount;
-	}
+import org.hibernate.annotations.Formula;
 
-	public List<UserListItem> getData() {
-		return data;
-	}
-
-	public long getTotalRecordsCount() {
-		return totalRecordsCount;
-	}
-}
-package com.optum.fads.userroles.api.mapper;
-
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import com.optum.fads.userroles.api.domain.SeUserGroup;
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ReportingPolicy;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.dto.UserListItem;
-
-import java.math.BigDecimal;
+import lombok.Data;
 
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface UserListItemMapper {
+/**
+ * The persistent class for the UI_USER_BASE database table.
+ * 
+ */
+@Entity
+@Data
+@Table(name="UI_USER_BASE")
+public class UiUserBase implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-    @Mapping(target = "uiSystemId", source = "uiSystemId")
-    @Mapping(target = "uiUserId", source = "uiUserId")
-    @Mapping(target = "lastName", source = "uiLastName")
-    @Mapping(target = "firstName", source = "uiFirstName")
-    @Mapping(target = "title", source = "uiTitle")
-    @Mapping(target = "email", source = "uiEMailAddress")
-    @Mapping(target = "fadsGrpName", source = "seUsrGrp.fadsGrp.fadsGrpName")
-    @Mapping(target = "surGrpName", source = "seUsrGrp.fadsSurGrp.surGrpName")
-    @Mapping(target = "caseGrpName", source = "seUsrGrp.fadsCaseGrp.caseGrpName")
-    UserListItem toDto(UiUserBase entity);
+	@Id
+	@Column(name="UI_SYSTEM_ID")
+	private String uiSystemId;
 
+	@Column(name="UI_CREATED_BY")
+	private String uiCreatedBy;
 
-}
-package com.optum.fads.userroles.api.service;
+	@Temporal(TemporalType.DATE)
+	@Column(name="UI_CREATED_DT")
+	private Date uiCreatedDt;
 
-import com.optum.fads.userroles.api.dto.UserListResponse;
-import org.springframework.data.domain.Pageable;
+	@Column(name="UI_E_MAIL_ADDRESS")
+	private String uiEMailAddress;
 
-public interface IUserList {
-	UserListResponse getAllUsers(Pageable pageable, String searchBy, String searchInput);
-}
+	@Column(name="UI_FIRST_NAME")
+	private String uiFirstName;
 
-package com.optum.fads.userroles.api.service;
+	@Column(name="UI_LAST_NAME")
+	private String uiLastName;
 
-import java.util.Map;
+	@Column(name="UI_PHONE")
+	private String uiPhone;
 
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+	@Column(name="UI_TERMINATED_BY")
+	private String uiTerminatedBy;
 
-import com.optum.fads.userroles.api.dto.UserListItem;
+	@Temporal(TemporalType.DATE)
+	@Column(name="UI_TERMINATED_DT")
+	private Date uiTerminatedDt;
 
-public interface UserService {
-    Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap);
+	@Column(name="UI_TITLE")
+	private String uiTitle;
 
-   
-}
-package com.optum.fads.userroles.api.service.Impl;
+	@Column(name="UI_USER_ID")
+	private String uiUserId;
 
-import java.util.List;
-import java.util.Locale;
+	@Column(name="UI_USER_INACTIVE")
+	private String uiUserInactive;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
+	@Formula(value = "UI_FIRST_NAME + ' ' + UI_LAST_NAME")
+	 private String userFullName;
+	 
+	//bi-directional many-to-one association to PrmBpBehaviorPatsT
+	@OneToMany(mappedBy="uiUserBaseUpd")
+	private List<PrmBpBehaviorPatsT> bpsUpd;
 
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.dto.UserListResponse;
-import com.optum.fads.userroles.api.mapper.UserListItemMapper;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
-import com.optum.fads.userroles.api.service.IUserList;
-
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-
-@Service
-public class UserListImpl implements IUserList {
-
-	private static final String FIELD_UI_SYSTEM_ID = "uiSystemId";
-	private static final String FIELD_UI_USER_ID = "uiUserId";
-	private static final String FIELD_LAST_NAME = "uiLastName";
-	private static final String FIELD_FIRST_NAME = "uiFirstName";
-	private static final String FIELD_TITLE = "uiTitle";
-	private static final String FIELD_EMAIL = "uiEMailAddress";
-
-	private static final String FIELD_FADS_NAME = "fadsGrpName";
-	private static final String FIELD_SUR_NAME = "surGrpName";
-	private static final String FIELD_CASE_NAME = "caseGrpName";
-
-	private final UiUserBaseRepository repository;
-	private final UserListItemMapper mapper;
-
-	public UserListImpl(UiUserBaseRepository repository, UserListItemMapper mapper) {
-		this.repository = repository;
-		this.mapper = mapper;
-	}
-
-	@Override
-	public UserListResponse getAllUsers(Pageable pageable, String searchBy, String searchInput) {
-		Page<UiUserBase> page;
-
-		if (StringUtils.hasText(searchBy) && StringUtils.hasText(searchInput)) {
-			Specification<UiUserBase> spec = createSearchSpecification(searchBy, searchInput);
-			page = repository.findAll(spec, pageable);
-		} else {
-			page = repository.findAll(pageable);
-		}
-
-		List<UserListItem> data = page.getContent().stream().map(mapper::toDto).toList();
-		return new UserListResponse(data, page.getTotalElements());
-	}
-
+	//bi-directional many-to-one association to PrmBpBehaviorPatsT
+	@OneToMany(mappedBy="uiUserBaseCr")
+	private List<PrmBpBehaviorPatsT> bpsCr;
 	
-	private Specification<UiUserBase> createSearchSpecification(String searchBy, String searchInput) {
-		final String pattern = "%" + searchInput.toLowerCase(Locale.ROOT) + "%";
-
-		return (root, query, cb) -> {
-			boolean needsJoin = FIELD_FADS_NAME.equals(searchBy) || FIELD_SUR_NAME.equals(searchBy)
-					|| FIELD_CASE_NAME.equals(searchBy);
-			if (needsJoin) {
-				query.distinct(true);
-			}
-
-			switch (searchBy) {
-			case FIELD_UI_SYSTEM_ID:
-			case FIELD_UI_USER_ID:
-			case FIELD_LAST_NAME:
-			case FIELD_FIRST_NAME:
-			case FIELD_TITLE:
-			case FIELD_EMAIL:
-				return cb.like(cb.lower(root.get(searchByToEntityColumn(searchBy))), pattern);
-
-			case FIELD_FADS_NAME: {
-				Join<?, ?> jUsrGrp = root.join("seUsrGrp", JoinType.LEFT);
-				Join<?, ?> jFads = jUsrGrp.join("fadsGrp", JoinType.LEFT);
-				return cb.like(cb.lower(jFads.get("fadsGrpName")), pattern);
-			}
-			case FIELD_SUR_NAME: {
-				Join<?, ?> jUsrGrp = root.join("seUsrGrp", JoinType.LEFT);
-				Join<?, ?> jSur = jUsrGrp.join("fadsSurGrp", JoinType.LEFT);
-				return cb.like(cb.lower(jSur.get("surGrpName")), pattern);
-			}
-			case FIELD_CASE_NAME: {
-				Join<?, ?> jUsrGrp = root.join("seUsrGrp", JoinType.LEFT);
-				Join<?, ?> jCase = jUsrGrp.join("fadsCaseGrp", JoinType.LEFT);
-				return cb.like(cb.lower(jCase.get("caseGrpName")), pattern);
-			}
-
-			default:
-				return cb.like(cb.lower(root.get(FIELD_EMAIL)), pattern);
-			}
-		};
-	}
-
-	private String searchByToEntityColumn(String searchBy) {
-		return switch (searchBy) {
-		case FIELD_UI_SYSTEM_ID -> FIELD_UI_SYSTEM_ID;
-		case FIELD_UI_USER_ID -> FIELD_UI_USER_ID;
-		case FIELD_LAST_NAME -> FIELD_LAST_NAME;
-		case FIELD_FIRST_NAME -> FIELD_FIRST_NAME;
-		case FIELD_TITLE -> FIELD_TITLE;
-		case FIELD_EMAIL -> FIELD_EMAIL;
-		default -> FIELD_EMAIL;
-		};
-	}
-}
-package com.optum.fads.userroles.api.service.Impl;
-
-import java.util.Map;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.domain.SeUserGroup;
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
-import com.optum.fads.userroles.api.service.UserService;
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.mapper.UserListItemMapper;
-import com.optum.fads.userroles.api.utility.UserSpecification;
-
-import lombok.RequiredArgsConstructor;
-
-@Service
-@RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
-
-    private final UiUserBaseRepository repo;
-    private final SeUsrGrpRepository seUsrGrpRepository;
-    private final UserListItemMapper mapper;
-
-    @Override
-    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
-        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
-
-        Page<UiUserBase> page = (spec == null)
-                ? repo.findAll(pageable)            
-                : repo.findAll(spec, pageable);         
-        return page.map(mapper::toDto);
-    }
+	//bi-directional one-to-one association to SeUsrGrp
+	@OneToOne(mappedBy="uiUserBase")
+	private SeUsrGrp seUsrGrp;
 
 }
-now in this there is requirement that if loggedin user is fads grp id is 2 or 3 then return those list who is having only fads grp id is 2 n 3 , if its other than 2 n 3 then we can return as usual response 
