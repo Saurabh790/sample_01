@@ -1,87 +1,83 @@
 server:
-	port: 8080
-	  servlet:
-	    contextPath: /behavior
+  port: 8080
+  servlet:
+    contextPath: /behavior
 
-	quickstart:
-	  generateOrderPeriod: 10s
-	  processOrderPeriod: 30s
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
 
-	spring:
-	  application:
-	    name: behavior
+spring:
+  application:
+    name: behavior
 
-	  jpa:
-	    database-platform: org.hibernate.dialect.SQLServer2016Dialect
-	    database: SQL_SERVER
-	    show-sql: false
-	    hibernate:
-	      naming:
-	        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-	        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 
-	  datasource:
-	    type: com.zaxxer.hikari.HikariDataSource
-	    jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
-	    userName: fads_dev
-	    password: qAut9fM.S!g3?385
-	    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-	    hikari:
-	      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-	      minimum-idle: ${MIN_POOL_IDLE:1}
-	      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-	      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-	      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+    userName: fads_dev
+    password: qAut9fM.S!g3?385
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
 
-	  security:
-	    oauth2:
-	      resourceserver:
-	        jwt:
-	          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
-	          jws-algorithms: RS256
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms: RS256
 
-	management:
-	  endpoint:
-	    metrics:
-	      enabled: true
-	    prometheus:
-	      enabled: true
+management:
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
 
-	  endpoints:
-	    web:
-	      exposure:
-	        include:
-	          - health
-	          - info
-	          - prometheus
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
 
-	  prometheus:
-	    metrics:
-	      export:
-	        enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
-	# =============================================
-	# LOGGING IMPROVED for debugging Spring Security
-	# =============================================
+logging:
+  level:
+    root: INFO
+    com.optum.fads.pgp.behavior.api: DEBUG
 
-	logging:
-	  level:
-	    root: INFO
-	    com.optum.fads.pgp.behavior.api: DEBUG
+    # Security core
+    org.springframework.security: DEBUG
+    org.springframework.security.authentication: DEBUG
+    org.springframework.security.authorization: DEBUG
 
-	    # Security core
-	    org.springframework.security: DEBUG
-	    org.springframework.security.authentication: DEBUG
-	    org.springframework.security.authorization: DEBUG
+    # OAuth2 / JWT internals
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.security.oauth2.jwt: DEBUG
+    org.springframework.security.oauth2.server.resource: DEBUG
 
-	    # OAuth2 / JWT internals
-	    org.springframework.security.oauth2: DEBUG
-	    org.springframework.security.oauth2.jwt: DEBUG
-	    org.springframework.security.oauth2.server.resource: DEBUG
-
-	    # Filter chain (this gives best visibility)
-	    org.springframework.security.web.FilterChainProxy: TRACE
-	    org.springframework.security.web.access: DEBUG
-	    org.springframework.security.web.authentication: DEBUG
-	    org.springframework.security.web.csrf: DEBUG
-	    org.springframework.security.web.header: DEBUG
+    # Filter chain (deep debugging)
+    org.springframework.security.web.FilterChainProxy: TRACE
+    org.springframework.security.web.access: DEBUG
+    org.springframework.security.web.authentication: DEBUG
+    org.springframework.security.web.csrf: DEBUG
+    org.springframework.security.web.header: DEBUG
