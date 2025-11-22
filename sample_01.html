@@ -1,261 +1,87 @@
-package com.optum.fads.pgp.behavior.api.config;
+server:
+	port: 8080
+	  servlet:
+	    contextPath: /behavior
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+	quickstart:
+	  generateOrderPeriod: 10s
+	  processOrderPeriod: 30s
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
+	spring:
+	  application:
+	    name: behavior
 
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+	  jpa:
+	    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+	    database: SQL_SERVER
+	    show-sql: false
+	    hibernate:
+	      naming:
+	        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+	        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 
-public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+	  datasource:
+	    type: com.zaxxer.hikari.HikariDataSource
+	    jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+	    userName: fads_dev
+	    password: qAut9fM.S!g3?385
+	    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+	    hikari:
+	      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+	      minimum-idle: ${MIN_POOL_IDLE:1}
+	      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+	      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+	      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
 
-    private static final Logger log = LoggerFactory.getLogger(UserJwtAuthenticationConverter.class);
+	  security:
+	    oauth2:
+	      resourceserver:
+	        jwt:
+	          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+	          jws-algorithms: RS256
 
-    private static final String GROUPS_CLAIM = "groups";
-    private static final String ROLE_PREFIX = "ROLE_";
+	management:
+	  endpoint:
+	    metrics:
+	      enabled: true
+	    prometheus:
+	      enabled: true
 
-    private final IUserDetailsService userDetailsService;
+	  endpoints:
+	    web:
+	      exposure:
+	        include:
+	          - health
+	          - info
+	          - prometheus
 
-    public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
+	  prometheus:
+	    metrics:
+	      export:
+	        enabled: true
 
-    @Override
-    public AbstractAuthenticationToken convert(Jwt jwt) {
-        // Log all claims once so we can see what Azure is actually sending
-        log.debug("Converting JWT to Authentication. Claims = {}", jwt.getClaims());
+	# =============================================
+	# LOGGING IMPROVED for debugging Spring Security
+	# =============================================
 
-        String username = getUniqueID(jwt);
-        log.debug("Resolved username from JWT = '{}'", username);
+	logging:
+	  level:
+	    root: INFO
+	    com.optum.fads.pgp.behavior.api: DEBUG
 
-        if (username == null || username.isBlank()) {
-            log.warn("No usable unique ID claim found in JWT (checked upn, preferred_username, email, unique_name, sub)");
-            throw new BadCredentialsException("No user identifier found in token");
-        }
+	    # Security core
+	    org.springframework.security: DEBUG
+	    org.springframework.security.authentication: DEBUG
+	    org.springframework.security.authorization: DEBUG
 
-        Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
-        log.debug("Authorities extracted from JWT = {}", authorities);
+	    # OAuth2 / JWT internals
+	    org.springframework.security.oauth2: DEBUG
+	    org.springframework.security.oauth2.jwt: DEBUG
+	    org.springframework.security.oauth2.server.resource: DEBUG
 
-        return Optional.ofNullable(userDetailsService.loadUserByUsername(username))
-                .map(u -> {
-                    log.debug("Successfully loaded user '{}' from UserDetailsService", username);
-                    return new UsernamePasswordAuthenticationToken(u, "n/a", authorities);
-                })
-                .orElseThrow(() -> {
-                    log.warn("UserDetailsService returned null for username '{}'", username);
-                    return new BadCredentialsException("No user found");
-                });
-    }
-
-    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        return this.getGroups(jwt)
-                .stream()
-                .map(group -> ROLE_PREFIX + group.toUpperCase())
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> getGroups(Jwt jwt) {
-        Object groups = jwt.getClaims().get(GROUPS_CLAIM);
-        if (groups instanceof Collection) {
-            return (Collection<String>) groups;
-        }
-        return Collections.emptyList();
-    }
-
-    /**
-     * Prefer claims that actually look like logins/emails rather than opaque IDs.
-     * Adjust this order to match what your Azure token actually contains (which
-     * you'll now see in the logs).
-     */
-    private String getUniqueID(Jwt jwt) {
-        return Stream.of("email", "preferred_username", "upn", "unique_name", "sub")
-                .map(jwt::getClaimAsString)
-                .filter(v -> v != null && !v.isBlank())
-                .findFirst()
-                .orElse(null);
-    }
-}
-
-
-
-
-
-				package com.optum.fads.pgp.behavior.api.service.impl;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.AccessLevel;
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.dto.ModuleAccess;
-import com.optum.fads.pgp.behavior.api.dto.Role;
-import com.optum.fads.pgp.behavior.api.repo.UserRepository;
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
-
-@Service
-public class UserDetailsService implements IUserDetailsService {
-
-    private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
-
-    @Autowired
-    UserRepository userRepository;
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.debug("Loading user by username/email '{}'", username);
-
-        Optional<UiUserBase> optional = userRepository.findByUiEMailAddress(username);
-
-        if (optional.isEmpty()) {
-            log.warn("No user found in DB for email '{}'", username);
-            throw new UsernameNotFoundException("Not found: " + username);
-        }
-
-        UiUserBase uiUserBase = optional.get();
-        log.debug("Found user in DB: uiUserId={}, uiSystemId={}, email={}",
-                uiUserBase.getUiUserId(), uiUserBase.getUiSystemId(), uiUserBase.getUiEMailAddress());
-
-        AppUser user = new AppUser();
-
-        user.setUserEmail(uiUserBase.getUiEMailAddress());
-        user.setUserId(uiUserBase.getUiUserId());
-        user.setUserSystemId(uiUserBase.getUiSystemId());
-
-        Role role = new Role();
-        role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
-        role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
-
-        List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
-        List<AccessLevel> accesses = new ArrayList<>();
-
-        surAccesses.forEach(surModuleAccess -> {
-            accesses.add(new AccessLevel(
-                    surModuleAccess.getId().getSurModuleId(),
-                    ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
-                    surModuleAccess.getSeSurModule().getSurModuleName(),
-                    surModuleAccess.getSeSurAccess().getSurAccessId())
-            );
-        });
-
-        role.setAllowedAccesses(accesses);
-        user.setRole(role);
-
-        log.debug("User '{}' built as AppUser with {} access entries", username, accesses.size());
-        return user;
-    }
-}
-
-
-
-			server:
-  port: 8080
-  servlet:
-    contextPath: /behavior
-
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
-
-spring:
-  application:
-    name: behavior
-
-  jpa:
-    database-platform: org.hibernate.dialect.SQLServer2016Dialect
-    database: SQL_SERVER
-    show-sql: false
-    hibernate:
-      naming:
-        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
-    userName: fads_dev
-    password: YOUR_REAL_PASSWORD_HERE
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
-          jws-algorithms: RS256
-
-management:
-  endpoint:
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-
-  endpoints:
-    web:
-      exposure:
-        include:
-          - health
-          - info
-          - prometheus
-
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-
-# =============================================
-# LOGGING IMPROVED for debugging Spring Security
-# =============================================
-
-logging:
-  level:
-    root: INFO
-    com.optum.fads.pgp.behavior.api: DEBUG
-
-    # Security core
-    org.springframework.security: DEBUG
-    org.springframework.security.authentication: DEBUG
-    org.springframework.security.authorization: DEBUG
-
-    # OAuth2 / JWT internals
-    org.springframework.security.oauth2: DEBUG
-    org.springframework.security.oauth2.jwt: DEBUG
-    org.springframework.security.oauth2.server.resource: DEBUG
-
-    # Filter chain (this gives best visibility)
-    org.springframework.security.web.FilterChainProxy: TRACE
-    org.springframework.security.web.access: DEBUG
-    org.springframework.security.web.authentication: DEBUG
-    org.springframework.security.web.csrf: DEBUG
-    org.springframework.security.web.header: DEBUG
+	    # Filter chain (this gives best visibility)
+	    org.springframework.security.web.FilterChainProxy: TRACE
+	    org.springframework.security.web.access: DEBUG
+	    org.springframework.security.web.authentication: DEBUG
+	    org.springframework.security.web.csrf: DEBUG
+	    org.springframework.security.web.header: DEBUG
