@@ -1,173 +1,86 @@
-package com.optum.fads.userroles.api.service.Impl;
-
-import java.util.Map;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.optum.fads.userroles.api.domain.UiUserBase;
-import com.optum.fads.userroles.api.domain.SeCaseGrp;
-import com.optum.fads.userroles.api.domain.SeFadsGrp;
-import com.optum.fads.userroles.api.domain.SeSurGrp;
-import com.optum.fads.userroles.api.domain.SeUsrGrp;
-import com.optum.fads.userroles.api.dto.UserForAdmin;
-import com.optum.fads.userroles.api.repo.SeCaseGrpRepository;
-import com.optum.fads.userroles.api.repo.SeFadsGrpRepository;
-import com.optum.fads.userroles.api.repo.SeSurGrpRepository;
-import com.optum.fads.userroles.api.repo.SeUsrGrpRepository;
-import com.optum.fads.userroles.api.repo.UiUserBaseRepository;
-import com.optum.fads.userroles.api.service.UserService;
-import com.optum.fads.userroles.api.dto.UserListItem;
-import com.optum.fads.userroles.api.mapper.UserListItemMapper;
-import com.optum.fads.userroles.api.utility.UserSpecification;
-import com.optum.fads.userroles.api.dto.UserListItemHistoryRequest;
-
-import lombok.RequiredArgsConstructor;
-
-@Service
-@RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
-
-    private final UiUserBaseRepository repo;
-    private final SeUsrGrpRepository seUsrGrpRepository;
-    private final UserListItemMapper mapper;
-    private final SeFadsGrpRepository seFadsGrpRepository;
-    private final SeSurGrpRepository seSurGrpRepository;
-    private final SeCaseGrpRepository seCaseGrpRepository;
-    private final UserHistoryImpl userHistory;
-
-    @Override
-    public Page<UserListItem> getUsersList(Map<String, String> filters, Pageable pageable, Map<String, String> fieldMap) {
-        Specification<UiUserBase> spec = UserSpecification.containsAll(filters, fieldMap);
-
-        Page<UiUserBase> page = (spec == null)
-                ? repo.findAll(pageable)            
-                : repo.findAll(spec, pageable);         
-        return page.map(mapper::toDto);
-    }
-
-    @Override
-    @Transactional
-    public void saveNewUser(UserForAdmin user) {
-        // Check if user already exists
-        boolean exists = repo.existsByUiUserId(user.getUserId());
-        if (exists) {
-            throw new IllegalArgumentException("User with uiUserId " + user.getUserId() + " already exists.");
-        }
-
-        boolean groupExists = seUsrGrpRepository.existsByUiSystemId(user.getSystemId());
-        if (groupExists) {
-            throw new IllegalArgumentException("User group with uiSystemId " + user.getSystemId() + " already exists.");
-        }
-
-        UiUserBase entity = mapper.toEntity(user);
-        UiUserBase savedUser = repo.save(entity);
-
-        repo.flush();
-
-        SeUsrGrp seUsrGrp = new SeUsrGrp();
-        
-        seUsrGrp.setUiUserBase(savedUser);
-        
-        if (user.getFadsGroup() != null) {
-            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsGrp(fadsGrp);
-        }
-
-        if (user.getSurGroup() != null) {
-            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsSurGrp(surGrp);
-        }
-
-        if (user.getCaseGroup() != null) {
-            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsCaseGrp(caseGrp);
-        }
-
-        seUsrGrpRepository.save(seUsrGrp);
-
-        UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
-        userHistory.createHistory(userListItemHistoryRequest);
-    }
-
-    @Override
-    @Transactional
-    public void updateUser(UserForAdmin user) {
-        // Check if user exists
-        boolean exists = repo.existsById(user.getSystemId());
-        if (!exists) {
-            throw new IllegalArgumentException("User not found with systemId: " + user.getSystemId());
-        }
-        
-        UiUserBase entity = mapper.toEntity(user);
-        UiUserBase savedUser = repo.save(entity);
-        
-        repo.flush();
-        
-        SeUsrGrp existingUserGroup = seUsrGrpRepository.findById(user.getSystemId())
-            .orElse(null);
-            
-        if (existingUserGroup != null) {
-            existingUserGroup.setUiUserBase(savedUser);
-
-            updateGroupAssignments(existingUserGroup, user);
-            seUsrGrpRepository.save(existingUserGroup);
-
-            UserListItemHistoryRequest userListItemHistoryRequest = getUserListItemHistoryRequest(user);
-
-            userHistory.createHistory(userListItemHistoryRequest);
-        } else {
-            SeUsrGrp seUsrGrp = new SeUsrGrp();
-            seUsrGrp.setUiUserBase(savedUser);
-
-            updateGroupAssignments(seUsrGrp, user);
-            seUsrGrpRepository.save(seUsrGrp);
-        }
-    }
-
-    private static UserListItemHistoryRequest getUserListItemHistoryRequest(UserForAdmin user) {
-        UserListItemHistoryRequest userListItemHistoryRequest = new UserListItemHistoryRequest();
-        userListItemHistoryRequest.setUiUserId(user.getUserId());
-        userListItemHistoryRequest.setUiSystemId(user.getSystemId());
-        userListItemHistoryRequest.setChangeUsr(user.getChangeUsr() != null ? user.getChangeUsr() : user.getSystemId());
-        userListItemHistoryRequest.setUiFirstName(user.getFirstName());
-        userListItemHistoryRequest.setUiLastName(user.getLastName());
-        userListItemHistoryRequest.setFadsCaseGrpId(user.getCaseGroup());
-        userListItemHistoryRequest.setFadsGrpId(user.getFadsGroup());
-        userListItemHistoryRequest.setFadsSurGrpId(user.getSurGroup());
-        userListItemHistoryRequest.setUiEmailAddress(user.getEmail());
-        return userListItemHistoryRequest;
-    }
-
-    private void updateGroupAssignments(SeUsrGrp seUsrGrp, UserForAdmin user) {
-        if (user.getFadsGroup() != null) {
-            SeFadsGrp fadsGrp = seFadsGrpRepository.findById(java.math.BigDecimal.valueOf(user.getFadsGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsGrp(fadsGrp);
-        } else {
-            seUsrGrp.setFadsGrp(null);
-        }
-        
-        if (user.getSurGroup() != null) {
-            SeSurGrp surGrp = seSurGrpRepository.findById(java.math.BigDecimal.valueOf(user.getSurGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsSurGrp(surGrp);
-        } else {
-            seUsrGrp.setFadsSurGrp(null);
-        }
-        
-        if (user.getCaseGroup() != null) {
-            SeCaseGrp caseGrp = seCaseGrpRepository.findById(java.math.BigDecimal.valueOf(user.getCaseGroup()))
-                .orElse(null);
-            seUsrGrp.setFadsCaseGrp(caseGrp);
-        } else {
-            seUsrGrp.setFadsCaseGrp(null);
-        }
-    }
-}
+{"timestamp":"2025-11-22T12:40:11.8267071Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"Starting BehaviorPatternApiApplication using Java 17.0.10 with PID 12872 (C:\\Users\\sgupt664\\BE_Projects\\fads-pgp-behavior-api\\target\\classes started by sgupt664 in C:\\Users\\sgupt664\\BE_Projects\\fads-pgp-behavior-api)","exception":""}
+{"timestamp":"2025-11-22T12:40:11.845916Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"Running with Spring Boot v3.2.8, Spring v6.1.11","exception":""}
+{"timestamp":"2025-11-22T12:40:11.8484332Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"No active profile set, falling back to 1 default profile: \"default\"","exception":""}
+{"timestamp":"2025-11-22T12:40:12.7239051Z","level":"INFO","thread":"main","logger":"org.springframework.data.repository.config.RepositoryConfigurationDelegate","message":"Bootstrapping Spring Data JPA repositories in DEFAULT mode.","exception":""}
+{"timestamp":"2025-11-22T12:40:12.9652681Z","level":"INFO","thread":"main","logger":"org.springframework.data.repository.config.RepositoryConfigurationDelegate","message":"Finished Spring Data repository scanning in 230 ms. Found 7 JPA repository interfaces.","exception":""}
+{"timestamp":"2025-11-22T12:40:14.6906451Z","level":"INFO","thread":"main","logger":"org.springframework.boot.web.embedded.tomcat.TomcatWebServer","message":"Tomcat initialized with port 8080 (http)","exception":""}
+{"timestamp":"2025-11-22T12:40:14.7119874Z","level":"INFO","thread":"main","logger":"org.apache.catalina.core.StandardService","message":"Starting service [Tomcat]","exception":""}
+{"timestamp":"2025-11-22T12:40:14.7119874Z","level":"INFO","thread":"main","logger":"org.apache.catalina.core.StandardEngine","message":"Starting Servlet engine: [Apache Tomcat/10.1.44]","exception":""}
+{"timestamp":"2025-11-22T12:40:14.8392243Z","level":"INFO","thread":"main","logger":"org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/behavior]","message":"Initializing Spring embedded WebApplicationContext","exception":""}
+{"timestamp":"2025-11-22T12:40:14.8412529Z","level":"INFO","thread":"main","logger":"org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext","message":"Root WebApplicationContext: initialization completed in 2912 ms","exception":""}
+{"timestamp":"2025-11-22T12:40:15.2958846Z","level":"INFO","thread":"main","logger":"com.zaxxer.hikari.HikariDataSource","message":"HikariPool-1 - Starting...","exception":""}
+{"timestamp":"2025-11-22T12:40:15.6330748Z","level":"INFO","thread":"main","logger":"com.zaxxer.hikari.pool.HikariPool","message":"HikariPool-1 - Added connection ConnectionID:1 ClientConnectionId: 82810ad0-b61e-43bc-95d8-76680604a6d6","exception":""}
+{"timestamp":"2025-11-22T12:40:15.6350983Z","level":"INFO","thread":"main","logger":"com.zaxxer.hikari.HikariDataSource","message":"HikariPool-1 - Start completed.","exception":""}
+{"timestamp":"2025-11-22T12:40:15.6968776Z","level":"INFO","thread":"main","logger":"org.hibernate.jpa.internal.util.LogHelper","message":"HHH000204: Processing PersistenceUnitInfo [name: default]","exception":""}
+{"timestamp":"2025-11-22T12:40:15.7875432Z","level":"INFO","thread":"main","logger":"org.hibernate.Version","message":"HHH000412: Hibernate ORM core version 6.4.9.Final","exception":""}
+{"timestamp":"2025-11-22T12:40:15.836189Z","level":"INFO","thread":"main","logger":"org.hibernate.cache.internal.RegionFactoryInitiator","message":"HHH000026: Second-level cache disabled","exception":""}
+{"timestamp":"2025-11-22T12:40:16.1678387Z","level":"INFO","thread":"main","logger":"org.springframework.orm.jpa.persistenceunit.SpringPersistenceUnitInfo","message":"No LoadTimeWeaver setup: ignoring JPA class transformer","exception":""}
+{"timestamp":"2025-11-22T12:40:16.2331856Z","level":"WARN","thread":"main","logger":"org.hibernate.orm.deprecation","message":"HHH90000025: SQLServer2016Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)","exception":""}
+{"timestamp":"2025-11-22T12:40:16.2362175Z","level":"WARN","thread":"main","logger":"org.hibernate.orm.deprecation","message":"HHH90000026: SQLServer2016Dialect has been deprecated; use org.hibernate.dialect.SQLServerDialect instead","exception":""}
+{"timestamp":"2025-11-22T12:40:17.884674Z","level":"INFO","thread":"main","logger":"org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator","message":"HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)","exception":""}
+{"timestamp":"2025-11-22T12:40:18.1270479Z","level":"INFO","thread":"main","logger":"org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean","message":"Initialized JPA EntityManagerFactory for persistence unit 'default'","exception":""}
+{"timestamp":"2025-11-22T12:40:18.6211976Z","level":"INFO","thread":"main","logger":"org.springframework.data.jpa.repository.query.QueryEnhancerFactory","message":"Hibernate is in classpath; If applicable, HQL parser will be used.","exception":""}
+{"timestamp":"2025-11-22T12:40:19.4763745Z","level":"WARN","thread":"main","logger":"org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration$JpaWebConfiguration","message":"spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning","exception":""}
+{"timestamp":"2025-11-22T12:40:19.5279275Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"Creating PasswordEncoder bean using DelegatingPasswordEncoder","exception":""}
+{"timestamp":"2025-11-22T12:40:19.6875103Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"Creating UserJwtAuthenticationConverter bean","exception":""}
+{"timestamp":"2025-11-22T12:40:20.196565Z","level":"INFO","thread":"main","logger":"org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver","message":"Exposing 2 endpoint(s) beneath base path '/actuator'","exception":""}
+{"timestamp":"2025-11-22T12:40:20.3874606Z","level":"INFO","thread":"main","logger":"org.springframework.security.web.DefaultSecurityFilterChain","message":"Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@464735bf, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@6639aafc, org.springframework.security.web.context.SecurityContextHolderFilter@651c826c, org.springframework.security.web.header.HeaderWriterFilter@7e2e6e75, org.springframework.security.web.csrf.CsrfFilter@6b062cfd, org.springframework.security.web.authentication.logout.LogoutFilter@2773791d, org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter@569c80e5, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@1b4c8306, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@747db396, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@3b3cc6b1, org.springframework.security.web.session.SessionManagementFilter@532f5c5d, org.springframework.security.web.access.ExceptionTranslationFilter@6e0ef532, org.springframework.security.web.access.intercept.AuthorizationFilter@1ac864d7]","exception":""}
+{"timestamp":"2025-11-22T12:40:20.4696382Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"Creating CorsConfigurationSource bean","exception":""}
+{"timestamp":"2025-11-22T12:40:20.4787715Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"CORS configuration registered for all paths","exception":""}
+{"timestamp":"2025-11-22T12:40:21.2756199Z","level":"INFO","thread":"main","logger":"org.springframework.boot.web.embedded.tomcat.TomcatWebServer","message":"Tomcat started on port 8080 (http) with context path '/behavior'","exception":""}
+{"timestamp":"2025-11-22T12:40:21.2994314Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"Started BehaviorPatternApiApplication in 10.625 seconds (process running for 11.149)","exception":""}
+{"timestamp":"2025-11-22T12:40:54.1533314Z","level":"INFO","thread":"http-nio-8080-exec-3","logger":"org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/behavior]","message":"Initializing Spring DispatcherServlet 'dispatcherServlet'","exception":""}
+{"timestamp":"2025-11-22T12:40:54.1543308Z","level":"INFO","thread":"http-nio-8080-exec-3","logger":"org.springframework.web.servlet.DispatcherServlet","message":"Initializing Servlet 'dispatcherServlet'","exception":""}
+{"timestamp":"2025-11-22T12:40:54.1563468Z","level":"INFO","thread":"http-nio-8080-exec-3","logger":"org.springframework.web.servlet.DispatcherServlet","message":"Completed initialization in 2 ms","exception":""}
+{"timestamp":"2025-11-22T12:40:54.198289Z","level":"DEBUG","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Securing POST /getbehaviorpatterns/","exception":""}
+{"timestamp":"2025-11-22T12:50:30.5563088Z","level":"INFO","thread":"SpringApplicationShutdownHook","logger":"org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean","message":"Closing JPA EntityManagerFactory for persistence unit 'default'","exception":""}
+{"timestamp":"2025-11-22T12:50:30.5593596Z","level":"INFO","thread":"SpringApplicationShutdownHook","logger":"com.zaxxer.hikari.HikariDataSource","message":"HikariPool-1 - Shutdown initiated...","exception":""}
+{"timestamp":"2025-11-22T12:50:30.5726721Z","level":"INFO","thread":"SpringApplicationShutdownHook","logger":"com.zaxxer.hikari.HikariDataSource","message":"HikariPool-1 - Shutdown completed.","exception":""}
+{"timestamp":"2025-11-22T12:54:49.6455806Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"Starting BehaviorPatternApiApplication using Java 17.0.10 with PID 20332 (C:\\Users\\sgupt664\\BE_Projects\\fads-pgp-behavior-api\\target\\classes started by sgupt664 in C:\\Users\\sgupt664\\BE_Projects\\fads-pgp-behavior-api)","exception":""}
+{"timestamp":"2025-11-22T12:54:49.6559523Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"Running with Spring Boot v3.2.8, Spring v6.1.11","exception":""}
+{"timestamp":"2025-11-22T12:54:49.6569753Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"No active profile set, falling back to 1 default profile: \"default\"","exception":""}
+{"timestamp":"2025-11-22T12:54:50.5870915Z","level":"INFO","thread":"main","logger":"org.springframework.data.repository.config.RepositoryConfigurationDelegate","message":"Bootstrapping Spring Data JPA repositories in DEFAULT mode.","exception":""}
+{"timestamp":"2025-11-22T12:54:50.8461832Z","level":"INFO","thread":"main","logger":"org.springframework.data.repository.config.RepositoryConfigurationDelegate","message":"Finished Spring Data repository scanning in 241 ms. Found 7 JPA repository interfaces.","exception":""}
+{"timestamp":"2025-11-22T12:54:52.3695648Z","level":"INFO","thread":"main","logger":"org.springframework.boot.web.embedded.tomcat.TomcatWebServer","message":"Tomcat initialized with port 8080 (http)","exception":""}
+{"timestamp":"2025-11-22T12:54:52.3878025Z","level":"INFO","thread":"main","logger":"org.apache.catalina.core.StandardService","message":"Starting service [Tomcat]","exception":""}
+{"timestamp":"2025-11-22T12:54:52.3898359Z","level":"INFO","thread":"main","logger":"org.apache.catalina.core.StandardEngine","message":"Starting Servlet engine: [Apache Tomcat/10.1.44]","exception":""}
+{"timestamp":"2025-11-22T12:54:52.5245934Z","level":"INFO","thread":"main","logger":"org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/behavior]","message":"Initializing Spring embedded WebApplicationContext","exception":""}
+{"timestamp":"2025-11-22T12:54:52.5245934Z","level":"INFO","thread":"main","logger":"org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext","message":"Root WebApplicationContext: initialization completed in 2794 ms","exception":""}
+{"timestamp":"2025-11-22T12:54:53.0036493Z","level":"INFO","thread":"main","logger":"com.zaxxer.hikari.HikariDataSource","message":"HikariPool-1 - Starting...","exception":""}
+{"timestamp":"2025-11-22T12:54:53.3574321Z","level":"INFO","thread":"main","logger":"com.zaxxer.hikari.pool.HikariPool","message":"HikariPool-1 - Added connection ConnectionID:1 ClientConnectionId: 1c3c1ced-d92c-40dc-a94c-0c56bf90e06e","exception":""}
+{"timestamp":"2025-11-22T12:54:53.3594536Z","level":"INFO","thread":"main","logger":"com.zaxxer.hikari.HikariDataSource","message":"HikariPool-1 - Start completed.","exception":""}
+{"timestamp":"2025-11-22T12:54:53.4259922Z","level":"INFO","thread":"main","logger":"org.hibernate.jpa.internal.util.LogHelper","message":"HHH000204: Processing PersistenceUnitInfo [name: default]","exception":""}
+{"timestamp":"2025-11-22T12:54:53.5291795Z","level":"INFO","thread":"main","logger":"org.hibernate.Version","message":"HHH000412: Hibernate ORM core version 6.4.9.Final","exception":""}
+{"timestamp":"2025-11-22T12:54:53.5877582Z","level":"INFO","thread":"main","logger":"org.hibernate.cache.internal.RegionFactoryInitiator","message":"HHH000026: Second-level cache disabled","exception":""}
+{"timestamp":"2025-11-22T12:54:53.9454971Z","level":"INFO","thread":"main","logger":"org.springframework.orm.jpa.persistenceunit.SpringPersistenceUnitInfo","message":"No LoadTimeWeaver setup: ignoring JPA class transformer","exception":""}
+{"timestamp":"2025-11-22T12:54:54.0058326Z","level":"WARN","thread":"main","logger":"org.hibernate.orm.deprecation","message":"HHH90000025: SQLServer2016Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)","exception":""}
+{"timestamp":"2025-11-22T12:54:54.0088728Z","level":"WARN","thread":"main","logger":"org.hibernate.orm.deprecation","message":"HHH90000026: SQLServer2016Dialect has been deprecated; use org.hibernate.dialect.SQLServerDialect instead","exception":""}
+{"timestamp":"2025-11-22T12:54:55.63004Z","level":"INFO","thread":"main","logger":"org.hibernate.engine.transaction.jta.platform.internal.JtaPlatformInitiator","message":"HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)","exception":""}
+{"timestamp":"2025-11-22T12:54:55.873296Z","level":"INFO","thread":"main","logger":"org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean","message":"Initialized JPA EntityManagerFactory for persistence unit 'default'","exception":""}
+{"timestamp":"2025-11-22T12:54:56.497105Z","level":"INFO","thread":"main","logger":"org.springframework.data.jpa.repository.query.QueryEnhancerFactory","message":"Hibernate is in classpath; If applicable, HQL parser will be used.","exception":""}
+{"timestamp":"2025-11-22T12:54:57.3414748Z","level":"WARN","thread":"main","logger":"org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration$JpaWebConfiguration","message":"spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning","exception":""}
+{"timestamp":"2025-11-22T12:54:57.3819232Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"Creating PasswordEncoder bean using DelegatingPasswordEncoder","exception":""}
+{"timestamp":"2025-11-22T12:54:57.5027111Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"Creating UserJwtAuthenticationConverter bean","exception":""}
+{"timestamp":"2025-11-22T12:54:57.9844519Z","level":"INFO","thread":"main","logger":"org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver","message":"Exposing 2 endpoint(s) beneath base path '/actuator'","exception":""}
+{"timestamp":"2025-11-22T12:54:58.1443019Z","level":"INFO","thread":"main","logger":"org.springframework.security.web.DefaultSecurityFilterChain","message":"Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@7a3953b4, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@67196a65, org.springframework.security.web.context.SecurityContextHolderFilter@4827711c, org.springframework.security.web.header.HeaderWriterFilter@327a3968, org.springframework.security.web.csrf.CsrfFilter@1403187e, org.springframework.security.web.authentication.logout.LogoutFilter@7931048d, org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter@68fbb22, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@26825fbb, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@515e9100, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6efa105a, org.springframework.security.web.session.SessionManagementFilter@52d2b9ec, org.springframework.security.web.access.ExceptionTranslationFilter@1a427dc0, org.springframework.security.web.access.intercept.AuthorizationFilter@152b4f34]","exception":""}
+{"timestamp":"2025-11-22T12:54:58.1888117Z","level":"DEBUG","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"Creating CorsConfigurationSource bean","exception":""}
+{"timestamp":"2025-11-22T12:54:58.1898272Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.config.SecurityConfig","message":"CORS configuration registered for all paths","exception":""}
+{"timestamp":"2025-11-22T12:54:58.7762304Z","level":"INFO","thread":"main","logger":"org.springframework.boot.web.embedded.tomcat.TomcatWebServer","message":"Tomcat started on port 8080 (http) with context path '/behavior'","exception":""}
+{"timestamp":"2025-11-22T12:54:58.7975136Z","level":"INFO","thread":"main","logger":"com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication","message":"Started BehaviorPatternApiApplication in 10.504 seconds (process running for 10.998)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.3622001Z","level":"INFO","thread":"http-nio-8080-exec-3","logger":"org.apache.catalina.core.ContainerBase.[Tomcat].[localhost].[/behavior]","message":"Initializing Spring DispatcherServlet 'dispatcherServlet'","exception":""}
+{"timestamp":"2025-11-22T12:55:10.3622001Z","level":"INFO","thread":"http-nio-8080-exec-3","logger":"org.springframework.web.servlet.DispatcherServlet","message":"Initializing Servlet 'dispatcherServlet'","exception":""}
+{"timestamp":"2025-11-22T12:55:10.3642029Z","level":"INFO","thread":"http-nio-8080-exec-3","logger":"org.springframework.web.servlet.DispatcherServlet","message":"Completed initialization in 1 ms","exception":""}
+{"timestamp":"2025-11-22T12:55:10.3981173Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Trying to match request against DefaultSecurityFilterChain [RequestMatcher=any request, Filters=[org.springframework.security.web.session.DisableEncodeUrlFilter@7a3953b4, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@67196a65, org.springframework.security.web.context.SecurityContextHolderFilter@4827711c, org.springframework.security.web.header.HeaderWriterFilter@327a3968, org.springframework.security.web.csrf.CsrfFilter@1403187e, org.springframework.security.web.authentication.logout.LogoutFilter@7931048d, org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter@68fbb22, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@26825fbb, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@515e9100, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@6efa105a, org.springframework.security.web.session.SessionManagementFilter@52d2b9ec, org.springframework.security.web.access.ExceptionTranslationFilter@1a427dc0, org.springframework.security.web.access.intercept.AuthorizationFilter@152b4f34]] (1/1)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4016559Z","level":"DEBUG","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Securing POST /getbehaviorpatterns/","exception":""}
+{"timestamp":"2025-11-22T12:55:10.406651Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking DisableEncodeUrlFilter (1/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4126578Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking WebAsyncManagerIntegrationFilter (2/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4156496Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking SecurityContextHolderFilter (3/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4176511Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking HeaderWriterFilter (4/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4186707Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking CsrfFilter (5/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4236718Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking LogoutFilter (6/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.4246822Z","level":"TRACE","thread":"http-nio-8080-exec-3","logger":"org.springframework.security.web.FilterChainProxy","message":"Invoking BearerTokenAuthenticationFilter (7/13)","exception":""}
+{"timestamp":"2025-11-22T12:55:10.5094473Z","level":"DEBUG","thread":"http-nio-8080-exec-3","logger":"com.optum.fads.pgp.behavior.api.config.UserJwtAuthenticationConverter","message":"Converting JWT to Authentication. Claims = {sub=MDK5Ed7CRGLhdNTkVO8wbS5dzYuNYn_rH3GPaTX3w_U, xms_tcdt=1641925527, aio=AZQAa/8aAAAA4wcdAxmirESp+1wVOoXrSmXwHprAau1HieoW+1v7DfwstCSK7cVeQUaIgB9SVanJXCwp/AkZ5EotJvnhnUAGdBDCQJAO+mnbwO3HdoEk61gSStN0adlnZcU3D6ghdF70jWWdf5ffXbRYcwO5TWRn1RvDr3CxLWGy9F9+8XpnlaqOZoktdq1gOrW7pFGUyP/l, amr=[pwd, mfa], iss=https://sts.windows.net/fbe00597-ca09-441a-836a-eb0dcb7c14e1/, app_displayname=aep-osgp-platform, oid=59552667-cde1-49b7-8a40-f81259d2a8e1, platf=3, xms_act_fct=9 3, xms_acd=1759145739, acrs=[p1], tid=fbe00597-ca09-441a-836a-eb0dcb7c14e1, xms_idrel=24 1, sid=00ab14f9-7798-12c4-2dd8-847272640c96, acr=1, puid=100320049E8FC495, wids=[b79fbf4d-3ef9-4689-8143-76b194e85509], xms_ftd=GJfrLgp3z6-v7KvWf7i2MisuKDeYTxVvBVPloS-6SYoBdXN3ZXN0My1kc21z, xms_st={sub=xaOC7fNNL1_lU1V64sMs4AbU2-BmZiYbUDmhuALLfAI}, exp=2025-11-22T13:18:41Z, ipaddr=168.183.135.5, xms_sub_fct=3 2, iat=2025-11-22T12:04:29Z, scp=Application.Read.All User.Read.All User.ReadBasic.All profile openid email, ver=1.0, idtyp=user, uti=3JynRyRnVkCnLsf0CUcPAA, given_name=Sourabh, xms_tnt_fct=3 4, aud=[00000003-0000-0000-c000-000000000000], tenant_region_scope=NA, unique_name=sgupt679@optumsgs.onmicrosoft.com, upn=sgupt679@optumsgs.onmicrosoft.com, nbf=2025-11-22T12:04:29Z, appidacr=1, rh=1.AUYAlwXg-wnKGkSDausNy3wU4QMAAAAAAAAAwAAAAAAAAACAAEdGAA., appid=f2b9bd65-7f5e-41d3-917f-a666f51f8d29, name=Gupta, Sourabh, family_name=Gupta, acct=0}","exception":""}
+{"timestamp":"2025-11-22T12:55:10.5146206Z","level":"DEBUG","thread":"http-nio-8080-exec-3","logger":"com.optum.fads.pgp.behavior.api.config.UserJwtAuthenticationConverter","message":"Resolved username from JWT = 'sgupt679@optumsgs.onmicrosoft.com'","exception":""}
+{"timestamp":"2025-11-22T12:55:10.5146206Z","level":"DEBUG","thread":"http-nio-8080-exec-3","logger":"com.optum.fads.pgp.behavior.api.config.UserJwtAuthenticationConverter","message":"Authorities extracted from JWT = []","exception":""}
+{"timestamp":"2025-11-22T12:55:10.5378823Z","level":"DEBUG","thread":"http-nio-8080-exec-3","logger":"com.optum.fads.pgp.behavior.api.service.impl.UserDetailsService","message":"Loading user by username/email 'sgupt679@optumsgs.onmicrosoft.com'","exception":""}
+{"timestamp":"2025-11-22T12:55:10.6917724Z","level":"WARN","thread":"http-nio-8080-exec-3","logger":"com.optum.fads.pgp.behavior.api.service.impl.UserDetailsService","message":"No user found in DB for email 'sgupt679@optumsgs.onmicrosoft.com'","exception":""}
