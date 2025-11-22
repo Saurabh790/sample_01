@@ -1,156 +1,185 @@
-server:
-  port: 8080
-  servlet:
-    context-path: /userroles   # Main app context
+package com.optum.fads.pgp.behavior.api.config;
 
-spring:
-  application:
-    name: fads-userroles-api
-
-  datasource:
-    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db
-    username: sqladmin@sql-pi-dev-cus-001
-    password: 'wjGbF#''P9Hrt=}[BnAZ8aT'
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETECTION_THRESHOLD:0}
-	  
-	  
-  azure:
-        keyvault:
-          secrets:
-            endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
-            # endpoint: https://kv-anly-pi-tst-cus-001.vault.azure.net/
-          credential:
-            client-id: 
-            client-secret: 
-            tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
-            # client-id: cec3005b-b518-48c6-b67e-cde75d6864a5
-            # client-secret: 
-            # tenant-id: 
-
-  jpa:
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        globally_quoted_identifiers: true
-    database-platform: org.hibernate.dialect.SQLServer2016Dialect
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
-          jws-algorithms:
-            - RS256
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-  endpoint:
-    health:
-      show-details: always
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-
-logging:
-  level:
-    org.springframework.web: INFO
-    org.springframework.security: INFO
-
----
-spring:
-  config:
-    activate:
-      on-profile: build
-
-logging:
-  level:
-    root: INFO
-
-
-please arrange this application yam syntax wise and check below file is fine as per all configuration
-	package com.optum.fads.userroles.api.config;
-
-
-import javax.sql.DataSource;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 
-import com.azure.security.keyvault.secrets.SecretClient;
+import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
 
-@Configuration
-@EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.optum.fads.authorization.api.repo")
-@ComponentScan(basePackages = { "com.optum.fads.authorization.api" })
-public class ServiceConfig 
-{
-    private static final Logger logger =
-            LoggerFactory.getLogger(ServiceConfig.class);
+public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
-    @Value("${spring.datasource.userName}")
-    private String userName;
+    private static final Logger log = LoggerFactory.getLogger(UserJwtAuthenticationConverter.class);
 
-    @Value("${spring.datasource.password}")
-    private String password;
+    private static final String GROUPS_CLAIM = "groups";
+    private static final String ROLE_PREFIX = "ROLE_";
 
-    @Value("${spring.datasource.url}")
-    private String url;
+    private final IUserDetailsService userDetailsService;
 
-    @Value("${spring.datasource.driver-class-name}")
-    private String driverClassName;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfig(SecretClient secretClient) {
-        this.secretClient = secretClient;
+    public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
     }
 
-	@Bean(name = "fadsDataSource")
-    @Primary // Mark this as the primary DataSource
-	public DataSource customDataSource() {
+    @Override
+    public AbstractAuthenticationToken convert(Jwt jwt) {
+        log.debug("Converting JWT to Authentication. Claims = {}", jwt.getClaims());
 
-        logger.info("Initializing custom DataSource bean");
+        Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
 
-        try{
-        String userNameValue = secretClient.getSecret(userName).getValue();
-        logger.info("UserName **** : " + userNameValue);
-        String passwordValue = secretClient.getSecret(password).getValue();
+        String username = getUniqueID(jwt);
+        log.debug("Resolved username from JWT = '{}'", username);
 
-        logger.debug("Building DriverManagerDataSource with provided configuration");
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName(driverClassName);
-        dataSource.setUsername(userNameValue);
-        dataSource.setPassword(passwordValue);
-        dataSource.setUrl(url);
+        return Optional.ofNullable(userDetailsService.loadUserByUsername(username))
+                .map(u -> {
+                    log.debug("Successfully loaded user '{}' from UserDetailsService", username);
+                    return new UsernamePasswordAuthenticationToken(u, "n/a", authorities);
+                })
+                .orElseThrow(() -> {
+                    log.error("Authentication failed. No user found for '{}'", username);
+                    return new BadCredentialsException("No user found");
+                });
+    }
 
-        logger.info("DataSource bean created successfully");
-        return dataSource;
+    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+        return this.getGroups(jwt).stream()
+                .map(authority -> ROLE_PREFIX + authority.toUpperCase())
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
 
-        } catch (Exception e) {
-        logger.error("Failed to create DataSource bean", e);
-        throw new RuntimeException("Error initializing DataSource", e);
+    @SuppressWarnings("unchecked")
+    private Collection<String> getGroups(Jwt jwt) {
+        Object groups = jwt.getClaims().get(GROUPS_CLAIM);
+        if (groups instanceof Collection) {
+            return (Collection<String>) groups;
         }
+        return Collections.emptyList();
+    }
 
+    /**
+     * Option B: Use UPN/email/unique_name/sub in priority order
+     */
+    private String getUniqueID(Jwt jwt) {
+        return Stream.of(
+                        jwt.getClaimAsString("upn"),
+                        jwt.getClaimAsString("unique_name"),
+                        jwt.getClaimAsString("email"),
+                        jwt.getClaimAsString("preferred_username"),
+                        jwt.getClaimAsString("sub")
+                )
+                .filter(v -> v != null && !v.isBlank())
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.error("No valid claim (upn/email/unique_name/sub) found in JWT");
+                    return new BadCredentialsException("Invalid token - no identity claim");
+                });
     }
 }
+
+
+
+
+
+
+
+package com.optum.fads.pgp.behavior.api.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.AccessLevel;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.dto.ModuleAccess;
+import com.optum.fads.pgp.behavior.api.dto.Role;
+import com.optum.fads.pgp.behavior.api.repo.UserRepository;
+import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+
+@Service
+public class UserDetailsService implements IUserDetailsService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+
+        log.debug("Loading user by username/email '{}'", username);
+
+        Optional<UiUserBase> optional = userRepository.findByUiEMailAddressIgnoreCase(username);
+
+        if (optional.isEmpty()) {
+            log.debug("No user found by email '{}', trying userId lookup...", username);
+            optional = userRepository.findByUiUserIdIgnoreCase(username);
+        }
+
+        UiUserBase uiUserBase = optional.orElseThrow(() -> {
+            log.warn("No user found in DB for '{}'", username);
+            return new UsernameNotFoundException("Not found: " + username);
+        });
+
+        log.debug("Found user in DB: uiUserId={}, uiSystemId={}, email={}",
+                uiUserBase.getUiUserId(),
+                uiUserBase.getUiSystemId(),
+                uiUserBase.getUiEMailAddress());
+
+        // Build AppUser
+        AppUser user = new AppUser();
+        user.setUserEmail(uiUserBase.getUiEMailAddress());
+        user.setUserId(uiUserBase.getUiUserId());
+        user.setUserSystemId(uiUserBase.getUiSystemId());
+
+        Role role = new Role();
+        role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
+        role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
+
+        List<SeSurGrpModAccess> surAccesses =
+                uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
+
+        List<AccessLevel> accesses = new ArrayList<>();
+        surAccesses.forEach(surModuleAccess -> {
+            accesses.add(new AccessLevel(
+                    surModuleAccess.getId().getSurModuleId(),
+                    ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+                    surModuleAccess.getSeSurModule().getSurModuleName(),
+                    surModuleAccess.getSeSurAccess().getSurAccessId()
+            ));
+        });
+
+        role.setAllowedAccesses(accesses);
+        user.setRole(role);
+
+        log.debug("Built AppUser '{}' with {} access entries", username, accesses.size());
+        return user;
+    }
+}
+
+
+
+Optional<UiUserBase> findByUiEMailAddressIgnoreCase(String email);
+
+Optional<UiUserBase> findByUiUserIdIgnoreCase(String userId);
