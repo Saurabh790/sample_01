@@ -1,50 +1,108 @@
-package com.optum.fads.authorization.api.dto;
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false">
 
-import lombok.*;
-import java.io.Serializable;
+    <springProperty name="application.name" source="spring.application.name" defaultValue="behavior"/>
+    <springProperty name="audit.application.name" source="audit.application.name" defaultValue="${application.name}"/>
+    <springProperty name="audit.log.type" source="audit.log.type" defaultValue="APPLICATION"/>
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class FadsRole implements Serializable {
-    private static final long serialVersionUID = 1L;
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%t] %-40.40logger{39} : %m%n%wEx"/>
 
-    private long groupId;
-    private String groupName;
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <property name="LOG_FILE" value="${LOG_FILE:-${java.io.tmpdir:-/tmp}/spring.log}"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
 
-    // if later you store permissions list, they must also be Serializable
-}
-2. Update your Role DTO (DO NOT change other fields!)
-Just add Serializable and UID:
 
-java
-Copy code
-package com.optum.fads.authorization.api.dto;
+    <!-- ==========================
+         AUDIT APPENDER
+         ========================== -->
+    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
 
-import org.springframework.security.core.GrantedAuthority;
-import lombok.*;
-import java.io.Serializable;
+        <file>logs/${application.name}/audit/${application.name}_audit.log</file>
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class Role implements GrantedAuthority, Serializable {
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/${application.name}/audit/${application.name}_audit.log.%i</fileNamePattern>
+        </rollingPolicy>
 
-    private static final long serialVersionUID = 1L;
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10MB</maxFileSize>
+        </triggeringPolicy>
 
-    private long groupId;
-    private String roleName;
+        <!-- FIXED: escape &amp;&amp; -->
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.JaninoEventEvaluator">
+                <expression>
+                    return (level >= INFO &amp;&amp; logger.equals("AUDIT"))
+                        || (level >= ERROR &amp;&amp; logger.startsWith("com.optum.fads.study"));
+                </expression>
+            </evaluator>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
 
-    private CaseRole caseRole;
-    private PgpRole pgpRole;
-    private FadsRole fadsRole; // ✅ Sonar is now happy
+        <encoder>
+            <pattern>
+                %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%level|${audit.application.name}|${audit.log.type}|%X{clientIp}|%X{sourceIp}|%X{userId}|%X{authorizedUser} %msg%n
+            </pattern>
+        </encoder>
 
-    @Override
-    public String getAuthority() {
-        return roleName;
-    }
-}
+    </appender>
+
+
+    <!-- ==========================
+         JSON APPENDER
+         ========================== -->
+    <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <file>logs/${application.name}/json/${application.name}_json.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>logs/${application.name}/json/${application.name}_json.log.%i</fileNamePattern>
+        </rollingPolicy>
+
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>10MB</maxFileSize>
+        </triggeringPolicy>
+
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+
+                <timestamp>
+                    <fieldName>timestamp</fieldName>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+
+                <pattern>
+                    <pattern>
+                        {
+                          "level": "%level",
+                          "thread": "%thread",
+                          "logger": "%logger",
+                          "message": "%message",
+                          "exception": "%wEx"
+                        }
+                    </pattern>
+                </pattern>
+
+            </providers>
+        </encoder>
+
+    </appender>
+
+
+    <!-- ==========================
+         ROOT LOGGER
+         ========================== -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="AUDIT"/>
+        <appender-ref ref="JSON"/>
+    </root>
+
+    <logger name="org.springframework.security" level="DEBUG"/>
+    <logger name="org.springframework.security.oauth2" level="DEBUG"/>
+    <logger name="com.optum.fads.pgp.behavior.api" level="DEBUG"/>
+
+</configuration>
