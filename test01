@@ -1,185 +1,131 @@
-package com.optum.fads.pgp.behavior.api.config;
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+    <modelVersion>4.0.0</modelVersion>
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-datarules-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.7</version>
+    </parent>
 
-public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+    <properties>
+        <java.version>17</java.version>
+        <spring.boot.version>3.4.7</spring.boot.version>
 
-    private static final Logger log = LoggerFactory.getLogger(UserJwtAuthenticationConverter.class);
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <modelmapper.version>3.1.1</modelmapper.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <logback.encoder.version>7.4</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
 
-    private static final String GROUPS_CLAIM = "groups";
-    private static final String ROLE_PREFIX = "ROLE_";
+        <!-- ✅ Security fixed versions -->
+        <netty.version>4.1.125.Final</netty.version>
+        <reactor-netty.version>1.2.8</reactor-netty.version>
+        <spring.framework.version>6.2.11</spring.framework.version>
+    </properties>
 
-    private final IUserDetailsService userDetailsService;
+    <!-- ✅ CENTRALIZED SECURE VERSION CONTROL -->
+    <dependencyManagement>
+        <dependencies>
 
-    public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
-    @Override
-    public AbstractAuthenticationToken convert(Jwt jwt) {
-        log.debug("Converting JWT to Authentication. Claims = {}", jwt.getClaims());
+            <!-- ✅ Fixes CVE-2025-41249 -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring.framework.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
-        Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
+            <!-- ✅ Fixes Netty CVEs -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
-        String username = getUniqueID(jwt);
-        log.debug("Resolved username from JWT = '{}'", username);
+        </dependencies>
+    </dependencyManagement>
 
-        return Optional.ofNullable(userDetailsService.loadUserByUsername(username))
-                .map(u -> {
-                    log.debug("Successfully loaded user '{}' from UserDetailsService", username);
-                    return new UsernamePasswordAuthenticationToken(u, "n/a", authorities);
-                })
-                .orElseThrow(() -> {
-                    log.error("Authentication failed. No user found for '{}'", username);
-                    return new BadCredentialsException("No user found");
-                });
-    }
+    <dependencies>
 
-    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        return this.getGroups(jwt).stream()
-                .map(authority -> ROLE_PREFIX + authority.toUpperCase())
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
-    }
+        <!-- ✅ SPRING -->
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-validation</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
 
-    @SuppressWarnings("unchecked")
-    private Collection<String> getGroups(Jwt jwt) {
-        Object groups = jwt.getClaims().get(GROUPS_CLAIM);
-        if (groups instanceof Collection) {
-            return (Collection<String>) groups;
-        }
-        return Collections.emptyList();
-    }
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-reactor-netty</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
-    /**
-     * Option B: Use UPN/email/unique_name/sub in priority order
-     */
-    private String getUniqueID(Jwt jwt) {
-        return Stream.of(
-                        jwt.getClaimAsString("upn"),
-                        jwt.getClaimAsString("unique_name"),
-                        jwt.getClaimAsString("email"),
-                        jwt.getClaimAsString("preferred_username"),
-                        jwt.getClaimAsString("sub")
-                )
-                .filter(v -> v != null && !v.isBlank())
-                .findFirst()
-                .orElseThrow(() -> {
-                    log.error("No valid claim (upn/email/unique_name/sub) found in JWT");
-                    return new BadCredentialsException("Invalid token - no identity claim");
-                });
-    }
-}
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-jpa</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
 
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-oauth2-resource-server</artifactId></dependency>
+        <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-oauth2-jose</artifactId></dependency>
 
+        <!-- ✅ Fixes CVE-2025-53864 -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>9.37.4</version>
+        </dependency>
 
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
 
+        <!-- ✅ LOGGING (Fixed CVE-2025-11226) -->
+        <dependency><groupId>net.logstash.logback</groupId><artifactId>logstash-logback-encoder</artifactId><version>${logback.encoder.version}</version></dependency>
+        <dependency><groupId>ch.qos.logback</groupId><artifactId>logback-classic</artifactId><version>1.5.19</version></dependency>
+        <dependency><groupId>ch.qos.logback</groupId><artifactId>logback-core</artifactId><version>1.5.19</version></dependency>
 
+        <!-- ✅ UTILITIES -->
+        <dependency><groupId>org.apache.commons</groupId><artifactId>commons-lang3</artifactId><version>3.18.0</version></dependency>
+        <dependency><groupId>org.modelmapper</groupId><artifactId>modelmapper</artifactId><version>${modelmapper.version}</version></dependency>
+        <dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><scope>provided</scope></dependency>
 
+        <!-- ✅ DATABASE -->
+        <dependency><groupId>com.microsoft.sqlserver</groupId><artifactId>mssql-jdbc</artifactId></dependency>
+        <dependency><groupId>org.yaml</groupId><artifactId>snakeyaml</artifactId></dependency>
 
-package com.optum.fads.pgp.behavior.api.service.impl;
+        <!-- ✅ REACTOR + NETTY -->
+        <dependency><groupId>io.projectreactor.netty</groupId><artifactId>reactor-netty-http</artifactId><version>${reactor-netty.version}</version></dependency>
+        <dependency><groupId>io.projectreactor.netty</groupId><artifactId>reactor-netty-core</artifactId><version>${reactor-netty.version}</version></dependency>
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+        <dependency><groupId>io.netty</groupId><artifactId>netty-codec-http2</artifactId></dependency>
+        <dependency><groupId>io.netty</groupId><artifactId>netty-handler</artifactId></dependency>
+        <dependency><groupId>io.netty</groupId><artifactId>netty-codec-http</artifactId></dependency>
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+        <!-- ✅ TESTING -->
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>org.mockito</groupId><artifactId>mockito-core</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>io.rest-assured</groupId><artifactId>rest-assured</artifactId><scope>test</scope></dependency>
 
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.AccessLevel;
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.dto.ModuleAccess;
-import com.optum.fads.pgp.behavior.api.dto.Role;
-import com.optum.fads.pgp.behavior.api.repo.UserRepository;
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+    </dependencies>
 
-@Service
-public class UserDetailsService implements IUserDetailsService {
-
-    private static final Logger log = LoggerFactory.getLogger(UserDetailsService.class);
-
-    @Autowired
-    UserRepository userRepository;
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-
-        log.debug("Loading user by username/email '{}'", username);
-
-        Optional<UiUserBase> optional = userRepository.findByUiEMailAddressIgnoreCase(username);
-
-        if (optional.isEmpty()) {
-            log.debug("No user found by email '{}', trying userId lookup...", username);
-            optional = userRepository.findByUiUserIdIgnoreCase(username);
-        }
-
-        UiUserBase uiUserBase = optional.orElseThrow(() -> {
-            log.warn("No user found in DB for '{}'", username);
-            return new UsernameNotFoundException("Not found: " + username);
-        });
-
-        log.debug("Found user in DB: uiUserId={}, uiSystemId={}, email={}",
-                uiUserBase.getUiUserId(),
-                uiUserBase.getUiSystemId(),
-                uiUserBase.getUiEMailAddress());
-
-        // Build AppUser
-        AppUser user = new AppUser();
-        user.setUserEmail(uiUserBase.getUiEMailAddress());
-        user.setUserId(uiUserBase.getUiUserId());
-        user.setUserSystemId(uiUserBase.getUiSystemId());
-
-        Role role = new Role();
-        role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
-        role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
-
-        List<SeSurGrpModAccess> surAccesses =
-                uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
-
-        List<AccessLevel> accesses = new ArrayList<>();
-        surAccesses.forEach(surModuleAccess -> {
-            accesses.add(new AccessLevel(
-                    surModuleAccess.getId().getSurModuleId(),
-                    ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
-                    surModuleAccess.getSeSurModule().getSurModuleName(),
-                    surModuleAccess.getSeSurAccess().getSurAccessId()
-            ));
-        });
-
-        role.setAllowedAccesses(accesses);
-        user.setRole(role);
-
-        log.debug("Built AppUser '{}' with {} access entries", username, accesses.size());
-        return user;
-    }
-}
-
-
-
-Optional<UiUserBase> findByUiEMailAddressIgnoreCase(String email);
-
-Optional<UiUserBase> findByUiUserIdIgnoreCase(String userId);
+</project>
