@@ -1,317 +1,66 @@
-server:
-  port: 8080
-  servlet:
-    contextPath: /caseentrybatch
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
+package com.optum.fads.userroles.api.controllers;
 
-spring: 
-  application:
-   name: caseentrybatch
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: ${AZURE_KV_URL}
-        credential:
-          client-id: ${AZURE_KV_CLIENT_ID}
-          client-secret: ${AZURE_KV_CLIENT_SECRET}
-          tenant-id: ${AZURE_TENANT_ID}  
-  jpa:
-    database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.optum.fads.userroles.api.dto.UserHistoryResponse;
+import com.optum.fads.userroles.api.service.IUserHistory;
+
+@RestController
+public class UserRolesHistoryController {
+
+    private static final String DEFAULT_SORT_FIELD = "changeDt";
     
-  datasource:
-     hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-     sql:
-       type: com.zaxxer.hikari.HikariDataSource
-       jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
-       userName: fads_dev
-       password: qAut9fM.S!g3?385
-       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-       jpa:
-           database-platform: org.hibernate.dialect.SQLServer2016Dialect
-           database: SQL_SERVER 
-           format-sql: true
-           globally_quoted_identifiers: true
-           show-sql: true
-           hibernate:
-              use-new-id-generator-mappings: true
-              globally_quoted_identifiers: true
-              hibernate.allow_update_outside_transaction: true
-              naming:
-                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
-     snfk:
-        type: com.zaxxer.hikari.HikariDataSource
-        driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
-        jdbcUrl: ${SNFK_DB_URL}
-        database: ${SNFK_DATABASE}
-        userName: ${SNFK_USR}
-        password: ${SNFK_PWD}
-        certKey: ${SNFK_CERT_KEY}
-        passphrase: ${SNFK_CERT_PASSPHRASE}
-        schema: ${SNFK_SCHEMA}
-        warehouse: ${SNFK_WAREHOUSE}
-        role: ${SNFK_ROLE}
-        account: ${SNFK_ACCOUNT}
-        jpa:
-            database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
-            database: default 
-            format-sql: true
-            globally_quoted_identifiers: true
-            show-sql: true
-            hibernate:
-               use-new-id-generator-mappings: true
-               globally_quoted_identifiers: true
-               naming:
-                     implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-                     physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
-  quartz:
-    properties:
-      org:
-        quartz:
-          threadPool:
-            class: org.quartz.simpl.SimpleThreadPool
-            threadCount: 3      
-management:
-  endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          jwk-set-uri: ${JWKS_URL}
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
-db:
-  snfk-login:
-    useCert: ${USE_CERT:false}
-	
-	
-	package com.optum.fads.caseentrybatch.api.config;
+    private final IUserHistory userHistoryService;
 
-import java.io.IOException;
-import java.security.PrivateKey;
-import java.util.HashMap;
-import java.util.Properties;
-import jakarta.persistence.EntityManagerFactory;
-import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.sql.DataSource;
-import org.bouncycastle.pkcs.PKCSException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.zaxxer.hikari.HikariDataSource;
-
-/**
- * @author sbajaj8
- *
- */
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "snfkEntityManagerFactory",
-						transactionManagerRef = "txManagerSnFk",
-						basePackages = {"com.optum.fads.caseentrybatch.api.snowflakeRepo"}
-						)
-public class ServiceConfig 
-{
-    private static final Logger logger =
-            LoggerFactory.getLogger(ServiceConfig.class);
-
-	
-	@Value("${spring.datasource.snfk.jdbcUrl}")
-    private String url;
-
-    @Value("${spring.datasource.snfk.userName}")
-    private String username;
-
-    @Value("${spring.datasource.snfk.password}")
-    private String password;
-
-    @Value("${spring.datasource.snfk.certKey}")
-    private String certKey;
-
-    @Value("${spring.datasource.snfk.passphrase}")
-    private String passphrase;
-
-    @Value("${spring.datasource.snfk.database}")
-    private String database;
-
-    @Value("${spring.datasource.snfk.schema}")
-    private String schema;
-
-    @Value("${spring.datasource.snfk.warehouse}")
-    private String warehouse;
-
-    @Value("${spring.datasource.snfk.account}")
-    private String account;
-    
-    @Value("${spring.datasource.snfk.role}")
-    private String role;
-
-    @Value("${db.snfk-login.useCert}")
-    private Boolean useCert;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfig(SecretClient secretClient) {
-        this.secretClient = secretClient;
+    public UserRolesHistoryController(IUserHistory userHistoryService) {
+        this.userHistoryService = userHistoryService;
     }
-	
-    @Primary
-	@Bean(name="fadsDataSource")
-    public DataSource customDataSource() throws Exception, IOException {
-        if(useCert){
-            String pemContent = secretClient.getSecret(certKey).getValue();
-            logger.info("snowflake login using certificate");
 
-            char[] password = secretClient.getSecret(passphrase).getValue()  != null ? secretClient.getSecret(passphrase).getValue().toCharArray() : null;
-            PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pemContent, password);
-            // Add more logging
-            logger.info("Private key class: {}", privateKey.getClass().getName());
-            logger.info("Private key implements RSAPrivateCrtKey? {}", privateKey instanceof java.security.interfaces.RSAPrivateCrtKey);
-
-            SnowflakeBasicDataSource dataSource = new SnowflakeBasicDataSource();
-
-            dataSource.setUrl(url);
-            dataSource.setDatabaseName(database);
-            dataSource.setSchema(schema);
-            dataSource.setWarehouse(warehouse);
-            if(account != null && !account.isEmpty()) {
-                dataSource.setAccount(account);
-            }
-            if(role != null && !role.isEmpty()) {
-                dataSource.setRole(role);
-            }
-
-            dataSource.setUser(username);
-            dataSource.setPrivateKey(privateKey);
-
-            HikariDataSource hikariDs = new HikariDataSource();
-            hikariDs.setDataSource(dataSource);
-
-            return hikariDs;
-
-        } else {
-            String user = secretClient.getSecret(username).getValue();
-            String pass = secretClient.getSecret(password).getValue();
-            logger.info("snowflake login using username and password");
-            Properties props = new Properties();
-            props.put("user", user);
-            props.put("password", pass);
-            props.put("database", database);
-            props.put("schema", schema);
-            props.put("warehouse", warehouse);
-            if(role != null && !role.isEmpty()){
-                props.put("role", role);
-            }
-            if(account != null && !account.isEmpty()){
-                props.put("account", account);
-            }
-            return new DriverManagerDataSource(url, props);
-        }
-
+    @GetMapping("/api/getUserHistory")
+    public UserHistoryResponse getAllUserHistory(
+            @RequestParam(defaultValue = "1") int pageNumber,
+            @RequestParam(defaultValue = "10") int recordsPerPage,
+            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
+            @RequestParam(defaultValue = "-1") int sortOrder,
+            @RequestParam(required = false) String searchBy,
+            @RequestParam(required = false) String searchInput) {
+        
+        // Map DTO field names to entity field names
+        String entitySortField = mapToEntityField(sortBy);
+        
+        // Create Sort object based on sortBy and sortOrder
+        Sort.Direction direction = sortOrder == -1 ? Sort.Direction.DESC : Sort.Direction.ASC;
+        Sort sort = Sort.by(direction, entitySortField);
+        
+        // Convert to zero-based page index for Spring Data
+        Pageable pageable = PageRequest.of(pageNumber - 1, recordsPerPage, sort);
+        
+        // Call service with search parameters
+        return userHistoryService.getAllUserHistory(pageable, searchBy, searchInput);
     }
-	
-    @Primary
-	@Bean("snfkEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean 
-    snfkEntityManagerFactory( ) throws IOException, PKCSException, Exception
-	 {
-	  LocalContainerEntityManagerFactoryBean em
-	          = new LocalContainerEntityManagerFactoryBean();
-	        em.setDataSource(customDataSource());
-	        em.setPackagesToScan(
-	          new String[] { "com.optum.fads.caseentrybatch.api.snowflakeDomain" });
-	        HibernateJpaVendorAdapter vendorAdapter
-	          = new HibernateJpaVendorAdapter();
-	        em.setJpaVendorAdapter(vendorAdapter);
-	        HashMap<String, Object> properties = new HashMap<>();
-	        properties.put("hibernate.allow_update_outside_transaction",true);
-	        properties.put("hibernate.dialect", "com.optum.fads.caseentrybatch.api.config.SnowflakeDialect");
-	        em.setJpaPropertyMap(properties);
-	    return em;
-	}
-	
-    @Primary
-	@Bean ("txManagerSnFk")
-	@Autowired
-	public PlatformTransactionManager txManagerSnFk(@Qualifier("snfkEntityManagerFactory")EntityManagerFactory snfkEntityManagerFactory) throws IOException, PKCSException, Exception
-	 {
-    	JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(snfkEntityManagerFactory().getObject());
-        return txManager;
-	 }
 
-    @Bean(name = "jdbcSnowflake")
-    @Autowired
-    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsDataSource") DataSource dsSlave) {
-        return new JdbcTemplate(dsSlave);
+    /**
+     * Maps DTO field names to entity field names for sorting
+     */
+    private String mapToEntityField(String dtoField) {
+        return switch (dtoField) {
+            case "histSeqNum" -> "id.histSeqNum";
+            case "changeUsr" -> "changeUsr.uiSystemId";
+            case "uiSystemId" -> "uiSystem.uiSystemId";
+            case "fadsGrpName" -> "fadsGrp.fadsGrpName";
+            case "fadsSurGrpName" -> "fadsSurGrp.surGrpName";
+            case "fadsCaseGrpName" -> "fadsCaseGrp.caseGrpName";
+            case "uiUserId" -> "uiUserId";
+            case "uiLastName" -> "uiLastName";
+            case "uiFirstName" -> "uiFirstName";
+            case "uiEmailAddress" -> "uiEMailAddress";
+            case DEFAULT_SORT_FIELD -> DEFAULT_SORT_FIELD;
+            default -> DEFAULT_SORT_FIELD; // default sort field
+        };
     }
-	}
-
-
-	
-
-k' must not be declared as autowired; remove the method-level @Autowired annotation.
-Offending resource: class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]
-2025-12-03T17:27:08.002+05:30  INFO 24768 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
-
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2025-12-03T17:27:08.030+05:30 ERROR 24768 --- [           main] o.s.boot.SpringApplication               : Application run failed
-
-org.springframework.beans.factory.parsing.BeanDefinitionParsingException: Configuration problem: @Bean method 'txManagerSnFk' must not be declared as autowired; remove the method-level @Autowired annotation.
-Offending resource: class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]
-        at org.springframework.beans.factory.parsing.FailFastProblemReporter.error(FailFastProblemReporter.java:72)
-        at org.springframework.context.annotation.BeanMethod.validate(BeanMethod.java:52)
-        at org.springframework.context.annotation.ConfigurationClass.validate(ConfigurationClass.java:242)
-        at org.springframework.context.annotation.ConfigurationClassParser.validate(ConfigurationClassParser.java:228)
-        at org.springframework.context.annotation.ConfigurationClassPostProcessor.processConfigBeanDefinitions(ConfigurationClassPostProcessor.java:419)
-        at org.springframework.context.annotation.ConfigurationClassPostProcessor.postProcessBeanDefinitionRegistry(ConfigurationClassPostProcessor.java:290)
-        at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanDefinitionRegistryPostProcessors(PostProcessorRegistrationDelegate.java:349)
-        at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(PostProcessorRegistrationDelegate.java:118)
-        at org.springframework.context.support.AbstractApplicationContext.invokeBeanFactoryPostProcessors(AbstractApplicationContext.java:791)
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:609)
-        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-        at com.optum.fads.caseentrybatch.api.CaseEntryBatchApplication.main(CaseEntryBatchApplication.java:29)
+}
