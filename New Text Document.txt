@@ -1,3 +1,42 @@
+<!-- Remove this OLD dependency -->
+<!--
+<dependency>
+    <groupId>commons-lang</groupId>
+    <artifactId>commons-lang</artifactId>
+    <version>2.6</version>
+</dependency>
+-->
+
+<!-- Add this instead -->
+<dependency>
+    <groupId>org.apache.commons</groupId>
+    <artifactId>commons-lang3</artifactId>
+    <version>3.18.0</version> <!-- or newer -->
+</dependency>
+
+
+<dependency>
+    <groupId>com.microsoft.sqlserver</groupId>
+    <artifactId>mssql-jdbc</artifactId>
+    <version>12.10.2.jre11</version> <!-- or 13.2.1.jre11+ -->
+</dependency>
+CVE-2025-48924,CVE-2025-59250
+
+
+
+as per above fix i  tried in all repos some it fixed in others it could not
+
+as below 
+
+Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
+CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:24:11.6594488Z	FixAvailable	fads-case-entry-batch	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-batch/images/sha256:9fd90d5dbc8345e46995f6ff0160748d45180f1f9f2d48deac3c449d51956a11
+CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:22:47.5251482Z	FixAvailable	fads-case-reminders-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-reminders-api/images/sha256:aa239c9ff3fbe0167a6eed4a83a5de0238dabc708076aa4940d1d6829eb3cb0a
+CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:23:40.4850944Z	FixAvailable	fads-case-entry-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-api/images/sha256:253dd97aa50316647da42b0b2d5c1137dd8615924d3256ffe264042ff475a49e
+CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:23:40.4850944Z	FixAvailable	fads-case-entry-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-api/images/sha256:253dd97aa50316647da42b0b2d5c1137dd8615924d3256ffe264042ff475a49e
+
+
+and why showing 2 time CVE-2025-48924 this for same api below is case entry api pom
+
 <?xml version="1.0" encoding="UTF-8"?>
 <project
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -7,7 +46,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.optum.fads</groupId>
-    <artifactId>fads-case-alerts-api</artifactId>
+    <artifactId>fads-case-entry-api</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
@@ -26,36 +65,38 @@
         </repository>
     </repositories>
 
+
     <properties>
         <maven.test.skip>false</maven.test.skip>
         <skipTests>${maven.test.skip}</skipTests>
         <surefire.skip>${skipTests}</surefire.skip>
         <failsafe.skip>${skipTests}</failsafe.skip>
-        <log4j2.version>2.17.2</log4j2.version>
+
         <java.version>17</java.version>
         <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2025.0.0</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
-        <modelmapper.version>2.3.0</modelmapper.version>
+        <spring.cloud.version>2023.0.3</spring.cloud.version>
+        <jackson.version>2.16.3</jackson.version>
+        <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
+        <jasypt.version>2.1.1</jasypt.version>
+        <jwt.version>4.0.0</jwt.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
         <jacoco.version>0.8.10</jacoco.version>
         <springrunner.version>0.1.0</springrunner.version>
         <guava.version>32.1.2-jre</guava.version>
         <logback.encoder.version>7.4</logback.encoder.version>
         <lombok.version>1.18.28</lombok.version>
-        <restassured.version>3.3.0</restassured.version>
-        <mockito.version>5.3.1</mockito.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-        <log4j.version>2.17.1</log4j.version>
-        <snakeyaml.version>2.2</snakeyaml.version>
-        <hibernate.core.version>6.2.3.Final</hibernate.core.version>
+        <restassured.version>5.4.0</restassured.version>
+        <log4j.version>2.24.3</log4j.version>
         <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <bcp.version>1.67</bcp.version>
+        <snakeyaml.version>2.4</snakeyaml.version>
+        <netty.version>4.1.125.Final</netty.version>
+        <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
         <sonar.coverage.exclusions>
-            **/com/optum/fads/casealerts.api/**,
+            **/com/optum/fads/caseentry.api/**,
         </sonar.coverage.exclusions>
-        <bcp.version>1.68</bcp.version>
-        <logback.version>1.5.19</logback.version>
     </properties>
 
     <dependencyManagement>
@@ -91,94 +132,80 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
-            <version>${spring.boot.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>10.1.49</version>
         </dependency>
 
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>${logback.version}</version>
         </dependency>
-
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
-            <version>${logback.version}</version>
+            <version>1.5.20</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-tomcat</artifactId>
-            <version>${spring.boot.version}</version>
+            <scope>compile</scope>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <version>${spring.boot.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
-            <version>${spring.boot.version}</version>
-        </dependency>
-<dependency>
-    <groupId>org.apache.tomcat.embed</groupId>
-    <artifactId>tomcat-embed-core</artifactId>
-    <version>10.1.44</version>
-</dependency>
-        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-            <version>${spring.boot.version}</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-email -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-bom</artifactId>
+            <version>${netty.version}</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-compression</artifactId>
+            <version>4.2.5.Final</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
-            <artifactId>commons-email</artifactId>
-            <version>1.5</version>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version> 
         </dependency>
-
-        <dependency>
-            <groupId>org.hibernate.javax.persistence</groupId>
-            <artifactId>hibernate-jpa-2.1-api</artifactId>
-            <version>1.0.2.Final</version>
-        </dependency>
-
-		<!-- Micrometer Prometheus registry  -->
-		<dependency>
-		    <groupId>io.micrometer</groupId>
-		    <artifactId>micrometer-registry-prometheus</artifactId>
-		</dependency>
-
-        <!-- Password Encryption -->
-        <dependency>
-            <groupId>com.github.ulisesbocchio</groupId>
-            <artifactId>jasypt-spring-boot-starter</artifactId>
-            <version>${jasypt.version}</version>
-        </dependency>
-
-        <!-- JWT -->
-        <dependency>
-            <groupId>com.auth0</groupId>
-            <artifactId>java-jwt</artifactId>
-            <version>${jwt.version}</version>
-        </dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt</artifactId>
-			<version>0.9.1</version>
-		</dependency>
-
-    <dependency>
-		    <groupId>org.apache.httpcomponents</groupId>
-		    <artifactId>httpclient</artifactId>
-		    <version>4.5.14</version>
-		</dependency>
-
 
         <!-- Model Mapper -->
         <dependency>
@@ -186,30 +213,21 @@
             <artifactId>modelmapper</artifactId>
             <version>${modelmapper.version}</version>
         </dependency>
+
+        <!-- Jackson -->
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
 
         <!--Used in Getter/Setter Verifier @NonNull  -->
         <dependency>
@@ -225,6 +243,11 @@
             <version>2.6</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.14.0</version>
+        </dependency>
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -232,32 +255,38 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- JSON logging-->
+        <!-- https://mvnrepository.com/artifact/org.apache.poi/POI -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.3.0</version>
+        </dependency>
+
+
+        <!-- Snowflake dependency -->
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
+
+        <!-- JSON logging -->
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
             <version>${logback.encoder.version}</version>
             <scope>runtime</scope>
         </dependency>
-
         <dependency>
             <groupId>org.codehaus.janino</groupId>
             <artifactId>janino</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
-        <dependency>
-            <groupId>org.codehaus.jettison</groupId>
-            <artifactId>jettison</artifactId>
-            <version>1.5.4</version>
-        </dependency>
-
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <version>${spring.boot.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -265,12 +294,6 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-quartz</artifactId>
-            <version>${spring.boot.version}</version>
         </dependency>
 
         <dependency>
@@ -287,6 +310,7 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Before After Spring Test Runner -->
 
         <dependency>
             <groupId>io.rest-assured</groupId>
@@ -295,40 +319,27 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-            <version>${spring.boot.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.data</groupId>
             <artifactId>spring-data-commons</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-test</artifactId>
-            <version>${spring.boot.version}</version>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context-support</artifactId>
         </dependency>
-
-        <!-- Quartz-Java dependency Remediation Upgrade  -->
-        <dependency>
-            <groupId>org.quartz-scheduler</groupId>
-            <artifactId>quartz</artifactId>
-        </dependency>
-
+        <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc -->
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version> 
         </dependency>
-
 
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
             <version>${snakeyaml.version}</version>
         </dependency>
-
+  
     </dependencies>
 
     <build>
@@ -374,7 +385,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -409,7 +419,7 @@
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>6.0.0</version>
+                <version>9.0.1</version>
                 <executions>
                     <execution>
                         <id>get-the-git-infos</id>
@@ -481,8 +491,14 @@
 
 
 
-Subscription name	Resource	Resource group	Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
-4c79197b-4ace-42fa-ad86-4bc4b12c9804	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourcegroups/anly-pi-dev/providers/microsoft.containerregistry/registries/crosgspidev	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourceGroups/anly-pi-dev	CVE-2024-12797	11/2/2025 0:00	2025-11-25T14:11:47.7833783Z	FixAvailable	fads-case-alerts-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-alerts-api/images/sha256:2df73a73cac44381bfd70a06397af34af06dd09c1030e22c163bef2a1a29adde
-4c79197b-4ace-42fa-ad86-4bc4b12c9804	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourcegroups/anly-pi-dev/providers/microsoft.containerregistry/registries/crosgspidev	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourceGroups/anly-pi-dev	CVE-2025-48924	11/7/2025 0:00	2025-11-25T14:11:47.7833783Z	FixAvailable	fads-case-alerts-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-alerts-api/images/sha256:2df73a73cac44381bfd70a06397af34af06dd09c1030e22c163bef2a1a29adde
-4c79197b-4ace-42fa-ad86-4bc4b12c9804	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourcegroups/anly-pi-dev/providers/microsoft.containerregistry/registries/crosgspidev	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourceGroups/anly-pi-dev	CVE-2025-59250	10/14/2025 7:0:0 AM	2025-11-25T14:11:47.7833783Z	FixAvailable	fads-case-alerts-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-alerts-api/images/sha256:2df73a73cac44381bfd70a06397af34af06dd09c1030e22c163bef2a1a29adde
-4c79197b-4ace-42fa-ad86-4bc4b12c9804	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourcegroups/anly-pi-dev/providers/microsoft.containerregistry/registries/crosgspidev	/subscriptions/4c79197b-4ace-42fa-ad86-4bc4b12c9804/resourceGroups/anly-pi-dev	CVE-2025-9230	09/30/2025 12:0:0 AM	2025-11-25T14:11:47.7833783Z	FixAvailable	fads-case-alerts-api	7.5	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H	/repositories/fads-case-alerts-api/images/sha256:2df73a73cac44381bfd70a06397af34af06dd09c1030e22c163bef2a1a29adde
+Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
+CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:23:40.4850944Z	FixAvailable	fads-case-entry-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-api/images/sha256:253dd97aa50316647da42b0b2d5c1137dd8615924d3256ffe264042ff475a49e
+CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:15:23.7370002Z	FixAvailable	fads-case-alerts-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-alerts-api/images/sha256:3d1c25134914ca1e54bf1a380283cb8bdb60cc1e654dabad95a123e8d41524a2
+CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:19:50.1937201Z	FixAvailable	fads-authorization-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-authorization-api/images/sha256:3e404dffe8d2d38176eade2f4ee02dfe78b7e08aae145cec5d9b099cc17dcd99
+CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:20:52.3636692Z	FixAvailable	fads-case-claimcorrections-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-claimcorrections-api/images/sha256:9741ecd87bf824c11c6e99cc1b7ae0bb8b61529dfd6106b9aa1fd8e16d220fcb
+
+
+
+
+and this 59250 also didnt get fixed for few repos  as above n case alert api is common I gave u its pom 
+
