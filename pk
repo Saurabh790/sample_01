@@ -2,7 +2,6 @@ package com.optum.fads.pgp.behavior.api.service.impl;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -26,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class BehaviorPatternDataServiceTest {
@@ -54,7 +54,7 @@ class BehaviorPatternDataServiceTest {
 
     @Test
     void getBehaviorPatternsByPage_success() {
-        // Arrange
+        // Arrange domain object
         PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
         entity.setBpId(1);
 
@@ -89,7 +89,12 @@ class BehaviorPatternDataServiceTest {
         Page<PrmBpBehaviorPatsT> page = new PageImpl<>(content);
 
         when(behaviorPatternsRepository.count()).thenReturn(1L);
-        when(behaviorPatternsRepository.findAll(any(), any(Pageable.class))).thenReturn(page);
+
+        // *** Important: disambiguate findAll(.., Pageable) by specifying Specification type ***
+        when(behaviorPatternsRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<PrmBpBehaviorPatsT>>isNull(),
+                any(Pageable.class))
+        ).thenReturn(page);
 
         // Act
         PaginationResult result = service.getBehaviorPatternsByPage(1, 10);
@@ -133,8 +138,9 @@ class BehaviorPatternDataServiceTest {
 
         PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
         entity.setBpId(1);
-        entity.setPrmErExtractRuleT(new PrmErExtractRuleT());
-        entity.getPrmErExtractRuleT().setErId(-1);
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(-1);
+        entity.setPrmErExtractRuleT(er);
         PrmMbMasterT mb = new PrmMbMasterT();
         mb.setMbCtecFid(1);
         mb.setMbCustDatadesc("DE_NAME");
@@ -455,7 +461,6 @@ class BehaviorPatternDataServiceTest {
         String formatted = service.formatLocalDate(dt);
 
         assertNotNull(formatted);
-        // We don't know exact pattern string, but we know it should contain year and something like time.
         assertTrue(formatted.contains("2025"));
     }
 
