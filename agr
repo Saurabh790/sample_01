@@ -1,27 +1,410 @@
-<!-- Remove this OLD dependency -->
-<!--
-<dependency>
-    <groupId>commons-lang</groupId>
-    <artifactId>commons-lang</artifactId>
-    <version>2.6</version>
-</dependency>
--->
+package com.optum.fads.pgp.behavior.api.controller;
 
-<!-- Add this instead -->
-<dependency>
-    <groupId>org.apache.commons</groupId>
-    <artifactId>commons-lang3</artifactId>
-    <version>3.18.0</version> <!-- or newer -->
-</dependency>
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
-<dependency>
-    <groupId>com.microsoft.sqlserver</groupId>
-    <artifactId>mssql-jdbc</artifactId>
-    <version>12.10.2.jre11</version> <!-- or 13.2.1.jre11+ -->
-</dependency>
-CVE-2025-48924.
-CVE-2025-59250
+import com.optum.fads.pgp.behavior.api.common.ListTableParams;
+import com.optum.fads.pgp.behavior.api.common.ListTableParamsReq;
+import com.optum.fads.pgp.behavior.api.common.constants.BehaviorPatternConstants;
+import com.optum.fads.pgp.behavior.api.dto.AccessLevel;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.behavior.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.behavior.api.dto.PaginationResult;
+import com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException;
+import com.optum.fads.pgp.behavior.api.service.IBehaviorPatternDataService;
 
-mvn dependency:tree -Dincludes=com.microsoft.sqlserver:mssql-jdbc
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+@ExtendWith(MockitoExtension.class)
+class BehaviorPatternControllerTest {
+
+    @Mock
+    private IBehaviorPatternDataService iBehaviorPatternDataService;
+
+    @InjectMocks
+    private BehaviorPatternController controller;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    // -------------------------------------------------------------------------
+    // getBehaviorPatterns
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getBehaviorPatterns_success() throws BehaviorPatternApiException {
+        ListTableParamsReq req = new ListTableParamsReq();
+        req.setPageNumber(1);
+        req.setRecordsPerPage(10);
+        req.setSearchBy(Collections.singletonList("name"));
+        req.setSelectedItemIds(new ArrayList<>());
+        req.setSortBy("name");
+        req.setSortOrder("ASC");
+
+        PaginationResult paginationResult = new PaginationResult();
+        when(iBehaviorPatternDataService.getBehaviorPatternsList(any(ListTableParams.class)))
+                .thenReturn(paginationResult);
+
+        ResponseEntity<?> response = controller.getBehaviorPatterns(req, "searchValue");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(paginationResult, response.getBody());
+    }
+
+    @Test
+    void getBehaviorPatterns_serviceThrowsException_returnsBadRequest() throws BehaviorPatternApiException {
+        ListTableParamsReq req = new ListTableParamsReq();
+
+        when(iBehaviorPatternDataService.getBehaviorPatternsList(any(ListTableParams.class)))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        ResponseEntity<?> response = controller.getBehaviorPatterns(req, "searchValue");
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // getBehaviorpatternById
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getBehaviorpatternById_success() throws BehaviorPatternApiException {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        when(iBehaviorPatternDataService.getBehaviorPatternById(123)).thenReturn(dto);
+
+        ResponseEntity<?> response = controller.getBehaviorpatternById(123);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(dto, response.getBody());
+    }
+
+    @Test
+    void getBehaviorpatternById_notFound_returnsBadRequest() throws BehaviorPatternApiException {
+        when(iBehaviorPatternDataService.getBehaviorPatternById(123))
+                .thenThrow(new BehaviorPatternApiException("not found"));
+
+        ResponseEntity<?> response = controller.getBehaviorpatternById(123);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Behavior Pattern ID not found", response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // getAvailableDatarules
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getAvailableDatarules_success() throws BehaviorPatternApiException {
+        List<DataRuleDTO> list = new ArrayList<>();
+        when(iBehaviorPatternDataService.getAvailableDatarules(10)).thenReturn(list);
+
+        ResponseEntity<?> response = controller.getAvailableDatarules(10);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(list, response.getBody());
+    }
+
+    @Test
+    void getAvailableDatarules_exception_returnsBadRequest() throws BehaviorPatternApiException {
+        when(iBehaviorPatternDataService.getAvailableDatarules(10))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        ResponseEntity<?> response = controller.getAvailableDatarules(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // getSelectedDatarules
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getSelectedDatarules_success() throws BehaviorPatternApiException {
+        List<DataRuleDTO> list = new ArrayList<>();
+        when(iBehaviorPatternDataService.getSelectedDataRules(10, false)).thenReturn(list);
+
+        ResponseEntity<?> response = controller.getSelectedDatarules(10);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(list, response.getBody());
+    }
+
+    @Test
+    void getSelectedDatarules_exception_returnsBadRequest() throws BehaviorPatternApiException {
+        when(iBehaviorPatternDataService.getSelectedDataRules(10, false))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        ResponseEntity<?> response = controller.getSelectedDatarules(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // deleteBehaviorPatternById
+    // -------------------------------------------------------------------------
+
+    @Test
+    void deleteBehaviorPatternById_success() throws BehaviorPatternApiException {
+        List<String> messages = List.of("Deleted");
+        when(iBehaviorPatternDataService.deleteBehaviorPattern(5)).thenReturn(messages);
+
+        ResponseEntity<?> response = controller.deleteBehaviorPatternById(5);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(messages, response.getBody());
+    }
+
+    @Test
+    void deleteBehaviorPatternById_exception_returnsBadRequest() throws BehaviorPatternApiException {
+        when(iBehaviorPatternDataService.deleteBehaviorPattern(5))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        ResponseEntity<?> response = controller.deleteBehaviorPatternById(5);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // newBehaviorPattern (POST)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void newBehaviorPattern_userWithAccessA_returnsCreated() throws BehaviorPatternApiException {
+        BehaviorPatternDTO input = new BehaviorPatternDTO();
+        BehaviorPatternDTO saved = new BehaviorPatternDTO();
+
+        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(iBehaviorPatternDataService.addBehaviorPattern(any(BehaviorPatternDTO.class))).thenReturn(saved);
+
+        // Use deep stubs so we can chain user.getRole().getAllowedAccesses()
+        AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
+        when(user.getUserSystemId()).thenReturn("USER1");
+
+        AccessLevel level = new AccessLevel();
+        level.setModuleCode("STUDY");
+        level.setAccess("A");
+        when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<?> response = controller.newBehaviorPattern(input);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertSame(saved, response.getBody());
+    }
+
+    @Test
+    void newBehaviorPattern_userWithoutAccess_returnsForbidden() throws BehaviorPatternApiException {
+        BehaviorPatternDTO input = new BehaviorPatternDTO();
+
+        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+
+        AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
+        when(user.getUserSystemId()).thenReturn("USER1");
+
+        AccessLevel level = new AccessLevel();
+        level.setModuleCode("STUDY");
+        level.setAccess("C"); // Not A or B -> no access
+
+        when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<?> response = controller.newBehaviorPattern(input);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.NOT_AUTHORIZED, response.getBody());
+    }
+
+    @Test
+    void newBehaviorPattern_serviceThrowsException_returnsBadRequest() throws BehaviorPatternApiException {
+        BehaviorPatternDTO input = new BehaviorPatternDTO();
+
+        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(iBehaviorPatternDataService.addBehaviorPattern(any(BehaviorPatternDTO.class)))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
+        when(user.getUserSystemId()).thenReturn("USER1");
+
+        AccessLevel level = new AccessLevel();
+        level.setModuleCode("STUDY");
+        level.setAccess("A");
+        when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<?> response = controller.newBehaviorPattern(input);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // updateBehaviorPattern (PUT)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void updateBehaviorPattern_userAccessA_returnsOk() throws BehaviorPatternApiException {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setCreatedBySystemId("CREATOR");
+
+        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(iBehaviorPatternDataService.updateBehaviorPattern(100, dto))
+                .thenReturn("UPDATED");
+
+        AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
+        when(user.getUserSystemId()).thenReturn("SOMEUSER");
+
+        AccessLevel level = new AccessLevel();
+        level.setModuleCode("STUDY");
+        level.setAccess("A");
+        when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<String> response = controller.updateBehaviorPattern(100, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("UPDATED", response.getBody());
+    }
+
+    @Test
+    void updateBehaviorPattern_userAccessBNotCreator_returnsForbidden() throws BehaviorPatternApiException {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setCreatedBySystemId("OTHER_USER");
+
+        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+
+        AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
+        when(user.getUserSystemId()).thenReturn("CURRENT_USER");
+
+        AccessLevel level = new AccessLevel();
+        level.setModuleCode("STUDY");
+        level.setAccess("B"); // B but not creator
+        when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<String> response = controller.updateBehaviorPattern(100, dto);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.NOT_AUTHORIZED, response.getBody());
+    }
+
+    @Test
+    void updateBehaviorPattern_serviceThrowsException_returnsBadRequest() throws BehaviorPatternApiException {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setCreatedBySystemId("CREATOR");
+
+        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(iBehaviorPatternDataService.updateBehaviorPattern(100, dto))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
+        when(user.getUserSystemId()).thenReturn("SOMEUSER");
+
+        AccessLevel level = new AccessLevel();
+        level.setModuleCode("STUDY");
+        level.setAccess("A");
+        when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<String> response = controller.updateBehaviorPattern(100, dto);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+
+    // -------------------------------------------------------------------------
+    // getMyBehaviorPatterns
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getMyBehaviorPatterns_success_authPresent_addsUserFilter() throws BehaviorPatternApiException {
+        ListTableParams params = new ListTableParams();
+        params.setSearchBy(null);
+        params.setSearchInput(null);
+
+        PaginationResult result = new PaginationResult();
+        when(iBehaviorPatternDataService.getBehaviorPatternsList(any(ListTableParams.class)))
+                .thenReturn(result);
+
+        AppUser user = mock(AppUser.class);
+        when(user.getUserSystemId()).thenReturn("USER123");
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<?> response = controller.getMyBehaviorPatterns(params);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(result, response.getBody());
+
+        // After controller call, searchBy and searchInput should be initialized and contain USER_SYSTEM_ID filter
+        assertEquals(1, params.getSearchBy().size());
+        assertEquals(1, params.getSearchInput().size());
+        assertEquals(BehaviorPatternConstants.USER_SYSTEM_ID, params.getSearchBy().get(0));
+        assertEquals("USER123", params.getSearchInput().get(0));
+    }
+
+    @Test
+    void getMyBehaviorPatterns_serviceThrowsException_returnsBadRequest() throws BehaviorPatternApiException {
+        ListTableParams params = new ListTableParams();
+
+        when(iBehaviorPatternDataService.getBehaviorPatternsList(any(ListTableParams.class)))
+                .thenThrow(new BehaviorPatternApiException("error"));
+
+        AppUser user = mock(AppUser.class);
+        when(user.getUserSystemId()).thenReturn("USER123");
+
+        Authentication auth =
+                new UsernamePasswordAuthenticationToken(user, null, new ArrayList<>());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        ResponseEntity<?> response = controller.getMyBehaviorPatterns(params);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(BehaviorPatternConstants.EXCEPTION_MESSAGE, response.getBody());
+    }
+}
