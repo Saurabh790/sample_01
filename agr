@@ -202,13 +202,11 @@ class BehaviorPatternControllerTest {
         when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
         when(iBehaviorPatternDataService.addBehaviorPattern(any(BehaviorPatternDTO.class))).thenReturn(saved);
 
-        // Use deep stubs so we can chain user.getRole().getAllowedAccesses()
+        // Deep stub AppUser so user.getRole().getAllowedAccesses() works
         AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
         when(user.getUserSystemId()).thenReturn("USER1");
 
-        AccessLevel level = new AccessLevel();
-        level.setModuleCode("STUDY");
-        level.setAccess("A");
+        AccessLevel level = new AccessLevel(null, "STUDY", null, "A");
         when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
 
         Authentication auth =
@@ -225,15 +223,13 @@ class BehaviorPatternControllerTest {
     void newBehaviorPattern_userWithoutAccess_returnsForbidden() throws BehaviorPatternApiException {
         BehaviorPatternDTO input = new BehaviorPatternDTO();
 
-        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        // No stubbing of getZoneId() or addBehaviorPattern() here,
+        // because the controller should exit early with 403.
 
         AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
         when(user.getUserSystemId()).thenReturn("USER1");
 
-        AccessLevel level = new AccessLevel();
-        level.setModuleCode("STUDY");
-        level.setAccess("C"); // Not A or B -> no access
-
+        AccessLevel level = new AccessLevel(null, "STUDY", null, "C"); // not A or B
         when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
 
         Authentication auth =
@@ -257,9 +253,7 @@ class BehaviorPatternControllerTest {
         AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
         when(user.getUserSystemId()).thenReturn("USER1");
 
-        AccessLevel level = new AccessLevel();
-        level.setModuleCode("STUDY");
-        level.setAccess("A");
+        AccessLevel level = new AccessLevel(null, "STUDY", null, "A");
         when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
 
         Authentication auth =
@@ -288,9 +282,7 @@ class BehaviorPatternControllerTest {
         AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
         when(user.getUserSystemId()).thenReturn("SOMEUSER");
 
-        AccessLevel level = new AccessLevel();
-        level.setModuleCode("STUDY");
-        level.setAccess("A");
+        AccessLevel level = new AccessLevel(null, "STUDY", null, "A");
         when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
 
         Authentication auth =
@@ -308,14 +300,12 @@ class BehaviorPatternControllerTest {
         BehaviorPatternDTO dto = new BehaviorPatternDTO();
         dto.setCreatedBySystemId("OTHER_USER");
 
-        when(iBehaviorPatternDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        // No zoneId / updateBehaviorPattern stubbing here; code exits with 403.
 
         AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
         when(user.getUserSystemId()).thenReturn("CURRENT_USER");
 
-        AccessLevel level = new AccessLevel();
-        level.setModuleCode("STUDY");
-        level.setAccess("B"); // B but not creator
+        AccessLevel level = new AccessLevel(null, "STUDY", null, "B"); // B but not creator
         when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
 
         Authentication auth =
@@ -340,9 +330,7 @@ class BehaviorPatternControllerTest {
         AppUser user = mock(AppUser.class, Answers.RETURNS_DEEP_STUBS);
         when(user.getUserSystemId()).thenReturn("SOMEUSER");
 
-        AccessLevel level = new AccessLevel();
-        level.setModuleCode("STUDY");
-        level.setAccess("A");
+        AccessLevel level = new AccessLevel(null, "STUDY", null, "A");
         when(user.getRole().getAllowedAccesses()).thenReturn(List.of(level));
 
         Authentication auth =
@@ -381,7 +369,7 @@ class BehaviorPatternControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(result, response.getBody());
 
-        // After controller call, searchBy and searchInput should be initialized and contain USER_SYSTEM_ID filter
+        // Ensure controller added USER_SYSTEM_ID filter
         assertEquals(1, params.getSearchBy().size());
         assertEquals(1, params.getSearchInput().size());
         assertEquals(BehaviorPatternConstants.USER_SYSTEM_ID, params.getSearchBy().get(0));
