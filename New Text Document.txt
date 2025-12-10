@@ -1,52 +1,13 @@
-<!-- Remove this OLD dependency -->
-<!--
-<dependency>
-    <groupId>commons-lang</groupId>
-    <artifactId>commons-lang</artifactId>
-    <version>2.6</version>
-</dependency>
--->
-
-<!-- Add this instead -->
-<dependency>
-    <groupId>org.apache.commons</groupId>
-    <artifactId>commons-lang3</artifactId>
-    <version>3.18.0</version> <!-- or newer -->
-</dependency>
-
-
-<dependency>
-    <groupId>com.microsoft.sqlserver</groupId>
-    <artifactId>mssql-jdbc</artifactId>
-    <version>12.10.2.jre11</version> <!-- or 13.2.1.jre11+ -->
-</dependency>
-CVE-2025-48924,CVE-2025-59250
-
-
-
-as per above fix i  tried in all repos some it fixed in others it could not
-
-as below 
-
-Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
-CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:24:11.6594488Z	FixAvailable	fads-case-entry-batch	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-batch/images/sha256:9fd90d5dbc8345e46995f6ff0160748d45180f1f9f2d48deac3c449d51956a11
-CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:22:47.5251482Z	FixAvailable	fads-case-reminders-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-reminders-api/images/sha256:aa239c9ff3fbe0167a6eed4a83a5de0238dabc708076aa4940d1d6829eb3cb0a
-CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:23:40.4850944Z	FixAvailable	fads-case-entry-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-api/images/sha256:253dd97aa50316647da42b0b2d5c1137dd8615924d3256ffe264042ff475a49e
-CVE-2025-48924	11/7/2025 0:00	2025-12-08T16:23:40.4850944Z	FixAvailable	fads-case-entry-api	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-api/images/sha256:253dd97aa50316647da42b0b2d5c1137dd8615924d3256ffe264042ff475a49e
-
-
-and why showing 2 time CVE-2025-48924 this for same api below is case entry api pom
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0">
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.optum.fads</groupId>
-    <artifactId>fads-case-entry-api</artifactId>
+    <artifactId>fads-pgp-behavior-api</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
@@ -65,38 +26,32 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
         </repository>
     </repositories>
 
-
     <properties>
         <maven.test.skip>false</maven.test.skip>
         <skipTests>${maven.test.skip}</skipTests>
-        <surefire.skip>${skipTests}</surefire.skip>
+        <!-- >surefire.skip>${skipTests}</surefire.skip -->
         <failsafe.skip>${skipTests}</failsafe.skip>
 
         <java.version>17</java.version>
         <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2023.0.3</spring.cloud.version>
-        <jackson.version>2.16.3</jackson.version>
-        <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
-        <jasypt.version>2.1.1</jasypt.version>
-        <jwt.version>4.0.0</jwt.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
         <modelmapper.version>3.2.2</modelmapper.version>
         <jacoco.version>0.8.10</jacoco.version>
         <springrunner.version>0.1.0</springrunner.version>
         <guava.version>32.1.2-jre</guava.version>
         <logback.encoder.version>7.4</logback.encoder.version>
         <lombok.version>1.18.28</lombok.version>
-        <restassured.version>5.4.0</restassured.version>
+        <restassured.version>3.3.0</restassured.version>
+        <mockito.version>5.3.1</mockito.version>
+        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
+        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
         <log4j.version>2.24.3</log4j.version>
-        <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <bcp.version>1.67</bcp.version>
-        <snakeyaml.version>2.4</snakeyaml.version>
-        <netty.version>4.1.125.Final</netty.version>
-        <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
-        <sonar.coverage.exclusions>
-            **/com/optum/fads/caseentry.api/**,
-        </sonar.coverage.exclusions>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <jaxb.version>2.3.1</jaxb.version>
+        <sonar.version>3.9.1.2184</sonar.version>
+
     </properties>
 
     <dependencyManagement>
@@ -133,30 +88,15 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>org.apache.tomcat.embed</groupId>
-            <artifactId>tomcat-embed-core</artifactId>
-            <version>10.1.49</version>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-            <version>1.5.20</version>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-tomcat</artifactId>
-            <scope>compile</scope>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>10.1.47</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -187,24 +127,10 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-bom</artifactId>
-            <version>${netty.version}</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-compression</artifactId>
-            <version>4.2.5.Final</version>
-        </dependency>
-
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version> 
         </dependency>
 
         <!-- Model Mapper -->
@@ -215,59 +141,13 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
         </dependency>
 
         <!-- Jackson -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
 
 
-        <!--Used in Getter/Setter Verifier @NonNull  -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-
-        <!-- Common Operations-->
-        <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.14.0</version>
-        </dependency>
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.apache.poi/POI -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-            <version>5.3.0</version>
-        </dependency>
-
-
-        <!-- Snowflake dependency -->
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
         </dependency>
 
         <!-- JSON logging -->
@@ -277,6 +157,16 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
             <version>${logback.encoder.version}</version>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.codehaus.janino</groupId>
             <artifactId>janino</artifactId>
@@ -289,13 +179,11 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -309,31 +197,31 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
             <version>${springrunner.version}</version>
             <scope>test</scope>
         </dependency>
-
-        <!-- Before After Spring Test Runner -->
-
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
-            <groupId>org.springframework.data</groupId>
-            <artifactId>spring-data-commons</artifactId>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
         </dependency>
-
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context-support</artifactId>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${org.mapstruct.version}</version>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.microsoft.sqlserver</groupId>
             <artifactId>mssql-jdbc</artifactId>
-            <version>13.2.1.jre11</version> 
         </dependency>
-
+      
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
@@ -343,7 +231,7 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
     </dependencies>
 
     <build>
-        <finalName>${project.artifactId}</finalName>
+<!--        <finalName>${project.artifactId}</finalName>-->
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -484,21 +372,301 @@ and why showing 2 time CVE-2025-48924 this for same api below is case entry api 
                     </execution>
                 </executions>
             </plugin>
-
         </plugins>
     </build>
 </project>
 
 
 
-Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
-CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:23:40.4850944Z	FixAvailable	fads-case-entry-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-entry-api/images/sha256:253dd97aa50316647da42b0b2d5c1137dd8615924d3256ffe264042ff475a49e
-CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:15:23.7370002Z	FixAvailable	fads-case-alerts-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-alerts-api/images/sha256:3d1c25134914ca1e54bf1a380283cb8bdb60cc1e654dabad95a123e8d41524a2
-CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:19:50.1937201Z	FixAvailable	fads-authorization-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-authorization-api/images/sha256:3e404dffe8d2d38176eade2f4ee02dfe78b7e08aae145cec5d9b099cc17dcd99
-CVE-2025-59250	10/14/2025 7:0:0 AM	2025-12-08T16:20:52.3636692Z	FixAvailable	fads-case-claimcorrections-api	8.1	CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N/E:U/RL:O/RC:C	/repositories/fads-case-claimcorrections-api/images/sha256:9741ecd87bf824c11c6e99cc1b7ae0bb8b61529dfd6106b9aa1fd8e16d220fcb
+above is my current pom based on this provide the junit for below controller 
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+package com.optum.fads.pgp.behavior.api.controller;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.optum.fads.pgp.behavior.api.common.ListTableParams;
+import com.optum.fads.pgp.behavior.api.common.ListTableParamsReq;
+import com.optum.fads.pgp.behavior.api.common.constants.BehaviorPatternConstants;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.behavior.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.behavior.api.dto.PaginationResult;
+import com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException;
+import com.optum.fads.pgp.behavior.api.service.IBehaviorPatternDataService;
+import com.optum.fads.pgp.behavior.api.dto.AccessLevel;
+
+/**
+ * Use this class to add the methods so that a single web service can be used to
+ * get and update the FADS Behavior Pattern data
+ *
+ ** @author Anil Wagh
+ */
+@Component
+@RestController
+//@RequestMapping("/behavior")
+@CrossOrigin
+public class BehaviorPatternController {
+
+	private static final Logger logit = LoggerFactory.getLogger(BehaviorPatternController.class);
+
+	@Autowired
+	private IBehaviorPatternDataService iBehaviorPatternDataService;
+
+	final String[] DISALLOWED_FIELDS = new String[]{"listTableParams.selectedItemIds"};
+	    
+	    @InitBinder(value = "listTableParams")
+	    void initListTableParamsValidator(WebDataBinder binder) {
+	        binder.setDisallowedFields(DISALLOWED_FIELDS);
+	    }
+	    
+	/**
+	 * this method will give all the Behavior Pattern data or records per page
+	 * 
+	 * @param - ListTableParams (contains sort, filter conditions; page number, page
+	 *          size)
+	 */
+	@GetMapping(value = "/getbehaviorpatterns/**", headers = "Accept=application/json")
+	public ResponseEntity getBehaviorPatterns(ListTableParamsReq listTableParamsReq,String searchInput) {
+		PaginationResult paginationResult;
+		try {
+			ListTableParams listTableParams=new ListTableParams();
+			listTableParams.setPageNumber(listTableParamsReq.getPageNumber());
+			listTableParams.setRecordsPerPage(listTableParamsReq.getRecordsPerPage());
+			listTableParams.setSearchBy(listTableParamsReq.getSearchBy());
+			listTableParams.setSearchInput(Collections.singletonList(searchInput));
+			listTableParams.setSelectedItemIds(listTableParamsReq.getSelectedItemIds());
+			listTableParams.setSortBy(listTableParamsReq.getSortBy());
+			listTableParams.setSortOrder(listTableParamsReq.getSortOrder());
+			paginationResult = iBehaviorPatternDataService.getBehaviorPatternsList(listTableParams); // get behavior
+																										// patterns
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(paginationResult);
+	}
+
+	/**
+	 * this method will get the behavior pattern record corresponding to input
+	 * behavior pattern ID
+	 * 
+	 * @param - Behavior Pattern ID
+	 */
+	@GetMapping(value = "/getbehaviorpatterndetails/{behaviorpatternId}")
+	public ResponseEntity getBehaviorpatternById(@PathVariable(name = "behaviorpatternId") Integer behaviorPatternId)
+
+	{
+		BehaviorPatternDTO behaviorPatternDTO = null;
+		try {
+			behaviorPatternDTO = iBehaviorPatternDataService.getBehaviorPatternById(behaviorPatternId);
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Behavior Pattern ID not found");
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(behaviorPatternDTO);
+	}
+
+	/**
+	 * this method will get the available Data Rule records
+	 * 
+	 * @param - ER ID (Extact Rule ID)
+	 */
+	@GetMapping(value = { "/getavailabledatarules/{extractRuleId}" })
+	public ResponseEntity getAvailableDatarules(@PathVariable(name = "extractRuleId") Integer extractRuleId) {
+		List<DataRuleDTO> availableDatarulesList;
+		try {
+			availableDatarulesList = iBehaviorPatternDataService.getAvailableDatarules(extractRuleId);
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(availableDatarulesList);
+	}
+
+	/**
+	 * this method will get the selected Data Rule records for a behavior pattern
+	 * 
+	 * @param - ER ID (Extact Rule ID)
+	 */
+	@GetMapping(value = { "/getselecteddatarules/{extractRuleId}" })
+	public ResponseEntity getSelectedDatarules(@PathVariable(name = "extractRuleId") Integer extractRuleId) {
+		List<DataRuleDTO> selectedDataRulesList;
+		boolean details = false;
+		try {
+			selectedDataRulesList = iBehaviorPatternDataService.getSelectedDataRules(extractRuleId, details);
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(selectedDataRulesList);
+	}
+
+	/**
+	 * this method will delete the behavior pattern records corresponding to input
+	 * behavior pattern ID
+	 * 
+	 * @param - Behavior Pattern ID
+	 */
+	@DeleteMapping(value = "/deletebehaviorpattern/{behaviorpatternid}")
+	public ResponseEntity deleteBehaviorPatternById(
+			@PathVariable(name = "behaviorpatternid") Integer behaviorPatternId)
+
+	{
+		List<String> deleteBehaviorPatternMessages;
+		try {
+			deleteBehaviorPatternMessages = iBehaviorPatternDataService.deleteBehaviorPattern(behaviorPatternId);
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(deleteBehaviorPatternMessages);
+	}
+
+	/**
+	 * this method will add a behavior pattern
+	 * 
+	 * @param - behaviorPatternDTO
+	 */
+	@PostMapping(value = { "/newbehaviorpattern" })
+	public ResponseEntity newBehaviorPattern(@RequestBody BehaviorPatternDTO behaviorPatternDTO) {
+		BehaviorPatternDTO retBehaviorPatternDTO = null;
+		String userAccess = "";
+		boolean userHasAccess = false;
+		try {
+			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
+					Locale.ENGLISH);
+			AppUser user = (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+			behaviorPatternDTO.setCreatedBySystemId(user.getUserSystemId());
+			behaviorPatternDTO.setModifiedBySystemId(user.getUserSystemId());
+			List<AccessLevel> userAccessLevels = user.getRole().getAllowedAccesses();
+			for (AccessLevel userAccessLevel : userAccessLevels) {
+				if (userAccessLevel.getModuleCode().equals("STUDY")) {
+					userAccess = userAccessLevel.getAccess();
+					break;
+				}
+			}
+			if (userAccess.equals("A") || userAccess.equals("B")) {
+				userHasAccess = true;
+			}
+			if (userHasAccess) {
+				LocalDateTime currentLocalDate = LocalDateTime.now(iBehaviorPatternDataService.getZoneId());
+				// Save the create, update date as per local time zone in the DTO
+				behaviorPatternDTO.setCreatedDate(dateTimeFormatter.format(currentLocalDate));
+				behaviorPatternDTO.setModifiedDate(dateTimeFormatter.format(currentLocalDate));
+				retBehaviorPatternDTO = iBehaviorPatternDataService.addBehaviorPattern(behaviorPatternDTO);
+				return ResponseEntity.status(HttpStatus.CREATED).body(retBehaviorPatternDTO);
+			} else {
+				return new ResponseEntity<String>(BehaviorPatternConstants.NOT_AUTHORIZED, HttpStatus.FORBIDDEN);
+			}	
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		
+	}
+
+	/**
+	 * this method will update a behavior pattern
+	 * 
+	 * @param - behaviorPatternDTO
+	 */
+	@PutMapping(value = { "/updatebehaviorpattern/{erId}" })
+	public ResponseEntity<String> updateBehaviorPattern(@PathVariable(name = "erId") Integer erId,
+			@RequestBody BehaviorPatternDTO behaviorPatternDTO) {
+		String updBehaviorPatternMessage;
+		String userAccess = "";
+		boolean userHasAccess = false;
+		try {
+			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
+					Locale.ENGLISH);
+			AppUser user = (AppUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+			behaviorPatternDTO.setModifiedBySystemId(user.getUserSystemId());
+			List<AccessLevel> userAccessLevels = user.getRole().getAllowedAccesses();
+			for (AccessLevel userAccessLevel : userAccessLevels) {
+				if (userAccessLevel.getModuleCode().equals("STUDY")) {
+					userAccess = userAccessLevel.getAccess();
+					break;
+				}
+			}
+			if (userAccess.equals("A") || 
+					(userAccess.equals("B") && behaviorPatternDTO.getCreatedBySystemId().equals(user.getUserSystemId()))) {
+				userHasAccess = true;
+			}
+			if (userHasAccess) {
+				LocalDateTime currentLocalDate = LocalDateTime.now(iBehaviorPatternDataService.getZoneId());
+				// Save the update date as per local time zone in the DTO
+				behaviorPatternDTO.setModifiedDate(dateTimeFormatter.format(currentLocalDate));
+				updBehaviorPatternMessage = iBehaviorPatternDataService.updateBehaviorPattern(erId, behaviorPatternDTO);
+				return ResponseEntity.status(HttpStatus.OK).body(updBehaviorPatternMessage);
+			} else {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body(BehaviorPatternConstants.NOT_AUTHORIZED);
+			}
+		} catch (BehaviorPatternApiException ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		
+	}
+	/**
+	 * this method will give all the Behavior Pattern data or records per page for My Items request
+	 * 
+	 * @param - ListTableParams (contains sort, filter conditions; page number, page
+	 *          size)
+	 */
+	@GetMapping(value = { "/getmybehaviorpatterns/" }, headers = "Accept=application/json")
+	public ResponseEntity getMyBehaviorPatterns(ListTableParams listTableParams) {
+		PaginationResult paginationResult;
+		try {
+			Authentication auth =  SecurityContextHolder.getContext().getAuthentication();
+			if (auth != null) {
+				AppUser user = (AppUser) auth.getPrincipal();
+				if (listTableParams.getSearchBy() == null) {
+					listTableParams.setSearchBy(new ArrayList <String>());
+					listTableParams.setSearchInput(new ArrayList <String>());
+				}
+				listTableParams.getSearchBy().add(BehaviorPatternConstants.USER_SYSTEM_ID);
+				listTableParams.getSearchInput().add(user.getUserSystemId());
+			}
+			paginationResult = iBehaviorPatternDataService.getBehaviorPatternsList(listTableParams);
+		} catch (BehaviorPatternApiException  ex) {
+			logit.error(BehaviorPatternConstants.EXCEPTION_MESSAGE, ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(BehaviorPatternConstants.EXCEPTION_MESSAGE);
+		}
+		return ResponseEntity.status(HttpStatus.OK).body(paginationResult);
+	}
+}
 
 
-
-
-and this 59250 also didnt get fixed for few repos  as above n case alert api is common I gave u its pom 
 
