@@ -1,108 +1,488 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration scan="false">
+package com.optum.fads.pgp.behavior.api.service.impl;
 
-    <springProperty name="application.name" source="spring.application.name" defaultValue="behavior"/>
-    <springProperty name="audit.application.name" source="audit.application.name" defaultValue="${application.name}"/>
-    <springProperty name="audit.log.type" source="audit.log.type" defaultValue="APPLICATION"/>
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
-    <property name="CONSOLE_LOG_PATTERN"
-              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%t] %-40.40logger{39} : %m%n%wEx"/>
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.*;
 
-    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <property name="LOG_FILE" value="${LOG_FILE:-${java.io.tmpdir:-/tmp}/spring.log}"/>
-    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
-    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+import com.optum.fads.pgp.behavior.api.common.ListTableParams;
+import com.optum.fads.pgp.behavior.api.common.constants.BehaviorPatternConstants;
+import com.optum.fads.pgp.behavior.api.domain.*;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.behavior.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.behavior.api.dto.DrCodeValueDTO;
+import com.optum.fads.pgp.behavior.api.dto.DrRangeValuesDTO;
+import com.optum.fads.pgp.behavior.api.dto.PaginationResult;
+import com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException;
+import com.optum.fads.pgp.behavior.api.mapper.BehaviorPatternDetailMapper;
+import com.optum.fads.pgp.behavior.api.repo.*;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
 
-    <!-- ==========================
-         AUDIT APPENDER
-         ========================== -->
-    <appender name="AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+@ExtendWith(MockitoExtension.class)
+class BehaviorPatternDataServiceTest {
 
-        <file>logs/${application.name}/audit/${application.name}_audit.log</file>
+    @Mock
+    private BehaviorPatternsRepository behaviorPatternsRepository;
+    @Mock
+    private BehaviorPatternMasterRepository behaviorPatternMasterRepository;
+    @Mock
+    private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+    @Mock
+    private BehaviorPatternErRepository behaviorPatternErRepository;
+    @Mock
+    private DataRulesRepository dataRulesRepository;
+    @Mock
+    private FadsConfigRepository fadsConfigRepository;
+    @Mock
+    private BehaviorPatternDetailMapper behaviorPatternDetailMapper;
 
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/${application.name}/audit/${application.name}_audit.log.%i</fileNamePattern>
-        </rollingPolicy>
+    @InjectMocks
+    private BehaviorPatternDataService service;
 
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10MB</maxFileSize>
-        </triggeringPolicy>
+    // -------------------------------------------------------------------------
+    // getBehaviorPatternsByPage
+    // -------------------------------------------------------------------------
 
-        <!-- FIXED: escape &amp;&amp; -->
-        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-            <evaluator class="ch.qos.logback.classic.boolex.JaninoEventEvaluator">
-                <expression>
-                    return (level >= INFO &amp;&amp; logger.equals("AUDIT"))
-                        || (level >= ERROR &amp;&amp; logger.startsWith("com.optum.fads.study"));
-                </expression>
-            </evaluator>
-            <onMatch>ACCEPT</onMatch>
-            <onMismatch>DENY</onMismatch>
-        </filter>
+    @Test
+    void getBehaviorPatternsByPage_success() {
+        // Arrange
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(1);
 
-        <encoder>
-            <pattern>
-                %d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%level|${audit.application.name}|${audit.log.type}|%X{clientIp}|%X{sourceIp}|%X{userId}|%X{authorizedUser} %msg%n
-            </pattern>
-        </encoder>
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(10);
+        entity.setPrmErExtractRuleT(er);
 
-    </appender>
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(123);
+        mb.setMbCustDatadesc("Data Element Name");
+        entity.setPrmMbMasterT(mb);
 
+        UiUserBase createdUser = new UiUserBase();
+        createdUser.setUiFirstName("John");
+        createdUser.setUiLastName("Creator");
+        createdUser.setUiSystemId("SYS1");
+        entity.setUiUserBaseCr(createdUser);
 
-    <!-- ==========================
-         JSON APPENDER
-         ========================== -->
-    <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        UiUserBase updatedUser = new UiUserBase();
+        updatedUser.setUiFirstName("Jane");
+        updatedUser.setUiLastName("Updater");
+        updatedUser.setUiSystemId("SYS2");
+        entity.setUiUserBaseUpd(updatedUser);
 
-        <file>logs/${application.name}/json/${application.name}_json.log</file>
+        entity.setBaId("1");
+        entity.setBehaviorPatternName("BP_NAME");
+        entity.setBpMaxCtecFieldId(999);
+        entity.setCreateDate(LocalDateTime.now());
+        entity.setUpdateDate(LocalDateTime.now());
 
-        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-            <fileNamePattern>logs/${application.name}/json/${application.name}_json.log.%i</fileNamePattern>
-        </rollingPolicy>
+        List<PrmBpBehaviorPatsT> content = Collections.singletonList(entity);
+        Page<PrmBpBehaviorPatsT> page = new PageImpl<>(content);
 
-        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-            <maxFileSize>10MB</maxFileSize>
-        </triggeringPolicy>
+        when(behaviorPatternsRepository.count()).thenReturn(1L);
+        when(behaviorPatternsRepository.findAll(any(), any(Pageable.class))).thenReturn(page);
 
-        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
-            <providers>
+        // Act
+        PaginationResult result = service.getBehaviorPatternsByPage(1, 10);
 
-                <timestamp>
-                    <fieldName>timestamp</fieldName>
-                    <timeZone>UTC</timeZone>
-                </timestamp>
+        // Assert
+        assertEquals(1, result.getTotalRecordsCount());
+        assertNotNull(result.getBehaviorPatternsData());
+        assertEquals(1, result.getBehaviorPatternsData().size());
 
-                <pattern>
-                    <pattern>
-                        {
-                          "level": "%level",
-                          "thread": "%thread",
-                          "logger": "%logger",
-                          "message": "%message",
-                          "exception": "%wEx"
-                        }
-                    </pattern>
-                </pattern>
+        BehaviorPatternDTO dto = result.getBehaviorPatternsData().get(0);
+        assertEquals(1, dto.getBehaviorPatternId());
+        assertEquals(10, dto.getErId());
+        assertEquals("BP_NAME", dto.getBehaviorPatternName());
+        assertEquals(123, dto.getDataElementCode());
+        assertEquals(999, dto.getDateElementCode());
+        assertEquals("John Creator", dto.getCreatedBy());
+        assertEquals("Jane Updater", dto.getModifiedBy());
+        assertEquals("SYS1", dto.getCreatedBySystemId());
+        assertEquals("SYS2", dto.getModifiedBySystemId());
+    }
 
-            </providers>
-        </encoder>
+    @Test
+    void getBehaviorPatternsByPage_exceptionWrappedInApiException() {
+        when(behaviorPatternsRepository.count()).thenThrow(new RuntimeException("DB error"));
 
-    </appender>
+        assertThrows(BehaviorPatternApiException.class,
+                () -> service.getBehaviorPatternsByPage(1, 10));
+    }
 
+    // -------------------------------------------------------------------------
+    // getBehaviorPatternsList (simple no-search path)
+    // -------------------------------------------------------------------------
 
-    <!-- ==========================
-         ROOT LOGGER
-         ========================== -->
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-        <appender-ref ref="FILE"/>
-        <appender-ref ref="AUDIT"/>
-        <appender-ref ref="JSON"/>
-    </root>
+    @Test
+    void getBehaviorPatternsList_noSearchBy_usesRepositoryMethods() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(5);
+        params.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_ID);
+        params.setSortOrder(0); // DESC
 
-    <logger name="org.springframework.security" level="DEBUG"/>
-    <logger name="org.springframework.security.oauth2" level="DEBUG"/>
-    <logger name="com.optum.fads.pgp.behavior.api" level="DEBUG"/>
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(1);
+        entity.setPrmErExtractRuleT(new PrmErExtractRuleT());
+        entity.getPrmErExtractRuleT().setErId(-1);
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(1);
+        mb.setMbCustDatadesc("DE_NAME");
+        entity.setPrmMbMasterT(mb);
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("First");
+        cr.setUiLastName("Last");
+        cr.setUiSystemId("SYS");
+        entity.setUiUserBaseCr(cr);
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("UF");
+        upd.setUiLastName("UL");
+        upd.setUiSystemId("USYS");
+        entity.setUiUserBaseUpd(upd);
+        entity.setCreateDate(LocalDateTime.now());
+        entity.setUpdateDate(LocalDateTime.now());
+        entity.setBehaviorPatternName("BP");
+        entity.setBaId("1");
+        entity.setBpMaxCtecFieldId(1);
 
-</configuration>
+        when(behaviorPatternsRepository.getBehaviorPatterns(any(Pageable.class)))
+                .thenReturn(Collections.singletonList(entity));
+        when(behaviorPatternsRepository.count()).thenReturn(1L);
+
+        PaginationResult result = service.getBehaviorPatternsList(params);
+
+        assertEquals(1, result.getTotalRecordsCount());
+        assertEquals(1, result.getBehaviorPatternsData().size());
+    }
+
+    // -------------------------------------------------------------------------
+    // getSearchCriteria
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getSearchCriteria_populatesCorrectSlots() {
+        ListTableParams params = new ListTableParams();
+
+        List<String> searchBy = new ArrayList<>();
+        List<String> searchInput = new ArrayList<>();
+
+        searchBy.add(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME);
+        searchInput.add("TestName");
+
+        searchBy.add(BehaviorPatternConstants.CREATED_BY);
+        searchInput.add("  john   doe ");
+
+        searchBy.add(BehaviorPatternConstants.MODIFIED_BY);
+        searchInput.add("  jane   doe ");
+
+        searchBy.add(BehaviorPatternConstants.USER_SYSTEM_ID);
+        searchInput.add("USER1");
+
+        params.setSearchBy(searchBy);
+        params.setSearchInput(searchInput);
+
+        String[] criteria = service.getSearchCriteria(params);
+
+        // [0] name pattern
+        assertTrue(criteria[0].contains("testname")); // lowercased
+        // [1] createdBy like %value%
+        assertTrue(criteria[1].startsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[1].endsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[1].contains("john doe"));
+        // [2] modifiedBy like %value%
+        assertTrue(criteria[2].startsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[2].endsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[2].contains("jane doe"));
+        // [4] user system id
+        assertEquals("user1", criteria[4]); // lowercased
+    }
+
+    // -------------------------------------------------------------------------
+    // createPageableBehaviorPatterns
+    // -------------------------------------------------------------------------
+
+    @Test
+    void createPageableBehaviorPatterns_defaultWhenSortByNull() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(2);
+        params.setRecordsPerPage(20);
+        params.setSortBy(null);
+        params.setSortOrder(0); // DESC
+
+        Pageable pageable = service.createPageableBehaviorPatterns(params);
+
+        assertEquals(1, pageable.getPageNumber()); // 2 - 1
+        assertEquals(20, pageable.getPageSize());
+
+        Sort sort = pageable.getSort();
+        assertTrue(sort.iterator().hasNext());
+    }
+
+    @Test
+    void createPageableBehaviorPatterns_sortByNameAscending() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(10);
+        params.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME);
+        params.setSortOrder(1); // > 0 => ASC
+
+        Pageable pageable = service.createPageableBehaviorPatterns(params);
+
+        assertEquals(0, pageable.getPageNumber());
+        assertEquals(10, pageable.getPageSize());
+
+        Sort sort = pageable.getSort();
+        Sort.Order order = sort.iterator().next();
+        assertEquals(Sort.Direction.ASC, order.getDirection());
+        assertEquals(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME, order.getProperty());
+    }
+
+    // -------------------------------------------------------------------------
+    // populateBehaviorPatternList
+    // -------------------------------------------------------------------------
+
+    @Test
+    void populateBehaviorPatternList_mapsDomainToDto() {
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(5);
+
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(77);
+        entity.setPrmErExtractRuleT(er);
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(999);
+        mb.setMbCustDatadesc("Data Element");
+        entity.setPrmMbMasterT(mb);
+
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("John");
+        cr.setUiLastName("Smith");
+        cr.setUiSystemId("SYSCR");
+        entity.setUiUserBaseCr(cr);
+
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("Jane");
+        upd.setUiLastName("Doe");
+        upd.setUiSystemId("SYSUPD");
+        entity.setUiUserBaseUpd(upd);
+
+        entity.setBehaviorPatternName("My BP");
+        entity.setBaId("2");
+        entity.setBpMaxCtecFieldId(123);
+        entity.setCreateDate(LocalDateTime.now());
+        entity.setUpdateDate(LocalDateTime.now());
+
+        List<BehaviorPatternDTO> list = service.populateBehaviorPatternList(Collections.singletonList(entity));
+
+        assertEquals(1, list.size());
+        BehaviorPatternDTO dto = list.get(0);
+        assertEquals(5, dto.getBehaviorPatternId());
+        assertEquals(77, dto.getErId());
+        assertEquals("My BP", dto.getBehaviorPatternName());
+        assertEquals(999, dto.getDataElementCode());
+        assertEquals(123, dto.getDateElementCode());
+        assertEquals("John Smith", dto.getCreatedBy());
+        assertEquals("Jane Doe", dto.getModifiedBy());
+        assertEquals("SYSCR", dto.getCreatedBySystemId());
+        assertEquals("SYSUPD", dto.getModifiedBySystemId());
+    }
+
+    // -------------------------------------------------------------------------
+    // getAvailableDatarules
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getAvailableDatarules_success() {
+        PrmDrDataRuleT dr = new PrmDrDataRuleT();
+        dr.setDrId(10);
+        dr.setDataRuleName("Rule 1");
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCustDatadesc("DE Name");
+        mb.setMbCtecFid(100);
+        mb.setMbCtecFtype("NUM");
+        dr.setPrmMbMasterT(mb);
+
+        PrmDrLuOperatorT op = new PrmDrLuOperatorT();
+        op.setOperatorDesc("EQUALS");
+        dr.setPrmDrLuOperatorT(op);
+
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("John");
+        cr.setUiLastName("Creator");
+        dr.setUiUserBaseCr(cr);
+
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("Jane");
+        upd.setUiLastName("Updater");
+        dr.setUiUserBaseUpd(upd);
+
+        dr.setCreateDate(new Date());
+        dr.setUpdateDate(new Date());
+
+        when(dataRulesRepository.getAvailableDataRules(1))
+                .thenReturn(Collections.singletonList(dr));
+
+        List<DataRuleDTO> list = service.getAvailableDatarules(1);
+
+        assertEquals(1, list.size());
+        DataRuleDTO dto = list.get(0);
+        assertEquals(10, dto.getDataRuleId());
+        assertEquals("Rule 1", dto.getDataRuleName());
+        assertEquals("DE Name", dto.getDataElementName());
+        assertEquals("EQUALS", dto.getOperator());
+        assertEquals(100, dto.getDataElementId());
+        assertEquals("NUM", dto.getDataElementDataType());
+        assertNotNull(dto.getCreatedDate());
+        assertNotNull(dto.getModifiedDate());
+        assertEquals("John Creator", dto.getCreatedBy());
+        assertEquals("Jane Updater", dto.getModifiedBy());
+        assertNotNull(dto.getSelectedValues());
+        assertNotNull(dto.getRangeValues());
+    }
+
+    // -------------------------------------------------------------------------
+    // getSelectedDataRules + code/range values
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getSelectedDataRules_withDetails_populatesValuesAndRanges() {
+        // ER-DR mapping
+        PrmErdrTPK pk = new PrmErdrTPK();
+        pk.setErId(1);
+        pk.setDrId(10);
+        PrmErDrT erdr = new PrmErDrT();
+        erdr.setId(pk);
+
+        when(behaviorPatternErDrRepository.retrieveErDrValues(1))
+                .thenReturn(Collections.singletonList(erdr));
+
+        // Data rule
+        PrmDrDataRuleT dr = new PrmDrDataRuleT();
+        dr.setDrId(10);
+        dr.setDataRuleName("Rule 1");
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCustDatadesc("DE Name");
+        mb.setMbCtecFid(100);
+        mb.setMbCtecFtype("NUM");
+        dr.setPrmMbMasterT(mb);
+
+        PrmDrLuOperatorT op = new PrmDrLuOperatorT();
+        op.setOperatorDesc("EQUALS");
+        dr.setPrmDrLuOperatorT(op);
+
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("John");
+        cr.setUiLastName("Creator");
+        dr.setUiUserBaseCr(cr);
+
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("Jane");
+        upd.setUiLastName("Updater");
+        dr.setUiUserBaseUpd(upd);
+
+        dr.setCreateDate(new Date());
+        dr.setUpdateDate(new Date());
+
+        // Single values
+        PrmDrSingleValuesT sv = new PrmDrSingleValuesT();
+        PrmDrSingleValuesTPK svPk = new PrmDrSingleValuesTPK();
+        svPk.setDrValue("CODE1");
+        sv.setId(svPk);
+        sv.setDrLabel("Label1");
+        dr.setPrmDrSingleValuesTs(Collections.singletonList(sv));
+
+        // Range values
+        PrmDrRangesT range = new PrmDrRangesT();
+        range.setDrRangeFrom("1");
+        range.setDrRangeTo("10");
+        dr.setPrmDrRangesTs(Collections.singletonList(range));
+
+        when(dataRulesRepository.retrieveDataRulesByIds(Collections.singletonList(10)))
+                .thenReturn(Collections.singletonList(dr));
+
+        List<DataRuleDTO> result = service.getSelectedDataRules(1, true);
+
+        assertEquals(1, result.size());
+        DataRuleDTO dto = result.get(0);
+        assertEquals(10, dto.getDataRuleId());
+        assertEquals("Rule 1", dto.getDataRuleName());
+
+        // Code values
+        List<DrCodeValueDTO> codes = dto.getSelectedValues();
+        assertEquals(1, codes.size());
+        assertEquals("CODE1", codes.get(0).getCode());
+        assertEquals("Label1", codes.get(0).getValue());
+
+        // Range values
+        List<DrRangeValuesDTO> ranges = dto.getRangeValues();
+        assertEquals(1, ranges.size());
+        assertEquals("1", ranges.get(0).getFrom());
+        assertEquals("10", ranges.get(0).getTo());
+    }
+
+    @Test
+    void getSelectedDataRules_noErDrRecords_returnsEmptyList() {
+        when(behaviorPatternErDrRepository.retrieveErDrValues(99))
+                .thenReturn(Collections.emptyList());
+
+        List<DataRuleDTO> result = service.getSelectedDataRules(99, true);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    // -------------------------------------------------------------------------
+    // formatLocalDate
+    // -------------------------------------------------------------------------
+
+    @Test
+    void formatLocalDate_formatsCorrectly() {
+        LocalDateTime dt = LocalDateTime.of(2025, 12, 10, 14, 30);
+
+        String formatted = service.formatLocalDate(dt);
+
+        assertNotNull(formatted);
+        // We don't know exact pattern string, but we know it should contain year and something like time.
+        assertTrue(formatted.contains("2025"));
+    }
+
+    // -------------------------------------------------------------------------
+    // getZoneId
+    // -------------------------------------------------------------------------
+
+    @Test
+    void getZoneId_returnsConfiguredZoneIdWhenPresent() {
+        FadsConfigT cfg = new FadsConfigT();
+        cfg.setOptionValue("America/New_York");
+
+        when(fadsConfigRepository.findById(BehaviorPatternConstants.DATE_TIME_ZONE_ID))
+                .thenReturn(Optional.of(cfg));
+
+        ZoneId id = service.getZoneId();
+
+        assertEquals(ZoneId.of("America/New_York"), id);
+    }
+
+    @Test
+    void getZoneId_returnsSystemDefaultWhenConfigMissing() {
+        when(fadsConfigRepository.findById(BehaviorPatternConstants.DATE_TIME_ZONE_ID))
+                .thenReturn(Optional.empty());
+
+        ZoneId id = service.getZoneId();
+
+        assertEquals(ZoneId.systemDefault(), id);
+    }
+}
