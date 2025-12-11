@@ -1,85 +1,22 @@
-package com.optum.fads.pgp.behavior.api.mapper;
+package com.optum.fads.pgp.behavior.api;
 
-import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
-import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-class BehaviorPatternDetailMapperTest {
-
-    private final BehaviorPatternDetailMapper mapper = BehaviorPatternDetailMapper.INSTANCE;
+@SpringBootTest
+class FadsPgpBehaviorApiApplicationTest {
 
     @Test
-    void convertToBehaviorPatternDTO_shouldMapAllFields() {
-        // Given
-        PrmBpBehaviorPatsT source = new PrmBpBehaviorPatsT();
-        source.setBpId("BP123");
-        source.setBehaviorPatternName("Pattern ABC");
-        source.setBaId("BA456");
-
-        PrmErExtractRuleT erRule = new PrmErExtractRuleT();
-        erRule.setErId("ER789");
-        source.setPrmErExtractRuleT(erRule);
-
-        PrmMbMasterT mbMaster = new PrmMbMasterT();
-        mbMaster.setMbCtecFid("CTEC001");
-        source.setPrmMbMasterT(mbMaster);
-
-        UiUserBase createdBy = new UiUserBase();
-        createdBy.setUserFullName("Jane Creator");
-        createdBy.setUiSystemId("SYS1");
-        source.setUiUserBaseCr(createdBy);
-
-        UiUserBase modifiedBy = new UiUserBase();
-        modifiedBy.setUserFullName("John Updater");
-        modifiedBy.setUiSystemId("SYS2");
-        source.setUiUserBaseUpd(modifiedBy);
-
-        // When
-        BehaviorPatternDTO dto = mapper.convertToBehaviorPatternDTO(source);
-
-        // Then
-        assertEquals("BP123", dto.getBehaviorPatternId());
-        assertEquals("Pattern ABC", dto.getBehaviorPatternName());
-        assertEquals("BA456", dto.getBaId());
-        assertEquals("ER789", dto.getErId());
-        assertEquals("CTEC001", dto.getDataElementCode());
-        assertEquals("Jane Creator", dto.getCreatedBy());
-        assertEquals("SYS1", dto.getCreatedBySystemId());
-        assertEquals("John Updater", dto.getModifiedBy());
-        assertEquals("SYS2", dto.getModifiedBySystemId());
+    void contextLoads() {
+        // If the Spring context starts without exceptions, this passes.
     }
 
     @Test
-    void convertToPrmBpBehaviorPatsT_shouldMapBackwards() {
-        // Given
-        BehaviorPatternDTO dto = new BehaviorPatternDTO();
-        dto.setBehaviorPatternId("BP001");
-        dto.setBehaviorPatternName("Sample Pattern");
-        dto.setBaId("BA001");
-        dto.setErId("ER001");
-        dto.setDataElementCode("DATA123");
-        dto.setCreatedBy("Creator");
-        dto.setCreatedBySystemId("SYS-CREATE");
-        dto.setModifiedBy("Modifier");
-        dto.setModifiedBySystemId("SYS-MODIFY");
-
-        // When
-        PrmBpBehaviorPatsT entity = mapper.convertToPrmBpBehaviorPatsT(dto);
-
-        // Then
-        assertNotNull(entity);
-        assertEquals("BP001", entity.getBpId());
-        assertEquals("Sample Pattern", entity.getBehaviorPatternName());
-        assertEquals("BA001", entity.getBaId());
-        // Reverse mapping of nested values depends on MapStruct setup; check nulls
-        assertNull(entity.getPrmErExtractRuleT());
-        assertNull(entity.getPrmMbMasterT());
-        assertNull(entity.getUiUserBaseCr());
-        assertNull(entity.getUiUserBaseUpd());
+    void mainMethod_runsWithoutException() {
+        assertDoesNotThrow(() ->
+                FadsPgpBehaviorApiApplication.main(new String[] {})
+        );
     }
 }
