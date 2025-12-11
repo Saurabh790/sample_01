@@ -1,5 +1,193 @@
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyLong;
+package com.optum.fads.pgp.behavior.api.service.impl;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.pgp.behavior.api.domain.SeSurAccess;
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
+import com.optum.fads.pgp.behavior.api.domain.SeSurModule;
+import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.repo.UserRepository;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserDetailsService userDetailsService;
+
+    private UiUserBase mockUser;
+
+    @BeforeEach
+    void setUp() {
+        // Create mock objects exactly as required by the service
+        mockUser = new UiUserBase();
+        mockUser.setUiUserId("john123");
+        mockUser.setUiSystemId("SYS001");
+        mockUser.setUiEMailAddress("john@test.com");
+
+        SeSurGrpModAccess access = new SeSurGrpModAccess();
+        SeSurModule module = new SeSurModule();
+        module.setSurModuleId("MOD1");
+        module.setSurModuleName("MODULE NAME");
+
+        SeSurAccess surAccess = new SeSurAccess();
+        surAccess.setSurAccessId("READ");
+
+        access.setSeSurModule(module);
+        access.setSeSurAccess(surAccess);
+        access.setId(access.new CompositeId("MOD1"));
+
+        List<SeSurGrpModAccess> moduleAccessList = new ArrayList<>();
+        moduleAccessList.add(access);
+
+        SeSurGrp group = new SeSurGrp();
+        group.setSurGrpId(100);
+        group.setSurGrpName("ADMIN");
+        group.setSeSurGrpModAccesses(moduleAccessList);
+
+        SeUsrGrp usrGrp = new SeUsrGrp();
+        usrGrp.setSeSurGrp(group);
+
+        mockUser.setSeUsrGrp(usrGrp);
+    }
+
+    @Test
+    void loadUserByUsername_success() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
+            .thenReturn(Optional.of(mockUser));
+
+        UserDetails details = userDetailsService.loadUserByUsername("john123");
+
+        assertNotNull(details);
+        assertTrue(details instanceof AppUser);
+
+        AppUser appUser = (AppUser) details;
+
+        assertEquals("john123", appUser.getUserId());
+        assertEquals("john@test.com", appUser.getUserEmail());
+        assertEquals("SYS001", appUser.getUserSystemId());
+
+        assertEquals("ADMIN", appUser.getRole().getRoleName());
+        assertEquals(1, appUser.getRole().getAllowedAccesses().size());
+
+        assertEquals("MOD1", appUser.getRole().getAllowedAccesses().get(0).getModuleId());
+        assertEquals("READ", appUser.getRole().getAllowedAccesses().get(0).getAccess());
+    }
+
+    @Test
+    void loadUserByUsername_notFound() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("invalid", "invalid"))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            UsernameNotFoundException.class,
+            () -> userDetailsService.loadUserByUsername("invalid")
+        );
+    }
+}
+
+
+package com.optum.fads.pgp.behavior.api.security;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+
+@ExtendWith(MockitoExtension.class)
+class UserJwtAuthenticationConverterTest {
+
+    @Mock
+    private IUserDetailsService userDetailsService;
+
+    @Test
+    void convert_success() {
+        Jwt jwt = Jwt.withTokenValue("abc")
+                .header("alg", "none")
+                .claim("groups", List.of("admin", "user"))
+                .claim("email", "john@test.com")
+                .build();
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserId("johnid");
+        mockUser.setUserEmail("john@test.com");
+
+        when(userDetailsService.loadUserByUsername("john@test.com"))
+            .thenReturn(mockUser);
+
+        UserJwtAuthenticationConverter converter =
+                new UserJwtAuthenticationConverter(userDetailsService);
+
+        Authentication auth = converter.convert(jwt);
+
+        assertNotNull(auth);
+        assertEquals(mockUser, auth.getPrincipal());
+        assertEquals(2, auth.getAuthorities().size());
+        assertTrue(auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
+    }
+
+    @Test
+    void convert_userNotFound() {
+        Jwt jwt = Jwt.withTokenValue("xyz")
+                .header("alg", "none")
+                .claim("email", "missing@test.com")
+                .build();
+
+        when(userDetailsService.loadUserByUsername("missing@test.com"))
+            .thenReturn(null);
+
+        UserJwtAuthenticationConverter converter =
+                new UserJwtAuthenticationConverter(userDetailsService);
+
+        assertThrows(
+            BadCredentialsException.class,
+            () -> converter.convert(jwt)
+        );
+    }
+}
+<plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>0.8.10</version>
+    <configuration>
+        <excludes>
+            <exclude>**/dto/**</exclude>
+            <exclude>**/domain/**</exclude>
+            <exclude>**/common/constants/**</exclude>
+            <exclude>**/exception/**</exclude>
+        </excludes>
+    </configuration>
+</plugin>
