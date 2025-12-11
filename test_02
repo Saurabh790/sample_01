@@ -1,179 +1,85 @@
-package com.optum.fads.pgp.behavior.api.config;
+package com.optum.fads.pgp.behavior.api.mapper;
+
+import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
+import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+class BehaviorPatternDetailMapperTest {
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.mock.web.MockHttpServletRequest;
+    private final BehaviorPatternDetailMapper mapper = BehaviorPatternDetailMapper.INSTANCE;
 
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
-import com.optum.fads.pgp.behavior.api.security.UserJwtAuthenticationConverter;
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+    @Test
+    void convertToBehaviorPatternDTO_shouldMapAllFields() {
+        // Given
+        PrmBpBehaviorPatsT source = new PrmBpBehaviorPatsT();
+        source.setBpId("BP123");
+        source.setBehaviorPatternName("Pattern ABC");
+        source.setBaId("BA456");
 
-@ExtendWith(MockitoExtension.class)
-class SecurityConfigTest {
+        PrmErExtractRuleT erRule = new PrmErExtractRuleT();
+        erRule.setErId("ER789");
+        source.setPrmErExtractRuleT(erRule);
 
-    @Mock
-    private IUserDetailsService userDetailsService;
+        PrmMbMasterT mbMaster = new PrmMbMasterT();
+        mbMaster.setMbCtecFid("CTEC001");
+        source.setPrmMbMasterT(mbMaster);
 
-    private SecurityConfig createConfig() {
-        return new SecurityConfig(userDetailsService);
+        UiUserBase createdBy = new UiUserBase();
+        createdBy.setUserFullName("Jane Creator");
+        createdBy.setUiSystemId("SYS1");
+        source.setUiUserBaseCr(createdBy);
+
+        UiUserBase modifiedBy = new UiUserBase();
+        modifiedBy.setUserFullName("John Updater");
+        modifiedBy.setUiSystemId("SYS2");
+        source.setUiUserBaseUpd(modifiedBy);
+
+        // When
+        BehaviorPatternDTO dto = mapper.convertToBehaviorPatternDTO(source);
+
+        // Then
+        assertEquals("BP123", dto.getBehaviorPatternId());
+        assertEquals("Pattern ABC", dto.getBehaviorPatternName());
+        assertEquals("BA456", dto.getBaId());
+        assertEquals("ER789", dto.getErId());
+        assertEquals("CTEC001", dto.getDataElementCode());
+        assertEquals("Jane Creator", dto.getCreatedBy());
+        assertEquals("SYS1", dto.getCreatedBySystemId());
+        assertEquals("John Updater", dto.getModifiedBy());
+        assertEquals("SYS2", dto.getModifiedBySystemId());
     }
 
     @Test
-    void jwtDecoder_decodesNimbusJwt_andConvertsDatesToInstant() throws Exception {
-        SecurityConfig config = createConfig();
-        JwtDecoder decoder = config.jwtDecoder();
+    void convertToPrmBpBehaviorPatsT_shouldMapBackwards() {
+        // Given
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setBehaviorPatternId("BP001");
+        dto.setBehaviorPatternName("Sample Pattern");
+        dto.setBaId("BA001");
+        dto.setErId("ER001");
+        dto.setDataElementCode("DATA123");
+        dto.setCreatedBy("Creator");
+        dto.setCreatedBySystemId("SYS-CREATE");
+        dto.setModifiedBy("Modifier");
+        dto.setModifiedBySystemId("SYS-MODIFY");
 
-        // Build a Nimbus JWT with Date-based claims
-        Date iat = new Date(1_000_000L);
-        Date exp = new Date(2_000_000L);
+        // When
+        PrmBpBehaviorPatsT entity = mapper.convertToPrmBpBehaviorPatsT(dto);
 
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .subject("sub-123")
-                .claim("groups", List.of("admin"))
-                .issueTime(iat)
-                .expirationTime(exp)
-                .build();
-
-        SignedJWT signedJWT = new SignedJWT(
-                new JWSHeader(JWSAlgorithm.HS256),
-                claimsSet
-        );
-        String token = signedJWT.serialize();
-
-        Jwt jwt = decoder.decode(token);
-
-        assertEquals("sub-123", jwt.getSubject());
-        assertEquals(List.of("admin"), jwt.getClaimAsStringList("groups"));
-
-        // iat and exp should be converted to Instant
-        Instant issuedAt = jwt.getIssuedAt();
-        Instant expiresAt = jwt.getExpiresAt();
-
-        assertNotNull(issuedAt);
-        assertNotNull(expiresAt);
-        assertEquals(iat.toInstant(), issuedAt);
-        assertEquals(exp.toInstant(), expiresAt);
-    }
-
-    @Test
-    void userJwtAuthenticationConverter_createsBean() {
-        SecurityConfig config = createConfig();
-
-        UserJwtAuthenticationConverter converter = config.userJwtAuthenticationConverter();
-
-        assertNotNull(converter);
-    }
-
-    @Test
-    void passwordEncoder_encodesAndMatches() {
-        SecurityConfig config = createConfig();
-
-        PasswordEncoder encoder = config.passwordEncoder();
-
-        String raw = "secret123";
-        String encoded = encoder.encode(raw);
-
-        assertNotNull(encoded);
-        assertTrue(encoder.matches(raw, encoded));
-    }
-
-    @Test
-    void corsConfigurationSource_allowsAllOriginsMethodsHeaders() {
-        SecurityConfig config = createConfig();
-
-        CorsConfigurationSource source = config.corsConfigurationSource();
-
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/any/path");
-
-        CorsConfiguration cfg = source.getCorsConfiguration(request);
-        assertNotNull(cfg);
-
-        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedOrigins());
-        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedMethods());
-        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedHeaders());
-    }
-}
-
-
-package com.optum.fads.pgp.behavior.api.config;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import javax.sql.DataSource;
-
-import org.junit.jupiter.api.Test;
-
-class ServiceConfigTest {
-
-    @Test
-    void customDataSource_createsDataSourceBean() {
-        ServiceConfig config = new ServiceConfig();
-
-        DataSource ds = config.customDataSource();
-
-        assertNotNull(ds);
-        // We don’t call ds.getConnection() – no DB needed for this unit test
-    }
-}
-package com.optum.fads.pgp.behavior.api.config;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.TimeZone;
-
-import org.junit.jupiter.api.Test;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.web.client.RestTemplate;
-
-class CommonConfigTest {
-
-    @Test
-    void modelMapper_configuredWithStrictMatchingAndAmbiguityIgnored() {
-        CommonConfig config = new CommonConfig();
-
-        ModelMapper mapper = config.modelMapper();
-
-        assertNotNull(mapper);
-        assertEquals(MatchingStrategies.STRICT, mapper.getConfiguration().getMatchingStrategy());
-        assertTrue(mapper.getConfiguration().isAmbiguityIgnored());
-    }
-
-    @Test
-    void restTemplate_createsBean() {
-        CommonConfig config = new CommonConfig();
-
-        RestTemplate restTemplate = config.restTemplate();
-
-        assertNotNull(restTemplate);
-    }
-
-    @Test
-    void started_setsDefaultTimeZoneToUtcMinus4() {
-        CommonConfig config = new CommonConfig();
-
-        // Call the @PostConstruct method manually
-        config.started();
-
-        TimeZone tz = TimeZone.getDefault();
-        assertEquals("UTC-4", tz.getID());
+        // Then
+        assertNotNull(entity);
+        assertEquals("BP001", entity.getBpId());
+        assertEquals("Sample Pattern", entity.getBehaviorPatternName());
+        assertEquals("BA001", entity.getBaId());
+        // Reverse mapping of nested values depends on MapStruct setup; check nulls
+        assertNull(entity.getPrmErExtractRuleT());
+        assertNull(entity.getPrmMbMasterT());
+        assertNull(entity.getUiUserBaseCr());
+        assertNull(entity.getUiUserBaseUpd());
     }
 }
