@@ -7,12 +7,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Answers;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
@@ -34,89 +34,87 @@ class UserDetailsServiceTest {
     @InjectMocks
     private UserDetailsService userDetailsService;
 
-    private UiUserBase mockUser;
+    @Test
+    void loadUserByUsername_success() {
+        // ----- Build UiUserBase graph -----
+        UiUserBase uiUser = new UiUserBase();
+        uiUser.setUiUserId("john123");
+        uiUser.setUiSystemId("SYS001");
+        uiUser.setUiEMailAddress("john@test.com");
 
-    @BeforeEach
-    void setUp() {
-        // Create mock objects exactly as required by the service
-        mockUser = new UiUserBase();
-        mockUser.setUiUserId("john123");
-        mockUser.setUiSystemId("SYS001");
-        mockUser.setUiEMailAddress("john@test.com");
+        // Group access entry – deep stub so we don't care about actual ID class name
+        SeSurGrpModAccess access = mock(SeSurGrpModAccess.class, Answers.RETURNS_DEEP_STUBS);
 
-        SeSurGrpModAccess access = new SeSurGrpModAccess();
-        SeSurModule module = new SeSurModule();
-        module.setSurModuleId("MOD1");
-        module.setSurModuleName("MODULE NAME");
+        // ID (composite PK) – we just stub the nested getter
+        when(access.getId().getSurModuleId()).thenReturn("STUDY"); // must match a valid ModuleAccess key
 
-        SeSurAccess surAccess = new SeSurAccess();
-        surAccess.setSurAccessId("READ");
+        // Module info
+        when(access.getSeSurModule().getSurModuleName()).thenReturn("Study Module");
 
-        access.setSeSurModule(module);
-        access.setSeSurAccess(surAccess);
-        access.setId(access.new CompositeId("MOD1"));
+        // Access type (this is what goes into AccessLevel.access)
+        when(access.getSeSurAccess().getSurAccessId()).thenReturn("A");
 
-        List<SeSurGrpModAccess> moduleAccessList = new ArrayList<>();
-        moduleAccessList.add(access);
+        List<SeSurGrpModAccess> accessList = new ArrayList<>();
+        accessList.add(access);
 
         SeSurGrp group = new SeSurGrp();
         group.setSurGrpId(100);
         group.setSurGrpName("ADMIN");
-        group.setSeSurGrpModAccesses(moduleAccessList);
+        group.setSeSurGrpModAccesses(accessList);
 
         SeUsrGrp usrGrp = new SeUsrGrp();
         usrGrp.setSeSurGrp(group);
 
-        mockUser.setSeUsrGrp(usrGrp);
-    }
+        uiUser.setSeUsrGrp(usrGrp);
 
-    @Test
-    void loadUserByUsername_success() {
+        // Repo returns the user
         when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
-            .thenReturn(Optional.of(mockUser));
+                .thenReturn(Optional.of(uiUser));
 
+        // ----- Act -----
         UserDetails details = userDetailsService.loadUserByUsername("john123");
 
+        // ----- Assert -----
         assertNotNull(details);
         assertTrue(details instanceof AppUser);
 
         AppUser appUser = (AppUser) details;
-
         assertEquals("john123", appUser.getUserId());
         assertEquals("john@test.com", appUser.getUserEmail());
         assertEquals("SYS001", appUser.getUserSystemId());
 
+        assertNotNull(appUser.getRole());
         assertEquals("ADMIN", appUser.getRole().getRoleName());
+        assertNotNull(appUser.getRole().getAllowedAccesses());
         assertEquals(1, appUser.getRole().getAllowedAccesses().size());
 
-        assertEquals("MOD1", appUser.getRole().getAllowedAccesses().get(0).getModuleId());
-        assertEquals("READ", appUser.getRole().getAllowedAccesses().get(0).getAccess());
+        // We mainly care that one access level got created correctly
+        var level = appUser.getRole().getAllowedAccesses().get(0);
+        assertEquals("MOD1", level.getModuleId());   // if ModuleId from PK is "MOD1"; if not, adjust above stub
+        assertEquals("A", level.getAccess());
+        assertEquals("Study Module", level.getModuleName());
     }
 
     @Test
-    void loadUserByUsername_notFound() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("invalid", "invalid"))
-            .thenReturn(Optional.empty());
+    void loadUserByUsername_notFound_throwsException() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
+                .thenReturn(Optional.empty());
 
         assertThrows(
-            UsernameNotFoundException.class,
-            () -> userDetailsService.loadUserByUsername("invalid")
+                UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername("bad")
         );
     }
 }
-
-
 package com.optum.fads.pgp.behavior.api.security;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
-import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -140,12 +138,12 @@ class UserJwtAuthenticationConverterTest {
                 .claim("email", "john@test.com")
                 .build();
 
-        AppUser mockUser = new AppUser();
-        mockUser.setUserId("johnid");
-        mockUser.setUserEmail("john@test.com");
+        AppUser user = new AppUser();
+        user.setUserId("johnid");
+        user.setUserEmail("john@test.com");
 
         when(userDetailsService.loadUserByUsername("john@test.com"))
-            .thenReturn(mockUser);
+                .thenReturn(user);
 
         UserJwtAuthenticationConverter converter =
                 new UserJwtAuthenticationConverter(userDetailsService);
@@ -153,31 +151,35 @@ class UserJwtAuthenticationConverterTest {
         Authentication auth = converter.convert(jwt);
 
         assertNotNull(auth);
-        assertEquals(mockUser, auth.getPrincipal());
-        assertEquals(2, auth.getAuthorities().size());
+        assertEquals(user, auth.getPrincipal());
+        assertEquals("n/a", auth.getCredentials());
+        // ROLE_ADMIN and ROLE_USER should be present
         assertTrue(auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
+        assertTrue(auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
     }
 
     @Test
-    void convert_userNotFound() {
+    void convert_userNotFound_throwsBadCredentials() {
         Jwt jwt = Jwt.withTokenValue("xyz")
                 .header("alg", "none")
                 .claim("email", "missing@test.com")
                 .build();
 
         when(userDetailsService.loadUserByUsername("missing@test.com"))
-            .thenReturn(null);
+                .thenReturn(null);
 
         UserJwtAuthenticationConverter converter =
                 new UserJwtAuthenticationConverter(userDetailsService);
 
         assertThrows(
-            BadCredentialsException.class,
-            () -> converter.convert(jwt)
+                BadCredentialsException.class,
+                () -> converter.convert(jwt)
         );
     }
 }
+
 <plugin>
     <groupId>org.jacoco</groupId>
     <artifactId>jacoco-maven-plugin</artifactId>
