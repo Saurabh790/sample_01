@@ -1,195 +1,33 @@
-package com.optum.fads.pgp.behavior.api.service.impl;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+/**
+ * @author awagh
+ *
+ */
+package com.optum.fads.pgp.behavior.api.mapper;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import org.mapstruct.*;
+import org.mapstruct.factory.Mappers;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.Answers;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
 
-import com.optum.fads.pgp.behavior.api.domain.SeSurAccess;
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.behavior.api.domain.SeSurModule;
-import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.repo.UserRepository;
 
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface BehaviorPatternDetailMapper {
+	BehaviorPatternDetailMapper INSTANCE = Mappers.getMapper(BehaviorPatternDetailMapper.class);
+    @Mappings({ @Mapping(source = "bpId", target = "behaviorPatternId"),
+            @Mapping(source = "behaviorPatternName", target = "behaviorPatternName"),
+            @Mapping(source = "prmErExtractRuleT.erId" , target =  "erId"),
+            @Mapping(source = "baId", target = "baId"),
+            @Mapping(source =  "prmMbMasterT.mbCtecFid", target ="dataElementCode" ),
+            @Mapping(source = "uiUserBaseCr.uiSystemId", target =  "createdBySystemId"),
+            @Mapping(source = "uiUserBaseCr.userFullName", target =  "createdBy"),
+            @Mapping(source = "uiUserBaseUpd.uiSystemId", target =  "modifiedBySystemId"),
+            @Mapping(source = "uiUserBaseUpd.userFullName", target =  "modifiedBy")         })
+    BehaviorPatternDTO convertToBehaviorPatternDTO(PrmBpBehaviorPatsT prmBpBehaviorPatsT);
 
-    @Mock
-    private UserRepository userRepository;
 
-    @InjectMocks
-    private UserDetailsService userDetailsService;
+    @InheritInverseConfiguration
+    PrmBpBehaviorPatsT convertToPrmBpBehaviorPatsT(BehaviorPatternDTO behaviorPatternDTO);
 
-    @Test
-    void loadUserByUsername_success() {
-        // ----- Build UiUserBase graph -----
-        UiUserBase uiUser = new UiUserBase();
-        uiUser.setUiUserId("john123");
-        uiUser.setUiSystemId("SYS001");
-        uiUser.setUiEMailAddress("john@test.com");
-
-        // Group access entry – deep stub so we don't care about actual ID class name
-        SeSurGrpModAccess access = mock(SeSurGrpModAccess.class, Answers.RETURNS_DEEP_STUBS);
-
-        // ID (composite PK) – we just stub the nested getter
-        when(access.getId().getSurModuleId()).thenReturn("STUDY"); // must match a valid ModuleAccess key
-
-        // Module info
-        when(access.getSeSurModule().getSurModuleName()).thenReturn("Study Module");
-
-        // Access type (this is what goes into AccessLevel.access)
-        when(access.getSeSurAccess().getSurAccessId()).thenReturn("A");
-
-        List<SeSurGrpModAccess> accessList = new ArrayList<>();
-        accessList.add(access);
-
-        SeSurGrp group = new SeSurGrp();
-        group.setSurGrpId(100);
-        group.setSurGrpName("ADMIN");
-        group.setSeSurGrpModAccesses(accessList);
-
-        SeUsrGrp usrGrp = new SeUsrGrp();
-        usrGrp.setSeSurGrp(group);
-
-        uiUser.setSeUsrGrp(usrGrp);
-
-        // Repo returns the user
-        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
-                .thenReturn(Optional.of(uiUser));
-
-        // ----- Act -----
-        UserDetails details = userDetailsService.loadUserByUsername("john123");
-
-        // ----- Assert -----
-        assertNotNull(details);
-        assertTrue(details instanceof AppUser);
-
-        AppUser appUser = (AppUser) details;
-        assertEquals("john123", appUser.getUserId());
-        assertEquals("john@test.com", appUser.getUserEmail());
-        assertEquals("SYS001", appUser.getUserSystemId());
-
-        assertNotNull(appUser.getRole());
-        assertEquals("ADMIN", appUser.getRole().getRoleName());
-        assertNotNull(appUser.getRole().getAllowedAccesses());
-        assertEquals(1, appUser.getRole().getAllowedAccesses().size());
-
-        // We mainly care that one access level got created correctly
-        var level = appUser.getRole().getAllowedAccesses().get(0);
-        assertEquals("MOD1", level.getModuleId());   // if ModuleId from PK is "MOD1"; if not, adjust above stub
-        assertEquals("A", level.getAccess());
-        assertEquals("Study Module", level.getModuleName());
-    }
-
-    @Test
-    void loadUserByUsername_notFound_throwsException() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
-                .thenReturn(Optional.empty());
-
-        assertThrows(
-                UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername("bad")
-        );
-    }
 }
-package com.optum.fads.pgp.behavior.api.security;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
-
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
-
-@ExtendWith(MockitoExtension.class)
-class UserJwtAuthenticationConverterTest {
-
-    @Mock
-    private IUserDetailsService userDetailsService;
-
-    @Test
-    void convert_success() {
-        Jwt jwt = Jwt.withTokenValue("abc")
-                .header("alg", "none")
-                .claim("groups", List.of("admin", "user"))
-                .claim("email", "john@test.com")
-                .build();
-
-        AppUser user = new AppUser();
-        user.setUserId("johnid");
-        user.setUserEmail("john@test.com");
-
-        when(userDetailsService.loadUserByUsername("john@test.com"))
-                .thenReturn(user);
-
-        UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService);
-
-        Authentication auth = converter.convert(jwt);
-
-        assertNotNull(auth);
-        assertEquals(user, auth.getPrincipal());
-        assertEquals("n/a", auth.getCredentials());
-        // ROLE_ADMIN and ROLE_USER should be present
-        assertTrue(auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
-        assertTrue(auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
-    }
-
-    @Test
-    void convert_userNotFound_throwsBadCredentials() {
-        Jwt jwt = Jwt.withTokenValue("xyz")
-                .header("alg", "none")
-                .claim("email", "missing@test.com")
-                .build();
-
-        when(userDetailsService.loadUserByUsername("missing@test.com"))
-                .thenReturn(null);
-
-        UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService);
-
-        assertThrows(
-                BadCredentialsException.class,
-                () -> converter.convert(jwt)
-        );
-    }
-}
-
-<plugin>
-    <groupId>org.jacoco</groupId>
-    <artifactId>jacoco-maven-plugin</artifactId>
-    <version>0.8.10</version>
-    <configuration>
-        <excludes>
-            <exclude>**/dto/**</exclude>
-            <exclude>**/domain/**</exclude>
-            <exclude>**/common/constants/**</exclude>
-            <exclude>**/exception/**</exclude>
-        </excludes>
-    </configuration>
-</plugin>
