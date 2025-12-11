@@ -1,83 +1,179 @@
-package com.optum.fads.pgp.behavior.api.service.impl;
+package com.optum.fads.pgp.behavior.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
-import java.util.Optional;
+import java.time.Instant;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
-import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.repo.UserRepository;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import com.optum.fads.pgp.behavior.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
 
 @ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
+class SecurityConfigTest {
 
     @Mock
-    private UserRepository userRepository;
+    private IUserDetailsService userDetailsService;
 
-    @InjectMocks
-    private UserDetailsService userDetailsService;
-
-    @Test
-    void loadUserByUsername_success() {
-        // ---- Build UiUserBase tree ----
-        UiUserBase uiUser = new UiUserBase();
-        uiUser.setUiUserId("john123");
-        uiUser.setUiSystemId("SYS001");
-        uiUser.setUiEMailAddress("john@test.com");
-
-        SeSurGrp group = new SeSurGrp();
-        group.setSurGrpId(100);
-        group.setSurGrpName("ADMIN");
-        // IMPORTANT: empty access list so ModuleAccess.getByName(...) is never called
-        group.setSeSurGrpModAccesses(new ArrayList<>());
-
-        SeUsrGrp usrGrp = new SeUsrGrp();
-        usrGrp.setSeSurGrp(group);
-
-        uiUser.setSeUsrGrp(usrGrp);
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
-                .thenReturn(Optional.of(uiUser));
-
-        // ---- Act ----
-        UserDetails details = userDetailsService.loadUserByUsername("john123");
-
-        // ---- Assert ----
-        assertNotNull(details);
-        assertTrue(details instanceof AppUser);
-
-        AppUser appUser = (AppUser) details;
-        assertEquals("john123", appUser.getUserId());
-        assertEquals("john@test.com", appUser.getUserEmail());
-        assertEquals("SYS001", appUser.getUserSystemId());
-
-        assertNotNull(appUser.getRole());
-        assertEquals("ADMIN", appUser.getRole().getRoleName());
-        assertNotNull(appUser.getRole().getAllowedAccesses());
-        // No accesses because we passed empty list
-        assertTrue(appUser.getRole().getAllowedAccesses().isEmpty());
+    private SecurityConfig createConfig() {
+        return new SecurityConfig(userDetailsService);
     }
 
     @Test
-    void loadUserByUsername_notFound_throwsException() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
-                .thenReturn(Optional.empty());
+    void jwtDecoder_decodesNimbusJwt_andConvertsDatesToInstant() throws Exception {
+        SecurityConfig config = createConfig();
+        JwtDecoder decoder = config.jwtDecoder();
 
-        assertThrows(
-                UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername("bad")
+        // Build a Nimbus JWT with Date-based claims
+        Date iat = new Date(1_000_000L);
+        Date exp = new Date(2_000_000L);
+
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject("sub-123")
+                .claim("groups", List.of("admin"))
+                .issueTime(iat)
+                .expirationTime(exp)
+                .build();
+
+        SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader(JWSAlgorithm.HS256),
+                claimsSet
         );
+        String token = signedJWT.serialize();
+
+        Jwt jwt = decoder.decode(token);
+
+        assertEquals("sub-123", jwt.getSubject());
+        assertEquals(List.of("admin"), jwt.getClaimAsStringList("groups"));
+
+        // iat and exp should be converted to Instant
+        Instant issuedAt = jwt.getIssuedAt();
+        Instant expiresAt = jwt.getExpiresAt();
+
+        assertNotNull(issuedAt);
+        assertNotNull(expiresAt);
+        assertEquals(iat.toInstant(), issuedAt);
+        assertEquals(exp.toInstant(), expiresAt);
+    }
+
+    @Test
+    void userJwtAuthenticationConverter_createsBean() {
+        SecurityConfig config = createConfig();
+
+        UserJwtAuthenticationConverter converter = config.userJwtAuthenticationConverter();
+
+        assertNotNull(converter);
+    }
+
+    @Test
+    void passwordEncoder_encodesAndMatches() {
+        SecurityConfig config = createConfig();
+
+        PasswordEncoder encoder = config.passwordEncoder();
+
+        String raw = "secret123";
+        String encoded = encoder.encode(raw);
+
+        assertNotNull(encoded);
+        assertTrue(encoder.matches(raw, encoded));
+    }
+
+    @Test
+    void corsConfigurationSource_allowsAllOriginsMethodsHeaders() {
+        SecurityConfig config = createConfig();
+
+        CorsConfigurationSource source = config.corsConfigurationSource();
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/any/path");
+
+        CorsConfiguration cfg = source.getCorsConfiguration(request);
+        assertNotNull(cfg);
+
+        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedOrigins());
+        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedMethods());
+        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedHeaders());
+    }
+}
+
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import javax.sql.DataSource;
+
+import org.junit.jupiter.api.Test;
+
+class ServiceConfigTest {
+
+    @Test
+    void customDataSource_createsDataSourceBean() {
+        ServiceConfig config = new ServiceConfig();
+
+        DataSource ds = config.customDataSource();
+
+        assertNotNull(ds);
+        // We don’t call ds.getConnection() – no DB needed for this unit test
+    }
+}
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.TimeZone;
+
+import org.junit.jupiter.api.Test;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.web.client.RestTemplate;
+
+class CommonConfigTest {
+
+    @Test
+    void modelMapper_configuredWithStrictMatchingAndAmbiguityIgnored() {
+        CommonConfig config = new CommonConfig();
+
+        ModelMapper mapper = config.modelMapper();
+
+        assertNotNull(mapper);
+        assertEquals(MatchingStrategies.STRICT, mapper.getConfiguration().getMatchingStrategy());
+        assertTrue(mapper.getConfiguration().isAmbiguityIgnored());
+    }
+
+    @Test
+    void restTemplate_createsBean() {
+        CommonConfig config = new CommonConfig();
+
+        RestTemplate restTemplate = config.restTemplate();
+
+        assertNotNull(restTemplate);
+    }
+
+    @Test
+    void started_setsDefaultTimeZoneToUtcMinus4() {
+        CommonConfig config = new CommonConfig();
+
+        // Call the @PostConstruct method manually
+        config.started();
+
+        TimeZone tz = TimeZone.getDefault();
+        assertEquals("UTC-4", tz.getID());
     }
 }
