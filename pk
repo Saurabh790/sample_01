@@ -1,29 +1,101 @@
-@Test
-void jwtDecoder_decodesNimbusJwt_andConvertsDatesToInstant() throws Exception {
-    SecurityConfig config = createConfig();
-    JwtDecoder decoder = config.jwtDecoder();
+package com.optum.fads.pgp.behavior.api.mapper;
 
-    Date iat = new Date(1_000_000L);
-    Date exp = new Date(2_000_000L);
+import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
+import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import org.junit.jupiter.api.Test;
 
-    JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-            .subject("sub-123")
-            .claim("groups", List.of("admin"))
-            .issueTime(iat)
-            .expirationTime(exp)
-            .build();
+import static org.junit.jupiter.api.Assertions.*;
 
-    // FIX: use PlainJWT instead of SignedJWT
-    PlainJWT jwtPlain = new PlainJWT(claimsSet);
-    String token = jwtPlain.serialize();
+class BehaviorPatternDetailMapperTest {
 
-    Jwt jwt = decoder.decode(token);
+    private final BehaviorPatternDetailMapper mapper = BehaviorPatternDetailMapper.INSTANCE;
 
-    assertEquals("sub-123", jwt.getSubject());
-    assertEquals(List.of("admin"), jwt.getClaimAsStringList("groups"));
-    assertEquals(iat.toInstant(), jwt.getIssuedAt());
-    assertEquals(exp.toInstant(), jwt.getExpiresAt());
+    @Test
+    void convertToBehaviorPatternDTO_shouldMapAllFields() {
+        // Given
+        PrmBpBehaviorPatsT source = new PrmBpBehaviorPatsT();
+        source.setBpId(201);
+        source.setBehaviorPatternName("Pattern ABC");
+        source.setBaId("BA456");
+
+        PrmErExtractRuleT erRule = new PrmErExtractRuleT();
+        erRule.setErId(533);
+        source.setPrmErExtractRuleT(erRule);
+
+        PrmMbMasterT mbMaster = new PrmMbMasterT();
+        mbMaster.setMbCtecFid(64);
+        source.setPrmMbMasterT(mbMaster);
+
+        UiUserBase createdBy = new UiUserBase();
+        createdBy.setUserFullName("Jane Creator");
+        createdBy.setUiSystemId("SYS1");
+        source.setUiUserBaseCr(createdBy);
+
+        UiUserBase modifiedBy = new UiUserBase();
+        modifiedBy.setUserFullName("John Updater");
+        modifiedBy.setUiSystemId("SYS2");
+        source.setUiUserBaseUpd(modifiedBy);
+
+        // When
+        BehaviorPatternDTO dto = mapper.convertToBehaviorPatternDTO(source);
+
+        // Then – values are copied as-is, no BP/ER/CTEC prefixes
+        assertNotNull(dto);
+        assertEquals(201, dto.getBehaviorPatternId());
+        assertEquals("Pattern ABC", dto.getBehaviorPatternName());
+        assertEquals("BA456", dto.getBaId());
+        assertEquals(533, dto.getErId());
+        assertEquals(64, dto.getDataElementCode());
+        assertEquals("Jane Creator", dto.getCreatedBy());
+        assertEquals("SYS1", dto.getCreatedBySystemId());
+        assertEquals("John Updater", dto.getModifiedBy());
+        assertEquals("SYS2", dto.getModifiedBySystemId());
+    }
+
+    @Test
+    void convertToPrmBpBehaviorPatsT_shouldMapBackwards() {
+        // Given
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setBehaviorPatternId(1);
+        dto.setBehaviorPatternName("Sample Pattern");
+        dto.setBaId("2");
+        dto.setErId(98);
+        dto.setDataElementCode(891);
+        dto.setCreatedBy("Creator");
+        dto.setCreatedBySystemId("SYS-CREATE");
+        dto.setModifiedBy("Modifier");
+        dto.setModifiedBySystemId("SYS-MODIFY");
+
+        // When
+        PrmBpBehaviorPatsT entity = mapper.convertToPrmBpBehaviorPatsT(dto);
+
+        // Then
+        assertNotNull(entity);
+
+        // simple scalar fields
+        assertEquals(1, entity.getBpId());
+        assertEquals("Sample Pattern", entity.getBehaviorPatternName());
+        assertEquals("2", entity.getBaId());
+
+        // nested PrmErExtractRuleT
+        assertNotNull(entity.getPrmErExtractRuleT());
+        assertEquals(98, entity.getPrmErExtractRuleT().getErId());
+
+        // nested PrmMbMasterT
+        assertNotNull(entity.getPrmMbMasterT());
+        assertEquals(891, entity.getPrmMbMasterT().getMbCtecFid());
+
+        // nested UiUserBase (creator)
+        assertNotNull(entity.getUiUserBaseCr());
+        assertEquals("SYS-CREATE", entity.getUiUserBaseCr().getUiSystemId());
+        assertEquals("Creator", entity.getUiUserBaseCr().getUserFullName());
+
+        // nested UiUserBase (modifier)
+        assertNotNull(entity.getUiUserBaseUpd());
+        assertEquals("SYS-MODIFY", entity.getUiUserBaseUpd().getUiSystemId());
+        assertEquals("Modifier", entity.getUiUserBaseUpd().getUserFullName());
+    }
 }
-
-assertTrue(TimeZone.getDefault().getID().contains("GMT"));
-
