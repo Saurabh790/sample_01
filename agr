@@ -1,149 +1,202 @@
-package com.optum.fads.pgp.behavior.api.service.impl;
+package com.optum.fads.pgp.behavior.api.config;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.AccessLevel;
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.dto.ModuleAccess;
-import com.optum.fads.pgp.behavior.api.dto.Role;
-import com.optum.fads.pgp.behavior.api.repo.UserRepository;
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
-
-@Service
-public class UserDetailsService implements IUserDetailsService {
-
-	@Autowired
-	UserRepository userRepository;
-
-	@Override
-	@Transactional(readOnly = true)
-	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		Optional<UiUserBase> optional = userRepository.findByUiEMailAddressOrUiUserId(username, username);
-		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
-		AppUser user = new AppUser();
-		UiUserBase uiUserBase = optional.get();
-
-		user.setUserEmail(uiUserBase.getUiEMailAddress());
-		user.setUserId(uiUserBase.getUiUserId());
-		user.setUserSystemId(uiUserBase.getUiSystemId());
-		Role role = new Role();
-		role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
-		role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
-		List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
-
-		List<AccessLevel> accesses = new ArrayList<AccessLevel>();
-		surAccesses.forEach(surModuleAccess -> {
-			accesses.add(new AccessLevel(surModuleAccess.getId().getSurModuleId(),
-					ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
-					surModuleAccess.getSeSurModule().getSurModuleName(),
-					surModuleAccess.getSeSurAccess().getSurAccessId()));
-
-		});
-
-		role.setAllowedAccesses(accesses);
-		user.setRole(role);
-		return user;
-
-	}
-
-	
-
-}
-
-
-
-package com.optum.fads.pgp.behavior.api.security;
-
-
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+import com.optum.fads.pgp.behavior.api.security.UserJwtAuthenticationConverter;
 import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
 
-//@SuppressWarnings("unused")
-public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken>{
-
-	private static final String GROUPS_CLAIM = "groups";
-	private static final String ROLE_PREFIX = "ROLE_";
-
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+	private static final String CSP_DEFAULT = "default-src 'none'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';";
 	private final IUserDetailsService userDetailsService;
 
-	public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService) {
+	public SecurityConfig(IUserDetailsService userDetailsService) {
 		this.userDetailsService = userDetailsService;
 	}
+	private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
-	@Override
-	public AbstractAuthenticationToken convert(Jwt jwt) {
-		Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
-		return Optional.ofNullable(userDetailsService.loadUserByUsername(getUniqueID(jwt)))
-				.map(u -> new UsernamePasswordAuthenticationToken(u, "n/a", authorities))
-				.orElseThrow(() -> new BadCredentialsException("No user found"));
+	 @Bean
+	    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+
+		 http.csrf(csrf -> csrf
+						 .ignoringRequestMatchers("/actuator/**", "/api/**")
+				 )
+				 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				 .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
+						 .anyRequest().authenticated())
+				 .oauth2ResourceServer(oauth2 -> oauth2
+						 .jwt(jwt -> jwt
+								 .decoder(jwtDecoder())
+								 .jwtAuthenticationConverter(userJwtAuthenticationConverter())
+						 )
+				 );
+	                
+	        return http.build();
+	    }
+
+	@Bean
+	public JwtDecoder jwtDecoder() {
+		// Custom JWT decoder that skips signature validation
+		return token -> {
+			try {
+				JWT jwt = JWTParser.parse(token);
+
+				// Convert claims, handling Date to Instant conversion
+				Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
+
+				convertDateToInstant(claims, "iat");  // issued at
+				convertDateToInstant(claims, "exp");  // expires at
+				convertDateToInstant(claims, "nbf");  // not before
+				convertDateToInstant(claims, "auth_time");  // authentication time
+
+				return Jwt.withTokenValue(token)
+						.headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
+						.claims(claimsMap -> claimsMap.putAll(claims))
+						.build();
+			} catch (Exception e) {
+				throw new JwtException("Failed to parse JWT", e);
+			}
+		};
 	}
 
-	private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-		return this.getGroups(jwt).stream().map(authority -> ROLE_PREFIX + authority.toUpperCase())
-				.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
-	}
-
-	@SuppressWarnings("unchecked")
-	private Collection<String> getGroups(Jwt jwt) {
-		Object groups = jwt.getClaims().get(GROUPS_CLAIM);
-		if (groups instanceof Collection) {
-			return (Collection<String>) groups;
+	private void convertDateToInstant(Map<String, Object> claims, String claimName) {
+		Object value = claims.get(claimName);
+		if (value instanceof Date) {
+			claims.put(claimName, ((Date) value).toInstant());
 		}
-
-		return Collections.emptyList();
 	}
-	private String getUniqueID(Jwt jwt) {
-		return Stream.of("upn", "unique_name", "email", "sub")
-				.map(jwt::getClaimAsString)
-				.filter(v -> v != null && !v.isBlank())
-				.findFirst()
-				.orElse(null);
+
+	@Bean
+	UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
+		logger.debug("Creating UserJwtAuthenticationConverter bean");
+		return new UserJwtAuthenticationConverter(userDetailsService);
+	}
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		logger.debug("Creating PasswordEncoder bean using DelegatingPasswordEncoder");
+		 return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	}
+
+	@Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		logger.debug("Creating CorsConfigurationSource bean");
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
+		configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
+		configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
+	//	configuration.setAllowCredentials(true);
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		logger.info("CORS configuration registered for all paths");
+		return source;
 	}
 	
-	
+}	
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import javax.sql.DataSource;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
+public class ServiceConfig 
+{
+	@Bean(name = "fadsDataSource")
+	@ConfigurationProperties("spring.datasource")
+	public DataSource customDataSource() {
+		return DataSourceBuilder.create().build();
+	}
+
 }
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
 
-need junit for above class n repository for understan ding 
+package com.optum.fads.pgp.behavior.api.config;
 
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
-package com.optum.fads.pgp.behavior.api.repo;
+import java.util.TimeZone;
 
-import java.util.Optional;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.web.client.RestTemplate;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import jakarta.annotation.PostConstruct;
 
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
 
-import jakarta.transaction.Transactional;
-@Transactional
-@Repository
-public interface UserRepository extends JpaRepository<UiUserBase, String> {
-	Optional<UiUserBase> findByUiEMailAddressOrUiUserId(String userEmail, String userId);
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+    @Bean
+	public RestTemplate restTemplate() {
+	    return new RestTemplate();
+	}
+    
+    @PostConstruct
+    void started() {
+      TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
+    }
 
 }
-
 
