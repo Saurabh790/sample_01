@@ -1,33 +1,17 @@
-
-/**
- * @author awagh
- *
- */
-package com.optum.fads.pgp.behavior.api.mapper;
-
-import org.mapstruct.*;
-import org.mapstruct.factory.Mappers;
-
-import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
-
-
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface BehaviorPatternDetailMapper {
-	BehaviorPatternDetailMapper INSTANCE = Mappers.getMapper(BehaviorPatternDetailMapper.class);
-    @Mappings({ @Mapping(source = "bpId", target = "behaviorPatternId"),
-            @Mapping(source = "behaviorPatternName", target = "behaviorPatternName"),
-            @Mapping(source = "prmErExtractRuleT.erId" , target =  "erId"),
-            @Mapping(source = "baId", target = "baId"),
-            @Mapping(source =  "prmMbMasterT.mbCtecFid", target ="dataElementCode" ),
-            @Mapping(source = "uiUserBaseCr.uiSystemId", target =  "createdBySystemId"),
-            @Mapping(source = "uiUserBaseCr.userFullName", target =  "createdBy"),
-            @Mapping(source = "uiUserBaseUpd.uiSystemId", target =  "modifiedBySystemId"),
-            @Mapping(source = "uiUserBaseUpd.userFullName", target =  "modifiedBy")         })
-    BehaviorPatternDTO convertToBehaviorPatternDTO(PrmBpBehaviorPatsT prmBpBehaviorPatsT);
-
-
-    @InheritInverseConfiguration
-    PrmBpBehaviorPatsT convertToPrmBpBehaviorPatsT(BehaviorPatternDTO behaviorPatternDTO);
-
-}
+<plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>${jacoco.version}</version>
+    <configuration>
+        <destFile>target/jacoco.exec</destFile>
+        <excludes>
+            <!-- already there -->
+            <exclude>com/optum/fads/pgp/behavior/api/dto/**</exclude>
+            <exclude>com/optum/fads/pgp/behavior/api/domain/**</exclude>
+            <exclude>com/optum/fads/pgp/behavior/api/common/constants/**</exclude>
+            <!-- new: exclude the Spring Boot main class -->
+            <exclude>com/optum/fads/pgp/behavior/api/BehaviorPatternApiApplication.class</exclude>
+        </excludes>
+    </configuration>
+    ...
+</plugin>
