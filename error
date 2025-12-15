@@ -1,116 +1,23 @@
-package com.optum.fads.pgp.behavior.api.mapper;
-
-import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
-import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
-import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-class BehaviorPatternDetailMapperTest {
-
-    private final BehaviorPatternDetailMapper mapper = BehaviorPatternDetailMapper.INSTANCE;
-
-    @Test
-    void convertToBehaviorPatternDTO_shouldMapAllFields() {
-        // Given
-        PrmBpBehaviorPatsT source = new PrmBpBehaviorPatsT();
-        source.setBpId(201);
-        source.setBehaviorPatternName("Pattern ABC");
-        source.setBaId("BA456");
-
-        PrmErExtractRuleT erRule = new PrmErExtractRuleT();
-        erRule.setErId(533);
-        source.setPrmErExtractRuleT(erRule);
-
-        PrmMbMasterT mbMaster = new PrmMbMasterT();
-        mbMaster.setMbCtecFid(64);
-        source.setPrmMbMasterT(mbMaster);
-
-        UiUserBase createdBy = new UiUserBase();
-        createdBy.setUserFullName("Jane Creator");
-        createdBy.setUiSystemId("SYS1");
-        source.setUiUserBaseCr(createdBy);
-
-        UiUserBase modifiedBy = new UiUserBase();
-        modifiedBy.setUserFullName("John Updater");
-        modifiedBy.setUiSystemId("SYS2");
-        source.setUiUserBaseUpd(modifiedBy);
-
-        // When
-        BehaviorPatternDTO dto = mapper.convertToBehaviorPatternDTO(source);
-
-        // Then
-        assertEquals("BP123", dto.getBehaviorPatternId());
-        assertEquals("Pattern ABC", dto.getBehaviorPatternName());
-        assertEquals("BA456", dto.getBaId());
-        assertEquals("ER789", dto.getErId());
-        assertEquals("CTEC001", dto.getDataElementCode());
-        assertEquals("Jane Creator", dto.getCreatedBy());
-        assertEquals("SYS1", dto.getCreatedBySystemId());
-        assertEquals("John Updater", dto.getModifiedBy());
-        assertEquals("SYS2", dto.getModifiedBySystemId());
-    }
-
-    @Test
-    void convertToPrmBpBehaviorPatsT_shouldMapBackwards() {
-        // Given
-        BehaviorPatternDTO dto = new BehaviorPatternDTO();
-        dto.setBehaviorPatternId(01);
-        dto.setBehaviorPatternName("Sample Pattern");
-        dto.setBaId("2");
-        dto.setErId(98);
-        dto.setDataElementCode(891);
-        dto.setCreatedBy("Creator");
-        dto.setCreatedBySystemId("SYS-CREATE");
-        dto.setModifiedBy("Modifier");
-        dto.setModifiedBySystemId("SYS-MODIFY");
-
-        // When
-        PrmBpBehaviorPatsT entity = mapper.convertToPrmBpBehaviorPatsT(dto);
-
-        // Then
-        assertNotNull(entity);
-        assertEquals("BP001", entity.getBpId());
-        assertEquals("Sample Pattern", entity.getBehaviorPatternName());
-        assertEquals("BA001", entity.getBaId());
-        // Reverse mapping of nested values depends on MapStruct setup; check nulls
-        assertNull(entity.getPrmErExtractRuleT());
-        assertNull(entity.getPrmMbMasterT());
-        assertNull(entity.getUiUserBaseCr());
-        assertNull(entity.getUiUserBaseUpd());
-    }
-}
-taServiceTest
-[INFO] Running com.optum.fads.pgp.behavior.api.service.impl.UserDetailsServiceTest
-[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.160 s -- in com.optum.fads.pgp.behavior.api.service.impl.UserDetailsServiceTest
+ilures:
+[ERROR]   BehaviorPatternDataServiceTest.addBehaviorPattern_success:508 Unexpected exception thrown: com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException: Exception: Cannot parse null string
+[ERROR]   BehaviorPatternDataServiceTest.deleteBehaviorPattern_notFound_throwsException:515 Expected com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException to be thrown, but nothing was thrown.
+[ERROR]   BehaviorPatternDataServiceTest.updateBehaviorPattern_notFound_throwsException:467 Unexpected exception type thrown, expected: <com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException> but was: <java.lang.NullPointerException>
+[ERROR]   BehaviorPatternDataServiceTest.updateBehaviorPattern_success:484 Unexpected exception thrown: com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException: Exception: Cannot parse null string
+[ERROR] Errors:
+[ERROR]   BehaviorPatternDataServiceTest.deleteBehaviorPattern_success » UnnecessaryStubbing
+Unnecessary stubbings detected.
+Clean & maintainable test code requires zero unnecessary code.
+Following stubbings are unnecessary (click to navigate to relevant line of code):
+  1. -> at com.optum.fads.pgp.behavior.api.service.impl.BehaviorPatternDataServiceTest.deleteBehaviorPattern_success(BehaviorPatternDataService.java:520)
+Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
+[ERROR]   BehaviorPatternDataServiceTest.getBehaviorPatternById_notFound_throwsException » UnnecessaryStubbing
+Unnecessary stubbings detected.
+Clean & maintainable test code requires zero unnecessary code.
+Following stubbings are unnecessary (click to navigate to relevant line of code):
+  1. -> at com.optum.fads.pgp.behavior.api.service.impl.BehaviorPatternDataServiceTest.getBehaviorPatternById_notFound_throwsException(BehaviorPatternDataService.java:527)
+Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
 [INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   BehaviorPatternDetailMapperTest.convertToBehaviorPatternDTO_shouldMapAllFields:46 expected: <BP123> but was: <201>
-[ERROR]   BehaviorPatternDetailMapperTest.convertToPrmBpBehaviorPatsT_shouldMapBackwards:76 expected: <BP001> but was: <1>
-[INFO]
-[ERROR] Tests run: 45, Failures: 2, Errors: 0, Skipped: 0
+[ERROR] Tests run: 51, Failures: 4, Errors: 2, Skipped: 0
 [INFO]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  28.725 s
-[INFO] Finished at: 2025-12-11T18:56:59+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-behavior-api: There are test failures.
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>
