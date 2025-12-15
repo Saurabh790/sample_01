@@ -1,101 +1,123 @@
-package com.optum.fads.pgp.behavior.api.mapper;
+@Test
+void addBehaviorPattern_success_noDr() {
+    BehaviorPatternDTO dto = new BehaviorPatternDTO();
+    dto.setBehaviorPatternName("BP1");
+    dto.setThisBpRequiresDr(false);
 
-import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
-import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
-import org.junit.jupiter.api.Test;
+    dto.setBaId("1");
+    dto.setDataElementCode(123);
+    dto.setDateElementCode(999);
 
-import static org.junit.jupiter.api.Assertions.*;
+    dto.setCreatedBySystemId("SYS1");
+    dto.setModifiedBySystemId("SYS2");
 
-class BehaviorPatternDetailMapperTest {
+    dto.setCreatedDate("12/11/2025 07:30:00 PM");
+    dto.setModifiedDate("12/11/2025 07:30:00 PM");
 
-    private final BehaviorPatternDetailMapper mapper = BehaviorPatternDetailMapper.INSTANCE;
+    when(behaviorPatternsRepository.getBehaviorPatternByName("bp1")).thenReturn(null);
+    when(behaviorPatternErRepository.getExtractRuleById(-1)).thenReturn(new PrmErExtractRuleT());
 
-    @Test
-    void convertToBehaviorPatternDTO_shouldMapAllFields() {
-        // Given
-        PrmBpBehaviorPatsT source = new PrmBpBehaviorPatsT();
-        source.setBpId(201);
-        source.setBehaviorPatternName("Pattern ABC");
-        source.setBaId("BA456");
+    when(behaviorPatternsRepository.retrieveNextBpId()).thenReturn(100);
 
-        PrmErExtractRuleT erRule = new PrmErExtractRuleT();
-        erRule.setErId(533);
-        source.setPrmErExtractRuleT(erRule);
+    // saveAndFlush called
+    when(behaviorPatternsRepository.saveAndFlush(any(PrmBpBehaviorPatsT.class)))
+            .thenAnswer(inv -> inv.getArgument(0));
 
-        PrmMbMasterT mbMaster = new PrmMbMasterT();
-        mbMaster.setMbCtecFid(64);
-        source.setPrmMbMasterT(mbMaster);
+    BehaviorPatternDTO result = service.addBehaviorPattern(dto);
 
-        UiUserBase createdBy = new UiUserBase();
-        createdBy.setUserFullName("Jane Creator");
-        createdBy.setUiSystemId("SYS1");
-        source.setUiUserBaseCr(createdBy);
+    assertNotNull(result);
+    assertEquals(100, result.getBehaviorPatternId());
+    assertEquals(-1, result.getErId());
+}
+B) updateBehaviorPattern_success (avoid implementRequiresDr work)
+Make erId = -1 and thisBpRequiresDr=false so implementRequiresDr does nothing.
 
-        UiUserBase modifiedBy = new UiUserBase();
-        modifiedBy.setUserFullName("John Updater");
-        modifiedBy.setUiSystemId("SYS2");
-        source.setUiUserBaseUpd(modifiedBy);
+java
+Copy code
+@Test
+void updateBehaviorPattern_success_noDr_noDeletes() {
+    BehaviorPatternDTO dto = new BehaviorPatternDTO();
+    dto.setBehaviorPatternId(1);
+    dto.setBehaviorPatternName("Updated BP");
+    dto.setThisBpRequiresDr(false);
 
-        // When
-        BehaviorPatternDTO dto = mapper.convertToBehaviorPatternDTO(source);
+    dto.setBaId("1");
+    dto.setDataElementCode(123);
+    dto.setDateElementCode(0);
 
-        // Then – values are copied as-is, no BP/ER/CTEC prefixes
-        assertNotNull(dto);
-        assertEquals(201, dto.getBehaviorPatternId());
-        assertEquals("Pattern ABC", dto.getBehaviorPatternName());
-        assertEquals("BA456", dto.getBaId());
-        assertEquals(533, dto.getErId());
-        assertEquals(64, dto.getDataElementCode());
-        assertEquals("Jane Creator", dto.getCreatedBy());
-        assertEquals("SYS1", dto.getCreatedBySystemId());
-        assertEquals("John Updater", dto.getModifiedBy());
-        assertEquals("SYS2", dto.getModifiedBySystemId());
-    }
+    dto.setModifiedDate("12/11/2025 07:30:00 PM");
 
-    @Test
-    void convertToPrmBpBehaviorPatsT_shouldMapBackwards() {
-        // Given
-        BehaviorPatternDTO dto = new BehaviorPatternDTO();
-        dto.setBehaviorPatternId(1);
-        dto.setBehaviorPatternName("Sample Pattern");
-        dto.setBaId("2");
-        dto.setErId(98);
-        dto.setDataElementCode(891);
-        dto.setCreatedBy("Creator");
-        dto.setCreatedBySystemId("SYS-CREATE");
-        dto.setModifiedBy("Modifier");
-        dto.setModifiedBySystemId("SYS-MODIFY");
+    // mapper output used by service
+    PrmBpBehaviorPatsT mapped = new PrmBpBehaviorPatsT();
+    mapped.setBpId(1);
+    mapped.setPrmErExtractRuleT(new PrmErExtractRuleT()); // safe
+    mapped.setUiUserBaseCr(new UiUserBase());
+    mapped.setUiUserBaseUpd(new UiUserBase());
+    mapped.setPrmMbMasterT(new PrmMbMasterT());
 
-        // When
-        PrmBpBehaviorPatsT entity = mapper.convertToPrmBpBehaviorPatsT(dto);
+    when(behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(dto)).thenReturn(mapped);
 
-        // Then
-        assertNotNull(entity);
+    // used for createDate
+    PrmBpBehaviorPatsT existing = new PrmBpBehaviorPatsT();
+    existing.setCreateDate(LocalDateTime.now());
+    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(existing);
 
-        // simple scalar fields
-        assertEquals(1, entity.getBpId());
-        assertEquals("Sample Pattern", entity.getBehaviorPatternName());
-        assertEquals("2", entity.getBaId());
+    when(behaviorPatternsRepository.save(any(PrmBpBehaviorPatsT.class)))
+            .thenAnswer(inv -> inv.getArgument(0));
 
-        // nested PrmErExtractRuleT
-        assertNotNull(entity.getPrmErExtractRuleT());
-        assertEquals(98, entity.getPrmErExtractRuleT().getErId());
+    String msg = service.updateBehaviorPattern(-1, dto);
+    assertEquals(BehaviorPatternConstants.UPDATE_SUCCESS_MESSAGE, msg);
+}
+C) updateBehaviorPattern_notFound (2 options)
+✅ Option 1 (recommended): after you add the null-check in service
+java
+Copy code
+@Test
+void updateBehaviorPattern_notFound_throwsApiException() {
+    BehaviorPatternDTO dto = new BehaviorPatternDTO();
+    dto.setBehaviorPatternId(1);
+    dto.setBehaviorPatternName("BP");
+    dto.setModifiedDate("12/11/2025 07:30:00 PM");
 
-        // nested PrmMbMasterT
-        assertNotNull(entity.getPrmMbMasterT());
-        assertEquals(891, entity.getPrmMbMasterT().getMbCtecFid());
+    when(behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(dto))
+            .thenReturn(new PrmBpBehaviorPatsT());
 
-        // nested UiUserBase (creator)
-        assertNotNull(entity.getUiUserBaseCr());
-        assertEquals("SYS-CREATE", entity.getUiUserBaseCr().getUiSystemId());
-        assertEquals("Creator", entity.getUiUserBaseCr().getUserFullName());
+    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(null);
 
-        // nested UiUserBase (modifier)
-        assertNotNull(entity.getUiUserBaseUpd());
-        assertEquals("SYS-MODIFY", entity.getUiUserBaseUpd().getUiSystemId());
-        assertEquals("Modifier", entity.getUiUserBaseUpd().getUserFullName());
-    }
+    assertThrows(BehaviorPatternApiException.class,
+            () -> service.updateBehaviorPattern(-1, dto));
+}
+Option 2 (if you don’t change service): expect NPE
+java
+Copy code
+assertThrows(NullPointerException.class, () -> service.updateBehaviorPattern(-1, dto));
+D) deleteBehaviorPattern_success (no constraint path, no ER deletes)
+java
+Copy code
+@Test
+void deleteBehaviorPattern_success() {
+    PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
+    PrmErExtractRuleT er = new PrmErExtractRuleT();
+    er.setErId(-1); // prevents ER delete calls
+    bp.setPrmErExtractRuleT(er);
+
+    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(bp);
+    when(behaviorPatternMasterRepository.retrieveBpRiFormulas(1)).thenReturn(Collections.emptyList());
+
+    when(behaviorPatternsRepository.deleteBehaviorPattern(1)).thenReturn(1);
+
+    List<String> msgs = service.deleteBehaviorPattern(1);
+    assertTrue(msgs.contains(BehaviorPatternConstants.DELETE_SUCCESS_MESSAGE));
+}
+E) deleteBehaviorPattern_notFound (no exception!)
+java
+Copy code
+@Test
+void deleteBehaviorPattern_notFound_returnsDoesNotExistMessage() {
+    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(null);
+
+    List<String> msgs = service.deleteBehaviorPattern(1);
+
+    assertNotNull(msgs);
+    assertTrue(msgs.contains(BehaviorPatternConstants.BEHAVIOR_PATTERN_DOES_NOT_EXIST));
 }
