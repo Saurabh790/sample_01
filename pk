@@ -1,123 +1,1475 @@
-@Test
-void addBehaviorPattern_success_noDr() {
-    BehaviorPatternDTO dto = new BehaviorPatternDTO();
-    dto.setBehaviorPatternName("BP1");
-    dto.setThisBpRequiresDr(false);
+package com.optum.fads.pgp.behavior.api.service.impl;
 
-    dto.setBaId("1");
-    dto.setDataElementCode(123);
-    dto.setDateElementCode(999);
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 
-    dto.setCreatedBySystemId("SYS1");
-    dto.setModifiedBySystemId("SYS2");
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.*;
 
-    dto.setCreatedDate("12/11/2025 07:30:00 PM");
-    dto.setModifiedDate("12/11/2025 07:30:00 PM");
+import com.optum.fads.pgp.behavior.api.common.ListTableParams;
+import com.optum.fads.pgp.behavior.api.common.constants.BehaviorPatternConstants;
+import com.optum.fads.pgp.behavior.api.domain.*;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.behavior.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.behavior.api.dto.DrCodeValueDTO;
+import com.optum.fads.pgp.behavior.api.dto.DrRangeValuesDTO;
+import com.optum.fads.pgp.behavior.api.dto.PaginationResult;
+import com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException;
+import com.optum.fads.pgp.behavior.api.mapper.BehaviorPatternDetailMapper;
+import com.optum.fads.pgp.behavior.api.repo.*;
 
-    when(behaviorPatternsRepository.getBehaviorPatternByName("bp1")).thenReturn(null);
-    when(behaviorPatternErRepository.getExtractRuleById(-1)).thenReturn(new PrmErExtractRuleT());
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 
-    when(behaviorPatternsRepository.retrieveNextBpId()).thenReturn(100);
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyLong;
 
-    // saveAndFlush called
-    when(behaviorPatternsRepository.saveAndFlush(any(PrmBpBehaviorPatsT.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+@ExtendWith(MockitoExtension.class)
+class BehaviorPatternDataServiceTest {
 
-    BehaviorPatternDTO result = service.addBehaviorPattern(dto);
+    @Mock
+    private BehaviorPatternsRepository behaviorPatternsRepository;
+    @Mock
+    private BehaviorPatternMasterRepository behaviorPatternMasterRepository;
+    @Mock
+    private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+    @Mock
+    private BehaviorPatternErRepository behaviorPatternErRepository;
+    @Mock
+    private DataRulesRepository dataRulesRepository;
+    @Mock
+    private FadsConfigRepository fadsConfigRepository;
+    @Mock
+    private BehaviorPatternDetailMapper behaviorPatternDetailMapper;
 
-    assertNotNull(result);
-    assertEquals(100, result.getBehaviorPatternId());
-    assertEquals(-1, result.getErId());
+    @InjectMocks
+    private BehaviorPatternDataService service;
+
+  
+    @Test
+    void getBehaviorPatternsByPage_success() {
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(1);
+
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(10);
+        entity.setPrmErExtractRuleT(er);
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(123);
+        mb.setMbCustDatadesc("Data Element Name");
+        entity.setPrmMbMasterT(mb);
+
+        UiUserBase createdUser = new UiUserBase();
+        createdUser.setUiFirstName("John");
+        createdUser.setUiLastName("Creator");
+        createdUser.setUiSystemId("SYS1");
+        entity.setUiUserBaseCr(createdUser);
+
+        UiUserBase updatedUser = new UiUserBase();
+        updatedUser.setUiFirstName("Jane");
+        updatedUser.setUiLastName("Updater");
+        updatedUser.setUiSystemId("SYS2");
+        entity.setUiUserBaseUpd(updatedUser);
+
+        entity.setBaId("1");
+        entity.setBehaviorPatternName("BP_NAME");
+        entity.setBpMaxCtecFieldId(999);
+        entity.setCreateDate(LocalDateTime.now());
+        entity.setUpdateDate(LocalDateTime.now());
+
+        List<PrmBpBehaviorPatsT> content = Collections.singletonList(entity);
+        Page<PrmBpBehaviorPatsT> page = new PageImpl<>(content);
+
+        when(behaviorPatternsRepository.count()).thenReturn(1L);
+
+        when(behaviorPatternsRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<PrmBpBehaviorPatsT>>isNull(),
+                any(Pageable.class))
+        ).thenReturn(page);
+
+        PaginationResult result = service.getBehaviorPatternsByPage(1, 10);
+
+        assertEquals(1, result.getTotalRecordsCount());
+        assertNotNull(result.getBehaviorPatternsData());
+        assertEquals(1, result.getBehaviorPatternsData().size());
+
+        BehaviorPatternDTO dto = result.getBehaviorPatternsData().get(0);
+        assertEquals(1, dto.getBehaviorPatternId());
+        assertEquals(10, dto.getErId());
+        assertEquals("BP_NAME", dto.getBehaviorPatternName());
+        assertEquals(123, dto.getDataElementCode());
+        assertEquals(999, dto.getDateElementCode());
+        assertEquals("John Creator", dto.getCreatedBy());
+        assertEquals("Jane Updater", dto.getModifiedBy());
+        assertEquals("SYS1", dto.getCreatedBySystemId());
+        assertEquals("SYS2", dto.getModifiedBySystemId());
+    }
+
+    @Test
+    void getBehaviorPatternsByPage_exceptionWrappedInApiException() {
+        when(behaviorPatternsRepository.count()).thenThrow(new RuntimeException("DB error"));
+
+        assertThrows(BehaviorPatternApiException.class,
+                () -> service.getBehaviorPatternsByPage(1, 10));
+    }
+
+   
+    @Test
+    void getBehaviorPatternsList_noSearchBy_usesRepositoryMethods() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(5);
+        params.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_ID);
+        params.setSortOrder(0); 
+
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(1);
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(-1);
+        entity.setPrmErExtractRuleT(er);
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(1);
+        mb.setMbCustDatadesc("DE_NAME");
+        entity.setPrmMbMasterT(mb);
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("First");
+        cr.setUiLastName("Last");
+        cr.setUiSystemId("SYS");
+        entity.setUiUserBaseCr(cr);
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("UF");
+        upd.setUiLastName("UL");
+        upd.setUiSystemId("USYS");
+        entity.setUiUserBaseUpd(upd);
+        entity.setCreateDate(LocalDateTime.now());
+        entity.setUpdateDate(LocalDateTime.now());
+        entity.setBehaviorPatternName("BP");
+        entity.setBaId("1");
+        entity.setBpMaxCtecFieldId(1);
+
+        when(behaviorPatternsRepository.getBehaviorPatterns(any(Pageable.class)))
+                .thenReturn(Collections.singletonList(entity));
+        when(behaviorPatternsRepository.count()).thenReturn(1L);
+
+        PaginationResult result = service.getBehaviorPatternsList(params);
+
+        assertEquals(1, result.getTotalRecordsCount());
+        assertEquals(1, result.getBehaviorPatternsData().size());
+    }
+
+
+    @Test
+    void getSearchCriteria_populatesCorrectSlots() {
+        ListTableParams params = new ListTableParams();
+
+        List<String> searchBy = new ArrayList<>();
+        List<String> searchInput = new ArrayList<>();
+
+        searchBy.add(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME);
+        searchInput.add("TestName");
+
+        searchBy.add(BehaviorPatternConstants.CREATED_BY);
+        searchInput.add("  john   doe ");
+
+        searchBy.add(BehaviorPatternConstants.MODIFIED_BY);
+        searchInput.add("  jane   doe ");
+
+        searchBy.add(BehaviorPatternConstants.USER_SYSTEM_ID);
+        searchInput.add("USER1");
+
+        params.setSearchBy(searchBy);
+        params.setSearchInput(searchInput);
+
+        String[] criteria = service.getSearchCriteria(params);
+
+        assertTrue(criteria[0].contains("testname")); 
+        assertTrue(criteria[1].startsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[1].endsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[1].contains("john doe"));
+        assertTrue(criteria[2].startsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[2].endsWith(BehaviorPatternConstants.PERCENT_STR));
+        assertTrue(criteria[2].contains("jane doe"));
+        assertEquals("user1", criteria[4]); 
+    }
+
+ 
+
+    @Test
+    void createPageableBehaviorPatterns_defaultWhenSortByNull() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(2);
+        params.setRecordsPerPage(20);
+        params.setSortBy(null);
+        params.setSortOrder(0); 
+
+        Pageable pageable = service.createPageableBehaviorPatterns(params);
+
+        assertEquals(1, pageable.getPageNumber()); 
+        assertEquals(20, pageable.getPageSize());
+
+        Sort sort = pageable.getSort();
+        assertTrue(sort.iterator().hasNext());
+    }
+
+    @Test
+    void createPageableBehaviorPatterns_sortByNameAscending() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(10);
+        params.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME);
+        params.setSortOrder(1); 
+
+        Pageable pageable = service.createPageableBehaviorPatterns(params);
+
+        assertEquals(0, pageable.getPageNumber());
+        assertEquals(10, pageable.getPageSize());
+
+        Sort sort = pageable.getSort();
+        Sort.Order order = sort.iterator().next();
+        assertEquals(Sort.Direction.ASC, order.getDirection());
+        assertEquals(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME, order.getProperty());
+    }
+
+ 
+
+    @Test
+    void populateBehaviorPatternList_mapsDomainToDto() {
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(5);
+
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(77);
+        entity.setPrmErExtractRuleT(er);
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(999);
+        mb.setMbCustDatadesc("Data Element");
+        entity.setPrmMbMasterT(mb);
+
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("John");
+        cr.setUiLastName("Smith");
+        cr.setUiSystemId("SYSCR");
+        entity.setUiUserBaseCr(cr);
+
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("Jane");
+        upd.setUiLastName("Doe");
+        upd.setUiSystemId("SYSUPD");
+        entity.setUiUserBaseUpd(upd);
+
+        entity.setBehaviorPatternName("My BP");
+        entity.setBaId("2");
+        entity.setBpMaxCtecFieldId(123);
+        entity.setCreateDate(LocalDateTime.now());
+        entity.setUpdateDate(LocalDateTime.now());
+
+        List<BehaviorPatternDTO> list = service.populateBehaviorPatternList(Collections.singletonList(entity));
+
+        assertEquals(1, list.size());
+        BehaviorPatternDTO dto = list.get(0);
+        assertEquals(5, dto.getBehaviorPatternId());
+        assertEquals(77, dto.getErId());
+        assertEquals("My BP", dto.getBehaviorPatternName());
+        assertEquals(999, dto.getDataElementCode());
+        assertEquals(123, dto.getDateElementCode());
+        assertEquals("John Smith", dto.getCreatedBy());
+        assertEquals("Jane Doe", dto.getModifiedBy());
+        assertEquals("SYSCR", dto.getCreatedBySystemId());
+        assertEquals("SYSUPD", dto.getModifiedBySystemId());
+    }
+
+
+    @Test
+    void getAvailableDatarules_success() {
+        PrmDrDataRuleT dr = new PrmDrDataRuleT();
+        dr.setDrId(10);
+        dr.setDataRuleName("Rule 1");
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCustDatadesc("DE Name");
+        mb.setMbCtecFid(100);
+        mb.setMbCtecFtype("NUM");
+        dr.setPrmMbMasterT(mb);
+
+        PrmDrLuOperatorT op = new PrmDrLuOperatorT();
+        op.setOperatorDesc("EQUALS");
+        dr.setPrmDrLuOperatorT(op);
+
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("John");
+        cr.setUiLastName("Creator");
+        dr.setUiUserBaseCr(cr);
+
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("Jane");
+        upd.setUiLastName("Updater");
+        dr.setUiUserBaseUpd(upd);
+
+        dr.setCreateDate(new Date());
+        dr.setUpdateDate(new Date());
+
+        when(dataRulesRepository.getAvailableDataRules(1))
+                .thenReturn(Collections.singletonList(dr));
+
+        List<DataRuleDTO> list = service.getAvailableDatarules(1);
+
+        assertEquals(1, list.size());
+        DataRuleDTO dto = list.get(0);
+        assertEquals(10, dto.getDataRuleId());
+        assertEquals("Rule 1", dto.getDataRuleName());
+        assertEquals("DE Name", dto.getDataElementName());
+        assertEquals("EQUALS", dto.getOperator());
+        assertEquals(100, dto.getDataElementId());
+        assertEquals("NUM", dto.getDataElementDataType());
+        assertNotNull(dto.getCreatedDate());
+        assertNotNull(dto.getModifiedDate());
+        assertEquals("John Creator", dto.getCreatedBy());
+        assertEquals("Jane Updater", dto.getModifiedBy());
+        assertNotNull(dto.getSelectedValues());
+        assertNotNull(dto.getRangeValues());
+    }
+
+
+    @Test
+    void getSelectedDataRules_withDetails_populatesValuesAndRanges() {
+        PrmErdrTPK pk = new PrmErdrTPK();
+        pk.setErId(1);
+        pk.setDrId(10);
+        PrmErDrT erdr = new PrmErDrT();
+        erdr.setId(pk);
+
+        when(behaviorPatternErDrRepository.retrieveErDrValues(1))
+                .thenReturn(Collections.singletonList(erdr));
+
+        PrmDrDataRuleT dr = new PrmDrDataRuleT();
+        dr.setDrId(10);
+        dr.setDataRuleName("Rule 1");
+
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCustDatadesc("DE Name");
+        mb.setMbCtecFid(100);
+        mb.setMbCtecFtype("NUM");
+        dr.setPrmMbMasterT(mb);
+
+        PrmDrLuOperatorT op = new PrmDrLuOperatorT();
+        op.setOperatorDesc("EQUALS");
+        dr.setPrmDrLuOperatorT(op);
+
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("John");
+        cr.setUiLastName("Creator");
+        dr.setUiUserBaseCr(cr);
+
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("Jane");
+        upd.setUiLastName("Updater");
+        dr.setUiUserBaseUpd(upd);
+
+        dr.setCreateDate(new Date());
+        dr.setUpdateDate(new Date());
+
+        PrmDrSingleValuesT sv = new PrmDrSingleValuesT();
+        PrmDrSingleValuesTPK svPk = new PrmDrSingleValuesTPK();
+        svPk.setDrValue("CODE1");
+        sv.setId(svPk);
+        sv.setDrLabel("Label1");
+        dr.setPrmDrSingleValuesTs(Collections.singletonList(sv));
+
+        PrmDrRangesT range = new PrmDrRangesT();
+        range.setDrRangeFrom("1");
+        range.setDrRangeTo("10");
+        dr.setPrmDrRangesTs(Collections.singletonList(range));
+
+        when(dataRulesRepository.retrieveDataRulesByIds(Collections.singletonList(10)))
+                .thenReturn(Collections.singletonList(dr));
+
+        List<DataRuleDTO> result = service.getSelectedDataRules(1, true);
+
+        assertEquals(1, result.size());
+        DataRuleDTO dto = result.get(0);
+        assertEquals(10, dto.getDataRuleId());
+        assertEquals("Rule 1", dto.getDataRuleName());
+
+        List<DrCodeValueDTO> codes = dto.getSelectedValues();
+        assertEquals(1, codes.size());
+        assertEquals("CODE1", codes.get(0).getCode());
+        assertEquals("Label1", codes.get(0).getValue());
+
+        List<DrRangeValuesDTO> ranges = dto.getRangeValues();
+        assertEquals(1, ranges.size());
+        assertEquals("1", ranges.get(0).getFrom());
+        assertEquals("10", ranges.get(0).getTo());
+    }
+
+    @Test
+    void getSelectedDataRules_noErDrRecords_returnsEmptyList() {
+        when(behaviorPatternErDrRepository.retrieveErDrValues(99))
+                .thenReturn(Collections.emptyList());
+
+        List<DataRuleDTO> result = service.getSelectedDataRules(99, true);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+   
+
+    @Test
+    void formatLocalDate_formatsCorrectly() {
+        LocalDateTime dt = LocalDateTime.of(2025, 12, 10, 14, 30);
+
+        String formatted = service.formatLocalDate(dt);
+
+        assertNotNull(formatted);
+        assertTrue(formatted.contains("2025"));
+    }
+
+   
+
+    @Test
+    void getZoneId_returnsConfiguredZoneIdWhenPresent() {
+        FadsConfigT cfg = new FadsConfigT();
+        cfg.setOptionValue("America/New_York");
+
+        when(fadsConfigRepository.findById(BehaviorPatternConstants.DATE_TIME_ZONE_ID))
+                .thenReturn(Optional.of(cfg));
+
+        ZoneId id = service.getZoneId();
+
+        assertEquals(ZoneId.of("America/New_York"), id);
+    }
+
+    @Test
+    void getZoneId_returnsSystemDefaultWhenConfigMissing() {
+        when(fadsConfigRepository.findById(BehaviorPatternConstants.DATE_TIME_ZONE_ID))
+                .thenReturn(Optional.empty());
+
+        ZoneId id = service.getZoneId();
+
+        assertEquals(ZoneId.systemDefault(), id);
+    }
+    
+    @Test
+    void updateBehaviorPattern_success_noDr_noDeletes() {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setBehaviorPatternId(1);
+        dto.setBehaviorPatternName("Updated BP");
+        dto.setThisBpRequiresDr(false);
+
+        dto.setBaId("1");
+        dto.setDataElementCode(123);
+        dto.setDateElementCode(0);
+
+        dto.setModifiedDate("12/11/2025 07:30:00 PM");
+
+        // mapper output used by service
+        PrmBpBehaviorPatsT mapped = new PrmBpBehaviorPatsT();
+        mapped.setBpId(1);
+        mapped.setPrmErExtractRuleT(new PrmErExtractRuleT()); // safe
+        mapped.setUiUserBaseCr(new UiUserBase());
+        mapped.setUiUserBaseUpd(new UiUserBase());
+        mapped.setPrmMbMasterT(new PrmMbMasterT());
+
+        when(behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(dto)).thenReturn(mapped);
+
+        // used for createDate
+        PrmBpBehaviorPatsT existing = new PrmBpBehaviorPatsT();
+        existing.setCreateDate(LocalDateTime.now());
+        when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(existing);
+
+        when(behaviorPatternsRepository.save(any(PrmBpBehaviorPatsT.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        String msg = service.updateBehaviorPattern(-1, dto);
+        assertEquals(BehaviorPatternConstants.UPDATE_SUCCESS_MESSAGE, msg);
+    }
+    void addBehaviorPattern_duplicateName_throwsException() {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setBehaviorPatternName("BP1");
+
+        when(behaviorPatternsRepository.getBehaviorPatternByName("bp1"))
+                .thenReturn(new PrmBpBehaviorPatsT());
+
+        assertThrows(BehaviorPatternApiException.class,
+                () -> service.addBehaviorPattern(dto));
+    }
+   
+    @Test
+    void deleteBehaviorPattern_success() {
+        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
+        PrmErExtractRuleT er = new PrmErExtractRuleT();
+        er.setErId(-1); // prevents ER delete calls
+        bp.setPrmErExtractRuleT(er);
+
+        when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(bp);
+        when(behaviorPatternMasterRepository.retrieveBpRiFormulas(1)).thenReturn(Collections.emptyList());
+
+        when(behaviorPatternsRepository.deleteBehaviorPattern(1)).thenReturn(1);
+
+        List<String> msgs = service.deleteBehaviorPattern(1);
+        assertTrue(msgs.contains(BehaviorPatternConstants.DELETE_SUCCESS_MESSAGE));
+    }
+   
+    void getBehaviorPatternById_success() {
+        PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+        entity.setBpId(1);
+
+        when(behaviorPatternsRepository.getBehaviorPatternById(1))
+                .thenReturn(entity);
+
+        BehaviorPatternDTO dto = service.getBehaviorPatternById(1);
+
+        assertNotNull(dto);
+        assertEquals(1, dto.getBehaviorPatternId());
+    }
+    
+    void addBehaviorPattern_success_noDr() {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setBehaviorPatternName("BP1");
+        dto.setThisBpRequiresDr(false);
+
+        dto.setBaId("1");
+        dto.setDataElementCode(123);
+        dto.setDateElementCode(999);
+
+        dto.setCreatedBySystemId("SYS1");
+        dto.setModifiedBySystemId("SYS2");
+
+        dto.setCreatedDate("12/11/2025 07:30:00 PM");
+        dto.setModifiedDate("12/11/2025 07:30:00 PM");
+
+        when(behaviorPatternsRepository.getBehaviorPatternByName("bp1")).thenReturn(null);
+        when(behaviorPatternErRepository.getExtractRuleById(-1)).thenReturn(new PrmErExtractRuleT());
+
+        when(behaviorPatternsRepository.retrieveNextBpId()).thenReturn(100);
+
+        // saveAndFlush called
+        when(behaviorPatternsRepository.saveAndFlush(any(PrmBpBehaviorPatsT.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        BehaviorPatternDTO result = service.addBehaviorPattern(dto);
+
+        assertNotNull(result);
+        assertEquals(100, result.getBehaviorPatternId());
+        assertEquals(-1, result.getErId());
+    }
+    
+    @Test
+    void updateBehaviorPattern_notFound_throwsApiException() {
+        BehaviorPatternDTO dto = new BehaviorPatternDTO();
+        dto.setBehaviorPatternId(1);
+        dto.setBehaviorPatternName("BP");
+        dto.setModifiedDate("12/11/2025 07:30:00 PM");
+
+        when(behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(dto))
+                .thenReturn(new PrmBpBehaviorPatsT());
+
+        when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(null);
+
+        assertThrows(BehaviorPatternApiException.class,
+                () -> service.updateBehaviorPattern(-1, dto));
+    }
+    
+    @Test
+    void deleteBehaviorPattern_notFound_returnsDoesNotExistMessage() {
+        when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(null);
+
+        List<String> msgs = service.deleteBehaviorPattern(1);
+
+        assertNotNull(msgs);
+        assertTrue(msgs.contains(BehaviorPatternConstants.BEHAVIOR_PATTERN_DOES_NOT_EXIST));
+    }
+    
+    
 }
-B) updateBehaviorPattern_success (avoid implementRequiresDr work)
-Make erId = -1 and thisBpRequiresDr=false so implementRequiresDr does nothing.
+above is my test class
+below is actual class
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+/** 
+ *  The service contains methods to retrieve and update FADS Behavior Pattern data.
+ * 
+ * @author Anil Wagh
+ */
+package com.optum.fads.pgp.behavior.api.service.impl;
 
-java
-Copy code
-@Test
-void updateBehaviorPattern_success_noDr_noDeletes() {
-    BehaviorPatternDTO dto = new BehaviorPatternDTO();
-    dto.setBehaviorPatternId(1);
-    dto.setBehaviorPatternName("Updated BP");
-    dto.setThisBpRequiresDr(false);
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
 
-    dto.setBaId("1");
-    dto.setDataElementCode(123);
-    dto.setDateElementCode(0);
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
 
-    dto.setModifiedDate("12/11/2025 07:30:00 PM");
+import com.optum.fads.pgp.behavior.api.common.ListTableParams;
+import com.optum.fads.pgp.behavior.api.common.constants.BehaviorPatternConstants;
+import com.optum.fads.pgp.behavior.api.domain.FadsConfigT;
+import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.behavior.api.domain.PrmBpRiFormulaT;
+import com.optum.fads.pgp.behavior.api.domain.PrmDrDataRuleT;
+import com.optum.fads.pgp.behavior.api.domain.PrmDrRangesT;
+import com.optum.fads.pgp.behavior.api.domain.PrmDrSingleValuesT;
+import com.optum.fads.pgp.behavior.api.domain.PrmErDrT;
+import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
+import com.optum.fads.pgp.behavior.api.domain.PrmErdrTPK;
+import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
+import com.optum.fads.pgp.behavior.api.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
+import com.optum.fads.pgp.behavior.api.dto.DataRuleDTO;
+import com.optum.fads.pgp.behavior.api.dto.DrCodeValueDTO;
+import com.optum.fads.pgp.behavior.api.dto.DrRangeValuesDTO;
+import com.optum.fads.pgp.behavior.api.dto.PaginationResult;
+import com.optum.fads.pgp.behavior.api.exception.BehaviorPatternApiException;
+import com.optum.fads.pgp.behavior.api.mapper.BehaviorPatternDetailMapper;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErDrRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternMasterRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
+import com.optum.fads.pgp.behavior.api.repo.DataRulesRepository;
+import com.optum.fads.pgp.behavior.api.repo.FadsConfigRepository;
+import com.optum.fads.pgp.behavior.api.service.IBehaviorPatternDataService;
 
-    // mapper output used by service
-    PrmBpBehaviorPatsT mapped = new PrmBpBehaviorPatsT();
-    mapped.setBpId(1);
-    mapped.setPrmErExtractRuleT(new PrmErExtractRuleT()); // safe
-    mapped.setUiUserBaseCr(new UiUserBase());
-    mapped.setUiUserBaseUpd(new UiUserBase());
-    mapped.setPrmMbMasterT(new PrmMbMasterT());
+@Service("behaviorPatternDataService")
+//@Slf4j
+public class BehaviorPatternDataService implements IBehaviorPatternDataService  {
 
-    when(behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(dto)).thenReturn(mapped);
+	private static final Logger logit = LoggerFactory
+			.getLogger(BehaviorPatternDataService.class);
 
-    // used for createDate
-    PrmBpBehaviorPatsT existing = new PrmBpBehaviorPatsT();
-    existing.setCreateDate(LocalDateTime.now());
-    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(existing);
+	@Autowired
+    private BehaviorPatternsRepository behaviorPatternsRepository; 
+    @Autowired 
+    private BehaviorPatternMasterRepository behaviorPatternMasterRepository;
+    @Autowired 
+    private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+    @Autowired 
+    private BehaviorPatternErRepository behaviorPatternErRepository;
+    @Autowired 
+    private DataRulesRepository dataRulesRepository;
+    @Autowired
+	private FadsConfigRepository fadsConfigRepository;
+    @Autowired
+    private BehaviorPatternDetailMapper behaviorPatternDetailMapper;
 
-    when(behaviorPatternsRepository.save(any(PrmBpBehaviorPatsT.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+    /**
+	 * this method will give all the behavior pattern records data or records per page  
+	 * 
+	 * Parameters - page number, page size
+	 */
+	public PaginationResult getBehaviorPatternsByPage(Integer pageNum, Integer pageSize){
+		int pageNumberI = 0; 
+		int pageSizeI;
+		long maxBpRecords = 0;
+		int behaviorPatternsCount;
+		List<BehaviorPatternDTO> behaviorPatternDataList = new ArrayList<>();
+		PaginationResult paginationResult = new PaginationResult();
+		try {
+			maxBpRecords = behaviorPatternsRepository.count();
+			logit.info("Total number of Behavior Pattern records = {}", maxBpRecords);
+			behaviorPatternsCount = (int) maxBpRecords;
+			pageNumberI = pageNum - 1;
+			if (pageSize == 0) {
+				pageSizeI = behaviorPatternsCount;
+			} else {
+				pageSizeI = pageSize;
+			}
+			logit.info("Page number = {} Page size = {}", pageNumberI, pageSizeI);
+			Pageable pageable = PageRequest.of(pageNumberI, pageSizeI, Sort.by(BehaviorPatternConstants.BEHAVIOR_PATTERN_ID).descending());
+	
+			Specification<PrmBpBehaviorPatsT> behaviorPatternMasterSpecs =  null;
+			Page<PrmBpBehaviorPatsT> behaviorPatternsPage = behaviorPatternsRepository.findAll(behaviorPatternMasterSpecs, pageable);
+			List<PrmBpBehaviorPatsT> behaviorPatternsList = behaviorPatternsPage.getContent();
+			logit.info( "{} behavior pattern records retrieved" , behaviorPatternsList.size());
+			if (!behaviorPatternsList.isEmpty()) {
+				behaviorPatternDataList = populateBehaviorPatternList(behaviorPatternsList);
+				logit.info( "{} Behavior Pattern bean records populated" , behaviorPatternDataList.size());
+			} else {
+				logit.info(BehaviorPatternConstants.NO_DATA_FOUND_MSG);
+				behaviorPatternDataList = new ArrayList<>();
+				behaviorPatternsCount = 0;
+			}
+			paginationResult.setBehaviorPatternsData(behaviorPatternDataList);
+		    paginationResult.setTotalRecordsCount(behaviorPatternsCount);
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e);	
+		}            
+        return paginationResult;
+	}
+	/**
+	 * this method will give the Behavior Pattern records data (by filter/sort criteria per page)  
+	 * 
+	 * Parameters - ListTableParams (contains sort, filter conditions; page number, page size)
+	 */
+	public PaginationResult getBehaviorPatternsList(ListTableParams listTableParams){
+		int behaviorPatternsCount = 0;
+		List<BehaviorPatternDTO> behaviorPatternDataList = null;
+		List<PrmBpBehaviorPatsT> behaviorPatternList;
+		List<PrmBpBehaviorPatsT> behaviorPatternsCntList = null;
+		PaginationResult paginationResult;
+		Pageable pageable = null;
+		if (listTableParams.getSelectedItemIds() == null) {
+			listTableParams.setSelectedItemIds(new ArrayList<>());
+		}
+		try {
+			if (listTableParams.getSearchBy() == null) {	 
+				 pageable = createPageableBehaviorPatterns(listTableParams);
+				if (!(listTableParams.getSelectedItemIds().isEmpty())) {
+					behaviorPatternList = behaviorPatternsRepository.getAvailableBehaviorPatterns(listTableParams.getSelectedItemIds(),
+						pageable);
+					behaviorPatternsCntList = behaviorPatternsRepository.getAvailableBehaviorPatterns(listTableParams.getSelectedItemIds(),
+						 null);					
+					behaviorPatternsCount = behaviorPatternsCntList.size();
+				} else {
+					 behaviorPatternList = behaviorPatternsRepository.getBehaviorPatterns(pageable);
+					 behaviorPatternsCount = (int) behaviorPatternsRepository.count();
+				}
+				 paginationResult = new PaginationResult();
+				 behaviorPatternDataList = populateBehaviorPatternList(behaviorPatternList);
+				 paginationResult.setBehaviorPatternsData(behaviorPatternDataList);
+				 paginationResult.setTotalRecordsCount(behaviorPatternsCount);
+			 } else {
+				 paginationResult = getBehaviorPatternsOnSearchCriteria(listTableParams);
+			 }
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE , e);
+		}            
+        return paginationResult;
+	}
+	/**
+	 * this method is called by getBehaviorPatternsList to apply filter and sort criteria and fetch the behavior pattern data 
+	 * 
+	 * Parameters - ListTableParams (contains sort, filter conditions; page number, page size)
+	 */
+	 public PaginationResult getBehaviorPatternsOnSearchCriteria(ListTableParams listTableParams) {
+		 logit.info("Set the search criteria for retrieving behavior patterns");
+		 Pageable pageable = null;
+		 int behaviorPatternsCount = 0;
+		 int myItemsIndex = -1;
+		 List<BehaviorPatternDTO> behaviorPatternDataList;
+		 List<PrmBpBehaviorPatsT> behaviorPatternsList = null;
+		 List<PrmBpBehaviorPatsT> behaviorPatternsCntList = null;
+		 PaginationResult paginationResult = new PaginationResult();
+		 pageable = createPageableBehaviorPatterns(listTableParams);
+		 if (listTableParams.getSearchBy().contains(BehaviorPatternConstants.USER_SYSTEM_ID)) {
+				myItemsIndex = listTableParams.getSearchBy().indexOf(BehaviorPatternConstants.USER_SYSTEM_ID);
+		 }
+		 String[] searchCriteriaItems = getSearchCriteria(listTableParams); // reportItemNameVal, createdByVal,
+			// updatedByVal, sp ch in Name
+		 logit.info("Get Behavior Patterns List by Search Criteria");
+		
+		 if (listTableParams.getSelectedItemIds().isEmpty()) {
+			 if (searchCriteriaItems[3].equals(BehaviorPatternConstants.SEARCH_SP_CH_IN_NM_STR)) {// set if Behavior Pattern name contains % or underscore
+				 if (myItemsIndex >= 0) {		// Retrieve my items
+					 behaviorPatternsList = behaviorPatternsRepository.getMyBehaviorPatternsBySearchCritEsc(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], pageable );
+					 behaviorPatternsCntList = behaviorPatternsRepository.getMyBehaviorPatternsBySearchCritEsc(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], null );
+				 } else {
+					 behaviorPatternsList = behaviorPatternsRepository.getBehaviorPatternsBySearchCritEsc(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], pageable );
+					 behaviorPatternsCntList = behaviorPatternsRepository.getBehaviorPatternsBySearchCritEsc(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], null );
+				 }
+			 } else {
+				 if (myItemsIndex >= 0) {		// Retrieve my items
+					 behaviorPatternsList = behaviorPatternsRepository.getMyBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], pageable );
+					 behaviorPatternsCntList = behaviorPatternsRepository.getMyBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], null );
+				 } else {
+					 behaviorPatternsList = behaviorPatternsRepository.getBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], pageable );
+					 behaviorPatternsCntList = behaviorPatternsRepository.getBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+								searchCriteriaItems[1], searchCriteriaItems[2], null );
+				 }
+			 }
+		 } else {
+			if (searchCriteriaItems[3].equals(BehaviorPatternConstants.SEARCH_SP_CH_IN_NM_STR)) {// set if Behavior Pattern name contains % or underscore
+				if (myItemsIndex >= 0) {		// Retrieve my items
+					behaviorPatternsList = behaviorPatternsRepository.getMyAvailableBehaviorPatternsBySearchCritEsc(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], listTableParams.getSelectedItemIds(), pageable);
+					behaviorPatternsCntList = behaviorPatternsRepository.getMyAvailableBehaviorPatternsBySearchCritEsc(
+							searchCriteriaItems[0], searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], 
+							listTableParams.getSelectedItemIds(), null);
+				} else {
+					behaviorPatternsList = behaviorPatternsRepository.getAvailableBehaviorPatternsBySearchCritEsc(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), pageable);
+					behaviorPatternsCntList = behaviorPatternsRepository.getAvailableBehaviorPatternsBySearchCritEsc(
+							searchCriteriaItems[0], searchCriteriaItems[1], searchCriteriaItems[2],
+							listTableParams.getSelectedItemIds(), null);
+				}
+			} else {
+				if (myItemsIndex >= 0) {		// Retrieve my items
+					behaviorPatternsList = behaviorPatternsRepository.getMyAvailableBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], listTableParams.getSelectedItemIds(), pageable);
+					behaviorPatternsCntList = behaviorPatternsRepository.getMyAvailableBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], listTableParams.getSelectedItemIds(), null);
+				} else {
+					behaviorPatternsList = behaviorPatternsRepository.getAvailableBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), pageable);
+					behaviorPatternsCntList = behaviorPatternsRepository.getAvailableBehaviorPatternsBySearchCrit(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), null);
+				}
+			}
+		}
+		 behaviorPatternsCount = behaviorPatternsCntList.size();
+		 logit.info("Total Behavior Pattern records for search criteria = {}, # retrieved = {}", behaviorPatternsCount, behaviorPatternsList.size());
+		if (!behaviorPatternsList.isEmpty()) {
+			behaviorPatternDataList = populateBehaviorPatternList(behaviorPatternsList);
+			 paginationResult.setBehaviorPatternsData(behaviorPatternDataList);
+		 } else {
+			 paginationResult.setBehaviorPatternsData(new ArrayList<>());
+			 behaviorPatternsCount = 0;
+		 }
+		 paginationResult.setTotalRecordsCount(behaviorPatternsCount);
+		 return paginationResult;
+     }
+	 /**
+		 * this method is called by getReportItemsOnSearchCriteria. Returns search
+		 * criteria in an array
+		 * 
+		 * Parameters - ListTableParams (contains sort, filter conditions; page number,
+		 * page size)
+		 */
+		protected String[] getSearchCriteria(ListTableParams listTableParams) {
+			String[] searchCriteriaItems = {BehaviorPatternConstants.PERCENT_STR, // [0][ Data Rule Name
+											BehaviorPatternConstants.PERCENT_STR, // [1] Created by
+											BehaviorPatternConstants.PERCENT_STR, // [2] Modified by
+											BehaviorPatternConstants.ZERO_STR ,	  // [3] if Name contains sp ch
+											BehaviorPatternConstants.NULL_STR };  // [4] User System Id
+			String searchInput;
+			String searchBy;
+			int searchCritSize = listTableParams.getSearchBy().size();
 
-    String msg = service.updateBehaviorPattern(-1, dto);
-    assertEquals(BehaviorPatternConstants.UPDATE_SUCCESS_MESSAGE, msg);
-}
-C) updateBehaviorPattern_notFound (2 options)
-✅ Option 1 (recommended): after you add the null-check in service
-java
-Copy code
-@Test
-void updateBehaviorPattern_notFound_throwsApiException() {
-    BehaviorPatternDTO dto = new BehaviorPatternDTO();
-    dto.setBehaviorPatternId(1);
-    dto.setBehaviorPatternName("BP");
-    dto.setModifiedDate("12/11/2025 07:30:00 PM");
+			for (int index = 0; index < searchCritSize; index++) {
+				searchInput = listTableParams.getSearchInput().get(index).toLowerCase();
+				searchBy = listTableParams.getSearchBy().get(index);
+				switch (searchBy) {
+				case BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME:
+					if (StringUtils.containsAny(searchInput, BehaviorPatternConstants.PERCENT_CHAR)
+							|| StringUtils.containsAny(searchInput, BehaviorPatternConstants.UNDERSCORE_CHAR)) {
+						searchCriteriaItems[3] = BehaviorPatternConstants.SEARCH_SP_CH_IN_NM_STR;
+					}
+					searchCriteriaItems[0] = replBehaviorPatternName(searchInput); // behaviorPatternVal
+					break;
+				case BehaviorPatternConstants.CREATED_BY:
+					if (StringUtils.containsWhitespace(searchInput)){
+		        		 searchInput = searchInput.trim();
+			    		 searchInput = searchInput.replaceAll("\\s+", " ");
+	        	  }
+	        	  searchCriteriaItems[1] = BehaviorPatternConstants.PERCENT_STR + searchInput + BehaviorPatternConstants.PERCENT_STR; // createdByVal
+					break;
+				case BehaviorPatternConstants.MODIFIED_BY:
+					if (StringUtils.containsWhitespace(searchInput)){
+		        		 searchInput = searchInput.trim();
+			    		 searchInput = searchInput.replaceAll("\\s+", " ");
+	        	  }
+	        	  searchCriteriaItems[2] = BehaviorPatternConstants.PERCENT_STR + searchInput + BehaviorPatternConstants.PERCENT_STR; // updatedByVal
+					break;
+				case BehaviorPatternConstants.USER_SYSTEM_ID:
+					searchCriteriaItems[4] = searchInput;
+					break;
+				default:
+					break;
+				}
+			}
 
-    when(behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(dto))
-            .thenReturn(new PrmBpBehaviorPatsT());
+			return searchCriteriaItems;
+		}
+	 /**
+	  * this method will create Pageable request for Behavior Patterns
+	  * Pageable represents the Page configuration with sorting
+	  * 
+	  * Parameters - ListTableParams
+	 */		
+	public Pageable createPageableBehaviorPatterns(ListTableParams listTableParams) {
+		 Pageable pageable = null;
+		 String sortStr1;
+		 String sortStr2="";
+		 if(listTableParams.getSortBy() == null) {
+			 listTableParams.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_ID);
+			 listTableParams.setSortOrder(0);
+		 }
+		 String sortByStr = listTableParams.getSortBy();
+		 int pageNumberI =  listTableParams.getPageNumber() - 1;
+		 int pageSizeI = listTableParams.getRecordsPerPage();
+		
+		Sort.Order order1 = null;
+		Sort.Order order2 = null;
+		Sort.Direction sortDirection;
+		Sort sort1;
+		if (listTableParams.getSortOrder() > 0) {
+			sortDirection = Sort.Direction.ASC;
+		} else {
+			sortDirection = Sort.Direction.DESC;
+		}
+		switch(sortByStr) 
+        {
+          case BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME: 
+        	  sortStr1 = sortByStr;
+        	  order1 = new Sort.Order(sortDirection,  sortStr1).ignoreCase();
+        	  sort1 = Sort.by(order1);
+        	  break;
+          case BehaviorPatternConstants.CREATE_DATE:
+        	  sortStr1 = sortByStr;
+        	  order1 = new Sort.Order(sortDirection,  sortStr1);
+        	  sort1 = Sort.by(order1);
+        	  break;
+          case BehaviorPatternConstants.MODIFIED_DATE:  
+        	  sortStr1 = BehaviorPatternConstants.UPDATE_DATE;
+        	  order1 = new Sort.Order(sortDirection,  sortStr1);
+        	  sort1 = Sort.by(order1);
+        	  break;
+          case BehaviorPatternConstants.CREATED_BY:  
+        	  sortStr1 = "uiUserBaseCr.uiFirstName";
+  			  sortStr2 = "uiUserBaseCr.uiLastName";
+  			  order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
+  			  order2 = new Sort.Order(sortDirection, sortStr2).ignoreCase();
+  			  sort1 = Sort.by(order1, order2);
+        	  break;   
+          case BehaviorPatternConstants.MODIFIED_BY:
+        	  sortStr1 = "uiUserBaseUpd.uiFirstName";
+  			  sortStr2 = "uiUserBaseUpd.uiLastName";
+  			  order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
+  			  order2 = new Sort.Order(sortDirection, sortStr2).ignoreCase();
+  			  sort1 = Sort.by(order1, order2);
+        	  break;   
+	       default:
+	    	   sortStr1 = BehaviorPatternConstants.BEHAVIOR_PATTERN_ID;
+	    	   order1 = new Sort.Order(sortDirection,  sortStr1);
+	    	   sort1 = Sort.by(order1);
+	    	 break;
+	      }
+		pageable = PageRequest.of(pageNumberI, pageSizeI, sort1);		
+		return pageable;
+    }
+	
+	public List<BehaviorPatternDTO> populateBehaviorPatternList(List<PrmBpBehaviorPatsT> behaviorPatternList) {
+		 List<BehaviorPatternDTO> behaviorPatternDataList = new ArrayList<>();
 
-    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(null);
+		 for (PrmBpBehaviorPatsT behaviorPatternInd  : behaviorPatternList) {  
+			 BehaviorPatternDTO behaviorPatternDTO = new BehaviorPatternDTO();
+			 behaviorPatternDTO.setBehaviorPatternId(behaviorPatternInd.getBpId()); 
+			 behaviorPatternDTO.setErId(behaviorPatternInd.getPrmErExtractRuleT().getErId());
+			 behaviorPatternDTO.setBehaviorPatternName(behaviorPatternInd.getBehaviorPatternName()); 
+			 behaviorPatternDTO.setThisBpRequiresDr (behaviorPatternInd.getPrmErExtractRuleT().getErId()!=BehaviorPatternConstants.MINUS_ONE); 
+			 behaviorPatternDTO.setBaId(behaviorPatternInd.getBaId());
+			 behaviorPatternDTO.setDataElementCode(behaviorPatternInd.getPrmMbMasterT().getMbCtecFid());
+			 behaviorPatternDTO.setDataElementName(behaviorPatternInd.getPrmMbMasterT().getMbCustDatadesc());
+			 behaviorPatternDTO.setDateElementCode(behaviorPatternInd.getBpMaxCtecFieldId());
+			 behaviorPatternDTO.setCreatedBy(behaviorPatternInd.getUiUserBaseCr().getUiFirstName() + BehaviorPatternConstants.BLANK_STR + behaviorPatternInd.getUiUserBaseCr().getUiLastName());
+			 behaviorPatternDTO.setCreatedDate(formatLocalDate(behaviorPatternInd.getCreateDate()));
+			 behaviorPatternDTO.setModifiedBy(behaviorPatternInd.getUiUserBaseUpd().getUiFirstName() + BehaviorPatternConstants.BLANK_STR + behaviorPatternInd.getUiUserBaseUpd().getUiLastName());
+			 behaviorPatternDTO.setModifiedDate(formatLocalDate(behaviorPatternInd.getUpdateDate())); 
+			 behaviorPatternDTO.setCreatedBySystemId(behaviorPatternInd.getUiUserBaseCr().getUiSystemId());
+			 behaviorPatternDTO.setModifiedBySystemId(behaviorPatternInd.getUiUserBaseUpd().getUiSystemId());
+			 behaviorPatternDataList.add(behaviorPatternDTO);  
+	       }
+		 return behaviorPatternDataList;
+	 }
+	/**
+	 * this method will get the behavior pattern data corresponding to Behavior Pattern ID  
+	 * 
+	 * Parameters - Behavior Pattern ID
+	 */
+	public BehaviorPatternDTO getBehaviorPatternById(Integer behaviorPatternId){
+		logit.info("getBehaviorPatternById ID = {}", behaviorPatternId );
+		BehaviorPatternDTO behaviorPatternDTO = null;
+		List<Object[]> behaviorPatternRS;
+		boolean details = true;
+		try {
+			behaviorPatternRS = behaviorPatternMasterRepository.retrieveBehaviorPatternById(behaviorPatternId);
+			if (!behaviorPatternRS.isEmpty()) {
+				 Object[] behaviorPatternData  = behaviorPatternRS.get(0);
+				 behaviorPatternDTO = new BehaviorPatternDTO();
+				 behaviorPatternDTO.setBehaviorPatternId(behaviorPatternId);
+				 behaviorPatternDTO.setErId((int)behaviorPatternData[0]);
+				 behaviorPatternDTO.setThisBpRequiresDr ((int)behaviorPatternData[0] != BehaviorPatternConstants.MINUS_ONE);
+				 behaviorPatternDTO.setBaId((String)behaviorPatternData[1]);
+				 behaviorPatternDTO.setBehaviorPatternName((String)behaviorPatternData[2]); 
+				 behaviorPatternDTO.setDataElementCode((int)behaviorPatternData[3]);
+				 if (behaviorPatternData[4] != null) {
+					 behaviorPatternDTO.setDateElementCode((int)behaviorPatternData[4]);
+				 }
+				 behaviorPatternDTO.setCreatedDate(formatLocalDate((LocalDateTime)behaviorPatternData[5]));
+				 behaviorPatternDTO.setCreatedBy((String)behaviorPatternData[6] + BehaviorPatternConstants.BLANK_STR + (String)behaviorPatternData[7]);
+				 behaviorPatternDTO.setCreatedBySystemId((String)behaviorPatternData[8]);
+				 behaviorPatternDTO.setModifiedDate(formatLocalDate((LocalDateTime)behaviorPatternData[9]));
+				 behaviorPatternDTO.setModifiedBy((String)behaviorPatternData[10] + BehaviorPatternConstants.BLANK_STR + (String)behaviorPatternData[11]);
+				 behaviorPatternDTO.setSumOf((String)behaviorPatternData[12]);
+				 behaviorPatternDTO.setDataElementName((String)behaviorPatternData[13]);
+			//	 behaviorPatternDTO.setDateElementName((String)behaviorPatternData[14]);
+				 List<DataRuleDTO> dataRules =  getSelectedDataRules((int)behaviorPatternData[0], details);
+				 behaviorPatternDTO.setDataRules(dataRules);
+				logit.info("BehaviorPattern Bean populated with data for ID = {}", behaviorPatternId );
+			} else {
+				logit.info("No data obtained for the BehaviorPattern ID = {}", behaviorPatternId );
+				throw new BehaviorPatternApiException(BehaviorPatternConstants.NO_DATA_FOUND_MSG);
+			}	
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e );
+		} 
+        return behaviorPatternDTO;
+	}
+	/**
+	  * this method will delete selected Behavior Pattern 
+	  * 
+	  * Parameters - Behavior Pattern Id
+	 */		
+	 public List<String> deleteBehaviorPattern(Integer behaviorPatternId){
+		 int behaviorPatternsDeleted = 0;
+		 int erId = 0;
+		 boolean delBehaviorPatternConstraint = false;
+		 List<String> deleteBehaviorPatternMessages = new ArrayList<>();
+		 List<Integer> riIdList;
+			logit.info(" Delete Behavior Pattern for input ID {}", behaviorPatternId );
+			try {
+				PrmBpBehaviorPatsT prmBpBehaviorPatsT = behaviorPatternsRepository.getBehaviorPatternById(behaviorPatternId);
+				if (prmBpBehaviorPatsT == null) {
+					deleteBehaviorPatternMessages.add(BehaviorPatternConstants.BEHAVIOR_PATTERN_DOES_NOT_EXIST);
+				} else {
+					List<PrmBpRiFormulaT>  bpRiFormulaList = behaviorPatternMasterRepository.retrieveBpRiFormulas(behaviorPatternId);
+					if (!bpRiFormulaList.isEmpty()) {
+						if (bpRiFormulaList.size() > 1) {
+							riIdList = new ArrayList<>();
+							for (PrmBpRiFormulaT brRiFormula : bpRiFormulaList ) {
+								riIdList.add(brRiFormula.getId().getRiId());
+							}
+							List<PrmRiRptItemT> reportItemList = behaviorPatternMasterRepository.getReportItemByIds(riIdList);
+							for (PrmRiRptItemT reportItem: reportItemList) {
+								deleteBehaviorPatternMessages.add(BehaviorPatternConstants.RI_CONSTANT + reportItem.getReportItemName());
+							}
+						} else { 
+							PrmRiRptItemT reportItem = behaviorPatternMasterRepository.getReportItemById(bpRiFormulaList.get(0).getId().getRiId());
+							deleteBehaviorPatternMessages.add(BehaviorPatternConstants.RI_CONSTANT + reportItem.getReportItemName());
+						}
+						delBehaviorPatternConstraint = true;
+					}
+					if (!delBehaviorPatternConstraint) {
+						erId = prmBpBehaviorPatsT.getPrmErExtractRuleT().getErId();
+						behaviorPatternsDeleted = behaviorPatternsRepository.deleteBehaviorPattern(behaviorPatternId);
+						if (erId >= 0) {
+						int erDrsDeleted = behaviorPatternErDrRepository.deleteErDrsById(erId);
+						logit.info("Deleted {} ER DR records for the list of input IDs", erDrsDeleted );
+						int ersDeleted = behaviorPatternErRepository.deleteErById(erId);
+						logit.info("Deleted {} ER record for the behavior pattern ID", ersDeleted );
+						}
+						if (behaviorPatternsDeleted > 0) {
+							deleteBehaviorPatternMessages.add(BehaviorPatternConstants.DELETE_SUCCESS_MESSAGE);
+						} else {
+							deleteBehaviorPatternMessages.add(BehaviorPatternConstants.DELETE_FAIL_MESSAGE);
+						}
+					}
+				}
+			} catch (Exception e) {
+				throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e );
+			}
+	        return deleteBehaviorPatternMessages;
+		}
+	 /**
+	  * this method will create a new behavior pattern  
+	  * 
+	  * Parameters - behaviorPatternDTO
+	 */
+	 public BehaviorPatternDTO addBehaviorPattern(BehaviorPatternDTO behaviorPatternDTO){
 
-    assertThrows(BehaviorPatternApiException.class,
-            () -> service.updateBehaviorPattern(-1, dto));
-}
-Option 2 (if you don’t change service): expect NPE
-java
-Copy code
-assertThrows(NullPointerException.class, () -> service.updateBehaviorPattern(-1, dto));
-D) deleteBehaviorPattern_success (no constraint path, no ER deletes)
-java
-Copy code
-@Test
-void deleteBehaviorPattern_success() {
-    PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
-    PrmErExtractRuleT er = new PrmErExtractRuleT();
-    er.setErId(-1); // prevents ER delete calls
-    bp.setPrmErExtractRuleT(er);
+		BehaviorPatternDTO retBehaviorPatternDTO = new BehaviorPatternDTO();
+		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
+				Locale.ENGLISH);
+	    Integer erId = 0;
+	    PrmErExtractRuleT prmErExtractRuleT;
+		String behaviorPatternNameLc = behaviorPatternDTO.getBehaviorPatternName().toLowerCase().trim();
+		try {
+			PrmBpBehaviorPatsT behaviorPattern = behaviorPatternsRepository.getBehaviorPatternByName(behaviorPatternNameLc);
+			if (behaviorPattern == null) { 
+				if (behaviorPatternDTO.getThisBpRequiresDr()) {
+					prmErExtractRuleT = createExtractRule(behaviorPatternDTO);
+					erId = prmErExtractRuleT.getErId();
+			    } else {
+			        erId = BehaviorPatternConstants.MINUS_ONE;
+			        behaviorPatternDTO.setErId(erId);
+			        prmErExtractRuleT = behaviorPatternErRepository.getExtractRuleById(erId);
+			    }
+				Integer behaviorPatternId = behaviorPatternsRepository.retrieveNextBpId();
+				
+				behaviorPatternDTO.setBehaviorPatternId(behaviorPatternId);
+				behaviorPatternDTO.setErId(erId);
+				PrmBpBehaviorPatsT prmBpBehaviorPatsT = new PrmBpBehaviorPatsT();
+				UiUserBase uiUserBaseCr = new UiUserBase();	
+				prmBpBehaviorPatsT.setUiUserBaseCr(uiUserBaseCr);				// Set UiUserBase
+				UiUserBase uiUserBaseUpd = new UiUserBase();	
+				prmBpBehaviorPatsT.setUiUserBaseUpd(uiUserBaseUpd);
+				PrmMbMasterT prmMbMasterT = new PrmMbMasterT();
+				prmBpBehaviorPatsT.setPrmMbMasterT(prmMbMasterT);			// Set PrmMbMasterT
+				prmBpBehaviorPatsT.setBpId(behaviorPatternId);
+				prmBpBehaviorPatsT.setPrmErExtractRuleT(prmErExtractRuleT);	// Set PrmErExtractRuleT
+				prmBpBehaviorPatsT.setBehaviorPatternName(behaviorPatternDTO.getBehaviorPatternName().trim());
+				prmBpBehaviorPatsT.setBaId(behaviorPatternDTO.getBaId());
+				prmBpBehaviorPatsT.getPrmMbMasterT().setMbCtecFid(behaviorPatternDTO.getDataElementCode()) ;
+				if(Integer.parseInt(behaviorPatternDTO.getBaId()) > 3) {
+					prmBpBehaviorPatsT.setBpMaxCtecFieldId(behaviorPatternDTO.getDateElementCode());
+				} else {
+					prmBpBehaviorPatsT.setBpMaxCtecFieldId(null);
+				}
+				prmBpBehaviorPatsT.getUiUserBaseCr().setUiSystemId(behaviorPatternDTO.getCreatedBySystemId());	// login user 
+				prmBpBehaviorPatsT.getUiUserBaseUpd().setUiSystemId(behaviorPatternDTO.getModifiedBySystemId()); // login user
+				prmBpBehaviorPatsT.setCreateDate(LocalDateTime.parse(behaviorPatternDTO.getCreatedDate(), dateTimeFormatter));
+				prmBpBehaviorPatsT.setUpdateDate(LocalDateTime.parse(behaviorPatternDTO.getModifiedDate(), dateTimeFormatter));
+				behaviorPatternsRepository.saveAndFlush(prmBpBehaviorPatsT);
+				List<PrmErDrT> prmErDrList = crErDrList(behaviorPatternDTO);
+				if (!prmErDrList.isEmpty()) {
+					behaviorPatternErDrRepository.saveAll(prmErDrList);
+					behaviorPatternErDrRepository.flush();
+					logit.info(" {} ErDr records saved for the Behavior Pattern ID = {}",
+						prmErDrList.size(), behaviorPatternDTO.getErId());
+				}	
+				retBehaviorPatternDTO.setBehaviorPatternId(behaviorPatternId);
+				retBehaviorPatternDTO.setErId(erId);
+				retBehaviorPatternDTO.setBehaviorPatternName(behaviorPatternDTO.getBehaviorPatternName().trim());
+				retBehaviorPatternDTO.setCreatedDate(behaviorPatternDTO.getCreatedDate());
+				retBehaviorPatternDTO.setModifiedDate(behaviorPatternDTO.getModifiedDate());
+				retBehaviorPatternDTO.setModifiedBySystemId(behaviorPatternDTO.getModifiedBySystemId());
+				retBehaviorPatternDTO.setCreatedBySystemId(behaviorPatternDTO.getCreatedBySystemId());
+			} else {
+				retBehaviorPatternDTO.setBehaviorPatternId(behaviorPattern.getBpId());
+				retBehaviorPatternDTO.setBehaviorPatternName(BehaviorPatternConstants.BEHAVIOR_PATTERN_EXISTS);
+				retBehaviorPatternDTO.setModifiedBySystemId(behaviorPattern.getUiUserBaseUpd().getUiSystemId());
+				retBehaviorPatternDTO.setCreatedBySystemId(behaviorPattern.getUiUserBaseCr().getUiSystemId());
+			}	
+		} catch (Exception e) {
+			logit.info("Exception {}", e.getMessage());
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e);
+		} 	
+		
+	    return retBehaviorPatternDTO;	
+	}	
+	 /**
+		 * this method will update a behavior pattern records based on input data  
+		 * 
+		 * Parameters - behaviorPatternDTO
+		 */	
+	public String updateBehaviorPattern(Integer erId, BehaviorPatternDTO behaviorPatternDTO){
+		String updBehaviorPatternMessage = "";
+		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
+				Locale.ENGLISH);
+	 	Integer behaviorPatternId = behaviorPatternDTO.getBehaviorPatternId();
+		String behaviorPatternName = behaviorPatternDTO.getBehaviorPatternName().trim();
+		behaviorPatternDTO.setBehaviorPatternName(behaviorPatternName);
+		try {
+			if(behaviorPatternDTO.getDateElementCode() == null) {
+				behaviorPatternDTO.setDateElementCode(BehaviorPatternConstants.ZERO_VALUE);
+			}
+			PrmBpBehaviorPatsT prmBpBehaviorPatsT = behaviorPatternDetailMapper.convertToPrmBpBehaviorPatsT(behaviorPatternDTO);
+			PrmBpBehaviorPatsT behaviorPtternInd = behaviorPatternsRepository.getBehaviorPatternById(behaviorPatternId);
+			if(Integer.parseInt(behaviorPatternDTO.getBaId()) > 3) {
+				prmBpBehaviorPatsT.setBpMaxCtecFieldId(behaviorPatternDTO.getDateElementCode());
+			} else {
+				prmBpBehaviorPatsT.setBpMaxCtecFieldId(null);
+			}
+			prmBpBehaviorPatsT.setCreateDate(behaviorPtternInd.getCreateDate());;
+			prmBpBehaviorPatsT.setUpdateDate(LocalDateTime.parse(behaviorPatternDTO.getModifiedDate(), dateTimeFormatter));
 
-    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(bp);
-    when(behaviorPatternMasterRepository.retrieveBpRiFormulas(1)).thenReturn(Collections.emptyList());
+			prmBpBehaviorPatsT = behaviorPatternsRepository.save(prmBpBehaviorPatsT);
+			implementRequiresDr(erId, behaviorPatternDTO, prmBpBehaviorPatsT);
+			updBehaviorPatternMessage = BehaviorPatternConstants.UPDATE_SUCCESS_MESSAGE;
+		} catch (Exception e) {
+			logit.info("Exception {}", e.getMessage());
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e );
+		} 
+		logit.info("Updated Behavior Pattern ID = {}", behaviorPatternId  );
+		return updBehaviorPatternMessage;
+	}	
+	/**
+	 * this method will create a check if this Behavior pattern requires Data Rules and take appropriate action
+	 * 
+	 * Parameters - behaviorPatternDTO, currentDate
+	 */	
+	private void implementRequiresDr(Integer erId, BehaviorPatternDTO behaviorPatternDTO, PrmBpBehaviorPatsT prmBpBehaviorPatsT) {
+		logit.info(" implementRequiresDr() Behavior Pattern ID = {}", behaviorPatternDTO.getBehaviorPatternId());
+		PrmErExtractRuleT prmErExtractRuleT;
+		List<PrmErDrT> prmErDrList;
+		int erDrDeleted;
+		try {
+			if(behaviorPatternDTO.getThisBpRequiresDr()) {
+				logit.info(" implementRequiresDr() requires Data Rules");
+				prmErExtractRuleT = createExtractRule(behaviorPatternDTO);
+				prmBpBehaviorPatsT.setPrmErExtractRuleT(prmErExtractRuleT);
+				prmBpBehaviorPatsT = behaviorPatternsRepository.saveAndFlush(prmBpBehaviorPatsT);
+				if (behaviorPatternDTO.getErId() > BehaviorPatternConstants.MINUS_ONE) { 
+					erDrDeleted = behaviorPatternErDrRepository.deleteErDrsById(erId);
+				}
+				prmErDrList = crErDrList(behaviorPatternDTO);
+				behaviorPatternErDrRepository.saveAll(prmErDrList);
+				behaviorPatternErDrRepository.flush();
+			} else {
+				// Does not require Data Rules
+				if (erId > BehaviorPatternConstants.MINUS_ONE) {
+					prmErExtractRuleT = new PrmErExtractRuleT();
+					prmErExtractRuleT.setErId(BehaviorPatternConstants.MINUS_ONE);
+					prmBpBehaviorPatsT.setPrmErExtractRuleT(prmErExtractRuleT);
+				//	behaviorPatternMasterRepository.updateBehaviorPatternErId(BehaviorPatternConstants.MINUS_ONE, behaviorPatternDTO.getBehaviorPatternId());
+					erDrDeleted = behaviorPatternErDrRepository.deleteErDrsById(erId);
+					int ersDeleted = behaviorPatternErRepository.deleteErById(erId);
+					logit.info("Deleted ER {} and ER DR records {} for ER ID {}", ersDeleted, erDrDeleted, erId);
+					prmBpBehaviorPatsT = behaviorPatternsRepository.saveAndFlush(prmBpBehaviorPatsT);
+				}
+			}
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e);
+		} 
+	}
+	/**
+	 * this method will create a list of PrmErDr records based on input in Behavior Pattern Bean  
+	 * 
+	 * Parameters - Selected Data Rules in behaviorPatternDTO  
+	 */	
+	private List<PrmErDrT> crErDrList(BehaviorPatternDTO behaviorPatternDTO) {
+		Comparator<DataRuleDTO> compareByDrId = Comparator
+                .comparing(DataRuleDTO::getDataRuleId);
+		List<DataRuleDTO> dataRuleList = behaviorPatternDTO.getDataRules();
+		if (!dataRuleList.isEmpty() && dataRuleList.size() > 1) {
+			Collections.sort(dataRuleList, compareByDrId);
+		}
+		List<PrmErDrT> prmErDrList = new ArrayList<>();
+		Integer erId = behaviorPatternDTO.getErId();
+		if (!(erId == -1 || dataRuleList.isEmpty())) {
+			for (DataRuleDTO dataRuleInd: dataRuleList) {
+				PrmErDrT prmErDrT = new PrmErDrT();
+				PrmErdrTPK prmErDrTPK = new PrmErdrTPK();
+				prmErDrTPK.setErId(erId);
+				prmErDrTPK.setDrId(dataRuleInd.getDataRuleId());
+				prmErDrT.setId(prmErDrTPK);
+				prmErDrList.add(prmErDrT);
+			}
+		}
+		return prmErDrList;
+	  }
 
-    when(behaviorPatternsRepository.deleteBehaviorPattern(1)).thenReturn(1);
+	private String replBehaviorPatternName(String searchInput) {
+		StringBuilder strbldr = new StringBuilder();
+		String behaviorPatternNameVal;
+		String replacedInput = "";
+		// the space is an encoded string %20
+		if (StringUtils.containsAny(searchInput,BehaviorPatternConstants.SPACE_ENCODED_STR)) {
+			searchInput = searchInput.replaceAll(BehaviorPatternConstants.SPACE_ENCODED_STR, BehaviorPatternConstants.BLANK_STR);
+		} 
+		if (StringUtils.containsAny(searchInput,BehaviorPatternConstants.PLUS_REPL_STR)) {
+	  		searchInput = searchInput.replaceAll(BehaviorPatternConstants.PLUS_REPL_STR, BehaviorPatternConstants.PLUS_STR );
+		}
+		if (StringUtils.containsAny(searchInput,BehaviorPatternConstants.COMMA_REPL_STR)) {
+	  		searchInput = searchInput.replaceAll(BehaviorPatternConstants.COMMA_REPL_STR, BehaviorPatternConstants.COMMA_STR );
+		}
+		if (StringUtils.containsAny(searchInput, BehaviorPatternConstants.PERCENT_CHAR)
+				|| StringUtils.containsAny(searchInput, BehaviorPatternConstants.UNDERSCORE_CHAR)) {
+			if (StringUtils.containsAny(searchInput, BehaviorPatternConstants.PERCENT_CHAR)) {
+				replacedInput = searchInput.replaceAll("\\%", "\\\\%");
+			} else if (StringUtils.containsAny(searchInput, BehaviorPatternConstants.UNDERSCORE_CHAR)) {
+				replacedInput = searchInput.replaceAll("\\_", "\\\\_");
+			} else {
+				replacedInput = searchInput;
+			}
+			strbldr.append(BehaviorPatternConstants.PERCENT_STR);
+			strbldr.append(replacedInput);
+			strbldr.append(BehaviorPatternConstants.PERCENT_STR);
+			behaviorPatternNameVal = strbldr.toString();
+		} else {
+			behaviorPatternNameVal = BehaviorPatternConstants.PERCENT_STR + searchInput + BehaviorPatternConstants.PERCENT_STR;
+		}
+		return behaviorPatternNameVal;
+	}
+	/**
+	 * this method will give the available Data Rule records data (per page) for a Behavior Pattern ID
+	 * 
+	 * Parameters - behaviorPatternId
+	 */ 
+	public List<DataRuleDTO> getAvailableDatarules(Integer erId){
+		logit.info("Get AvailableDatarule Items List ");
+		List<DataRuleDTO> availableDataruleDataList = null;
+		List<PrmDrDataRuleT> availableDataruleList;
+		boolean details = false;
+		try {
+			availableDataruleList = dataRulesRepository.getAvailableDataRules(erId);
+			if (!availableDataruleList.isEmpty()) {
+				availableDataruleDataList = populateDataRulesList(availableDataruleList, details);
+				logit.info( BehaviorPatternConstants.DATA_RULES_RETRIEVED_MSG, availableDataruleDataList.size() );
+			} else {
+				logit.info(BehaviorPatternConstants.NO_DATA_FOUND_MSG);
+				throw new BehaviorPatternApiException(BehaviorPatternConstants.NO_DATA_FOUND_MSG);
+			}
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE , e);
+		}            
+        return availableDataruleDataList;
+	}
+	/**
+	 * this method will give the selected Data Rules records data for a Behavior Pattern ID
+	 * 
+	 * Parameters - behaviorPatternId
+	 */ 
+	public List<DataRuleDTO> getSelectedDataRules(Integer erId, boolean details){
+		logit.info("Get Selected  Data Rules List ");
+		List<DataRuleDTO> selectedDataRulesList = new ArrayList<>();
+		List<Integer> dataRuleIdList;
+		List<PrmDrDataRuleT> dataRuleDrList;
+		try {
+			List<PrmErDrT> erdrList = behaviorPatternErDrRepository.retrieveErDrValues(erId);
+			logit.info("{} Data Rule records retrieved for Extract Rule Id = {}" , erdrList.size(), erId);
+			if (erdrList.isEmpty()) {
+				selectedDataRulesList = new ArrayList<>();
+			} else {
+				 dataRuleIdList = new ArrayList<>();
+				 for ( PrmErDrT erdrInd : erdrList) {
+					 dataRuleIdList.add(erdrInd.getId().getDrId());
+				 }	
+				 dataRuleDrList = dataRulesRepository.retrieveDataRulesByIds(dataRuleIdList);
+				 selectedDataRulesList = populateDataRulesList(dataRuleDrList, details);	
+			}
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE , e);
+		}            
+        return selectedDataRulesList;
+	}
+	private List<DataRuleDTO> populateDataRulesList(List<PrmDrDataRuleT> dataruleList, boolean details) {
+		 List<DataRuleDTO> dataRuleDataList = new ArrayList<>();
+		 for (PrmDrDataRuleT dataRuleInd  : dataruleList) {  
+			 if (dataRuleInd.getDrId() > 0) {
+				 DataRuleDTO dataRuleBean = new DataRuleDTO();
+				 dataRuleBean.setDataRuleId(dataRuleInd.getDrId()); 
+		    	   dataRuleBean.setDataRuleName(dataRuleInd.getDataRuleName()); 
+		    	   dataRuleBean.setDataElementName(dataRuleInd.getPrmMbMasterT().getMbCustDatadesc()); 
+		    	   dataRuleBean.setOperator(dataRuleInd.getPrmDrLuOperatorT().getOperatorDesc());	
+		    	   dataRuleBean.setCreatedBy(dataRuleInd.getUiUserBaseCr().getUiFirstName() + BehaviorPatternConstants.BLANK_STR + dataRuleInd.getUiUserBaseCr().getUiLastName());
+		    	   dataRuleBean.setCreatedDate(formatDate(dataRuleInd.getCreateDate()));
+		    	   dataRuleBean.setModifiedBy(dataRuleInd.getUiUserBaseUpd().getUiFirstName() + BehaviorPatternConstants.BLANK_STR + dataRuleInd.getUiUserBaseUpd().getUiLastName());
+		    	   dataRuleBean.setModifiedDate(formatDate(dataRuleInd.getUpdateDate())); 
+		    	   dataRuleBean.setDataElementId(dataRuleInd.getPrmMbMasterT().getMbCtecFid()) ;
+		    	   dataRuleBean.setDataElementDataType(dataRuleInd.getPrmMbMasterT().getMbCtecFtype());
+		    	   if (details) {
+		    		   setCodeRangeValues(dataRuleInd, dataRuleBean);
+		    	   } else {
+		    		   dataRuleBean.setSelectedValues(new ArrayList<DrCodeValueDTO>());
+		    		   dataRuleBean.setRangeValues(new ArrayList<DrRangeValuesDTO>());
+		    	   }
+		    	   dataRuleDataList.add(dataRuleBean); 
+			 }
+	       }
+		 return dataRuleDataList;
+	 }
+	private void setCodeRangeValues(PrmDrDataRuleT dataRuleInd, DataRuleDTO dataRuleBean) {
+		if (!dataRuleInd.getPrmDrSingleValuesTs().isEmpty()) {
+			dataRuleBean.setRangeValue(BehaviorPatternConstants.NO_VALUE);
+			List<DrCodeValueDTO> codeValuesList = new ArrayList<>();
+			for (PrmDrSingleValuesT singleValue : dataRuleInd.getPrmDrSingleValuesTs()) {
+				DrCodeValueDTO codeBean=new DrCodeValueDTO();
+				codeBean.setValue(singleValue.getDrLabel());
+				codeBean.setCode(singleValue.getId().getDrValue());
+				codeValuesList.add(codeBean);
+			}
+			dataRuleBean.setSelectedValues(codeValuesList);
+			logit.info(" Code Values list populated with {} code Value data", codeValuesList.size() );
+		} else {
+			dataRuleBean.setSelectedValues(new ArrayList<DrCodeValueDTO>());
+		}
+		if(!dataRuleInd.getPrmDrRangesTs().isEmpty()) {
+			dataRuleBean.setRangeValue(BehaviorPatternConstants.HAS_VALUE);
+			List<DrRangeValuesDTO> drRangeValuesList = new ArrayList<>();
+			for (PrmDrRangesT rangeFromTo : dataRuleInd.getPrmDrRangesTs()) {
+				DrRangeValuesDTO rangeBean=new DrRangeValuesDTO();
+				rangeBean.setFrom(rangeFromTo.getDrRangeFrom());
+				rangeBean.setTo(rangeFromTo.getDrRangeTo());
+				drRangeValuesList.add(rangeBean);
+			}
+			dataRuleBean.setRangeValues(drRangeValuesList);
+			logit.info(" Range Values list populated with {} range Value data", drRangeValuesList.size() );
+		} else {
+			dataRuleBean.setRangeValues(new ArrayList<DrRangeValuesDTO>());
+		}
+	}
+	private String formatDate(Date dt) {
+	       if(dt == null) {
+	           return null;
+	       }
+	       //SimpleDateFormat formatter = new SimpleDateFormat(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A);
+	       SimpleDateFormat formatter = new SimpleDateFormat(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
+	       return formatter.format(dt);
+	  }
+	// For LocalDateTime
+	protected String formatLocalDate(LocalDateTime dt) {
+		DateTimeFormatter dateTimeFormatter;
+		if (dt == null)
+			return null;
+		dateTimeFormatter = DateTimeFormatter.ofPattern(BehaviorPatternConstants.DATE_FORMAT_MMDDYYYY_HHMM_A,
+				Locale.ENGLISH);	
+		return dateTimeFormatter.format(dt);
+	}						
+	private PrmErExtractRuleT createExtractRule(BehaviorPatternDTO behaviorPatternDTO) {
+		PrmErExtractRuleT prmErExtractRuleT = new PrmErExtractRuleT();	
+		Date currentDate = Calendar.getInstance().getTime();
+		Integer erId = behaviorPatternDTO.getErId();
+		try {
+			if (erId <= BehaviorPatternConstants.ZERO_VALUE) {
+				erId = behaviorPatternErRepository.retrieveNextErId();
+				behaviorPatternDTO.setErId(erId);
+			}
+			prmErExtractRuleT.setErId(erId);
+			prmErExtractRuleT.setErName(BehaviorPatternConstants.EMPTY_STR);
+			prmErExtractRuleT.setCreateUsr(behaviorPatternDTO.getCreatedBy());	
+			prmErExtractRuleT.setUpdateUsr(behaviorPatternDTO.getModifiedBy()); 
+			prmErExtractRuleT.setCreateDte(currentDate);
+			prmErExtractRuleT.setUpdateDte(currentDate);
+			behaviorPatternErRepository.saveAndFlush(prmErExtractRuleT);
+			logit.info("Extract Rule existing/created with ER ID =  {}", erId);
+		} catch (Exception e) {
+			throw new BehaviorPatternApiException(BehaviorPatternConstants.EXCEPTION_MESSAGE, e);
+		} 
+		return prmErExtractRuleT;
+	}
+	/** 
+	 * This method will get the ZoneId corresponding to the time zone used at the customer site
+	 * Parameters: the time zone is stored in an entry in the FADS_CONFIG_T table 
+	 */
+	public ZoneId getZoneId() {
+		ZoneId zid = ZoneId.systemDefault();;
+		Optional<FadsConfigT> optional = fadsConfigRepository.findById(BehaviorPatternConstants.DATE_TIME_ZONE_ID);
+		if (optional.isPresent()) {
+			FadsConfigT fadsConfigT = optional.get();
+			zid = ZoneId.of(fadsConfigT.getOptionValue());	//  the zone ID corresponding to date-time zone used
+		}
+		return zid;
 
-    List<String> msgs = service.deleteBehaviorPattern(1);
-    assertTrue(msgs.contains(BehaviorPatternConstants.DELETE_SUCCESS_MESSAGE));
-}
-E) deleteBehaviorPattern_notFound (no exception!)
-java
-Copy code
-@Test
-void deleteBehaviorPattern_notFound_returnsDoesNotExistMessage() {
-    when(behaviorPatternsRepository.getBehaviorPatternById(1)).thenReturn(null);
-
-    List<String> msgs = service.deleteBehaviorPattern(1);
-
-    assertNotNull(msgs);
-    assertTrue(msgs.contains(BehaviorPatternConstants.BEHAVIOR_PATTERN_DOES_NOT_EXIST));
+	}
 }
