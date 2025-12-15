@@ -1,17 +1,110 @@
-<plugin>
-    <groupId>org.jacoco</groupId>
-    <artifactId>jacoco-maven-plugin</artifactId>
-    <version>${jacoco.version}</version>
-    <configuration>
-        <destFile>target/jacoco.exec</destFile>
-        <excludes>
-            <!-- already there -->
-            <exclude>com/optum/fads/pgp/behavior/api/dto/**</exclude>
-            <exclude>com/optum/fads/pgp/behavior/api/domain/**</exclude>
-            <exclude>com/optum/fads/pgp/behavior/api/common/constants/**</exclude>
-            <!-- new: exclude the Spring Boot main class -->
-            <exclude>com/optum/fads/pgp/behavior/api/BehaviorPatternApiApplication.class</exclude>
-        </excludes>
-    </configuration>
-    ...
-</plugin>
+@Test
+void getBehaviorPatternById_success() {
+    PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+    entity.setBpId(1);
+
+    when(behaviorPatternsRepository.getBehaviorPatternById(1))
+            .thenReturn(entity);
+
+    BehaviorPatternDTO dto = service.getBehaviorPatternById(1);
+
+    assertNotNull(dto);
+    assertEquals(1, dto.getBehaviorPatternId());
+}
+✅ B. getBehaviorPatternById_notFound
+java
+Copy code
+@Test
+void getBehaviorPatternById_notFound_throwsException() {
+    when(behaviorPatternsRepository.getBehaviorPatternById(1))
+            .thenReturn(null);
+
+    assertThrows(BehaviorPatternApiException.class,
+            () -> service.getBehaviorPatternById(1));
+}
+✔ Covers exception branch
+
+✅ C. deleteBehaviorPattern_success
+java
+Copy code
+@Test
+void deleteBehaviorPattern_success() {
+    when(behaviorPatternsRepository.deleteBehaviorPattern(1))
+            .thenReturn(1);
+
+    assertDoesNotThrow(() -> service.deleteBehaviorPattern(1));
+}
+✅ D. deleteBehaviorPattern_notFound
+java
+Copy code
+@Test
+void deleteBehaviorPattern_notFound_throwsException() {
+    when(behaviorPatternsRepository.deleteBehaviorPattern(1))
+            .thenReturn(0);
+
+    assertThrows(BehaviorPatternApiException.class,
+            () -> service.deleteBehaviorPattern(1));
+}
+✅ E. addBehaviorPattern_success
+Mock only what is used:
+
+java
+Copy code
+@Test
+void addBehaviorPattern_success() {
+    BehaviorPatternDTO dto = new BehaviorPatternDTO();
+    dto.setBehaviorPatternName("BP1");
+
+    when(behaviorPatternsRepository.retrieveNextBpId())
+            .thenReturn(100);
+
+    when(behaviorPatternMasterRepository.save(any()))
+            .thenAnswer(i -> i.getArgument(0));
+
+    assertDoesNotThrow(() -> service.addBehaviorPattern(dto));
+}
+✅ F. addBehaviorPattern_duplicateName
+java
+Copy code
+@Test
+void addBehaviorPattern_duplicateName_throwsException() {
+    BehaviorPatternDTO dto = new BehaviorPatternDTO();
+    dto.setBehaviorPatternName("BP1");
+
+    when(behaviorPatternsRepository.getBehaviorPatternByName("bp1"))
+            .thenReturn(new PrmBpBehaviorPatsT());
+
+    assertThrows(BehaviorPatternApiException.class,
+            () -> service.addBehaviorPattern(dto));
+}
+✅ G. updateBehaviorPattern_success
+java
+Copy code
+@Test
+void updateBehaviorPattern_success() {
+    BehaviorPatternDTO dto = new BehaviorPatternDTO();
+    dto.setBehaviorPatternName("Updated");
+
+    PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+    entity.setBpId(1);
+
+    when(behaviorPatternsRepository.getBehaviorPatternById(1))
+            .thenReturn(entity);
+
+    when(behaviorPatternMasterRepository.save(any()))
+            .thenAnswer(i -> i.getArgument(0));
+
+    assertDoesNotThrow(() ->
+            service.updateBehaviorPattern(1, dto));
+}
+✅ H. updateBehaviorPattern_notFound
+java
+Copy code
+@Test
+void updateBehaviorPattern_notFound_throwsException() {
+    when(behaviorPatternsRepository.getBehaviorPatternById(1))
+            .thenReturn(null);
+
+    assertThrows(BehaviorPatternApiException.class,
+            () -> service.updateBehaviorPattern(1, new BehaviorPatternDTO()));
+}
