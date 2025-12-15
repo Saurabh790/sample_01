@@ -1,65 +1,97 @@
 @Test
-void addBehaviorPattern_success_noDr() {
-    BehaviorPatternDTO dto = new BehaviorPatternDTO();
-    dto.setBehaviorPatternName("BP1");
-    dto.setThisBpRequiresDr(false);
+void getBehaviorPatternsOnSearchCriteria_myItems_noSpecialChars() {
+    ListTableParams p = new ListTableParams();
+    p.setPageNumber(1);
+    p.setRecordsPerPage(10);
+    p.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_ID);
+    p.setSortOrder(0);
+    p.setSelectedItemIds(new ArrayList<>());
 
-    dto.setBaId("4");
-    dto.setDataElementCode(123);
-    dto.setDateElementCode(999);
+    p.setSearchBy(Arrays.asList(
+            BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME,
+            BehaviorPatternConstants.CREATED_BY,
+            BehaviorPatternConstants.MODIFIED_BY,
+            BehaviorPatternConstants.USER_SYSTEM_ID
+    ));
+    p.setSearchInput(Arrays.asList(
+            "bpname",
+            " john   doe ",
+            " jane   doe ",
+            "SYS1"
+    ));
 
-    dto.setCreatedBySystemId("SYS1");
-    dto.setModifiedBySystemId("SYS2");
+    PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+    entity.setBpId(1);
+    PrmErExtractRuleT er = new PrmErExtractRuleT(); er.setErId(-1);
+    entity.setPrmErExtractRuleT(er);
+    PrmMbMasterT mb = new PrmMbMasterT(); mb.setMbCtecFid(11); mb.setMbCustDatadesc("DE");
+    entity.setPrmMbMasterT(mb);
+    UiUserBase cr = new UiUserBase(); cr.setUiFirstName("A"); cr.setUiLastName("B"); cr.setUiSystemId("SYSCR");
+    UiUserBase upd = new UiUserBase(); upd.setUiFirstName("C"); upd.setUiLastName("D"); upd.setUiSystemId("SYSUPD");
+    entity.setUiUserBaseCr(cr);
+    entity.setUiUserBaseUpd(upd);
+    entity.setCreateDate(LocalDateTime.now());
+    entity.setUpdateDate(LocalDateTime.now());
+    entity.setBehaviorPatternName("bpname");
+    entity.setBaId("1");
 
-    dto.setCreatedDate("12/11/2025 07:30:00 PM");
-    dto.setModifiedDate("12/11/2025 07:30:00 PM");
+    when(behaviorPatternsRepository.getMyBehaviorPatternsBySearchCrit(
+            anyString(), anyString(), anyString(), anyString(), any(Pageable.class)
+    )).thenReturn(Collections.singletonList(entity));
 
-    dto.setDataRules(new ArrayList<>());   // ✅ IMPORTANT (avoid NPE)
+    when(behaviorPatternsRepository.getMyBehaviorPatternsBySearchCrit(
+            anyString(), anyString(), anyString(), anyString(), isNull()
+    )).thenReturn(Collections.singletonList(entity));
 
-    when(behaviorPatternsRepository.getBehaviorPatternByName("bp1")).thenReturn(null);
-    when(behaviorPatternErRepository.getExtractRuleById(-1)).thenReturn(new PrmErExtractRuleT());
-    when(behaviorPatternsRepository.retrieveNextBpId()).thenReturn(100);
-    when(behaviorPatternsRepository.saveAndFlush(any(PrmBpBehaviorPatsT.class)))
-            .thenAnswer(inv -> inv.getArgument(0));
+    PaginationResult r = service.getBehaviorPatternsOnSearchCriteria(p);
 
-    BehaviorPatternDTO result = service.addBehaviorPattern(dto);
-
-    assertNotNull(result);
-    assertEquals(100, result.getBehaviorPatternId());
-    assertEquals(-1, result.getErId());
+    assertEquals(1, r.getTotalRecordsCount());
+    assertEquals(1, r.getBehaviorPatternsData().size());
+    verify(behaviorPatternsRepository).getMyBehaviorPatternsBySearchCrit(
+            anyString(), anyString(), anyString(), anyString(), any(Pageable.class)
+    );
 }
+
+
 @Test
-void getBehaviorPatternById_success() {
-    Integer bpId = 1;
+void getBehaviorPatternsOnSearchCriteria_selectedItems_specialChars_escBranch() {
+    ListTableParams p = new ListTableParams();
+    p.setPageNumber(1);
+    p.setRecordsPerPage(10);
+    p.setSortBy(BehaviorPatternConstants.BEHAVIOR_PATTERN_ID);
+    p.setSortOrder(0);
+    p.setSelectedItemIds(Arrays.asList(1,2,3));
 
-    Object[] row = new Object[14];
-    row[0] = -1;                 // erId
-    row[1] = "1";                // baId
-    row[2] = "BP_NAME";          // bp name
-    row[3] = 100;                // dataElementCode
-    row[4] = 999;                // dateElementCode
-    row[5] = LocalDateTime.now();// createdDate
-    row[6] = "John";             // created first
-    row[7] = "Creator";          // created last
-    row[8] = "SYS1";             // created system id
-    row[9] = LocalDateTime.now();// modifiedDate
-    row[10] = "Jane";            // modified first
-    row[11] = "Updater";         // modified last
-    row[12] = "SUMOF";           // sumOf
-    row[13] = "DE_NAME";         // dataElementName
+    p.setSearchBy(Collections.singletonList(BehaviorPatternConstants.BEHAVIOR_PATTERN_NAME));
+    p.setSearchInput(Collections.singletonList("ab%cd")); // triggers ESC path
 
-    when(behaviorPatternMasterRepository.retrieveBehaviorPatternById(bpId))
-            .thenReturn(Collections.singletonList(row));
+    PrmBpBehaviorPatsT entity = new PrmBpBehaviorPatsT();
+    entity.setBpId(1);
+    PrmErExtractRuleT er = new PrmErExtractRuleT(); er.setErId(-1);
+    entity.setPrmErExtractRuleT(er);
+    PrmMbMasterT mb = new PrmMbMasterT(); mb.setMbCtecFid(11); mb.setMbCustDatadesc("DE");
+    entity.setPrmMbMasterT(mb);
+    UiUserBase cr = new UiUserBase(); cr.setUiFirstName("A"); cr.setUiLastName("B"); cr.setUiSystemId("SYSCR");
+    UiUserBase upd = new UiUserBase(); upd.setUiFirstName("C"); upd.setUiLastName("D"); upd.setUiSystemId("SYSUPD");
+    entity.setUiUserBaseCr(cr);
+    entity.setUiUserBaseUpd(upd);
+    entity.setCreateDate(LocalDateTime.now());
+    entity.setUpdateDate(LocalDateTime.now());
+    entity.setBehaviorPatternName("ab%cd");
+    entity.setBaId("1");
 
-    // because row[0] = -1, service will call getSelectedDataRules(-1,true)
-    when(behaviorPatternErDrRepository.retrieveErDrValues(-1))
-            .thenReturn(Collections.emptyList());
+    when(behaviorPatternsRepository.getAvailableBehaviorPatternsBySearchCritEsc(
+            anyString(), anyString(), anyString(), anyList(), any(Pageable.class)
+    )).thenReturn(Collections.singletonList(entity));
 
-    BehaviorPatternDTO dto = service.getBehaviorPatternById(bpId);
+    when(behaviorPatternsRepository.getAvailableBehaviorPatternsBySearchCritEsc(
+            anyString(), anyString(), anyString(), anyList(), isNull()
+    )).thenReturn(Collections.singletonList(entity));
 
-    assertNotNull(dto);
-    assertEquals(1, dto.getBehaviorPatternId());
-    assertEquals(-1, dto.getErId());
-    assertEquals("BP_NAME", dto.getBehaviorPatternName());
-    assertNotNull(dto.getDataRules());
+    PaginationResult r = service.getBehaviorPatternsOnSearchCriteria(p);
+
+    assertEquals(1, r.getTotalRecordsCount());
+    verify(behaviorPatternsRepository).getAvailableBehaviorPatternsBySearchCritEsc(
+            anyString(), anyString(), anyString(), anyList(), any(Pageable.class)
+    );
 }
