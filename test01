@@ -1,278 +1,254 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+package com.optum.fads.pgp.jobs.api.controller;
 
-    <modelVersion>4.0.0</modelVersion>
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.optum.fads.pgp.jobs.api.common.JobsConstants;
+import com.optum.fads.pgp.jobs.api.common.ListTableParams;
+import com.optum.fads.pgp.jobs.api.dto.FadsUser;
+import com.optum.fads.pgp.jobs.api.dto.JobDTO;
+import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
+import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import com.optum.fads.pgp.jobs.api.util.TestUtil;
+import org.apache.tomcat.util.json.ParseException;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-datarules-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+import java.util.ArrayList;
+import java.util.List;
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.7</version>
-    </parent>
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-    <properties>
-        <java.version>17</java.version>
-        <spring.boot.version>3.4.7</spring.boot.version>
+@RunWith(MockitoJUnitRunner.Silent.class)
+public class JobMonitorControllerTest {
 
-        <spring.cloud.version>2023.0.2</spring.cloud.version>
-        <modelmapper.version>3.1.1</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.28</lombok.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
+    private MockMvc mockMvc;
 
-        <!-- ✅ Security-fixed versions -->
-        <netty.version>4.1.125.Final</netty.version>
-        <reactor-netty.version>1.2.8</reactor-netty.version>
-        <spring.framework.version>6.2.11</spring.framework.version>
-    </properties>
+    @Mock
+    private IJobMonitorDataService iJobMonitorDataService;
 
-    <dependencyManagement>
-        <dependencies>
-            <!-- Spring Boot BOM -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+    @Mock
+    private FadsUser appUser;
 
-            <!-- ✅ Fixes CVE-2025-41249 (Spring Framework) -->
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-framework-bom</artifactId>
-                <version>${spring.framework.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+    @Mock
+    private Authentication authentication;
 
-            <!-- ✅ Netty BOM (CVE fixes) -->
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    @Mock
+    private SecurityContext securityContext;
 
-    <dependencies>
-        <!-- SPRING -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
+    @InjectMocks
+    private JobMonitorController jobMonitorController;
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
+    private ObjectMapper objectMapper;
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
+    private PaginationResult result;
+    private ListTableParams listTableParams;
+    private List<JobDTO> jobDTOS;
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-reactor-netty</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+    @Before
+    public void setUp() throws ParseException, java.text.ParseException {
+        MockitoAnnotations.initMocks(this);
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
+        mockMvc = MockMvcBuilders
+                .standaloneSetup(jobMonitorController)
+                .build();
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
+        // SecurityContextHolder setup used by controller
+        Mockito.when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
 
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
+        // controller does: SecurityContextHolder.getContext().getAuthentication().getPrincipal()
+        Mockito.when(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
+                .thenReturn(appUser);
 
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
+        Mockito.when(appUser.getUserSystemId()).thenReturn("test-user");
 
-        <!-- ✅ Fixes Nimbus CVE (CVE-2025-53864) -->
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>nimbus-jose-jwt</artifactId>
-            <version>9.37.4</version>
-        </dependency>
+        listTableParams = new ListTableParams();
+        listTableParams.setPageNumber(1);
+        listTableParams.setRecordsPerPage(10);
+        listTableParams.setSortBy("jobId");
+        listTableParams.setSortOrder(-1);
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
+        result = new PaginationResult();
 
-        <!-- LOGGING (logback fixed for CVE-2025-11226 + 2024 CVEs) -->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-        </dependency>
+        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
+        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
 
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.5.19</version>
-        </dependency>
+        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
+        result.setJobsData(jobDTOS);
 
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-            <version>1.5.19</version>
-        </dependency>
+        objectMapper = new ObjectMapper();
+    }
 
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+    @Test
+    public void canceljobByIdTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.getJobDetailsById(anyInt()))
+                .thenReturn(jobDTOS.get(0));
+        Mockito.when(iJobMonitorDataService.cancelJob(any(JobDTO.class)))
+                .thenReturn(JobsConstants.JOB_CANCELED);
 
-        <!-- COMMONS / UTIL -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.put("/canceljob/10")
+                        .contentType(MediaType.APPLICATION_JSON)
+        );
 
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
+        perform.andExpect(status().isOk());
+    }
 
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
+    @Test
+    public void purgeJobsByIdTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.getJobDetailsById(anyInt()))
+                .thenReturn(jobDTOS.get(0));
+        Mockito.when(iJobMonitorDataService.purgeJob(any(JobDTO.class)))
+                .thenReturn(JobsConstants.JOB_PURGED);
 
-        <!-- ✅ MAPSTRUCT (this fixes your compile error) -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${mapstruct.version}</version>
-        </dependency>
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.delete("/purgejob/10")
+                        .contentType(MediaType.APPLICATION_JSON)
+        );
 
-        <!-- optional, but you used it earlier; harmless with Java 17 -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${mapstruct.version}</version>
-        </dependency>
+        perform.andExpect(status().isOk());
+    }
 
-        <!-- annotation processor; no need at runtime -->
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${mapstruct.version}</version>
-            <scope>provided</scope>
-        </dependency>
+    @Test
+    public void changeScheduleDateByIdTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
+                .thenReturn(JobsConstants.RUN_DATE_SAVED);
 
-        <!-- DATABASE -->
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-        </dependency>
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.put("/changescheduledate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(jobDTOS.get(0)))
+        );
 
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-        </dependency>
+        perform.andExpect(status().isOk());
+    }
 
-        <!-- REACTOR + NETTY -->
-        <dependency>
-            <groupId>io.projectreactor.netty</groupId>
-            <artifactId>reactor-netty-http</artifactId>
-            <version>${reactor-netty.version}</version>
-        </dependency>
+    @Test
+    public void changePurgeDateByIdTest_ok() throws Exception {
+        Mockito.when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
+                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
 
-        <dependency>
-            <groupId>io.projectreactor.netty</groupId>
-            <artifactId>reactor-netty-core</artifactId>
-            <version>${reactor-netty.version}</version>
-        </dependency>
+        JobDTO jobDTO = jobDTOS.get(0);
+        jobDTO.setStatus(10); // IMPORTANT: must NOT be 20 (controller validates status != 20)
 
-        <!-- Netty modules (version comes from netty-bom) -->
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http2</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-handler</artifactId>
-        </dependency>
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.put("/changepurgedate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(jobDTO))
+        );
 
-        <!-- TESTING -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+        perform.andExpect(status().isOk());
+    }
 
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
+    @Test
+    public void changePurgeDateByIdTest_badRequest_whenStatus20() throws Exception {
+        // even if service would return OK, controller should block before calling service
+        JobDTO jobDTO = jobDTOS.get(0);
+        jobDTO.setStatus(20);
 
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.put("/changepurgedate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(jobDTO))
+        );
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <!-- optional but recommended for MapStruct + Lombok:
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${mapstruct.version}</version>
-                        </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                    -->
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+        perform.andExpect(status().isBadRequest());
+    }
 
-</project>
+    @Test
+    public void getJobsByParmsTest() throws Exception {
+        // IMPORTANT: controller creates NEW ListTableParams, so use any()
+        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
+                .thenReturn(result);
+
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.get("/getjobs/")
+                        // IMPORTANT: mapping requires Accept=application/json
+                        .accept(MediaType.APPLICATION_JSON)
+                        // These params must bind to ListTableParamsReq fields
+                        .param("pageNumber", "1")
+                        .param("recordsPerPage", "10")
+                        .param("sortBy", "jobId")
+                        .param("sortOrder", "-1")
+                        // controller takes searchInput as separate argument
+                        .param("searchInput", "abc")
+        );
+
+        perform.andExpect(status().isOk());
+    }
+
+    @Test
+    public void getMyJobsByParmsTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
+                .thenReturn(result);
+
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.get("/getmyjobs/")
+                        // IMPORTANT: mapping requires Accept=application/json
+                        .accept(MediaType.APPLICATION_JSON)
+                        .param("pageNumber", "1")
+                        .param("recordsPerPage", "10")
+                        .param("sortBy", "jobId")
+                        .param("sortOrder", "-1")
+        );
+
+        perform.andExpect(status().isOk());
+    }
+
+    @Test
+    public void getJobDetailsByIdTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.getJobDetailsById(eq(10)))
+                .thenReturn(result.getJobsData().get(0));
+
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.get("/getjobdetails/10")
+                        .accept(MediaType.APPLICATION_JSON)
+        );
+
+        perform.andExpect(status().isOk());
+    }
+
+    @Test
+    public void changeDateByIdTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.changeDatesById(eq(10)))
+                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
+
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.get("/changedates/10")
+                        .accept(MediaType.APPLICATION_JSON)
+        );
+
+        perform.andExpect(status().isOk());
+    }
+
+    @Test
+    public void getreportURLTest() throws Exception {
+        Mockito.when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong()))
+                .thenReturn("COGNOS_REPORT_URL");
+
+        ResultActions perform = mockMvc.perform(
+                MockMvcRequestBuilders.get("/getreporturl/300")
+                        .accept(MediaType.APPLICATION_JSON)
+        );
+
+        perform.andExpect(status().isOk());
+    }
+}
