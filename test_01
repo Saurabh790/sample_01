@@ -1,406 +1,218 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <modelVersion>4.0.0</modelVersion>
+package com.optum.fads.pgp.jobs.api.service.impl;
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-jobmonitor-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+import com.optum.fads.pgp.jobs.api.common.FadsConfigProperties;
+import com.optum.fads.pgp.jobs.api.common.JobsConstants;
+import com.optum.fads.pgp.jobs.api.common.ListTableParams;
+import com.optum.fads.pgp.jobs.api.domain.FadsConfigT;
+import com.optum.fads.pgp.jobs.api.dto.JobDTO;
+import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
+import com.optum.fads.pgp.jobs.api.exception.JobsMonitorApiException;
+import com.optum.fads.pgp.jobs.api.mapper.JobDetailMapper;
+import com.optum.fads.pgp.jobs.api.repo.FadsConfigRepository;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobLuStatusT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterLogsT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobMasterSchedulerRepository;
+import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobsRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
-        <relativePath/>
-    </parent>
+import java.time.LocalDateTime;
+import java.util.*;
 
-    <repositories>
-        <repository>
-            <id>artifactory</id>
-            <name>Artifactory</name>
-            <url>https://repo1.uhc.com/artifactory/repo</url>
-        </repository>
-    </repositories>
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-    <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <failsafe.skip>${skipTests}</failsafe.skip>
+@ExtendWith(MockitoExtension.class)
+class JobMonitorDataServiceTest {
 
-        <java.version>17</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2023.0.2</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
-        <modelmapper.version>3.1.1</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.38</lombok.version>
-        <restassured.version>5.3.0</restassured.version>
-        <mockito.version>5.4.0</mockito.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-        <javax-ws-rs-api.version>2.1.2</javax-ws-rs-api.version>
-        <org.mapstruct.version>1.6.3</org.mapstruct.version>
-        <log4j.version>2.20.0</log4j.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <snakeyaml.version>2.1</snakeyaml.version>
-        <jaxb.version>2.3.3</jaxb.version>
-        <sonar.version>3.9.2.2185</sonar.version>
-        <commons.collections4>4.4</commons.collections4>
-        <bcp.version>1.78</bcp.version>
-        <mssql.jdbc.version>13.2.1.jre11</mssql.jdbc.version>
-    </properties>
+    @Mock private FadsConfigRepository fadsConfigRepository;
+    @Mock private JobsRepository jobsRepository;
+    @Mock private JobMasterSchedulerRepository jobMasterSchedulerRepository;
+    @Mock private JobDetailMapper jobDetailMapper;
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.azure.spring</groupId>
-                <artifactId>spring-cloud-azure-dependencies</artifactId>
-                <version>5.22.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    @InjectMocks
+    private JobMonitorDataService service;
 
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
+    @Test
+    void getJobDetailsById_whenJobExists_withEmptyLogs_returnsJobDTO_withoutNotes() {
+        Integer jobId = 10;
 
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-        </dependency>
+        JobMasterT jobMasterT = new JobMasterT();
+        // IMPORTANT: must be NON-NULL, else code NPEs
+        jobMasterT.setJobMasterLogsTs(Collections.emptyList());
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.19.0</version>
-        </dependency>
+        when(jobsRepository.findById(jobId)).thenReturn(Optional.of(jobMasterT));
 
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
+        JobDTO dto = new JobDTO();
+        dto.setJobId(jobId);
+        when(jobDetailMapper.convertToJob(any(JobMasterT.class))).thenReturn(dto);
 
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
+        JobDTO result = service.getJobDetailsById(jobId);
 
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
+        assertNotNull(result);
+        assertEquals(jobId, result.getJobId());
+        // notes should remain null/empty since logs empty
+        // (depends on your JobDTO default; allow either)
+        if (result.getNotes() != null) {
+            assertTrue(result.getNotes().isEmpty());
+        }
 
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+        verify(jobsRepository).findById(jobId);
+        verify(jobDetailMapper).convertToJob(jobMasterT);
+        verifyNoMoreInteractions(jobMasterSchedulerRepository);
+    }
 
-        <!-- Tests (JUnit 5 via spring-boot-starter-test) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+    @Test
+    void getJobDetailsById_whenJobExists_withLogs_populatesNotes() {
+        Integer jobId = 11;
 
-        <!-- REMOVED: junit:junit (JUnit4) -->
-        <!-- REMOVED: junit-vintage-engine -->
+        JobMasterLogsT log1 = new JobMasterLogsT();
+        log1.setLogFileNotes("note-1");
+        JobMasterLogsT log2 = new JobMasterLogsT();
+        log2.setLogFileNotes("note-2");
 
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
+        JobMasterT jobMasterT = new JobMasterT();
+        jobMasterT.setJobMasterLogsTs(Arrays.asList(log1, log2));
 
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
+        when(jobsRepository.findById(jobId)).thenReturn(Optional.of(jobMasterT));
 
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>${mssql.jdbc.version}</version>
-        </dependency>
+        JobDTO dto = new JobDTO();
+        dto.setJobId(jobId);
+        when(jobDetailMapper.convertToJob(any(JobMasterT.class))).thenReturn(dto);
 
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-collections4</artifactId>
-            <version>${commons.collections4}</version>
-        </dependency>
+        JobDTO result = service.getJobDetailsById(jobId);
 
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
-        </dependency>
+        assertNotNull(result);
+        assertEquals(jobId, result.getJobId());
+        assertNotNull(result.getNotes());
+        assertEquals(2, result.getNotes().size());
+        assertEquals("note-1", result.getNotes().get(0));
+        assertEquals("note-2", result.getNotes().get(1));
+    }
 
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
+    @Test
+    void getJobDetailsById_whenJobMissing_throwsJobsMonitorApiException() {
+        Integer jobId = 999;
+        when(jobsRepository.findById(jobId)).thenReturn(Optional.empty());
 
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
+        JobsMonitorApiException ex = assertThrows(JobsMonitorApiException.class,
+                () -> service.getJobDetailsById(jobId));
 
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-bom</artifactId>
-            <version>4.1.125.Final</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
+        // message depends on your exception constructor, so just ensure it throws
+        assertNotNull(ex);
+        verify(jobsRepository).findById(jobId);
+    }
 
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
+    @Test
+    void getJobsByListTableParms_whenNoSearchBy_usesFindAll_andMapsDTOs() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(10);
+        params.setSortBy(JobsConstants.JOB_ID);
+        params.setSortOrder(-1);
+        params.setSearchBy(null); // this is the branch we want
 
-                <!-- REMOVED: jacoco-maven-plugin from pluginManagement (not required) -->
-            </plugins>
-        </pluginManagement>
+        JobMasterT jm = new JobMasterT();
+        List<JobMasterT> content = Collections.singletonList(jm);
 
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
+        Page<JobMasterT> page = new PageImpl<>(content);
+        when(jobsRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+        List<JobDTO> mapped = Collections.singletonList(new JobDTO());
+        when(jobDetailMapper.convertToJobDTOs(content)).thenReturn(mapped);
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+        PaginationResult out = service.getJobsByListTableParms(params);
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+        assertNotNull(out);
+        assertNotNull(out.getJobsData());
+        assertEquals(1, out.getJobsData().size());
+        assertEquals(1, out.getTotalRecordsCount());
 
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
+        verify(jobsRepository).findAll(any(Pageable.class));
+        verify(jobDetailMapper).convertToJobDTOs(content);
+    }
 
-            <!-- Surefire: pin version for Java 17 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
-            </plugin>
+    @Test
+    void changeScheduleDateById_updatesRepository_andReturnsSaved() {
+        JobDTO jobDTO = new JobDTO();
+        jobDTO.setJobId(101);
+        jobDTO.setStatus(1);
+        jobDTO.setUpdatedBySystemId("u1");
+        jobDTO.setScheduledRunDate(LocalDateTime.now());
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
+        when(jobsRepository.updateScheduledRunDate(
+                eq(101),
+                any(LocalDateTime.class),
+                eq("u1"),
+                any(LocalDateTime.class)
+        )).thenReturn(1);
 
-            <!-- JaCoCo -->
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <!-- CHANGED: package -> verify -->
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+        String status = service.changeScheduleDateById(jobDTO);
 
-        </plugins>
-    </build>
-</project>
+        assertEquals(JobsConstants.RUN_DATE_SAVED, status);
+        verify(jobsRepository).updateScheduledRunDate(eq(101), any(LocalDateTime.class), eq("u1"), any(LocalDateTime.class));
+    }
 
+    @Test
+    void changePurgeDateById_whenUpdateSuccess_returnsSaved() {
+        JobDTO jobDTO = new JobDTO();
+        jobDTO.setJobId(201);
+        jobDTO.setUpdatedBySystemId("u2");
+        jobDTO.setStatus(20);
+        jobDTO.setPurgeDate("12-31-2025"); // whatever your repo expects
 
+        when(jobsRepository.updatePurgeDate(eq(201), eq("12-31-2025"), eq("u2"), any(Date.class)))
+                .thenReturn(1);
 
-mvn -Dtest=JobMonitorControllerTest clean verify
+        String status = service.changePurgeDateById(jobDTO);
+
+        assertEquals(JobsConstants.PURGE_DATE_SAVED, status);
+        verify(jobsRepository).updatePurgeDate(eq(201), eq("12-31-2025"), eq("u2"), any(Date.class));
+    }
+
+    @Test
+    void getReportUrlByOptionCd_whenConfigPresent_returnsDescription() {
+        // service ignores input optionCd and reads JobsConstants.COGNOS_REPORT_OPTION_CODE
+        FadsConfigT cfg = new FadsConfigT();
+        cfg.setDescription("http://cognos/report");
+
+        when(fadsConfigRepository.findById(JobsConstants.COGNOS_REPORT_OPTION_CODE))
+                .thenReturn(Optional.of(cfg));
+
+        String url = service.getReportUrlByOptionCd(300);
+
+        assertEquals("http://cognos/report", url);
+        verify(fadsConfigRepository).findById(JobsConstants.COGNOS_REPORT_OPTION_CODE);
+    }
+
+    @Test
+    void getFadsConfigByIds_mapsToProperties() {
+        FadsConfigT c1 = new FadsConfigT();
+        c1.setOptionCode(1L);
+        c1.setDescription("d1");
+        c1.setOptionValue("v1");
+
+        FadsConfigT c2 = new FadsConfigT();
+        c2.setOptionCode(2L);
+        c2.setDescription("d2");
+        c2.setOptionValue("v2");
+
+        when(fadsConfigRepository.findAllById(Arrays.asList(1L, 2L)))
+                .thenReturn(Arrays.asList(c1, c2));
+
+        List<FadsConfigProperties> out = service.getFadsConfigByIds(Arrays.asList(1L, 2L));
+
+        assertEquals(2, out.size());
+        assertEquals(1L, out.get(0).getCode());
+        assertEquals("d1", out.get(0).getDesc());
+        assertEquals("v1", out.get(0).getValue());
+    }
+}
