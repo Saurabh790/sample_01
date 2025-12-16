@@ -1,101 +1,36 @@
-# =========================================================
-# Test profile configuration
-# Used ONLY during mvn test
-# =========================================================
+package com.optum.fads.pgp.engine.api.config;
 
-#spring:
-#  application:
-#    name: fads-pgp-engine
-#  flyway.enabled: false
-#  datasource:
-#    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-#    username: sa
-#    password: sa
-#    driverClassName: org.h2.Driver
-#    hikari.maximum-pool-size: ${CONN_POOL_MAX:2}
-#    hikari.minimum-idle: ${CONN_POOL_MIN:1}
-#  jpa:
-#    show-sql: true
-#    open-in-view: false
-#    hibernate:
-#      dialect: org.hibernate.dialect.H2Dialect
-#    properties:
-#      hibernate.format_sql: true
-#      hibernate.jdbc.lob.non_contextual_creation: auto-time-requests
-#      hibernate.temp.use_jdbc_metadata_defaults: false
-#      javax.persistence.schema-generation.database.action: drop-and-create
-#      javax.persistence.schema-generation.drop-source: script-then-metadata
-#      javax.persistence.schema-generation.drop-script-source: drop-tables.sql
-#    ddl-auto: update
-#  h2:
-#    console:
-#      enabled: true
-#      path: /h2
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-spring:
-  profiles:
-    active: test
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(
+        classes = { CommonConfig.class },
+        initializers = ConfigDataApplicationContextInitializer.class
+)
+@ActiveProfiles("test")
+class CommonConfigTest {
 
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
+    @Autowired
+    private CommonConfig commonConfig;
 
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
+    @Test
+    void testMessageSource() {
+        assertTrue(commonConfig.messageSource() instanceof ReloadableResourceBundleMessageSource);
+    }
 
-  h2:
-    console:
-      enabled: true
-      path: /h2
-
-  # ---------------------------------------------------------
-  # Azure KeyVault DUMMY values (needed ONLY to satisfy bean creation)
-  # ---------------------------------------------------------
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: "https://dummy-vault.vault.azure.net/"
-        credential:
-          tenant-id: "00000000-0000-0000-0000-000000000000"
-          client-id: "00000000-0000-0000-0000-000000000000"
-          client-secret: "dummy-secret"
-
-audit:
-  application:
-    name: pgp.engine
-  log:
-    type: SECURITY_AUDIT
-
-server:
-  max-http-header-size: 16384
-  port: 8080
-  servlet:
-    context-path: /
-
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /openapi/v3/api-docs
-  packagesToScan: com.optum.fads.pgp.engine.api.controller
-  pathsToMatch: /**
-
-app:
-  context-path: opi/api/pgp.engine/v1.0/
-
-logging:
-  level:
-    root: INFO
-    com.optum.fads: DEBUG
-    org.springframework.orm.jpa: DEBUG
-    org.springframework.data: DEBUG
-    org.hibernate.sql: DEBUG
+    @Test
+    void testModelMapper() {
+        ModelMapper mapper = commonConfig.modelMapper();
+        assertTrue(mapper.getTypeMaps().isEmpty());
+    }
+}
