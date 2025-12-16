@@ -1,72 +1,71 @@
-@RestController
-public class UserRolesHistoryController {
+package com.optum.fads.pgp.jobs.api.service.util;
 
-    private static final String DEFAULT_SORT_FIELD = "changeDt";
-    private static final int DEFAULT_PAGE_NUMBER = 1;
-    private static final int DEFAULT_PAGE_SIZE = 10;
-    private static final int MAX_PAGE_SIZE = 100;      // choose a limit that makes sense for you
-    private static final int MAX_PAGE_NUMBER = 10_000; // optional safety cap
 
-    private final IUserHistory userHistoryService;
+import com.optum.fads.pgp.jobs.api.common.JobsConstants;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-    public UserRolesHistoryController(IUserHistory userHistoryService) {
-        this.userHistoryService = userHistoryService;
+public class ServiceUtil {
+    private static final Logger logit = LoggerFactory
+            .getLogger(ServiceUtil.class);
+
+    public static String replStudyName(String searchInput) {
+        StringBuilder strbldr = new StringBuilder();
+        String studyNameVal;
+        String replacedInput = "";
+        // the space is an encoded string %20
+        if (StringUtils.containsAny(searchInput, JobsConstants.SPACE_ENCODED_STR)) {
+            searchInput = searchInput.replaceAll(JobsConstants.SPACE_ENCODED_STR, JobsConstants.BLANK_STR);
+        }
+        if (StringUtils.containsAny(searchInput, JobsConstants.PLUS_REPL_STR)) {
+            searchInput = searchInput.replaceAll(JobsConstants.PLUS_REPL_STR, JobsConstants.PLUS_STR);
+        }
+        if (StringUtils.containsAny(searchInput, JobsConstants.COMMA_REPL_STR)) {
+            searchInput = searchInput.replaceAll(JobsConstants.COMMA_REPL_STR, JobsConstants.COMMA_STR);
+        }
+        if (StringUtils.containsAny(searchInput, JobsConstants.PERCENT_CHAR)
+                || StringUtils.containsAny(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
+            if (StringUtils.containsAny(searchInput, JobsConstants.PERCENT_CHAR)) {
+                replacedInput = searchInput.replaceAll("\\%", "\\\\%");
+            } else if (StringUtils.containsAny(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
+                replacedInput = searchInput.replaceAll("\\_", "\\\\_");
+            } else {
+                replacedInput = searchInput;
+            }
+            strbldr.append(JobsConstants.PERCENT_STR);
+            strbldr.append(replacedInput);
+            strbldr.append(JobsConstants.PERCENT_STR);
+            studyNameVal = strbldr.toString();
+        } else {
+            studyNameVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
+        }
+        return studyNameVal;
     }
 
-    @GetMapping("/api/getUserHistory")
-    public UserHistoryResponse getAllUserHistory(
-            @RequestParam(defaultValue = "1") int pageNumber,
-            @RequestParam(defaultValue = "10") int recordsPerPage,
-            @RequestParam(defaultValue = DEFAULT_SORT_FIELD) String sortBy,
-            @RequestParam(defaultValue = "-1") int sortOrder,
-            @RequestParam(required = false) String searchBy,
-            @RequestParam(required = false) String searchInput) {
-
-        // 1) Normalize and validate pageNumber and recordsPerPage
-        int safePageNumber = pageNumber;
-        if (safePageNumber < 1) {
-            safePageNumber = DEFAULT_PAGE_NUMBER;
-        } else if (safePageNumber > MAX_PAGE_NUMBER) {
-            safePageNumber = MAX_PAGE_NUMBER;
+    public static String createCaseId(String caPrmNodeCd, String caScndNodeCd, Integer caSequenceId, Integer caYearId) {
+        StringBuffer ikey = new StringBuffer();
+        ikey.append(caPrmNodeCd);
+        ikey.append("-");
+        //if secondaryNode is not null, then we need to append
+        if(null != caScndNodeCd && caScndNodeCd.length()>0){
+            ikey.append(caScndNodeCd);
+            ikey.append("-");
         }
-
-        int safePageSize = recordsPerPage;
-        if (safePageSize < 1) {
-            safePageSize = DEFAULT_PAGE_SIZE;
-        } else if (safePageSize > MAX_PAGE_SIZE) {
-            safePageSize = MAX_PAGE_SIZE;
-        }
-
-        int zeroBasedPageIndex = safePageNumber - 1;  // arithmetic now on validated value
-
-        // 2) Map DTO field names to entity field names
-        String entitySortField = mapToEntityField(sortBy);
-
-        // 3) Create Sort object
-        Sort.Direction direction = sortOrder == -1 ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Sort sort = Sort.by(direction, entitySortField);
-
-        // 4) Use validated page + size
-        Pageable pageable = PageRequest.of(zeroBasedPageIndex, safePageSize, sort);
-
-        // 5) Call service
-        return userHistoryService.getAllUserHistory(pageable, searchBy, searchInput);
+        ikey.append(caYearId);
+        ikey.append("-");
+        ikey.append(getFormattedSequenceId(caSequenceId));
+        return ikey.toString();
     }
 
-    private String mapToEntityField(String dtoField) {
-        return switch (dtoField) {
-            case "histSeqNum" -> "id.histSeqNum";
-            case "changeUsr" -> "changeUsr.uiSystemId";
-            case "uiSystemId" -> "uiSystem.uiSystemId";
-            case "fadsGrpName" -> "fadsGrp.fadsGrpName";
-            case "fadsSurGrpName" -> "fadsSurGrp.surGrpName";
-            case "fadsCaseGrpName" -> "fadsCaseGrp.caseGrpName";
-            case "uiUserId" -> "uiUserId";
-            case "uiLastName" -> "uiLastName";
-            case "uiFirstName" -> "uiFirstName";
-            case "uiEmailAddress" -> "uiEMailAddress";
-            case DEFAULT_SORT_FIELD -> DEFAULT_SORT_FIELD;
-            default -> DEFAULT_SORT_FIELD;
-        };
+    private static String getFormattedSequenceId(long number) {
+        String formatNumber = "" + number;
+        try {
+            String format = String.format("%%0%dd", 5);
+            formatNumber = String.format(format, number);
+        } catch (Exception e) {
+            logit.error("Error at JobMonitorUtil.getFormattedSequenceId():", e);
+        }
+        return formatNumber;
     }
 }
