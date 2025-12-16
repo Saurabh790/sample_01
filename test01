@@ -1,254 +1,80 @@
-package com.optum.fads.pgp.jobs.api.controller;
+package com.optum.fads.pgp.jobs.api.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import com.optum.fads.pgp.jobs.api.common.ListTableParams;
+import com.optum.fads.pgp.jobs.api.domain.UiUserBase;
 import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
-import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import com.optum.fads.pgp.jobs.api.util.TestUtil;
-import org.apache.tomcat.util.json.ParseException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import com.optum.fads.pgp.jobs.api.repo.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@RunWith(MockitoJUnitRunner.Silent.class)
-public class JobMonitorControllerTest {
-
-    private MockMvc mockMvc;
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
 
     @Mock
-    private IJobMonitorDataService iJobMonitorDataService;
-
-    @Mock
-    private FadsUser appUser;
-
-    @Mock
-    private Authentication authentication;
-
-    @Mock
-    private SecurityContext securityContext;
+    private UserRepository userRepository;
 
     @InjectMocks
-    private JobMonitorController jobMonitorController;
+    private UserDetailsService userDetailsService;
 
-    private ObjectMapper objectMapper;
+    private UiUserBase uiUserBase;
 
-    private PaginationResult result;
-    private ListTableParams listTableParams;
-    private List<JobDTO> jobDTOS;
-
-    @Before
-    public void setUp() throws ParseException, java.text.ParseException {
-        MockitoAnnotations.initMocks(this);
-
-        mockMvc = MockMvcBuilders
-                .standaloneSetup(jobMonitorController)
-                .build();
-
-        // SecurityContextHolder setup used by controller
-        Mockito.when(securityContext.getAuthentication()).thenReturn(authentication);
-        SecurityContextHolder.setContext(securityContext);
-
-        // controller does: SecurityContextHolder.getContext().getAuthentication().getPrincipal()
-        Mockito.when(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
-                .thenReturn(appUser);
-
-        Mockito.when(appUser.getUserSystemId()).thenReturn("test-user");
-
-        listTableParams = new ListTableParams();
-        listTableParams.setPageNumber(1);
-        listTableParams.setRecordsPerPage(10);
-        listTableParams.setSortBy("jobId");
-        listTableParams.setSortOrder(-1);
-
-        result = new PaginationResult();
-
-        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
-        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
-
-        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
-        result.setJobsData(jobDTOS);
-
-        objectMapper = new ObjectMapper();
+    @BeforeEach
+    void setUp() {
+        uiUserBase = new UiUserBase();
+        uiUserBase.setUiEMailAddress("user@test.com");
+        uiUserBase.setUiUserId("user123");
+        uiUserBase.setUiSystemId("SYS001");
     }
 
     @Test
-    public void canceljobByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(anyInt()))
-                .thenReturn(jobDTOS.get(0));
-        Mockito.when(iJobMonitorDataService.cancelJob(any(JobDTO.class)))
-                .thenReturn(JobsConstants.JOB_CANCELED);
+    void loadUserByUsername_whenUserExists_returnsMappedFadsUser() {
+        String username = "user@test.com";
 
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.put("/canceljob/10")
-                        .contentType(MediaType.APPLICATION_JSON)
-        );
+        Mockito.when(userRepository.findByUiEMailAddressOrUiUserId(eq(username), eq(username)))
+                .thenReturn(Optional.of(uiUserBase));
 
-        perform.andExpect(status().isOk());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+        assertNotNull(userDetails);
+        assertTrue(userDetails instanceof FadsUser);
+
+        FadsUser fadsUser = (FadsUser) userDetails;
+        assertEquals("user@test.com", fadsUser.getUserEmail());
+        assertEquals("user123", fadsUser.getUserId());
+        assertEquals("SYS001", fadsUser.getUserSystemId());
+
+        Mockito.verify(userRepository)
+                .findByUiEMailAddressOrUiUserId(eq(username), eq(username));
+        Mockito.verifyNoMoreInteractions(userRepository);
     }
 
     @Test
-    public void purgeJobsByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(anyInt()))
-                .thenReturn(jobDTOS.get(0));
-        Mockito.when(iJobMonitorDataService.purgeJob(any(JobDTO.class)))
-                .thenReturn(JobsConstants.JOB_PURGED);
+    void loadUserByUsername_whenUserDoesNotExist_throwsUsernameNotFoundException() {
+        String username = "missing@test.com";
 
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.delete("/purgejob/10")
-                        .contentType(MediaType.APPLICATION_JSON)
+        Mockito.when(userRepository.findByUiEMailAddressOrUiUserId(eq(username), eq(username)))
+                .thenReturn(Optional.empty());
+
+        UsernameNotFoundException ex = assertThrows(
+                UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername(username)
         );
 
-        perform.andExpect(status().isOk());
-    }
+        assertEquals("Not found: " + username, ex.getMessage());
 
-    @Test
-    public void changeScheduleDateByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.RUN_DATE_SAVED);
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.put("/changescheduledate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTOS.get(0)))
-        );
-
-        perform.andExpect(status().isOk());
-    }
-
-    @Test
-    public void changePurgeDateByIdTest_ok() throws Exception {
-        Mockito.when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
-
-        JobDTO jobDTO = jobDTOS.get(0);
-        jobDTO.setStatus(10); // IMPORTANT: must NOT be 20 (controller validates status != 20)
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTO))
-        );
-
-        perform.andExpect(status().isOk());
-    }
-
-    @Test
-    public void changePurgeDateByIdTest_badRequest_whenStatus20() throws Exception {
-        // even if service would return OK, controller should block before calling service
-        JobDTO jobDTO = jobDTOS.get(0);
-        jobDTO.setStatus(20);
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTO))
-        );
-
-        perform.andExpect(status().isBadRequest());
-    }
-
-    @Test
-    public void getJobsByParmsTest() throws Exception {
-        // IMPORTANT: controller creates NEW ListTableParams, so use any()
-        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.get("/getjobs/")
-                        // IMPORTANT: mapping requires Accept=application/json
-                        .accept(MediaType.APPLICATION_JSON)
-                        // These params must bind to ListTableParamsReq fields
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10")
-                        .param("sortBy", "jobId")
-                        .param("sortOrder", "-1")
-                        // controller takes searchInput as separate argument
-                        .param("searchInput", "abc")
-        );
-
-        perform.andExpect(status().isOk());
-    }
-
-    @Test
-    public void getMyJobsByParmsTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.get("/getmyjobs/")
-                        // IMPORTANT: mapping requires Accept=application/json
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10")
-                        .param("sortBy", "jobId")
-                        .param("sortOrder", "-1")
-        );
-
-        perform.andExpect(status().isOk());
-    }
-
-    @Test
-    public void getJobDetailsByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(eq(10)))
-                .thenReturn(result.getJobsData().get(0));
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.get("/getjobdetails/10")
-                        .accept(MediaType.APPLICATION_JSON)
-        );
-
-        perform.andExpect(status().isOk());
-    }
-
-    @Test
-    public void changeDateByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.changeDatesById(eq(10)))
-                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.get("/changedates/10")
-                        .accept(MediaType.APPLICATION_JSON)
-        );
-
-        perform.andExpect(status().isOk());
-    }
-
-    @Test
-    public void getreportURLTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong()))
-                .thenReturn("COGNOS_REPORT_URL");
-
-        ResultActions perform = mockMvc.perform(
-                MockMvcRequestBuilders.get("/getreporturl/300")
-                        .accept(MediaType.APPLICATION_JSON)
-        );
-
-        perform.andExpect(status().isOk());
+        Mockito.verify(userRepository)
+                .findByUiEMailAddressOrUiUserId(eq(username), eq(username));
+        Mockito.verifyNoMoreInteractions(userRepository);
     }
 }
