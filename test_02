@@ -1,39 +1,34 @@
-package com.optum.fads.pgp.engine.api.config;
+package com.optum.fads.pgp.jobs.api.service.impl;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
+import com.optum.fads.pgp.jobs.api.dto.FadsUser;
+import com.optum.fads.pgp.jobs.api.repo.UserRepository;
+import com.optum.fads.pgp.jobs.api.domain.UiUserBase;
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.support.ReloadableResourceBundleMessageSource;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
 
-@ExtendWith(SpringExtension.class)
-@ContextConfiguration(classes = { CommonConfig.class })
-@TestPropertySource(properties = {
-        // Provide dummy-but-valid Azure KeyVault settings so secretClient() doesn't crash
-        "spring.cloud.azure.keyvault.secrets.endpoint=https://dummy-vault.vault.azure.net/",
-        "spring.cloud.azure.keyvault.credential.tenant-id=00000000-0000-0000-0000-000000000000",
-        "spring.cloud.azure.keyvault.credential.client-id=00000000-0000-0000-0000-000000000000",
-        "spring.cloud.azure.keyvault.credential.client-secret=dummy-secret"
-})
-class CommonConfigTest {
+import java.util.Optional;
+
+@Service
+public class UserDetailsService implements IUserDetailsService {
 
     @Autowired
-    private CommonConfig commonConfig;
+    UserRepository userRepository;
 
-    @Test
-    void testMessageSource() {
-        assertTrue(commonConfig.messageSource() instanceof ReloadableResourceBundleMessageSource);
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        Optional<UiUserBase> optional = userRepository.findByUiEMailAddressOrUiUserId(username, username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+        FadsUser user = new FadsUser();
+        UiUserBase uiUserBase = optional.get();
+
+        user.setUserEmail(uiUserBase.getUiEMailAddress());
+        user.setUserId(uiUserBase.getUiUserId());
+        user.setUserSystemId(uiUserBase.getUiSystemId());
+        return user;
+
     }
 
-    @Test
-    void testModelMapper() {
-        // This doesn't need Spring, but leaving it as-is is OK
-        ModelMapper mapper = commonConfig.modelMapper();
-        assertTrue(mapper.getTypeMaps().isEmpty());
-    }
 }
