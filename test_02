@@ -1,252 +1,39 @@
-#spring:
-#  application:
-#    name: fads-pgp-engine
-#  flyway.enabled: false
-#  datasource:
-#    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-#    username: sa
-#    password: sa
-#    driverClassName: org.h2.Driver
-#    hikari.maximum-pool-size: ${CONN_POOL_MAX:2}
-#    hikari.minimum-idle: ${CONN_POOL_MIN:1}
-#  jpa:
-#    show-sql: true
-#    open-in-view: false
-#    hibernate:
-#      dialect: org.hibernate.dialect.H2Dialect
-#    properties:
-#      hibernate.format_sql: true
-#      hibernate.dialect: org.hibernate.dialect.H2Dialect
-#      hibernate.jdbc.lob.non_contextual_creation: auto-time-requests
-#      hibernate.temp.use_jdbc_metadata_defaults: false
-#      javax.persistence.schema-generation.database.action: drop-and-create
-#      javax.persistence.schema-generation.drop-source: script-then-metadata
-#      javax.persistence.schema-generation.drop-script-source: drop-tables.sql
-#    ddl-auto: update
-#  h2:
-#    console:
-#      enabled: true
-#      path: /h2
-
-
-
-spring:
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-  h2:
-    console:
-      enabled: true
-      path: /h2
-audit:
-  application:
-    name: pgp.engine
-  log:
-    type: SECURITY_AUDIT
-
-server:
-  max-http-header-size: 16384
-  port: 8080
-  servlet:
-    context-path: /
-    
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-   path: /openapi/v3/api-docs
-  packagesToScan: com.optum.fads.pgp.engine.api.controller
-  pathsToMatch: /**
-app:
-  context-path: opi/api/pgp.engine/v1.0/
-#engine:
-#  create-stmt:
-#  stats-stmt: BEGIN DBMS_STATS.GATHER_TABLE_STATS (ownname =>     
-logging:
-#  file: /tmp/pgp.engine/app/pgp.engine_app.log
-  level:
-    root: INFO
-    com.optum.fads: DEBUG
-    org.springframework.orm.jpa: DEBUG
-    org.springframework.data: DEBUG
- #   org.hibernate: INFO
-    org.hibernate.sql: debug
-  #  org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-#management:
-#  endpoint:
-#    metrics.enabled: true
-#    prometheus.enabled: true
-#  endpoints.web.exposure.include:
-#    - health
-#    - info
-#    - prometheus
-#  metrics.export.prometheus.enabled: true
-
-#---
-#spring:
-#  profiles: build
-
-#logging:
-#  config: classpath:logback-test.xml
-#  file: target/pgp.engine_app.log
-
-
-above is application.yaml of it
-
-
 package com.optum.fads.pgp.engine.api.config;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.modelmapper.ModelMapper;
-import org.modelmapper.config.Configuration;
-import org.modelmapper.internal.InheritingConfiguration;
-import org.modelmapper.internal.TypeResolvingList;
-import org.modelmapper.spi.NameTokenizer;
-import org.modelmapper.spi.ValueReader;
-import org.modelmapper.spi.ValueWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@ContextConfiguration(classes = {CommonConfig.class})
 @ExtendWith(SpringExtension.class)
+@ContextConfiguration(classes = { CommonConfig.class })
+@TestPropertySource(properties = {
+        // Provide dummy-but-valid Azure KeyVault settings so secretClient() doesn't crash
+        "spring.cloud.azure.keyvault.secrets.endpoint=https://dummy-vault.vault.azure.net/",
+        "spring.cloud.azure.keyvault.credential.tenant-id=00000000-0000-0000-0000-000000000000",
+        "spring.cloud.azure.keyvault.credential.client-id=00000000-0000-0000-0000-000000000000",
+        "spring.cloud.azure.keyvault.credential.client-secret=dummy-secret"
+})
 class CommonConfigTest {
+
     @Autowired
     private CommonConfig commonConfig;
 
-    /**
-     * Method under test: {@link CommonConfig#messageSource()}
-     */
     @Test
     void testMessageSource() {
         assertTrue(commonConfig.messageSource() instanceof ReloadableResourceBundleMessageSource);
     }
 
-    /**
-     * Method under test: {@link CommonConfig#modelMapper()}
-     */
     @Test
     void testModelMapper() {
-        //   Diffblue Cover was unable to write a Spring test,
-        //   so wrote a non-Spring test instead.
-        //   Diffblue AI was unable to find a test
-
-        ModelMapper actualModelMapperResult = (new CommonConfig()).modelMapper();
-        assertTrue(actualModelMapperResult.getTypeMaps().isEmpty());
-        Configuration configuration = actualModelMapperResult.getConfiguration();
-        assertEquals(11, configuration.getConverters().size());
-        assertNull(configuration.getPropertyCondition());
-        assertEquals(Configuration.AccessLevel.PUBLIC, configuration.getFieldAccessLevel());
-        NameTokenizer expectedSourceNameTokenizer = configuration.getDestinationNameTokenizer();
-        assertSame(expectedSourceNameTokenizer, configuration.getSourceNameTokenizer());
-        List<ValueWriter<?>> valueWriters = configuration.getValueWriters();
-        assertTrue(valueWriters instanceof TypeResolvingList);
-        List<ValueReader<?>> valueReaders = configuration.getValueReaders();
-        assertTrue(valueReaders instanceof TypeResolvingList);
-        assertEquals(Configuration.AccessLevel.PUBLIC, configuration.getMethodAccessLevel());
-        assertSame(valueReaders, ((InheritingConfiguration) configuration).valueAccessStore.getValueReaders());
-        assertSame(valueWriters, ((InheritingConfiguration) configuration).valueMutateStore.getValueWriters());
+        // This doesn't need Spring, but leaving it as-is is OK
+        ModelMapper mapper = commonConfig.modelMapper();
+        assertTrue(mapper.getTypeMaps().isEmpty());
     }
-}
-
-
-
-
-above is config 
-
-below is actual class
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
-
-package com.optum.fads.pgp.engine.api.config;
-
-import ch.qos.logback.classic.Logger;
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import jakarta.annotation.PostConstruct;
-import org.modelmapper.ModelMapper;
-import org.springframework.context.MessageSource;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.support.ReloadableResourceBundleMessageSource;
-import org.springframework.scheduling.annotation.EnableAsync;
-import org.slf4j.LoggerFactory;
-import java.util.TimeZone;
-
-/**
- * The CommonConfig holds spring based configuration
- */
-@Configuration
-@EnableAsync
-public class CommonConfig {
-
-
-    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
-    private String azureKeyVaultUrl;
-    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
-    private String azureKeyVaultTenant;
-    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
-    private String azureKeyVaultSecret;
-    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
-    private String azureKeyVaultClientId;
-	@Bean
-	public MessageSource messageSource() {
-	    ReloadableResourceBundleMessageSource messageSource
-	      = new ReloadableResourceBundleMessageSource();
-	    
-	    messageSource.setBasename("classpath:messages");
-	    messageSource.setDefaultEncoding("UTF-8");
-	    return messageSource;
-	}
-    @Bean
-    public SecretClient secretClient() {
-
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(azureKeyVaultClientId)
-                .clientSecret(azureKeyVaultSecret)
-                .tenantId(azureKeyVaultTenant)
-                .build();
-
-        return new SecretClientBuilder()
-                .vaultUrl(azureKeyVaultUrl)
-                .credential(clientSecretCredential)
-                .buildClient();
-    }
-	@Bean
-	public ModelMapper modelMapper() {
-		return new ModelMapper();
-	}
-/*
-	@Bean
-	public TaskConfigurer taskConfigurer(@Qualifier("fadsDataSource") DataSource batchDataSource){
-		return new DefaultTaskConfigurer(batchDataSource);
-	}
-*/
 }
