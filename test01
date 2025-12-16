@@ -1,80 +1,108 @@
-package com.optum.fads.pgp.jobs.api.service.impl;
+package com.optum.fads.pgp.jobs.api.service.util;
 
-import com.optum.fads.pgp.jobs.api.domain.UiUserBase;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.repo.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.optum.fads.pgp.jobs.api.common.JobsConstants;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.eq;
 
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
+class ServiceUtilTest {
 
-    @Mock
-    private UserRepository userRepository;
+    // ----------------------
+    // replStudyName() tests
+    // ----------------------
 
-    @InjectMocks
-    private UserDetailsService userDetailsService;
-
-    private UiUserBase uiUserBase;
-
-    @BeforeEach
-    void setUp() {
-        uiUserBase = new UiUserBase();
-        uiUserBase.setUiEMailAddress("user@test.com");
-        uiUserBase.setUiUserId("user123");
-        uiUserBase.setUiSystemId("SYS001");
+    @Test
+    void replStudyName_shouldWrapWithPercent_forNormalString() {
+        String input = "StudyABC";
+        String out = ServiceUtil.replStudyName(input);
+        assertEquals("%StudyABC%", out);
     }
 
     @Test
-    void loadUserByUsername_whenUserExists_returnsMappedFadsUser() {
-        String username = "user@test.com";
-
-        Mockito.when(userRepository.findByUiEMailAddressOrUiUserId(eq(username), eq(username)))
-                .thenReturn(Optional.of(uiUserBase));
-
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
-        assertNotNull(userDetails);
-        assertTrue(userDetails instanceof FadsUser);
-
-        FadsUser fadsUser = (FadsUser) userDetails;
-        assertEquals("user@test.com", fadsUser.getUserEmail());
-        assertEquals("user123", fadsUser.getUserId());
-        assertEquals("SYS001", fadsUser.getUserSystemId());
-
-        Mockito.verify(userRepository)
-                .findByUiEMailAddressOrUiUserId(eq(username), eq(username));
-        Mockito.verifyNoMoreInteractions(userRepository);
+    void replStudyName_shouldRemoveEncodedSpace20() {
+        // will replace %20 with "" (blank)
+        String input = "A%20B";
+        String out = ServiceUtil.replStudyName(input);
+        assertEquals("%AB%", out);
     }
 
     @Test
-    void loadUserByUsername_whenUserDoesNotExist_throwsUsernameNotFoundException() {
-        String username = "missing@test.com";
+    void replStudyName_shouldReplacePlusReplacementWithPlus() {
+        // Uses JobsConstants.PLUS_REPL_STR -> JobsConstants.PLUS_STR
+        // Example typical URL encoding: %2B -> +
+        String input = "A" + JobsConstants.PLUS_REPL_STR + "B";
+        String out = ServiceUtil.replStudyName(input);
+        assertEquals("%A" + JobsConstants.PLUS_STR + "B%", out);
+    }
 
-        Mockito.when(userRepository.findByUiEMailAddressOrUiUserId(eq(username), eq(username)))
-                .thenReturn(Optional.empty());
+    @Test
+    void replStudyName_shouldReplaceCommaReplacementWithComma() {
+        // Example typical URL encoding: %2C -> ,
+        String input = "A" + JobsConstants.COMMA_REPL_STR + "B";
+        String out = ServiceUtil.replStudyName(input);
+        assertEquals("%A" + JobsConstants.COMMA_STR + "B%", out);
+    }
 
-        UsernameNotFoundException ex = assertThrows(
-                UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername(username)
-        );
+    @Test
+    void replStudyName_shouldEscapePercent_andWrapWithPercent() {
+        // if input contains "%" it should be escaped to "\%"
+        // Note: resulting string contains two characters "\" and "%"
+        String input = "AB%CD";
+        String out = ServiceUtil.replStudyName(input);
 
-        assertEquals("Not found: " + username, ex.getMessage());
+        // expected: %AB\%CD%
+        assertEquals("%AB\\%CD%", out);
+    }
 
-        Mockito.verify(userRepository)
-                .findByUiEMailAddressOrUiUserId(eq(username), eq(username));
-        Mockito.verifyNoMoreInteractions(userRepository);
+    @Test
+    void replStudyName_shouldEscapeUnderscore_andWrapWithPercent() {
+        // if input contains "_" it should be escaped to "\_"
+        String input = "AB_CD";
+        String out = ServiceUtil.replStudyName(input);
+
+        // expected: %AB\_CD%
+        assertEquals("%AB\\_CD%", out);
+    }
+
+    @Test
+    void replStudyName_whenContainsBothPercentAndUnderscore_onlyPercentIsEscapedDueToElseIf() {
+        // Because code is:
+        // if contains '%' -> escape %
+        // else if contains '_' -> escape _
+        // so if both exist, only % gets escaped, underscore remains as-is.
+        String input = "A%B_C";
+        String out = ServiceUtil.replStudyName(input);
+
+        assertEquals("%A\\%B_C%", out);
+    }
+
+    // ----------------------
+    // createCaseId() tests
+    // ----------------------
+
+    @Test
+    void createCaseId_withoutSecondaryNode_shouldNotIncludeExtraHyphenSection() {
+        String out = ServiceUtil.createCaseId("PRM", null, 12, 2025);
+        // sequence should be padded to 5 digits
+        assertEquals("PRM-2025-00012", out);
+    }
+
+    @Test
+    void createCaseId_withEmptySecondaryNode_shouldNotIncludeExtraHyphenSection() {
+        String out = ServiceUtil.createCaseId("PRM", "", 12, 2025);
+        assertEquals("PRM-2025-00012", out);
+    }
+
+    @Test
+    void createCaseId_withSecondaryNode_shouldIncludeSecondaryNode() {
+        String out = ServiceUtil.createCaseId("PRM", "SEC", 7, 2024);
+        assertEquals("PRM-SEC-2024-00007", out);
+    }
+
+    @Test
+    void createCaseId_shouldPadSequenceTo5Digits() {
+        assertEquals("A-2023-00001", ServiceUtil.createCaseId("A", null, 1, 2023));
+        assertEquals("A-2023-00123", ServiceUtil.createCaseId("A", null, 123, 2023));
+        assertEquals("A-2023-12345", ServiceUtil.createCaseId("A", null, 12345, 2023));
     }
 }
