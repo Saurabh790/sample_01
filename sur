@@ -1,388 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-jobmonitor-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
-        <relativePath/>
-    </parent>
-    <repositories>
-        <repository>
-            <id>artifactory</id>
-            <name>Artifactory</name>
-            <url>https://repo1.uhc.com/artifactory/repo</url>
-        </repository>
-    </repositories>    
-
-    <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <failsafe.skip>${skipTests}</failsafe.skip>
-
-        <java.version>17</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2023.0.2</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
-        <modelmapper.version>3.1.1</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.38</lombok.version>
-        <restassured.version>5.3.0</restassured.version>
-        <mockito.version>5.4.0</mockito.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-        <javax-ws-rs-api.version>2.1.2</javax-ws-rs-api.version>
-        <org.mapstruct.version>1.6.3</org.mapstruct.version>
-        <log4j.version>2.20.0</log4j.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <snakeyaml.version>2.1</snakeyaml.version>
-        <jaxb.version>2.3.3</jaxb.version>
-        <sonar.version>3.9.2.2185</sonar.version>
-        <commons.collections4>4.4</commons.collections4>
-        <bcp.version>1.78</bcp.version>
-        <mssql.jdbc.version>13.2.1.jre11</mssql.jdbc.version>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.azure.spring</groupId>
-                <artifactId>spring-cloud-azure-dependencies</artifactId>
-                <version>5.22.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.19.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>${mssql.jdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-collections4</artifactId>
-            <version>${commons.collections4}</version>
-        </dependency>
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-bom</artifactId>
-            <version>4.1.125.Final</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-                <plugin>
-                    <groupId>org.jacoco</groupId>
-                    <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>${jacoco.version}</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-        </plugins>
-    </build>
-</project>
-
-
-this is a pom  , below is actual controlller
-
-
 /*
 //***********************************************
 // Copyright UNITEDHEALTH GROUP CORPORATION 2018.
@@ -391,576 +6,561 @@ this is a pom  , below is actual controlller
 // Unauthorized use and distribution are prohibited.
 //***********************************************
 */
-
-package com.optum.fads.pgp.jobs.api.controller;
+/**
+ * The service contains methods to retrieve and update FADS jobs data.
+ *
+ * @author Anil Wagh
+ */
+package com.optum.fads.pgp.jobs.api.service.impl;
 
 import com.optum.fads.pgp.jobs.api.common.FadsConfigProperties;
+import com.optum.fads.pgp.jobs.api.common.JobDatesEnum;
 import com.optum.fads.pgp.jobs.api.common.JobsConstants;
 import com.optum.fads.pgp.jobs.api.common.ListTableParams;
-import com.optum.fads.pgp.jobs.api.common.ListTableParamsReq;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
+import com.optum.fads.pgp.jobs.api.domain.FadsConfigT;
 import com.optum.fads.pgp.jobs.api.dto.JobDTO;
 import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
 import com.optum.fads.pgp.jobs.api.exception.JobsMonitorApiException;
-import com.optum.fads.pgp.jobs.api.exception.Validate;
+import com.optum.fads.pgp.jobs.api.mapper.JobDetailMapper;
+import com.optum.fads.pgp.jobs.api.repo.FadsConfigRepository;
 import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
+import com.optum.fads.pgp.jobs.api.service.util.ServiceUtil;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobLuStatusT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterCasesT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterLogsT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobMasterSchedulerRepository;
+import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobsRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.SpringVersion;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.WebDataBinder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.util.*;
 
-/**
- * Use this class to add the methods so that a single web service can be used to
- * get and update the FADS Jobs data
- * <p>
- * * @author Anil Wagh
- */
+@Service("jobMonitorDataService")
+@Slf4j
+public class JobMonitorDataService implements IJobMonitorDataService {
 
-@RestController
-public class JobMonitorController {
+    private static final Logger logit = LoggerFactory.getLogger(JobMonitorDataService.class);
 
-    private static final Logger logit = LoggerFactory
-            .getLogger(JobMonitorController.class);
-    private static final List<Integer> nonCancelledList = Arrays.asList(14, 15, 18, 20);
+
     @Autowired
-    IJobMonitorDataService iJobMonitorDataService;
+    private FadsConfigRepository fadsConfigRepository;
 
-    final String[] DISALLOWED_FIELDS = new String[]{"listTableParams.selectedItemIds"};
+    @Autowired
+    private JobsRepository jobsRepository;
 
-    @InitBinder(value = "listTableParams")
-    void initListTableParamsValidator(WebDataBinder binder) {
-        binder.setDisallowedFields(DISALLOWED_FIELDS);
-    }
+    @Autowired
+    private JobMasterSchedulerRepository jobMasterSchedulerRepository;
+
+    @Autowired
+    private JobDetailMapper jobDetailMapper;
 
 
     /**
-     * this method will give the jobs records data by filter/sort criteria
+     * this method will give all the jobs records data or records per page
      *
-     * @param - ListTableParams (contains sort, filter conditions; page number, page size)
+     * Parameters - ListTableParams (contains sort, filter conditions; page number, page size)
      */
-
-    @GetMapping(value = {"/getjobs/"}, headers = "Accept=application/json")
-    public ResponseEntity getJobsByParms(ListTableParamsReq listTableParamsReq,String searchInput) {
-        PaginationResult paginationResult;
+    @Transactional(readOnly = true)
+    public PaginationResult getJobsByListTableParms(ListTableParams listTableParams) {
+        Long jobsCount;
+        List<JobMasterT> jobsList;
+        List<JobDTO> jobsDataList = null;
+        PaginationResult paginationResult = new PaginationResult();
+        Pageable pageable = null;
         try {
-    		ListTableParams listTableParams=new ListTableParams();
-    		listTableParams.setPageNumber(listTableParamsReq.getPageNumber());
-    		listTableParams.setRecordsPerPage(listTableParamsReq.getRecordsPerPage());
-    		listTableParams.setSearchBy(listTableParamsReq.getSearchBy());
-    		listTableParams.setSearchInput(Collections.singletonList(searchInput));
-    		listTableParams.setSelectedItemIds(listTableParamsReq.getSelectedItemIds());
-    		listTableParams.setSortBy(listTableParamsReq.getSortBy());
-    		listTableParams.setSortOrder(listTableParamsReq.getSortOrder());
-            logit.info("version: " + SpringVersion.getVersion());
-            paginationResult = iJobMonitorDataService.getJobsByListTableParms(listTableParams);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.JOB_DETAILS_NOT_FOUND, ex.getMessage());
-            return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(JobsConstants.JOB_DETAILS_NOT_FOUND);
+            if (listTableParams.getSearchBy() == null) {
+                pageable = createPageable(listTableParams);
+                Page<JobMasterT> page = jobsRepository.findAll(pageable);
+                paginationResult = new PaginationResult();
+                jobsDataList =jobDetailMapper.convertToJobDTOs( page.getContent());// populateJobDataList(jobsList);
+
+                paginationResult.setJobsData(jobsDataList);
+                paginationResult.setTotalRecordsCount(Long.valueOf(page.getTotalElements()).intValue());
+            } else {
+                paginationResult = getJobsOnSearchCriteria(listTableParams);
+            }
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(JobsConstants.EXCEPTION_MESSAGE, e);
         }
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(paginationResult);
+        return paginationResult;
     }
 
-    /**
-     * this method will get the job record corresponding to input Job ID
-     *
-     * @param - Job ID
-     */
-
-    @GetMapping(value = "/getjobdetails/{jobId}")
-    public ResponseEntity getJobDetailsById(@PathVariable(name = "jobId") Integer jobMasterRecId) {
+    	@Transactional(readOnly = true)
+//	@Override
+    public JobDTO getJobDetailsById(Integer jobMasterRecId) {
+        logit.info(" Obtain job data  for the ID = {}", jobMasterRecId);
         JobDTO jobDTO = null;
-        HttpStatus httpStatus = HttpStatus.OK;
         try {
-            jobDTO = iJobMonitorDataService.getJobDetailsById(jobMasterRecId);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.JOB_DETAILS_NOT_FOUND, ex.getMessage());
-            return ResponseEntity
-                    .status(httpStatus)
-                    .body(JobsConstants.JOB_DETAILS_NOT_FOUND);
-        }
+            Optional<JobMasterT> optional = jobsRepository.findById(jobMasterRecId);
+            if (optional.isPresent()) {
+                JobMasterT jobInd = optional.get();
+                jobDTO = jobDetailMapper.convertToJob(optional.get());
 
-        return ResponseEntity
-                .status(httpStatus)
-                .body(jobDTO);
-    }
-
-    /**
-     * this method will cancel job corresponding to input Job ID   (set its status to = 14)
-     *
-     * @param - Job ID
-     */
-
-    @PutMapping(value = "/canceljob/{jobId}")
-    public ResponseEntity canceljobById(@PathVariable(name = "jobId") Integer jobId) {
-        String retStatus;
-        HttpStatus httpStatus = HttpStatus.OK;
-        try {
-            FadsUser user = (FadsUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            JobDTO jobDTO = iJobMonitorDataService.getJobDetailsById(jobId);
-            if (null == jobDTO) {
-                return ResponseEntity.
-                        status(HttpStatus.BAD_REQUEST)
-                        .body(JobsConstants.JOB_ID_DOES_NOT_EXIST);
-            }
-            boolean verifyStatus = nonCancelledList.stream().anyMatch((i) -> i == jobDTO.getStatus());
-            if (verifyStatus) {
-                logit.info("Job ID {} with status = {} is already complete, failed,  cancelled or scheduled for purge",
-                        jobId, jobDTO.getStatus());
-                return ResponseEntity.
-                        status(HttpStatus.BAD_REQUEST)
-                        .body(JobsConstants.CANCEL_JOB_INVALID_REQUEST);
-            }
-            jobDTO.setModifiedBy(user.getUserSystemId());
-            retStatus = iJobMonitorDataService.cancelJob(jobDTO);
-
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.CANCELLING_JOB_NOT_FOUND_MSG, ex.getMessage());
-            return ResponseEntity.
-                    status(HttpStatus.BAD_REQUEST)
-                    .body(JobsConstants.CANCELLING_JOB_NOT_FOUND_MSG);
-        }
-        if (!retStatus.equals(JobsConstants.JOB_CANCELED)) {
-            httpStatus = HttpStatus.BAD_REQUEST;
-        }
-        return ResponseEntity
-                .status(httpStatus)
-                .body(retStatus);
-    }
-
-    /**
-     * this method will purge job corresponding to input Job ID   (set its status to = 15, purge flag = 1)
-     *
-     * @param - Transfer Object jobDTO
-     */
-
-    @DeleteMapping(value = "/purgejob/{jobId}")
-    public ResponseEntity purgeJobsByJobId(@PathVariable(name = "jobId") Integer jobId) {
-        logit.info("Started JobMonitorController : purgeJobsByJobId()");
-        String retStatus;
-        HttpStatus httpStatus = HttpStatus.OK;
-        try {
-            FadsUser user = (FadsUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            JobDTO jobDTO = iJobMonitorDataService.getJobDetailsById(jobId);
-            int statusCd = jobDTO.getStatus();
-            long caseCount = jobDTO.getCaseCount();
-            Validate.assertTrue(caseCount > 0, JobsConstants.NON_ZERO_CASE_COUNT, HttpStatus.BAD_REQUEST);
-            Validate.assertTrue((statusCd == 1 || statusCd == 15 || (statusCd >= 6 && statusCd <= 12)), JobsConstants.PURGE_JOB_INVALID_REQUEST, HttpStatus.BAD_REQUEST);
-            retStatus = iJobMonitorDataService.purgeJob(jobDTO);
-            logit.error("retstatus: {}", retStatus);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.EXCEPTION_MESSAGE, ex.getMessage());
-            return ResponseEntity
-                    .status(ex.getHttpStatus())
-                    .body(ex.getErrorsInfo());
-        }
-        if (!retStatus.equals(JobsConstants.JOB_PURGED)) {
-            httpStatus = HttpStatus.BAD_REQUEST;
-        }
-        logit.info("Completed JobMonitorController : purgeJobsByJobId()");
-        return ResponseEntity
-                .status(httpStatus)
-                .body(retStatus);
-    }
-
-    /**
-     * this method will check if the job scheduled and purge dates can be changed for input  for the input Job IDs and dates
-     *
-     * @param - Job ID
-     */
-
-    @GetMapping(value = "/changedates/{jobId}")
-    public ResponseEntity changeDateById(@PathVariable(name = "jobId") Integer jobMasterRecId) {
-        String retStatus;
-        try {
-            retStatus = iJobMonitorDataService.changeDatesById(jobMasterRecId);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.CHANGE_DATE_NOT_FOUND_MSG, ex.getMessage());
-            return ResponseEntity.
-                    status(HttpStatus.BAD_REQUEST)
-                    .body(JobsConstants.CHANGE_DATE_NOT_FOUND_MSG);
-        }
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(retStatus);
-    }
-
-    /**
-     * this method will change the job scheduled date corresponding to input Job ID and date
-     *
-     * @param - Transfer Object jobDTO
-     */
-
-    @PutMapping(value = "/changescheduledate")
-    public ResponseEntity changeScheduleDateById(@RequestBody JobDTO jobDTO) {
-        logit.info("Started JobMonitorController : changeScheduleDateById()");
-        String retStatus;
-        HttpStatus httpStatus = HttpStatus.OK;
-        try {
-            FadsUser user = (FadsUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            jobDTO.setModifiedBy(user.getUserSystemId());
-            int jobStatus = jobDTO.getStatus();
-            Validate.assertTrue((jobStatus != 1 && jobStatus != 3), JobsConstants.CHANGE_RUN_DATE_INVALID_REQUEST, HttpStatus.BAD_REQUEST);// Project Study Submitted or Waiting for stage 1 or 2 to begin
-            retStatus = iJobMonitorDataService.changeScheduleDateById(jobDTO);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.EXCEPTION_MESSAGE, ex.getMessage());
-            return ResponseEntity.
-                    status(ex.getHttpStatus())
-                    .body(ex.getErrorsInfo());
-        }
-        if (!retStatus.equals(JobsConstants.RUN_DATE_SAVED)) {
-            httpStatus = HttpStatus.BAD_REQUEST;
-        }
-        logit.info("Completed JobMonitorController : changeScheduleDateById()");
-        return ResponseEntity
-                .status(httpStatus)
-                .body(retStatus);
-    }
-
-    /**
-     * this method will change the purge date corresponding to input Job ID and date
-     *
-     * @param - Transfer Object jobDTO
-     */
-
-    @PutMapping(value = "/changepurgedate")
-    public ResponseEntity changePurgeDateById(@RequestBody JobDTO jobDTO) {
-        logit.info("Started JobMonitorController : changePurgeDateById()");
-        String retStatus;
-        HttpStatus httpStatus = HttpStatus.OK;
-        try {
-            FadsUser user = (FadsUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            // jobDTO.setModifiedBy(user.getUsername());
-            jobDTO.setUpdatedBySystemId(user.getUserSystemId());
-            Validate.assertTrue(jobDTO.getStatus() != 20, JobsConstants.CHANGE_PURGE_DATE_INVALID_REQUEST, HttpStatus.BAD_REQUEST);
-            retStatus = iJobMonitorDataService.changePurgeDateById(jobDTO);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.JOB_DETAILS_NOT_FOUND, ex.getMessage());
-            return ResponseEntity.
-                    status(HttpStatus.BAD_REQUEST)
-                    .body(JobsConstants.CHANGE_PURGE_DATE_NOT_FOUND_MSG);
-        }
-        if (!retStatus.equals(JobsConstants.PURGE_DATE_SAVED)) {
-            httpStatus = HttpStatus.BAD_REQUEST;
-        }
-        logit.info("Completed JobMonitorController : changePurgeDateById()");
-        return ResponseEntity
-                .status(httpStatus)
-                .body(retStatus);
-    }
-
-    /**
-     * this method will get the COGNOS report URL corresponding to option code 300 in FADS-_CONFIG_T
-     *
-     * @param - Job ID
-     */
-
-    @GetMapping(value = "/getreporturl/{optionCode}")
-    public ResponseEntity getreportURL(@PathVariable(name = "optionCode") long optionCd) {
-        String cognosReportURL;
-        HttpStatus httpStatus = HttpStatus.OK;
-        try {
-            cognosReportURL = iJobMonitorDataService.getReportUrlByOptionCd(optionCd);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.REPORT_URL_NOT_FOUND_MSG, ex.getMessage());
-            return ResponseEntity.
-                    status(HttpStatus.BAD_REQUEST)
-                    .body(JobsConstants.REPORT_URL_NOT_FOUND_MSG);
-        }
-
-        return ResponseEntity
-                .status(httpStatus)
-                .body(cognosReportURL);
-    }
-
-    /**
-     * this method will give the jobs records data by filter/sort criteria
-     *
-     * @param - ListTableParams (contains sort, filter conditions; page number, page size)
-     */
-
-    @GetMapping(value = {"/getmyjobs/"}, headers = "Accept=application/json")
-    public ResponseEntity getMyJobsByParms(ListTableParams listTableParams) {
-        PaginationResult paginationResult;
-        try {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null) {
-                FadsUser user = (FadsUser) auth.getPrincipal();
-                if (listTableParams.getSearchBy() == null) {
-                    listTableParams.setSearchBy(new ArrayList<String>());
-                    listTableParams.setSearchInput(new ArrayList<String>());
+                logit.info(" Job DTO populated with data for the ID = {}", jobMasterRecId);
+                List<JobMasterLogsT> jobMasterLogs = jobInd.getJobMasterLogsTs();// jobsRepository.loadLogFileNotes(jobMasterRecId);
+                if (!jobMasterLogs.isEmpty()) {
+                    populateNotes(jobDTO, jobMasterLogs);
                 }
-                listTableParams.getSearchBy().add(JobsConstants.USER_SYSTEM_ID);
-                listTableParams.getSearchInput().add(user.getUserSystemId());
+            } else {
+                logit.info("No data obtained for the Job ID = {}", jobMasterRecId);
+                throw new JobsMonitorApiException(JobsConstants.JOB_ID_DOES_NOT_EXIST);
             }
-            paginationResult = iJobMonitorDataService.getJobsByListTableParms(listTableParams);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.MY_JOBS_NOT_FOUND_MSG, ex.getMessage());
-            return ResponseEntity.
-                    status(HttpStatus.BAD_REQUEST)
-                    .body(JobsConstants.MY_JOBS_NOT_FOUND_MSG);
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(e.getMessage());
         }
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(paginationResult);
+        return jobDTO;
     }
 
     /**
-     * this method will give the case ids against job id
+     * this method will cancel job
      *
-     * @param - Job ID
+     * Job cannot be cancelled if it is already complete, failed,  cancelled or scheduled for purge
+     *
+     * Parameters - jobDTO
      */
-    @GetMapping(value = "/getCasesDetails/{jobId}")
-    public ResponseEntity getCasesDetailsByJobId(@PathVariable(name = "jobId") Integer jobId) {
-        List<String> casesDetailsByJobId;
+
+    public String cancelJob(JobDTO jobDTO) {
+        String status = null;
+        int jobId = jobDTO.getJobId();
+        Date currentDate = Calendar.getInstance().getTime();
+        logit.info(" Call to cancel a Job Id = {}", jobId);
         try {
-            casesDetailsByJobId = iJobMonitorDataService.getCasesDetailsByJobId(jobId);
-        } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.CASES_DETAILS_NOT_FOUND_MSG, ex.getMessage());
-            return ResponseEntity.
-                    status(HttpStatus.BAD_REQUEST)
-                    .body(JobsConstants.CASES_DETAILS_NOT_FOUND_MSG);
+            Optional<JobMasterT> optional = jobsRepository.findById(jobId);
+            JobMasterT jobMasterT = optional.get();
+            if (jobMasterT != null) {
+                jobMasterSchedulerRepository.deleteById(jobId);
+                JobLuStatusT jobLuStatusT = new JobLuStatusT();
+                jobLuStatusT.setStatusCd(JobsConstants.JOB_STATUS_CANCELLED);
+                jobMasterT.setJobLuStatusT(jobLuStatusT);
+
+                jobMasterT.setUpdatedByUserId(jobDTO.getModifiedBy());
+                jobMasterT.setUpdateDte(currentDate);
+                jobMasterT = jobsRepository.saveAndFlush(jobMasterT);
+                status = JobsConstants.JOB_CANCELED;
+            }
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(JobsConstants.EXCEPTION_MESSAGE, e);
         }
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(casesDetailsByJobId);
+        return status;
     }
 
     /**
-     * This method retrieves FADS configuration details based on the provided list of option codes
+     * this method will purge job
      *
-     * @param - optionCodes - A list of option codes for which the FADS configuration details are to be retrieved.
+     * Job cannot be purged if it's case count > 0 or Scheduled for Purging (15), Job Stage # Complete (7,8,9,10,11,12),
+     *		project Study Submitted (1)	or Project Snapshot Completed (6)
+     *
+     * Parameters - jobDTO
      */
-
-     @GetMapping(value = "/getFadsConfigDetails")
-     public ResponseEntity getFadsConfigDetails(@RequestParam(name = "optionCodes")  List<String> optionCodes) {
-         List<Long> cd;
-         List<FadsConfigProperties> fadsConfigData;
-         HttpStatus httpStatus = HttpStatus.OK;
-         try {
-            cd = optionCodes.stream()
-                    .map(Long::parseLong)
-                    .collect(Collectors.toList());
-             fadsConfigData = iJobMonitorDataService.getFadsConfigByIds(cd);
-         } catch (JobsMonitorApiException ex) {
-            logit.error(JobsConstants.FADS_CONFIG_DETAILS_NOT_FOUND_MSG, ex.getMessage());
-             return ResponseEntity.
-                     status(HttpStatus.BAD_REQUEST)
-                     .body(JobsConstants.FADS_CONFIG_DETAILS_NOT_FOUND_MSG);
-         } catch (NumberFormatException ex) {
-            return ResponseEntity
-                    .status(HttpStatus.BAD_REQUEST)
-                    .body("Invalid option code format");
-         }
- 
-         return ResponseEntity
-                 .status(httpStatus)
-                 .body(fadsConfigData);
-     }
-
-}
-below is test controllerr still it shows 0 coverage for this controller can u help to fix this 
-
-package com.optum.fads.pgp.jobs.api.controller;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import com.optum.fads.pgp.jobs.api.common.ListTableParams;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
-import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import com.optum.fads.pgp.jobs.api.util.TestUtil;
-import org.apache.tomcat.util.json.ParseException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@RunWith(MockitoJUnitRunner.Silent.class)
-public class JobMonitorControllerTest {
-
-    private MockMvc mockMvc;
-    @Mock
-    private IJobMonitorDataService iJobMonitorDataService;
-
-    @Mock
-    private FadsUser appUser;
-
-    @Mock
-    private Authentication authentication;
-
-    @Mock
-    private SecurityContext securityContext;
-
-    @InjectMocks
-    private JobMonitorController jobMonitorController;
-
-
-    private ObjectMapper objectMapper;
-
-    PaginationResult result;
-    ListTableParams listTableParams;
-
-    List<JobDTO> jobDTOS;
-
-    @Before
-    public void setUp() throws ParseException, java.text.ParseException {
-        MockitoAnnotations.initMocks(this);
-        mockMvc = MockMvcBuilders.standaloneSetup(jobMonitorController).build();
-        Mockito.when(securityContext.getAuthentication()).thenReturn(authentication);
-        SecurityContextHolder.setContext(securityContext);
-        Mockito.when(SecurityContextHolder.getContext().getAuthentication().getPrincipal()).thenReturn(appUser);
-
-
-        listTableParams = new ListTableParams();
-        result = new PaginationResult();
-        listTableParams.setPageNumber(1);
-        listTableParams.setRecordsPerPage(10);
-        listTableParams.setSortBy("jobId");
-        listTableParams.setSortOrder(-1);
-
-        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
-        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
-
-
-        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
-        result.setJobsData(jobDTOS);
-        objectMapper = new ObjectMapper();
-
-
-    }
-    
-
-    @Test
-    public void canceljobByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(Mockito.any(Integer.class))).thenReturn(jobDTOS.get(0));
-        Mockito.when(iJobMonitorDataService.cancelJob(Mockito.any(JobDTO.class))).thenReturn(JobsConstants.JOB_CANCELED);
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.put("/canceljob/10").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
+    public String purgeJob(JobDTO jobDTO) {
+        String status;
+        int updateStatus = 0;
+        int jobId = jobDTO.getJobId();
+        Date currentDate = Calendar.getInstance().getTime();
+        logit.info("Started JobMonitorDataService : purgeJob()");
+        try {
+            int purgeFlag = JobsConstants.PURGE_FLAG_TRUE;
+            JobLuStatusT jobLuStatusT = new JobLuStatusT();
+            jobLuStatusT.setStatusCd(JobsConstants.JOB_STATUS_SCH_4_PURGE);
+            updateStatus = jobsRepository.updatePurgeFlag(jobLuStatusT, jobDTO.getJobId(), purgeFlag, jobDTO.getUpdatedBySystemId(), currentDate);
+            if (updateStatus == 1) {
+                status = JobsConstants.JOB_PURGED;
+            } else {
+                status = JobsConstants.PURGE_JOB_INVALID_DATA;
+            }
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(e);
+        }
+        logit.info("Completed JobMonitorDataService : purgeJob()");
+        return status;
     }
 
-    @Test
-    public void purgeJobsByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(Mockito.any(Integer.class))).thenReturn(jobDTOS.get(0));
-        Mockito.when(iJobMonitorDataService.purgeJob(Mockito.any(JobDTO.class))).thenReturn(JobsConstants.JOB_PURGED);
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.delete("/purgejob/10").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
+    public String changeDatesById(Integer jobMasterRecId) {
+        String changeJobDatesCheck = JobsConstants.CHANGE_DATES_INVALID_REQUEST;
+        try {
+            Optional<JobMasterT> optional = jobsRepository.findById(jobMasterRecId);
+            if (optional.isPresent()) {
+                JobMasterT jobMasterT = optional.get();
+                switch (jobMasterT.getJobLuStatusT().getStatusCd()) {
+                    case 1:    // Project Study Submitted
+                    case 3:
+                        logit.info("Job ID {} with status = {} for new Run Date",
+                                jobMasterRecId, jobMasterT.getJobLuStatusT().getStatusCd());
+                        changeJobDatesCheck = JobsConstants.SET_RUN_DATE;    // new run date
+                        break;
+                    case 20:    // JOB_STATUS_COMPLETE
+                        logit.info("Job ID {} with status = {} for new Purge Date",
+                                jobMasterRecId, jobMasterT.getJobLuStatusT().getStatusCd());
+                        changeJobDatesCheck = JobsConstants.SET_PURGE_DATE;    // new purge date
+                        break;
+                    default:
+                        break;
+                }
+            } else {
+                changeJobDatesCheck = JobsConstants.JOB_ID_DOES_NOT_EXIST;
+            }
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(JobsConstants.EXCEPTION_MESSAGE, e);
+        }
+        return changeJobDatesCheck;
     }
 
-    @Test
-    public void changeScheduleDateByIdTest() throws Exception {
+    /**
+     * this method will change the scheduled date for the job
+     *
+     * It can be changed only for job status 1 (Study Submitted) or 3 (Waiting for stage 1 or 2 to begin)
+     *
+     * Parameters - jobDTO : Job Id, User ID, input schedule date as ~ 03-23-2021T01:15:00TAM
+     */
+    public String changeScheduleDateById(JobDTO jobDTO) {
+        int jobStatus;
+        String status;
+        int updateStatus = 0;
+        logit.info("Job ID {} change to new Run Date {}", jobDTO.getJobId(), jobDTO.getScheduledRunDate());
+        try {
+            jobStatus = jobDTO.getStatus();
+            logit.info("Job ID {} with status = {} change to new Run Date",
+                    jobDTO.getJobId(), jobDTO.getStatus());
+          //  JobMasterT jobMasterT = jobDetailMapper.convertToJobMasterT(jobDTO);// convertToJobMasterT(jobDTO);
+            logit.info("Job ID {} change scheduled Run Date to {}", jobDTO.getJobId(), jobDTO.getScheduledRunDate());
 
-        Mockito.when(iJobMonitorDataService.changeScheduleDateById(Mockito.any(JobDTO.class))).thenReturn(JobsConstants.RUN_DATE_SAVED);
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.put("/changescheduledate").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(jobDTOS.get(0))));
-        perform.andExpect(status().isOk());
-    }
+            updateStatus = jobsRepository.updateScheduledRunDate(jobDTO.getJobId(), jobDTO.getScheduledRunDate(), jobDTO.getUpdatedBySystemId(), LocalDateTime.now());
 
-    @Test
-    public void changePurgeDateByIdTest() throws Exception {
-
-        Mockito.when(iJobMonitorDataService.changePurgeDateById(Mockito.any(JobDTO.class))).thenReturn(JobsConstants.PURGE_DATE_SAVED);
-        JobDTO jobDTO = jobDTOS.get(0);
-        jobDTO.setStatus(20);
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate").contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(jobDTO)));
-        perform.andExpect(status().isOk());
+          status = JobsConstants.RUN_DATE_SAVED;
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(JobsConstants.EXCEPTION_MESSAGE, e);
+        }
+        return status;
     }
 
 
-    @Test
-    public void getJobsByParmsTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(listTableParams)).thenReturn(result);
+    /**
+     * this method will change the purge date for the job
+     *
+     * It can be changed only for job status 20 (Completed)
+     *
+     * Parameters - jobDTO : Job Id, User ID, input schedule date as ~ 03-23-2021
+     */
+    public String changePurgeDateById(JobDTO jobDTO) {
+        logit.info("Started JobMonitorDataService : changePurgeDateById()");
+        String status;
+        Date currentDate = Calendar.getInstance().getTime();
+        int updateStatus = 0;
+        SimpleDateFormat sdf = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY);
+        Integer jobMasterRecId = jobDTO.getJobId();
+        try {
+            logit.info("Job ID {} status = {} for new Purge Date {}",
+                    jobMasterRecId, jobDTO.getStatus(), jobDTO.getPurgeDate());
+         //   Date purgeDate = sdf.parse(jobDTO.getPurgeDate());
+            updateStatus = jobsRepository.updatePurgeDate(jobMasterRecId, jobDTO.getPurgeDate(), jobDTO.getUpdatedBySystemId(), currentDate);
+            if (updateStatus == 1) {
+                status = JobsConstants.PURGE_DATE_SAVED;
+            } else {
+                status = JobsConstants.PURGE_JOB_INVALID_DATA;
+            }
 
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.get("/getjobs/").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
+        } catch (Exception e) {
+            throw new JobsMonitorApiException(JobsConstants.EXCEPTION_MESSAGE, e);
+        }
+        logit.info("Completed JobMonitorDataService : changePurgeDateById()");
+        return status;
     }
 
-    @Test
-    public void getMyJobsByParmsTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(listTableParams)).thenReturn(result);
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.get("/getmyjobs/").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
+    public PaginationResult getJobsOnSearchCriteria(ListTableParams listTableParams) {
+        Pageable pageable = null;
+        String studyNameVal = JobsConstants.PERCENT_STR;
+        String jobStatusVal = JobsConstants.PERCENT_STR;
+        String createdByVal = JobsConstants.PERCENT_STR;
+        String userIdVal = JobsConstants.PERCENT_STR;
+        String searchInput;
+        String searchBy;
+        int jobIdValInt = 0;
+        int jobsCount;
+        int myItemsIndex = -1;
+        int searchCritSize = 0;
+        boolean spChInJobName = false;
+        boolean jobIdSelected = false;
+        List<JobDTO> jobsDataList;
+        List<JobMasterT> jobsList = null;
+        List<JobMasterT> jobsCntList = null;
+        PaginationResult paginationResult = new PaginationResult();
+        pageable = createPageable(listTableParams);
+        if (listTableParams.getSearchBy().contains(JobsConstants.USER_SYSTEM_ID)) {
+            myItemsIndex = listTableParams.getSearchBy().indexOf(JobsConstants.USER_SYSTEM_ID);
+        }
+        searchCritSize = listTableParams.getSearchBy().size();
+
+        for (int index = 0; index < searchCritSize; index++) {
+            searchInput = listTableParams.getSearchInput().get(index).toLowerCase();
+            searchBy = listTableParams.getSearchBy().get(index);
+            switch (searchBy) {
+                case JobsConstants.JOB_STATUS_DESC:
+                    jobStatusVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
+                    break;
+                case JobsConstants.STUDY_NAME:
+                    if (StringUtils.containsAny(searchInput, JobsConstants.PERCENT_CHAR)
+                            || StringUtils.containsAny(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
+                        spChInJobName = true;
+                    }
+                    studyNameVal = ServiceUtil.replStudyName(searchInput);
+                    break;
+                case JobsConstants.CREATED_BY:
+                    if (StringUtils.containsWhitespace(searchInput)) {
+                        searchInput = searchInput.trim();
+                        searchInput = searchInput.replaceAll("\\s+", " ");
+                    }
+                    createdByVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
+                    break;
+                case JobsConstants.USER_SYSTEM_ID:
+                    userIdVal = searchInput;
+                    break;
+                case JobsConstants.JOB_ID:
+					try {
+						jobIdValInt = Integer.parseInt(searchInput);
+					} catch (Exception e) {
+						// if getting issue while parsing , returning to default value
+					} 
+                    jobIdSelected = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (jobIdSelected) {    // Only one record will be retrieved for a job ID
+            if (myItemsIndex >= 0) {        // Retrieve my items
+                jobsList = jobsRepository.getMyJobsBySearchCriteriaWithJobId(jobStatusVal, studyNameVal, createdByVal, userIdVal, jobIdValInt, pageable);
+            } else {
+                jobsList = jobsRepository.getJobsBySearchCriteriaWithJobId(jobStatusVal, studyNameVal, createdByVal, jobIdValInt, pageable);
+            }
+            jobsCntList = jobsList;
+        } else if (spChInJobName) {
+            if (myItemsIndex >= 0) {        // Retrieve my items
+                jobsCntList = jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, null);
+                jobsList = jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, pageable);
+            } else {
+                jobsCntList = jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, null);
+                jobsList = jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, pageable);
+            }
+        } else {
+            if (myItemsIndex >= 0) {        // Retrieve my items
+                jobsCntList = jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, null);
+                jobsList = jobsRepository.getMyJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, userIdVal, pageable);
+            } else {
+                jobsCntList = jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, null);
+                jobsList = jobsRepository.getJobsBySearchCriteria(jobStatusVal, studyNameVal, createdByVal, pageable);
+            }
+        }
+        jobsCount = jobsCntList.size();
+        logit.info("jobs List size {}", jobsCount);
+        if (!jobsList.isEmpty()) {
+            jobsDataList = jobDetailMapper.convertToJobDTOs(jobsList);//populateJobDataList(jobsList);
+            if (listTableParams.getSortBy().equals(JobsConstants.CASE_COUNT)) {
+                if (listTableParams.getSortOrder() > 0) {
+                    jobsDataList.sort(Comparator.comparing(JobDTO::getCaseCount));
+                } else {
+                    jobsDataList.sort(Comparator.comparing(JobDTO::getCaseCount).reversed());
+                }
+            }
+            paginationResult.setJobsData(jobsDataList);
+            paginationResult.setTotalRecordsCount(jobsCount);
+        } else {
+            paginationResult.setJobsData(new ArrayList<>());
+            paginationResult.setTotalRecordsCount(jobsList.size());
+        }
+        return paginationResult;
     }
 
-    @Test
-    public void getJobDetailsByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(10)).thenReturn(result.getJobsData().get(0));
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.get("/getjobdetails/10").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
+    private Pageable createPageable(ListTableParams listTableParams) {
+        Pageable pageable = null;
+        String sortStr1;
+        String sortStr2 = "";
+        String sortByStr = listTableParams.getSortBy();
+        int pageNumberI = listTableParams.getPageNumber() - 1;
+        int pageSizeI = listTableParams.getRecordsPerPage();
+        //Pageable represents the Page configuration with sorting
+        Sort.Order order1 = null;
+        Sort.Direction sortDirection;
+        Sort sort1;
+        if (listTableParams.getSortOrder() > 0) {
+            sortDirection = Sort.Direction.ASC;
+        } else {
+            sortDirection = Sort.Direction.DESC;
+        }
+        switch (sortByStr) {
+            case JobsConstants.CASE_COUNT:
+            case JobsConstants.STUDY_NAME:
+                sortStr1 = "pbName";
+                order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
+                sort1 = Sort.by(order1);
+                break;
+            case JobsConstants.JOB_STATUS_DESC:
+                sortStr1 = "jobLuStatusT.statusDesc";
+                order1 = new Sort.Order(sortDirection, sortStr1);
+                sort1 = Sort.by(order1);
+                break;
+            case JobsConstants.SCHEDULED_RUN_DATE: 
+            	sortStr1 = JobsConstants.DATE_SCHEDULED;
+            	order1 = new Sort.Order(sortDirection, sortStr1);
+                sort1 = Sort.by(order1);
+                break;
+            case JobsConstants.PURGE_DATE:
+            	sortStr1 = JobsConstants.DATE_PURGE;
+            	order1 = new Sort.Order(sortDirection, sortStr1);
+                sort1 = Sort.by(order1);
+                break;
+            case JobsConstants.JOB_ID:
+                sortStr1 = sortByStr;
+                order1 = new Sort.Order(sortDirection, sortStr1);
+                sort1 = Sort.by(order1);
+                break;
+            case JobsConstants.CREATED_BY:
+                sortStr1 = "createUserName";
+                order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
+                sort1 = Sort.by(order1);
+                break;
+            default:
+                sortStr1 = JobsConstants.JOB_ID;
+                order1 = new Sort.Order(sortDirection, sortStr1);
+                sort1 = Sort.by(order1);
+                break;
+        }
+        pageable = PageRequest.of(pageNumberI, pageSizeI, sort1);
+
+        return pageable;
     }
 
-    @Test
-    public void changeDateByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.changeDatesById(10)).thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.get("/changedates/10").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
-    }
 
-
-    @Test
-    public void getreportURLTest() throws Exception {
-
-        Mockito.when(iJobMonitorDataService.getReportUrlByOptionCd(300)).thenReturn("COGNOS_REPORT_URL");
-        ResultActions perform = mockMvc.perform(MockMvcRequestBuilders.get("/getreporturl/300").contentType(MediaType.APPLICATION_JSON));
-        perform.andExpect(status().isOk());
+    private void populateNotes(JobDTO jobDTO, List<JobMasterLogsT> jobMasterLogs) {
+        List<String> notes = new ArrayList<>();
+        for (JobMasterLogsT jobLog : jobMasterLogs) {
+            if (Objects.nonNull(jobLog)) {
+                notes.add(jobLog.getLogFileNotes());
+            }
+        }
+        jobDTO.setNotes(notes);
+        logit.info("Job log notes obtained for the ID = {}", jobDTO.getJobId());
     }
 
 
 
+    private String formatStrDate(Date dt, JobDatesEnum jobDatesEnum) {
+        String retDate = null;
+        if (dt == null) {
+            return null;
+        }
+        SimpleDateFormat dateTimeSecondsformatter = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A);
+        SimpleDateFormat dateTimeMinutesformatter = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
+        SimpleDateFormat shortDateFormat = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY);
+        switch (jobDatesEnum) {
+            case dateWoTime:
+                retDate = shortDateFormat.format(dt);
+                break;
+            case dateTimeSeconds:
+                retDate = dateTimeSecondsformatter.format(dt);
+                break;
+            case dateTimeMinutes:
+                retDate = dateTimeMinutesformatter.format(dt);
+                break;
+            default:
+                retDate = dateTimeMinutesformatter.format(dt);
+        }
+        return retDate;
+    }
+    /*
 
+    public LocalDateTime convertToLocalDateTimeViaInstant(Date dateToConvert) {
+        return dateToConvert.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+    }*/
 
-
-
-
-
-
-/*
-    @Test
-    void shouldCreateTutorial() throws Exception {
-
-        JobMasterSnowFlakeT jobMasterSnowFlakeT= initializeJobs(10);
-
-        *//*mockMvc.perform(post("/api/tutorials").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(tutorial)))
-                .andExpect(status().isCreated())
-                .andDo(print());*//*
-        List<JobMasterSnowFlakeT> all = jobsRepositorySnowFlake.findAll();
-        assertEquals(0,all.size());
+    private Date formatDate(String dtStr, int dateFormat) {
+        Date retDate;
+        Date currentDate = Calendar.getInstance().getTime();
+        SimpleDateFormat longDateFormat = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A);
+        SimpleDateFormat minDateFormat = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
+        SimpleDateFormat shortDateFormat = new SimpleDateFormat(JobsConstants.DATE_FORMAT_MMDDYYYY);
+        if (dtStr == null) {
+            retDate = currentDate;
+        } else {
+            try {
+                switch (dateFormat) {
+                    case 0:
+                        retDate = shortDateFormat.parse(dtStr);
+                        break;
+                    case 1:
+                        retDate = minDateFormat.parse(dtStr);
+                        break;
+                    case 2:
+                        retDate = longDateFormat.parse(dtStr);
+                        break;
+                    default:
+                        retDate = currentDate;
+                }
+            } catch (Exception e) {
+                throw new JobsMonitorApiException(JobsConstants.EXCEPTION_MESSAGE, e);
+            }
+        }
+        return retDate;
     }
 
-    */
+    private Integer formatRowItem(Integer itemIntr) {
+        if (itemIntr == null) {
+            return JobsConstants.ZERO_VALUE;
+        }
+        return itemIntr;
+    }
+
+    @Override
+    @Transactional
+    public String getReportUrlByOptionCd(long optionCd) {
+        String reportURL = "";
+        Optional<FadsConfigT> optional = fadsConfigRepository.findById(JobsConstants.COGNOS_REPORT_OPTION_CODE);
+        if (optional.isPresent()) {
+            FadsConfigT fadsConfig = optional.get();
+            reportURL = fadsConfig.getDescription();
+        }
+        logit.info("Cognos report URL = {}", reportURL);
+        return reportURL;
+    }
+
+    public List<String> getCasesDetailsByJobId(Integer jobId) {
+        JobMasterT jobById = jobsRepository.getJobById(jobId);
+        List<JobMasterCasesT> cases = jobById.getJobMasterCasesTs();
+        List<String> caseIds = new ArrayList<>();
+        Iterator<JobMasterCasesT> caseIterator = cases.iterator();
+        while (caseIterator.hasNext()) {
+            JobMasterCasesT obj = caseIterator.next();
+            caseIds.add(ServiceUtil.createCaseId(obj.getCaPrmNodeCd(), obj.getCaScndNodeCd(), obj.getCaSequenceId(), obj.getCaYearId()));
+        }
+        return caseIds;
+    }
+
+    @Override
+    @Transactional
+    public List<FadsConfigProperties> getFadsConfigByIds(List<Long> cd) {
+        List<FadsConfigT> optional = fadsConfigRepository.findAllById(cd);
+        List<FadsConfigProperties> configObjects = new ArrayList<>();
+            for (FadsConfigT fadsConfig : optional) {
+                FadsConfigProperties obj = new FadsConfigProperties();
+                obj.setCode(fadsConfig.getOptionCode());
+                obj.setDesc(fadsConfig.getDescription());
+                obj.setValue(fadsConfig.getOptionValue());
+                configObjects.add(obj);
+            }
+        return configObjects;
+    }
 }
