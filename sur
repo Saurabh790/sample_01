@@ -1,35 +1,101 @@
-import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.mockito.Mock;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyList;
-import static org.mockito.Mockito.anyString;
-import org.springframework.data.domain.Pageable;
-import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.ArrayList;
-import java.util.List;
-import com.optum.fads.pgp.behavior.api.dto.BehaviorPatternDTO;
-import com.optum.fads.pgp.behavior.api.dto.DataRuleDTO;
-import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
-import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.common.constants.BehaviorPatternConstants;
+# =========================================================
+# Test profile configuration
+# Used ONLY during mvn test
+# =========================================================
+
+#spring:
+#  application:
+#    name: fads-pgp-engine
+#  flyway.enabled: false
+#  datasource:
+#    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+#    username: sa
+#    password: sa
+#    driverClassName: org.h2.Driver
+#    hikari.maximum-pool-size: ${CONN_POOL_MAX:2}
+#    hikari.minimum-idle: ${CONN_POOL_MIN:1}
+#  jpa:
+#    show-sql: true
+#    open-in-view: false
+#    hibernate:
+#      dialect: org.hibernate.dialect.H2Dialect
+#    properties:
+#      hibernate.format_sql: true
+#      hibernate.jdbc.lob.non_contextual_creation: auto-time-requests
+#      hibernate.temp.use_jdbc_metadata_defaults: false
+#      javax.persistence.schema-generation.database.action: drop-and-create
+#      javax.persistence.schema-generation.drop-source: script-then-metadata
+#      javax.persistence.schema-generation.drop-script-source: drop-tables.sql
+#    ddl-auto: update
+#  h2:
+#    console:
+#      enabled: true
+#      path: /h2
 
 
+spring:
+  profiles:
+    active: test
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.anyList;
-import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.isNull;
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  h2:
+    console:
+      enabled: true
+      path: /h2
+
+  # ---------------------------------------------------------
+  # Azure KeyVault DUMMY values (needed ONLY to satisfy bean creation)
+  # ---------------------------------------------------------
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: "https://dummy-vault.vault.azure.net/"
+        credential:
+          tenant-id: "00000000-0000-0000-0000-000000000000"
+          client-id: "00000000-0000-0000-0000-000000000000"
+          client-secret: "dummy-secret"
+
+audit:
+  application:
+    name: pgp.engine
+  log:
+    type: SECURITY_AUDIT
+
+server:
+  max-http-header-size: 16384
+  port: 8080
+  servlet:
+    context-path: /
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /openapi/v3/api-docs
+  packagesToScan: com.optum.fads.pgp.engine.api.controller
+  pathsToMatch: /**
+
+app:
+  context-path: opi/api/pgp.engine/v1.0/
+
+logging:
+  level:
+    root: INFO
+    com.optum.fads: DEBUG
+    org.springframework.orm.jpa: DEBUG
+    org.springframework.data: DEBUG
+    org.hibernate.sql: DEBUG
