@@ -1,80 +1,406 @@
-spring:
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: "https://dummy-vault.vault.azure.net/"
-        credential:
-          tenant-id: "00000000-0000-0000-0000-000000000000"
-          client-id: "00000000-0000-0000-0000-000000000000"
-          client-secret: "dummy-secret"
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <modelVersion>4.0.0</modelVersion>
 
-  datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-jobmonitor-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
-package com.optum.fads.pgp.engine.api.config;
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/>
+    </parent>
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+    <repositories>
+        <repository>
+            <id>artifactory</id>
+            <name>Artifactory</name>
+            <url>https://repo1.uhc.com/artifactory/repo</url>
+        </repository>
+    </repositories>
 
-import java.util.List;
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <failsafe.skip>${skipTests}</failsafe.skip>
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.config.Configuration;
-import org.modelmapper.internal.InheritingConfiguration;
-import org.modelmapper.internal.TypeResolvingList;
-import org.modelmapper.spi.NameTokenizer;
-import org.modelmapper.spi.ValueReader;
-import org.modelmapper.spi.ValueWriter;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.support.ReloadableResourceBundleMessageSource;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
+        <java.version>17</java.version>
+        <spring.boot.version>3.5.7</spring.boot.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
+        <modelmapper.version>3.1.1</modelmapper.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>7.4</logback.encoder.version>
+        <lombok.version>1.18.38</lombok.version>
+        <restassured.version>5.3.0</restassured.version>
+        <mockito.version>5.4.0</mockito.version>
+        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
+        <javax-ws-rs-api.version>2.1.2</javax-ws-rs-api.version>
+        <org.mapstruct.version>1.6.3</org.mapstruct.version>
+        <log4j.version>2.20.0</log4j.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <snakeyaml.version>2.1</snakeyaml.version>
+        <jaxb.version>2.3.3</jaxb.version>
+        <sonar.version>3.9.2.2185</sonar.version>
+        <commons.collections4>4.4</commons.collections4>
+        <bcp.version>1.78</bcp.version>
+        <mssql.jdbc.version>13.2.1.jre11</mssql.jdbc.version>
+    </properties>
 
-@ContextConfiguration(classes = { CommonConfig.class })
-@ExtendWith(SpringExtension.class)
-@ActiveProfiles("test")
-class CommonConfigTest {
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.azure.spring</groupId>
+                <artifactId>spring-cloud-azure-dependencies</artifactId>
+                <version>5.22.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-    @Autowired
-    private CommonConfig commonConfig;
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
 
-    @Test
-    void testMessageSource() {
-        assertTrue(commonConfig.messageSource() instanceof ReloadableResourceBundleMessageSource);
-    }
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
 
-    @Test
-    void testModelMapper() {
-        // Keeping your existing non-spring style
-        ModelMapper actualModelMapperResult = (new CommonConfig()).modelMapper();
-        assertTrue(actualModelMapperResult.getTypeMaps().isEmpty());
-        Configuration configuration = actualModelMapperResult.getConfiguration();
-        assertEquals(11, configuration.getConverters().size());
-        assertNull(configuration.getPropertyCondition());
-        assertEquals(Configuration.AccessLevel.PUBLIC, configuration.getFieldAccessLevel());
-        NameTokenizer expectedSourceNameTokenizer = configuration.getDestinationNameTokenizer();
-        assertSame(expectedSourceNameTokenizer, configuration.getSourceNameTokenizer());
-        List<ValueWriter<?>> valueWriters = configuration.getValueWriters();
-        assertTrue(valueWriters instanceof TypeResolvingList);
-        List<ValueReader<?>> valueReaders = configuration.getValueReaders();
-        assertTrue(valueReaders instanceof TypeResolvingList);
-        assertEquals(Configuration.AccessLevel.PUBLIC, configuration.getMethodAccessLevel());
-        assertSame(valueReaders, ((InheritingConfiguration) configuration).valueAccessStore.getValueReaders());
-        assertSame(valueWriters, ((InheritingConfiguration) configuration).valueMutateStore.getValueWriters());
-    }
-}
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.19.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Tests (JUnit 5 via spring-boot-starter-test) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- REMOVED: junit:junit (JUnit4) -->
+        <!-- REMOVED: junit-vintage-engine -->
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql.jdbc.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>${commons.collections4}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bcp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bcp.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-bom</artifactId>
+            <version>4.1.125.Final</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+
+                <!-- REMOVED: jacoco-maven-plugin from pluginManagement (not required) -->
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+            </plugin>
+
+            <!-- Surefire: pin version for Java 17 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <!-- JaCoCo -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <destFile>target/jacoco.exec</destFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-site</id>
+                        <!-- CHANGED: package -> verify -->
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
+
+
+
+mvn -Dtest=JobMonitorControllerTest clean verify
