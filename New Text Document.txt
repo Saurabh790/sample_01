@@ -1,22 +1,45 @@
-Hints:
- 1. missing thenReturn()
- 2. you are trying to stub a final method, which is not supported
- 3. you are stubbing the behaviour of another mock inside before 'thenReturn' instruction is completed
+package com.optum.fads.pgp.jobs.api.mapper;
 
-[ERROR]   JobMonitorControllerTest.getreportURLTest:247 NullPointer Cannot invoke "org.springframework.test.web.servlet.MockMvc.perform(org.springframework.test.web.servlet.RequestBuilder)" because "this.mockMvc" is null
-[ERROR]   JobMonitorControllerTest.purgeJobsByIdTest:118 NullPointer Cannot invoke "java.util.List.get(int)" because "this.jobDTOS" is null
-[INFO]
-[ERROR] Tests run: 10, Failures: 0, Errors: 10, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  26.153 s
-[INFO] Finished at: 2025-12-16T20:15:29+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api:
-[ERROR]
-[ERROR] Please refer to C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api\target\surefire-reports for the individual test results.
-[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
+import com.optum.fads.pgp.jobs.api.dto.JobDTO;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import org.mapstruct.*;
+import org.mapstruct.factory.Mappers;
+
+import java.util.List;
+
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+public interface JobDetailMapper {
+    JobDetailMapper INSTANCE = Mappers.getMapper(JobDetailMapper.class);
+
+
+    @Mappings({
+            @Mapping(source = "jobId", target = "jobId"),
+            @Mapping(source = "pbId", target = "studyId"),
+            @Mapping(source = "pbName", target = "studyName"),
+            @Mapping(source = "pbDesc", target = "studyDescription"),
+            @Mapping(source = "jobLuStatusT.statusCd", target = "status"),
+            @Mapping(source = "jobLuStatusT.statusDesc", target = "statusDescription"),
+            @Mapping(source = "purgeFlag", target = "purgeFlag"),
+            @Mapping(source = "dateBeg", target = "startedDate"),
+            @Mapping(source = "dateEnd", target = "completedDate"),
+            @Mapping(source = "dateSched", target = "scheduledRunDate"),
+            @Mapping(source = "jobCgRows", target = "studyRows"),
+            @Mapping(source = "jobBpRows", target = "behaviorPatternRows"),
+            @Mapping(source = "jobRiRows", target = "reportItemRows"),
+            @Mapping(source = "createUserName", target = "createdBy"),
+            @Mapping(source = "createDte", target = "submittedDate"),
+            @Mapping(source = "createDte", target = "createdDate"),
+            @Mapping(source = "createdByUserId", target = "createdBySystemId"),
+            @Mapping(source = "datePurge", target = "purgeDate"),
+            @Mapping(source = "updateUserName", target = "modifiedBy"),
+            @Mapping(source = "updateDte", target = "modifiedDate"),
+            @Mapping(expression = "java(jobMasterT.getJobMasterCasesTs()!= null ? jobMasterT.getJobMasterCasesTs().size():0)", target = "caseCount")
+    })
+    JobDTO convertToJob(JobMasterT jobMasterT);
+
+    List<JobDTO> convertToJobDTOs(List<JobMasterT> jobMasterTs);
+    @InheritInverseConfiguration
+
+
+    JobMasterT convertToJobMasterT(JobDTO jobDTO);
+}
