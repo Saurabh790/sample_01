@@ -1,45 +1,87 @@
-package com.optum.fads.pgp.jobs.api.mapper;
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
 
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import org.mapstruct.*;
-import org.mapstruct.factory.Mappers;
+package com.optum.fads.pgp.jobs.api.config;
 
-import java.util.List;
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+import jakarta.annotation.PostConstruct;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.TimeZone;
 
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface JobDetailMapper {
-    JobDetailMapper INSTANCE = Mappers.getMapper(JobDetailMapper.class);
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
 
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
 
-    @Mappings({
-            @Mapping(source = "jobId", target = "jobId"),
-            @Mapping(source = "pbId", target = "studyId"),
-            @Mapping(source = "pbName", target = "studyName"),
-            @Mapping(source = "pbDesc", target = "studyDescription"),
-            @Mapping(source = "jobLuStatusT.statusCd", target = "status"),
-            @Mapping(source = "jobLuStatusT.statusDesc", target = "statusDescription"),
-            @Mapping(source = "purgeFlag", target = "purgeFlag"),
-            @Mapping(source = "dateBeg", target = "startedDate"),
-            @Mapping(source = "dateEnd", target = "completedDate"),
-            @Mapping(source = "dateSched", target = "scheduledRunDate"),
-            @Mapping(source = "jobCgRows", target = "studyRows"),
-            @Mapping(source = "jobBpRows", target = "behaviorPatternRows"),
-            @Mapping(source = "jobRiRows", target = "reportItemRows"),
-            @Mapping(source = "createUserName", target = "createdBy"),
-            @Mapping(source = "createDte", target = "submittedDate"),
-            @Mapping(source = "createDte", target = "createdDate"),
-            @Mapping(source = "createdByUserId", target = "createdBySystemId"),
-            @Mapping(source = "datePurge", target = "purgeDate"),
-            @Mapping(source = "updateUserName", target = "modifiedBy"),
-            @Mapping(source = "updateDte", target = "modifiedDate"),
-            @Mapping(expression = "java(jobMasterT.getJobMasterCasesTs()!= null ? jobMasterT.getJobMasterCasesTs().size():0)", target = "caseCount")
-    })
-    JobDTO convertToJob(JobMasterT jobMasterT);
+    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
 
-    List<JobDTO> convertToJobDTOs(List<JobMasterT> jobMasterTs);
-    @InheritInverseConfiguration
+    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
+    private String azureKeyVaultUrl;
+    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
+    private String azureKeyVaultTenant;
+    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
+    private String azureKeyVaultSecret;
+    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
+    private String azureKeyVaultClientId;
 
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+    @Bean
+    public SecretClient secretClient() {
+        logger.info("Initializing Azure Key Vault SecretClient...");
+        logger.debug("Azure Key Vault URL: {}", azureKeyVaultUrl);
+        logger.debug("Azure Key Vault Tenant ID: {}", azureKeyVaultTenant);
+        logger.debug("Azure Key Vault Client ID: {}", azureKeyVaultClientId);
 
-    JobMasterT convertToJobMasterT(JobDTO jobDTO);
+        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                .clientId(azureKeyVaultClientId)
+                .clientSecret(azureKeyVaultSecret)
+                .tenantId(azureKeyVaultTenant)
+                .build();
+
+        return new SecretClientBuilder()
+                .vaultUrl(azureKeyVaultUrl)
+                .credential(clientSecretCredential)
+                .buildClient();
+    }
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @PostConstruct
+    void started() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
+    }
 }
