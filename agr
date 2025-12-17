@@ -71,3 +71,36 @@ class SecurityConfigTest {
         assertTrue(iat instanceof Instant, "iat should be Instant");
         assertTrue(expClaim instanceof Instant, "exp should be Instant");
         assertTrue(nbf instanceof Instant, "nbf should be Instant");
+        assertTrue(authTime instanceof Instant, "auth_time should be Instant");
+    }
+
+    @Test
+    void passwordEncoder_shouldEncodeAndMatch() {
+        String raw = "myPass@123";
+        String encoded = passwordEncoder.encode(raw);
+
+        assertNotNull(encoded);
+        assertTrue(passwordEncoder.matches(raw, encoded));
+        assertFalse(passwordEncoder.matches("wrong", encoded));
+    }
+
+    @Test
+    void corsConfigurationSource_shouldAllowAll() {
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", "/any");
+        CorsConfiguration cfg = corsConfigurationSource.getCorsConfiguration(req);
+
+        assertNotNull(cfg);
+
+        List<String> origins = cfg.getAllowedOrigins();
+        List<String> methods = cfg.getAllowedMethods();
+        List<String> headers = cfg.getAllowedHeaders();
+
+        assertNotNull(origins);
+        assertNotNull(methods);
+        assertNotNull(headers);
+
+        assertTrue(origins.contains("*"));
+        assertTrue(methods.contains("*"));
+        assertTrue(headers.contains("*"));
+    }
+}
