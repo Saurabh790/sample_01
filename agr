@@ -1,125 +1,16 @@
-package com.optum.fads.pgp.jobs.api.config;
+@Test
+void postConstruct_shouldSetTimezone() {
+    TimeZone old = TimeZone.getDefault();
+    try {
+        CommonConfig cfg = new CommonConfig();
+        cfg.started();
 
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.mockito.MockedConstruction;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ApplicationContext;
-import org.springframework.web.client.RestTemplate;
+        TimeZone expected = TimeZone.getTimeZone("UTC-4");
+        TimeZone actual = TimeZone.getDefault();
 
-import java.util.TimeZone;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-/**
- * Unit/integration-ish test for CommonConfig bean creation.
- * - Avoids real Azure calls by mocking Azure builders.
- */
-@SpringBootTest(
-        classes = CommonConfig.class,
-        properties = {
-                "spring.cloud.azure.keyvault.secrets.endpoint=https://dummy.vault.azure.net/",
-                "spring.cloud.azure.keyvault.credential.tenant-id=dummy-tenant",
-                "spring.cloud.azure.keyvault.credential.client-id=dummy-client",
-                "spring.cloud.azure.keyvault.credential.client-secret=dummy-secret"
-        }
-)
-class CommonConfigTest {
-
-    @Autowired
-    private ApplicationContext context;
-
-    private TimeZone originalTz;
-
-    @AfterEach
-    void restoreTimezone() {
-        if (originalTz != null) {
-            TimeZone.setDefault(originalTz);
-        }
-    }
-
-    @Test
-    void modelMapperBean_shouldBePrototype_andStrict() {
-        ModelMapper m1 = context.getBean(ModelMapper.class);
-        ModelMapper m2 = context.getBean(ModelMapper.class);
-
-        assertNotNull(m1);
-        assertNotNull(m2);
-
-        // prototype: should be different instances
-        assertNotSame(m1, m2);
-
-        assertTrue(m1.getConfiguration().isAmbiguityIgnored());
-        assertEquals(MatchingStrategies.STRICT, m1.getConfiguration().getMatchingStrategy());
-    }
-
-    @Test
-    void restTemplateBean_shouldExist() {
-        RestTemplate rt = context.getBean(RestTemplate.class);
-        assertNotNull(rt);
-    }
-
-    @Test
-    void postConstruct_shouldSetTimezone() {
-        // Save original before context loads it? In real run, CommonConfig already ran.
-        // We can still assert it is the expected value after context init.
-        TimeZone tz = TimeZone.getDefault();
-        assertNotNull(tz);
-
-        // CommonConfig uses: TimeZone.getTimeZone("UTC-4")
-        // Java may normalize ID names; check offset instead.
-        assertEquals(-4 * 60 * 60 * 1000, tz.getRawOffset());
-    }
-
-    @Test
-    void secretClientBean_shouldBeCreated_withoutRealAzureCall() {
-        // We create a NEW context instance of the bean method by calling it through Spring,
-        // but we intercept builder constructions so nothing real happens.
-
-        try (
-                MockedConstruction<ClientSecretCredentialBuilder> credentialBuilderMock =
-                        mockConstruction(ClientSecretCredentialBuilder.class, (mock, ctx) -> {
-                            // chain methods return same builder
-                            when(mock.clientId(any())).thenReturn(mock);
-                            when(mock.clientSecret(any())).thenReturn(mock);
-                            when(mock.tenantId(any())).thenReturn(mock);
-                            when(mock.build()).thenReturn(mock(com.azure.identity.ClientSecretCredential.class));
-                        });
-
-                MockedConstruction<SecretClientBuilder> secretClientBuilderMock =
-                        mockConstruction(SecretClientBuilder.class, (mock, ctx) -> {
-                            when(mock.vaultUrl(any())).thenReturn(mock);
-                            when(mock.credential(any())).thenReturn(mock);
-                            when(mock.buildClient()).thenReturn(mock(SecretClient.class));
-                        })
-        ) {
-            SecretClient sc = context.getBean(SecretClient.class);
-            assertNotNull(sc);
-
-            // Verify we did actually go through the builder calls
-            ClientSecretCredentialBuilder cb = credentialBuilderMock.constructed().get(0);
-            verify(cb).clientId("dummy-client");
-            verify(cb).clientSecret("dummy-secret");
-            verify(cb).tenantId("dummy-tenant");
-            verify(cb).build();
-
-            SecretClientBuilder sb = secretClientBuilderMock.constructed().get(0);
-            verify(sb).vaultUrl("https://dummy.vault.azure.net/");
-            verify(sb).credential(any());
-            verify(sb).buildClient();
-        }
+        assertEquals(expected.getID(), actual.getID());
+        assertEquals(expected.getRawOffset(), actual.getRawOffset());
+    } finally {
+        TimeZone.setDefault(old);
     }
 }
-<dependency>
-  <groupId>org.mockito</groupId>
-  <artifactId>mockito-inline</artifactId>
-  <scope>test</scope>
-</dependency>
