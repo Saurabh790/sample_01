@@ -1,197 +1,119 @@
-package com.optum.fads.pgp.jobs.api.controller;
+2025-12-17T08:47:34.082+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-12-17T08:47:34.362+05:30  INFO  --- [           main] c.o.f.p.j.a.c.JobMonitorController       : version: 6.2.12
+2025-12-17T08:47:34.523+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:34.523+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:34.523+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-12-17T08:47:34.698+05:30  INFO  --- [           main] c.o.f.p.j.a.c.JobMonitorController       : Started JobMonitorController : changeScheduleDateById()
+2025-12-17T08:47:34.699+05:30  INFO  --- [           main] c.o.f.p.j.a.c.JobMonitorController       : Completed JobMonitorController : changeScheduleDateById()
+2025-12-17T08:47:34.745+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:34.747+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:34.747+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-12-17T08:47:34.809+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:34.811+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:34.811+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-12-17T08:47:34.848+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:34.848+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:34.849+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2025-12-17T08:47:34.909+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:34.909+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:34.909+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-12-17T08:47:34.982+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:34.984+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:34.984+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2025-12-17T08:47:35.074+05:30  WARN  --- [           main] .w.s.m.s.DefaultHandlerExceptionResolver : Resolved [org.springframework.http.converter.HttpMessageNotReadableException: JSON parse error: Cannot deserialize value of type `java.util.Date` from String "12-31-2025": expected format "MM/dd/yyyy"]
+2025-12-17T08:47:35.115+05:30  INFO  --- [           main] o.s.mock.web.MockServletContext          : Initializing Spring TestDispatcherServlet ''
+2025-12-17T08:47:35.115+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2025-12-17T08:47:35.115+05:30  INFO  --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+[ERROR] Tests run: 10, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 8.513 s <<< FAILURE! -- in com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest
+[ERROR] com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.changePurgeDateById_ok -- Time elapsed: 0.137 s <<< FAILURE!
+java.lang.AssertionError: Status expected:<200> but was:<400>
+        at org.springframework.test.util.AssertionErrors.fail(AssertionErrors.java:61)
+        at org.springframework.test.util.AssertionErrors.assertEquals(AssertionErrors.java:128)
+        at org.springframework.test.web.servlet.result.StatusResultMatchers.lambda$matcher$9(StatusResultMatchers.java:640)
+        at org.springframework.test.web.servlet.MockMvc$1.andExpect(MockMvc.java:214)
+        at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.changePurgeDateById_ok(JobMonitorControllerTest.java:130)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import com.optum.fads.pgp.jobs.api.common.ListTableParams;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
-import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import com.optum.fads.pgp.jobs.api.util.TestUtil;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   JobMonitorControllerTest.changePurgeDateById_ok:130 Status expected:<200> but was:<400>
+[INFO]
+[ERROR] Tests run: 10, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  29.504 s
+[INFO] Finished at: 2025-12-17T08:47:35+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api: There are test failures.
+[ERROR]
+[ERROR] Please refer to C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-import java.util.ArrayList;
+C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api>
+
+
+package com.optum.fads.pgp.jobs.api.dto;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+/**
+ * The Transfer object for job data.
+ */
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class JobDTO {
 
-@ExtendWith(MockitoExtension.class)
-public class JobMonitorControllerTest {
-
-    private MockMvc mockMvc;
-
-    @Mock
-    private IJobMonitorDataService iJobMonitorDataService;
-
-    @Mock
-    private FadsUser appUser;
-
-    @Mock
-    private Authentication authentication;
-
-    @Mock
-    private SecurityContext securityContext;
-
-    @InjectMocks
-    private JobMonitorController jobMonitorController;
-
-    private ObjectMapper objectMapper;
-
-    private PaginationResult result;
-    private List<JobDTO> jobDTOS;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        mockMvc = MockMvcBuilders.standaloneSetup(jobMonitorController).build();
-
-        Mockito.when(securityContext.getAuthentication()).thenReturn(authentication);
-        SecurityContextHolder.setContext(securityContext);
-
-        Mockito.when(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
-                .thenReturn(appUser);
-        Mockito.when(appUser.getUserSystemId()).thenReturn("test-user");
-
-        result = new PaginationResult();
-
-        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
-        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
-
-        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
-        result.setJobsData(jobDTOS);
-
-        objectMapper = new ObjectMapper();
-    }
-
-    @Test
-    void canceljobByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(anyInt()))
-                .thenReturn(jobDTOS.get(0));
-        Mockito.when(iJobMonitorDataService.cancelJob(any(JobDTO.class)))
-                .thenReturn(JobsConstants.JOB_CANCELED);
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/canceljob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void purgeJobsByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(anyInt()))
-                .thenReturn(jobDTOS.get(0));
-        Mockito.when(iJobMonitorDataService.purgeJob(any(JobDTO.class)))
-                .thenReturn(JobsConstants.JOB_PURGED);
-
-        mockMvc.perform(MockMvcRequestBuilders.delete("/purgejob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changeScheduleDateByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.RUN_DATE_SAVED);
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/changescheduledate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTOS.get(0))))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changePurgeDateByIdTest_ok() throws Exception {
-        Mockito.when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
-
-        JobDTO jobDTO = jobDTOS.get(0);
-        jobDTO.setStatus(10);
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTO))))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changePurgeDateByIdTest_badRequest_whenStatus20() throws Exception {
-        JobDTO jobDTO = jobDTOS.get(0);
-        jobDTO.setStatus(20);
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTO))))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void getJobsByParmsTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10")
-                        .param("sortBy", "jobId")
-                        .param("sortOrder", "-1")
-                        .param("searchInput", "abc"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getMyJobsByParmsTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getmyjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getJobDetailsByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getJobDetailsById(eq(10)))
-                .thenReturn(result.getJobsData().get(0));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobdetails/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changeDateByIdTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.changeDatesById(eq(10)))
-                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/changedates/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getreportURLTest() throws Exception {
-        Mockito.when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong()))
-                .thenReturn("COGNOS_REPORT_URL");
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getreporturl/300")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+    private int jobId;
+    private int studyId;
+    private String studyName;
+    private String studyDescription;
+    private int studyRows;
+    private int status;
+    private String statusDescription;
+    private int caseCount =0;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy hh:mm a")
+    private LocalDateTime scheduledRunDate;
+    private int purgeFlag;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy")
+    private Date purgeDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy hh:mm:ss a")
+    private Date startedDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy hh:mm:ss a")
+    private Date completedDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy hh:mm:ss a")
+    private Date submittedDate;
+    private int behaviorPatternRows;
+    private int reportItemRows;
+    private String createdBy;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy hh:mm:ss a")
+    private Date createdDate;
+    private String modifiedBy;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM/dd/yyyy hh:mm:ss a")
+    private Date modifiedDate;
+    private String createdBySystemId;
+    private String updatedBySystemId;
+    private List<String> notes;
 }
