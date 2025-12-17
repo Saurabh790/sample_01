@@ -1,34 +1,18 @@
-package com.optum.fads.pgp.jobs.api.service.impl;
+@Test
+void changePurgeDateById_ok() throws Exception {
+    when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
+            .thenReturn(JobsConstants.PURGE_DATE_SAVED);
 
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.repo.UserRepository;
-import com.optum.fads.pgp.jobs.api.domain.UiUserBase;
-import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.stereotype.Service;
+    String body = """
+        {
+          "jobId": 10,
+          "status": 20,
+          "purgeDate": "12/31/2025"
+        }
+        """;
 
-import java.util.Optional;
-
-@Service
-public class UserDetailsService implements IUserDetailsService {
-
-    @Autowired
-    UserRepository userRepository;
-
-    @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Optional<UiUserBase> optional = userRepository.findByUiEMailAddressOrUiUserId(username, username);
-		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
-        FadsUser user = new FadsUser();
-        UiUserBase uiUserBase = optional.get();
-
-        user.setUserEmail(uiUserBase.getUiEMailAddress());
-        user.setUserId(uiUserBase.getUiUserId());
-        user.setUserSystemId(uiUserBase.getUiSystemId());
-        return user;
-
-    }
-
+    mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
+            .andExpect(status().isOk());
 }
