@@ -1,16 +1,55 @@
-@Test
-void postConstruct_shouldSetTimezone() {
-    TimeZone old = TimeZone.getDefault();
-    try {
-        CommonConfig cfg = new CommonConfig();
-        cfg.started();
+package com.optum.fads.pgp.jobs.api.config;
 
-        TimeZone expected = TimeZone.getTimeZone("UTC-4");
-        TimeZone actual = TimeZone.getDefault();
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
-        assertEquals(expected.getID(), actual.getID());
-        assertEquals(expected.getRawOffset(), actual.getRawOffset());
-    } finally {
-        TimeZone.setDefault(old);
+import javax.sql.DataSource;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+class ServiceConfigSQLTest {
+
+    @Test
+    void fadsSQLDataSource_shouldUseSecretsFromKeyVault() {
+        SecretClient secretClient = Mockito.mock(SecretClient.class);
+
+        KeyVaultSecret userSecret = Mockito.mock(KeyVaultSecret.class);
+        KeyVaultSecret passSecret = Mockito.mock(KeyVaultSecret.class);
+
+        when(secretClient.getSecret("sql-username-secret")).thenReturn(userSecret);
+        when(secretClient.getSecret("sql-password-secret")).thenReturn(passSecret);
+
+        when(userSecret.getValue()).thenReturn("dbUser");
+        when(passSecret.getValue()).thenReturn("dbPass");
+
+        ServiceConfigSQL cfg = new ServiceConfigSQL(secretClient);
+
+        ReflectionTestUtils.setField(cfg, "userName", "sql-username-secret");
+        ReflectionTestUtils.setField(cfg, "password", "sql-password-secret");
+        ReflectionTestUtils.setField(cfg, "url", "jdbc:mysql://localhost:3306/testdb");
+        ReflectionTestUtils.setField(cfg, "driverClassName", "com.mysql.cj.jdbc.Driver");
+
+        DataSource ds = cfg.fadsSQLDataSource();
+        assertNotNull(ds);
+        assertTrue(ds instanceof DriverManagerDataSource);
+
+        DriverManagerDataSource dmds = (DriverManagerDataSource) ds;
+        assertEquals("dbUser", dmds.getUsername());
+        assertEquals("dbPass", dmds.getPassword());
+        assertEquals("jdbc:mysql://localhost:3306/testdb", dmds.getUrl());
+
+        // DriverManagerDataSource has no getDriverClassName() in many versions
+        // Try getDriver() first, otherwise fallback to reflection.
+        try {
+            assertEquals("com.mysql.cj.jdbc.Driver", dmds.getDriver());
+        } catch (Throwable ignored) {
+            String driver = (String) ReflectionTestUtils.getField(dmds, "driverClassName");
+            assertEquals("com.mysql.cj.jdbc.Driver", driver);
+        }
     }
 }
