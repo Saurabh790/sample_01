@@ -1,54 +1,188 @@
+package com.optum.fads.pgp.jobs.api.controller;
 
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   JobMonitorControllerTest.changePurgeDateById_ok:117 Status expected:<200> but was:<400>
-[ERROR] Errors:
-[ERROR]   JobMonitorControllerTest.changeDateByIdTest » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:56)
-  2. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:57)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[ERROR]   JobMonitorControllerTest.getJobDetailsByIdTest » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:56)
-  2. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:57)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[ERROR]   JobMonitorControllerTest.getJobsByParmsTest » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:56)
-  2. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:57)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[ERROR]   JobMonitorControllerTest.getreportURLTest » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:56)
-  2. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:57)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[ERROR]   JobMonitorControllerTest.purgeJobsByIdTest » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:57)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[ERROR]   JobMonitorControllerTest.sanity » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:56)
-  2. -> at com.optum.fads.pgp.jobs.api.controller.JobMonitorControllerTest.setUp(JobMonitorControllerTest.java:57)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[INFO]
-[ERROR] Tests run: 10, Failures: 1, Errors: 6, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.optum.fads.pgp.jobs.api.common.JobsConstants;
+import com.optum.fads.pgp.jobs.api.common.ListTableParams;
+import com.optum.fads.pgp.jobs.api.dto.FadsUser;
+import com.optum.fads.pgp.jobs.api.dto.JobDTO;
+import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
+import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import com.optum.fads.pgp.jobs.api.util.TestUtil;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT) // avoids UnnecessaryStubbing errors
+public class JobMonitorControllerTest {
+
+    private MockMvc mockMvc;
+
+    @Mock private IJobMonitorDataService iJobMonitorDataService;
+    @Mock private FadsUser appUser;
+    @Mock private Authentication authentication;
+    @Mock private SecurityContext securityContext;
+
+    @InjectMocks private JobMonitorController jobMonitorController;
+
+    private ObjectMapper objectMapper;
+    private PaginationResult result;
+    private List<JobDTO> jobDTOS;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        mockMvc = MockMvcBuilders.standaloneSetup(jobMonitorController).build();
+
+        // Put our mocked SecurityContext into SecurityContextHolder
+        SecurityContextHolder.setContext(securityContext);
+
+        // LENIENT stubs: not every endpoint uses security, so strict mode complains otherwise
+        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
+        lenient().when(authentication.getPrincipal()).thenReturn(appUser);
+        lenient().when(appUser.getUserSystemId()).thenReturn("test-user");
+
+        result = new PaginationResult();
+
+        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
+        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
+        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
+        result.setJobsData(jobDTOS);
+
+        objectMapper = new ObjectMapper();
+    }
+
+    @Test
+    void sanity() {
+        assertNotNull(mockMvc);
+        assertNotNull(jobDTOS);
+    }
+
+    @Test
+    void canceljobByIdTest() throws Exception {
+        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(jobDTOS.get(0));
+        when(iJobMonitorDataService.cancelJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_CANCELED);
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/canceljob/10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void purgeJobsByIdTest() throws Exception {
+        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(jobDTOS.get(0));
+        when(iJobMonitorDataService.purgeJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_PURGED);
+
+        mockMvc.perform(MockMvcRequestBuilders.delete("/purgejob/10")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void changeScheduleDateByIdTest() throws Exception {
+        when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
+                .thenReturn(JobsConstants.RUN_DATE_SAVED);
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/changescheduledate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(jobDTOS.get(0))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void changePurgeDateById_ok() throws Exception {
+        when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
+                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
+
+        // send explicit JSON so binding definitely sets status/jobId
+        String body = """
+            {
+              "jobId": 10,
+              "status": 10,
+              "purgeDate": "12-31-2025"
+            }
+            """;
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getJobsByParmsTest() throws Exception {
+        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
+                .thenReturn(result);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/getjobs/")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .param("pageNumber", "1")
+                        .param("recordsPerPage", "10")
+                        .param("sortBy", "jobId")
+                        .param("sortOrder", "-1")
+                        .param("searchInput", "abc"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getMyJobsByParmsTest() throws Exception {
+        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
+                .thenReturn(result);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/getmyjobs/")
+                        .accept(MediaType.APPLICATION_JSON)
+                        .param("pageNumber", "1")
+                        .param("recordsPerPage", "10"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getJobDetailsByIdTest() throws Exception {
+        when(iJobMonitorDataService.getJobDetailsById(eq(10))).thenReturn(jobDTOS.get(0));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/getjobdetails/10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void changeDateByIdTest() throws Exception {
+        when(iJobMonitorDataService.changeDatesById(eq(10)))
+                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/changedates/10")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void getreportURLTest() throws Exception {
+        when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong())).thenReturn("COGNOS_REPORT_URL");
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/getreporturl/300")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+}
+
