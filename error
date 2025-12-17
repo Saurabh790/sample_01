@@ -1,188 +1,311 @@
-package com.optum.fads.pgp.jobs.api.controller;
+// PemKeyLoader.java
+package com.optum.fads.pgp.jobs.api.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import com.optum.fads.pgp.jobs.api.common.ListTableParams;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
-import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import com.optum.fads.pgp.jobs.api.util.TestUtil;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.openssl.PEMEncryptedKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import org.bouncycastle.operator.InputDecryptorProvider;
+import org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.StringReader;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.RSAPrivateCrtKeySpec;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+public class PemKeyLoader {
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT) // avoids UnnecessaryStubbing errors
-public class JobMonitorControllerTest {
+    private static final Logger logger =
+            LoggerFactory.getLogger(PemKeyLoader.class);
 
-    private MockMvc mockMvc;
-
-    @Mock private IJobMonitorDataService iJobMonitorDataService;
-    @Mock private FadsUser appUser;
-    @Mock private Authentication authentication;
-    @Mock private SecurityContext securityContext;
-
-    @InjectMocks private JobMonitorController jobMonitorController;
-
-    private ObjectMapper objectMapper;
-    private PaginationResult result;
-    private List<JobDTO> jobDTOS;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        mockMvc = MockMvcBuilders.standaloneSetup(jobMonitorController).build();
-
-        // Put our mocked SecurityContext into SecurityContextHolder
-        SecurityContextHolder.setContext(securityContext);
-
-        // LENIENT stubs: not every endpoint uses security, so strict mode complains otherwise
-        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
-        lenient().when(authentication.getPrincipal()).thenReturn(appUser);
-        lenient().when(appUser.getUserSystemId()).thenReturn("test-user");
-
-        result = new PaginationResult();
-
-        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
-        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
-        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
-        result.setJobsData(jobDTOS);
-
-        objectMapper = new ObjectMapper();
+    static {
+        Security.addProvider(new BouncyCastleProvider());
     }
 
-    @Test
-    void sanity() {
-        assertNotNull(mockMvc);
-        assertNotNull(jobDTOS);
-    }
+    public static PrivateKey loadPrivateKeyPem(String pemContent, char[] passphrase) throws Exception {
+        logger.debug("Parsing PEM content...");
+        try (PEMParser pemParser = new PEMParser(new StringReader(pemContent))) {
+            Object pemObject = pemParser.readObject();
+            PrivateKeyInfo privateKeyInfo = null;
 
-    @Test
-    void canceljobByIdTest() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(jobDTOS.get(0));
-        when(iJobMonitorDataService.cancelJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_CANCELED);
+            if (pemObject instanceof PKCS8EncryptedPrivateKeyInfo) {
+                if (passphrase == null) {
+                    throw new IllegalArgumentException(
+                            "Encrypted key found but no passphrase provided."
+                    );
+                }
+                logger.debug("Detected PKCS#8 encrypted key.");
+                PKCS8EncryptedPrivateKeyInfo encInfo =
+                        (PKCS8EncryptedPrivateKeyInfo) pemObject;
+                InputDecryptorProvider decProv =
+                        new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
+                privateKeyInfo = encInfo.decryptPrivateKeyInfo(decProv);
 
-        mockMvc.perform(MockMvcRequestBuilders.put("/canceljob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void purgeJobsByIdTest() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(jobDTOS.get(0));
-        when(iJobMonitorDataService.purgeJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_PURGED);
-
-        mockMvc.perform(MockMvcRequestBuilders.delete("/purgejob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changeScheduleDateByIdTest() throws Exception {
-        when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.RUN_DATE_SAVED);
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/changescheduledate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTOS.get(0))))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changePurgeDateById_ok() throws Exception {
-        when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
-
-        // send explicit JSON so binding definitely sets status/jobId
-        String body = """
-            {
-              "jobId": 10,
-              "status": 10,
-              "purgeDate": "12-31-2025"
+            } else if (pemObject instanceof PEMEncryptedKeyPair) {
+                logger.debug("Detected old-format encrypted key (PEM).");
+                // Add necessary decryption if needed
+            } else if (pemObject instanceof PrivateKeyInfo) {
+                logger.debug("Detected unencrypted PKCS#8 key.");
+                privateKeyInfo = (PrivateKeyInfo) pemObject;
+            } else {
+                logger.debug("Unknown PEM object type: {}",
+                        pemObject == null ? "null" : pemObject.getClass().getName());
             }
-            """;
 
-        mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk());
-    }
+            // Convert to BC key first
+            JcaPEMKeyConverter converter = new JcaPEMKeyConverter()
+                    .setProvider(BouncyCastleProvider.PROVIDER_NAME);
+            PrivateKey bcKey = converter.getPrivateKey(privateKeyInfo);
 
-    @Test
-    void getJobsByParmsTest() throws Exception {
-        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
+            // Convert BC key to standard JDK RSA key
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            RSAPrivateCrtKey rsaKey = (RSAPrivateCrtKey) bcKey;
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10")
-                        .param("sortBy", "jobId")
-                        .param("sortOrder", "-1")
-                        .param("searchInput", "abc"))
-                .andExpect(status().isOk());
-    }
+            RSAPrivateCrtKeySpec keySpec = new RSAPrivateCrtKeySpec(
+                    rsaKey.getModulus(),
+                    rsaKey.getPublicExponent(),
+                    rsaKey.getPrivateExponent(),
+                    rsaKey.getPrimeP(),
+                    rsaKey.getPrimeQ(),
+                    rsaKey.getPrimeExponentP(),
+                    rsaKey.getPrimeExponentQ(),
+                    rsaKey.getCrtCoefficient()
+            );
 
-    @Test
-    void getMyJobsByParmsTest() throws Exception {
-        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
+            PrivateKey jdkKey = keyFactory.generatePrivate(keySpec);
+            logger.debug("Key conversion successful? {}", jdkKey != null);
+            logger.debug("Key class: {}", jdkKey.getClass().getName());
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getmyjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getJobDetailsByIdTest() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(eq(10))).thenReturn(jobDTOS.get(0));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobdetails/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changeDateByIdTest() throws Exception {
-        when(iJobMonitorDataService.changeDatesById(eq(10)))
-                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/changedates/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void getreportURLTest() throws Exception {
-        when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong())).thenReturn("COGNOS_REPORT_URL");
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getreporturl/300")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+            return jdkKey;
+        }
     }
 }
+package com.optum.fads.pgp.jobs.api.config;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final IUserDetailsService userDetailsService;
+
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
+    public SecurityConfig(IUserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+        http.csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/actuator/**", "/api/**")
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(jwtDecoder())
+                                .jwtAuthenticationConverter(userJwtAuthenticationConverter())
+                        )
+                );
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        // Custom JWT decoder that skips signature validation
+        return token -> {
+            try {
+                JWT jwt = JWTParser.parse(token);
+
+                // Convert claims, handling Date to Instant conversion
+                Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
+
+                convertDateToInstant(claims, "iat");  // issued at
+                convertDateToInstant(claims, "exp");  // expires at
+                convertDateToInstant(claims, "nbf");  // not before
+                convertDateToInstant(claims, "auth_time");  // authentication time
+
+                return Jwt.withTokenValue(token)
+                        .headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
+                        .claims(claimsMap -> claimsMap.putAll(claims))
+                        .build();
+            } catch (Exception e) {
+                throw new JwtException("Failed to parse JWT", e);
+            }
+        };
+    }
+
+    private void convertDateToInstant(Map<String, Object> claims, String claimName) {
+        Object value = claims.get(claimName);
+        if (value instanceof Date) {
+            claims.put(claimName, ((Date) value).toInstant());
+        }
+    }
+
+    @Bean
+    UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
+        return new UserJwtAuthenticationConverter(userDetailsService);
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
+        configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
+        configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        logger.info("CORS configuration registered for all paths");
+        return source;
+    }
+}
+package com.optum.fads.pgp.jobs.api.config;
+
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+
+import javax.sql.DataSource;
+
+/**
+ * @author sbajaj8
+ */
+@Configuration
+@EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class})
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
+        transactionManagerRef = "txManagerSQL",
+        basePackages = "com.optum.fads.pgp.jobs.api.repo")
+public class ServiceConfigSQL {
+
+    @Value("${spring.datasource.sql.userName}")
+    private String userName;
+
+    @Value("${spring.datasource.sql.password}")
+    private String password;
+
+    @Value("${spring.datasource.sql.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.sql.driverClassName}")
+    private String driverClassName;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfigSQL(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsSQLDataSource")
+    @Primary
+    public DataSource fadsSQLDataSource() {
+        System.out.println("Establishing sql connection");
+        String userNameValue;
+        String passwordValue;
+
+        try {
+            userNameValue = secretClient.getSecret(userName).getValue();
+            passwordValue = secretClient.getSecret(password).getValue();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve secrets from Azure Key Vault", e);
+        }
+        System.out.println("UserName: " + userNameValue);
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName(driverClassName);
+        dataSource.setUsername(userNameValue);
+        dataSource.setPassword(passwordValue);
+        dataSource.setUrl(url);
+
+        return dataSource;
+    }
+
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(fadsSQLDataSource());
+        em.setPackagesToScan("com.optum.fads.pgp.jobs.api.domain");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+
+        // Set Hibernate properties
+        java.util.Properties properties = new java.util.Properties();
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect"); // Replace with your database dialect
+        em.setJpaProperties(properties);
+
+        return em;
+    }
+
+
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+        return txManager;
+    }
+
+}
+
+
+	
 
