@@ -1,156 +1,125 @@
-package com.optum.fads.pgp.jobs.api.mapper;
+package com.optum.fads.pgp.jobs.api.config;
 
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobLuStatusT;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterCasesT;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.mockito.MockedConstruction;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.TimeZone;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
-class JobDetailMapperTest {
-
-    private final JobDetailMapper mapper = Mappers.getMapper(JobDetailMapper.class);
-
-    @Test
-    void convertToJob_shouldMapAllConfiguredFields() {
-        // given
-        JobMasterT src = new JobMasterT();
-        src.setJobId(10);
-        src.setPbId(101);
-        src.setPbName("Study A");
-        src.setPbDesc("Study Desc");
-
-        JobLuStatusT status = new JobLuStatusT();
-        status.setStatusCd(20);
-        status.setStatusDesc("Complete");
-        src.setJobLuStatusT(status);
-
-        src.setPurgeFlag(1);
-
-        Date started = new Date();
-        Date completed = new Date();
-        Date submitted = new Date();
-        Date created = new Date();
-        Date purge = new Date();
-
-        src.setDateBeg(started);
-        src.setDateEnd(completed);
-
-        // NOTE: your DTO has LocalDateTime scheduledRunDate.
-        // If JobMasterT.dateSched is Date or LocalDateTime, mapping may differ.
-        // Here we set it only if JobMasterT supports LocalDateTime.
-        // If it’s Date in your entity, keep it as Date.
-        try {
-            src.getClass().getMethod("setDateSched", LocalDateTime.class)
-                    .invoke(src, LocalDateTime.now());
-        } catch (Exception ignored) {
-            // If setter not present with LocalDateTime, ignore for this test
+/**
+ * Unit/integration-ish test for CommonConfig bean creation.
+ * - Avoids real Azure calls by mocking Azure builders.
+ */
+@SpringBootTest(
+        classes = CommonConfig.class,
+        properties = {
+                "spring.cloud.azure.keyvault.secrets.endpoint=https://dummy.vault.azure.net/",
+                "spring.cloud.azure.keyvault.credential.tenant-id=dummy-tenant",
+                "spring.cloud.azure.keyvault.credential.client-id=dummy-client",
+                "spring.cloud.azure.keyvault.credential.client-secret=dummy-secret"
         }
+)
+class CommonConfigTest {
 
-        src.setJobCgRows(111);
-        src.setJobBpRows(222);
-        src.setJobRiRows(333);
+    @Autowired
+    private ApplicationContext context;
 
-        src.setCreateUserName("creator");
-        src.setCreateDte(created);      // mapped to submittedDate and createdDate
-        src.setCreatedByUserId("sys-1");
+    private TimeZone originalTz;
 
-        src.setDatePurge(purge);
-
-        src.setUpdateUserName("modifier");
-        src.setUpdateDte(new Date());
-
-        // cases list -> caseCount
-        List<JobMasterCasesT> cases = new ArrayList<>();
-        cases.add(new JobMasterCasesT());
-        cases.add(new JobMasterCasesT());
-        src.setJobMasterCasesTs(cases);
-
-        // when
-        JobDTO dto = mapper.convertToJob(src);
-
-        // then
-        assertNotNull(dto);
-
-        assertEquals(10, dto.getJobId());
-        assertEquals(101, dto.getStudyId());
-        assertEquals("Study A", dto.getStudyName());
-        assertEquals("Study Desc", dto.getStudyDescription());
-
-        assertEquals(20, dto.getStatus());
-        assertEquals("Complete", dto.getStatusDescription());
-
-        assertEquals(1, dto.getPurgeFlag());
-
-        assertEquals(started, dto.getStartedDate());
-        assertEquals(completed, dto.getCompletedDate());
-
-        assertEquals(111, dto.getStudyRows());
-        assertEquals(222, dto.getBehaviorPatternRows());
-        assertEquals(333, dto.getReportItemRows());
-
-        assertEquals("creator", dto.getCreatedBy());
-
-        // createDte is mapped twice: submittedDate & createdDate
-        assertEquals(created, dto.getSubmittedDate());
-        assertEquals(created, dto.getCreatedDate());
-
-        assertEquals("sys-1", dto.getCreatedBySystemId());
-
-        assertEquals(purge, dto.getPurgeDate());
-
-        assertEquals("modifier", dto.getModifiedBy());
-        assertNotNull(dto.getModifiedDate());
-
-        assertEquals(2, dto.getCaseCount());
+    @AfterEach
+    void restoreTimezone() {
+        if (originalTz != null) {
+            TimeZone.setDefault(originalTz);
+        }
     }
 
     @Test
-    void convertToJob_shouldSetCaseCountToZero_whenCasesNull() {
-        JobMasterT src = new JobMasterT();
-        src.setJobId(1);
-        src.setJobMasterCasesTs(null);
+    void modelMapperBean_shouldBePrototype_andStrict() {
+        ModelMapper m1 = context.getBean(ModelMapper.class);
+        ModelMapper m2 = context.getBean(ModelMapper.class);
 
-        JobDTO dto = mapper.convertToJob(src);
+        assertNotNull(m1);
+        assertNotNull(m2);
 
-        assertNotNull(dto);
-        assertEquals(0, dto.getCaseCount());
+        // prototype: should be different instances
+        assertNotSame(m1, m2);
+
+        assertTrue(m1.getConfiguration().isAmbiguityIgnored());
+        assertEquals(MatchingStrategies.STRICT, m1.getConfiguration().getMatchingStrategy());
     }
 
     @Test
-    void convertToJobDTOs_shouldMapList() {
-        JobMasterT a = new JobMasterT();
-        a.setJobId(1);
-
-        JobMasterT b = new JobMasterT();
-        b.setJobId(2);
-
-        List<JobDTO> dtos = mapper.convertToJobDTOs(List.of(a, b));
-
-        assertNotNull(dtos);
-        assertEquals(2, dtos.size());
-        assertEquals(1, dtos.get(0).getJobId());
-        assertEquals(2, dtos.get(1).getJobId());
+    void restTemplateBean_shouldExist() {
+        RestTemplate rt = context.getBean(RestTemplate.class);
+        assertNotNull(rt);
     }
 
     @Test
-    void convertToJobMasterT_shouldNotThrow() {
-        JobDTO dto = new JobDTO();
-        dto.setJobId(10);
-        dto.setStudyId(101);
-        dto.setStudyName("Study A");
-        dto.setStatus(20);
+    void postConstruct_shouldSetTimezone() {
+        // Save original before context loads it? In real run, CommonConfig already ran.
+        // We can still assert it is the expected value after context init.
+        TimeZone tz = TimeZone.getDefault();
+        assertNotNull(tz);
 
-        JobMasterT entity = mapper.convertToJobMasterT(dto);
+        // CommonConfig uses: TimeZone.getTimeZone("UTC-4")
+        // Java may normalize ID names; check offset instead.
+        assertEquals(-4 * 60 * 60 * 1000, tz.getRawOffset());
+    }
 
-        assertNotNull(entity);
-        // We don’t assert every inverse field because inverse config depends on your entity fields/types.
+    @Test
+    void secretClientBean_shouldBeCreated_withoutRealAzureCall() {
+        // We create a NEW context instance of the bean method by calling it through Spring,
+        // but we intercept builder constructions so nothing real happens.
+
+        try (
+                MockedConstruction<ClientSecretCredentialBuilder> credentialBuilderMock =
+                        mockConstruction(ClientSecretCredentialBuilder.class, (mock, ctx) -> {
+                            // chain methods return same builder
+                            when(mock.clientId(any())).thenReturn(mock);
+                            when(mock.clientSecret(any())).thenReturn(mock);
+                            when(mock.tenantId(any())).thenReturn(mock);
+                            when(mock.build()).thenReturn(mock(com.azure.identity.ClientSecretCredential.class));
+                        });
+
+                MockedConstruction<SecretClientBuilder> secretClientBuilderMock =
+                        mockConstruction(SecretClientBuilder.class, (mock, ctx) -> {
+                            when(mock.vaultUrl(any())).thenReturn(mock);
+                            when(mock.credential(any())).thenReturn(mock);
+                            when(mock.buildClient()).thenReturn(mock(SecretClient.class));
+                        })
+        ) {
+            SecretClient sc = context.getBean(SecretClient.class);
+            assertNotNull(sc);
+
+            // Verify we did actually go through the builder calls
+            ClientSecretCredentialBuilder cb = credentialBuilderMock.constructed().get(0);
+            verify(cb).clientId("dummy-client");
+            verify(cb).clientSecret("dummy-secret");
+            verify(cb).tenantId("dummy-tenant");
+            verify(cb).build();
+
+            SecretClientBuilder sb = secretClientBuilderMock.constructed().get(0);
+            verify(sb).vaultUrl("https://dummy.vault.azure.net/");
+            verify(sb).credential(any());
+            verify(sb).buildClient();
+        }
     }
 }
+<dependency>
+  <groupId>org.mockito</groupId>
+  <artifactId>mockito-inline</artifactId>
+  <scope>test</scope>
+</dependency>
