@@ -1,112 +1,21 @@
-package com.optum.fads.pgp.jobs.api.config;
-
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import org.junit.jupiter.api.Test;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.mockito.MockedConstruction;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.TimeZone;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-class CommonConfigTest {
-
-    @Test
-    void modelMapperBean_shouldBePrototypeAndStrict() {
-        CommonConfig cfg = new CommonConfig();
-
-        ModelMapper m1 = cfg.modelMapper();
-        ModelMapper m2 = cfg.modelMapper();
-
-        assertNotNull(m1);
-        assertNotNull(m2);
-        assertNotSame(m1, m2);
-
-        assertTrue(m1.getConfiguration().isAmbiguityIgnored());
-        assertEquals(MatchingStrategies.STRICT, m1.getConfiguration().getMatchingStrategy());
-    }
-
-    @Test
-    void restTemplateBean_shouldExist() {
-        CommonConfig cfg = new CommonConfig();
-        RestTemplate rt = cfg.restTemplate();
-        assertNotNull(rt);
-    }
-
-    @Test
-    void postConstruct_shouldSetTimezone() {
-        TimeZone old = TimeZone.getDefault();
-        try {
-            CommonConfig cfg = new CommonConfig();
-            cfg.started();
-
-            TimeZone tz = TimeZone.getDefault();
-            assertNotNull(tz);
-
-            // "UTC-4" can normalize; the safest is check raw offset after calling started()
-            assertEquals(-4 * 60 * 60 * 1000, tz.getRawOffset());
-        } finally {
-            TimeZone.setDefault(old);
-        }
-    }
-
-    @Test
-    void secretClientBean_shouldBeCreated_withoutRealAzureCall() {
-        CommonConfig cfg = new CommonConfig();
-
-        // Inject @Value fields
-        ReflectionTestUtils.setField(cfg, "azureKeyVaultUrl", "https://dummy.vault.azure.net/");
-        ReflectionTestUtils.setField(cfg, "azureKeyVaultTenant", "dummy-tenant");
-        ReflectionTestUtils.setField(cfg, "azureKeyVaultClientId", "dummy-client");
-        ReflectionTestUtils.setField(cfg, "azureKeyVaultSecret", "dummy-secret");
-
-        ClientSecretCredential fakeCredential = mock(ClientSecretCredential.class);
-        SecretClient fakeSecretClient = mock(SecretClient.class);
-
-        try (
-                MockedConstruction<ClientSecretCredentialBuilder> credentialBuilderMock =
-                        mockConstruction(ClientSecretCredentialBuilder.class, (mock, ctx) -> {
-                            when(mock.clientId(any())).thenReturn(mock);
-                            when(mock.clientSecret(any())).thenReturn(mock);
-                            when(mock.tenantId(any())).thenReturn(mock);
-                            when(mock.build()).thenReturn(fakeCredential);
-                        });
-
-                MockedConstruction<SecretClientBuilder> secretClientBuilderMock =
-                        mockConstruction(SecretClientBuilder.class, (mock, ctx) -> {
-                            when(mock.vaultUrl(any())).thenReturn(mock);
-                            when(mock.credential(any())).thenReturn(mock);
-                            when(mock.buildClient()).thenReturn(fakeSecretClient);
-                        })
-        ) {
-            SecretClient sc = cfg.secretClient();
-            assertNotNull(sc);
-
-            // Verify builders were constructed and used
-            assertEquals(1, credentialBuilderMock.constructed().size());
-            assertEquals(1, secretClientBuilderMock.constructed().size());
-
-            ClientSecretCredentialBuilder cb = credentialBuilderMock.constructed().get(0);
-            verify(cb).clientId("dummy-client");
-            verify(cb).clientSecret("dummy-secret");
-            verify(cb).tenantId("dummy-tenant");
-            verify(cb).build();
-
-            SecretClientBuilder sb = secretClientBuilderMock.constructed().get(0);
-            verify(sb).vaultUrl("https://dummy.vault.azure.net/");
-            verify(sb).credential(fakeCredential);
-            verify(sb).buildClient();
-
-            assertSame(fakeSecretClient, sc);
-        }
-    }
-}
-
+2-17T09:29:06.762667500
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.660 s -- in com.optum.fads.pgp.jobs.api.service.impl.JobMonitorDataServiceTest
+[INFO] Running com.optum.fads.pgp.jobs.api.service.impl.UserDetailsServiceTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.146 s -- in com.optum.fads.pgp.jobs.api.service.impl.UserDetailsServiceTest
+[INFO] Running com.optum.fads.pgp.jobs.api.service.impl.util.ServiceUtilTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.063 s -- in com.optum.fads.pgp.jobs.api.service.impl.util.ServiceUtilTest
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   CommonConfigTest.postConstruct_shouldSetTimezone:55 expected: <-14400000> but was: <0>
+[INFO]
+[ERROR] Tests run: 38, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  28.880 s
+[INFO] Finished at: 2025-12-17T09:29:07+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api: There are test failures.
