@@ -1,87 +1,9 @@
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
 
-package com.optum.fads.pgp.jobs.api.config;
-
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import jakarta.annotation.PostConstruct;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-import org.springframework.web.client.RestTemplate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.util.TimeZone;
-
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
-
-/**
- * The CommonConfig holds spring based configuration
- */
-@Configuration
-public class CommonConfig {
-
-    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
-
-    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
-    private String azureKeyVaultUrl;
-    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
-    private String azureKeyVaultTenant;
-    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
-    private String azureKeyVaultSecret;
-    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
-    private String azureKeyVaultClientId;
-
-    /**
-     * Model Mapper for mapping objects
-     *
-     * @return modelMapper
-     */
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
-    }
-    @Bean
-    public SecretClient secretClient() {
-        logger.info("Initializing Azure Key Vault SecretClient...");
-        logger.debug("Azure Key Vault URL: {}", azureKeyVaultUrl);
-        logger.debug("Azure Key Vault Tenant ID: {}", azureKeyVaultTenant);
-        logger.debug("Azure Key Vault Client ID: {}", azureKeyVaultClientId);
-
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(azureKeyVaultClientId)
-                .clientSecret(azureKeyVaultSecret)
-                .tenantId(azureKeyVaultTenant)
-                .build();
-
-        return new SecretClientBuilder()
-                .vaultUrl(azureKeyVaultUrl)
-                .credential(clientSecretCredential)
-                .buildClient();
-    }
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-
-    @PostConstruct
-    void started() {
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
-    }
-}
+[ERROR] Failures:
+[ERROR]   CommonConfigTest.postConstruct_shouldSetTimezone:82 expected: <-14400000> but was: <0>
+[ERROR] Errors:
+[ERROR]   CommonConfigTest.secretClientBean_shouldBeCreated_withoutRealAzureCall:111 » IndexOutOfBounds Index 0 out of bounds for length 0
+[INFO]
+[ERROR] Tests run: 38, Failures: 1, Errors: 1, Skipped: 0
+[INFO]
+[INFO] --------------------------------------------------------------
