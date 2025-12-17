@@ -1,18 +1,37 @@
-@Test
-void changePurgeDateById_ok() throws Exception {
-    when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
-            .thenReturn(JobsConstants.PURGE_DATE_SAVED);
+public static String replStudyName(String searchInput) {
+    StringBuilder strbldr = new StringBuilder();
+    String studyNameVal;
+    String replacedInput = "";
 
-    String body = """
-        {
-          "jobId": 10,
-          "status": 20,
-          "purgeDate": "12/31/2025"
+    if (StringUtils.contains(searchInput, JobsConstants.SPACE_ENCODED_STR)) {
+        searchInput = searchInput.replace(JobsConstants.SPACE_ENCODED_STR, JobsConstants.BLANK_STR);
+    }
+    if (StringUtils.contains(searchInput, JobsConstants.PLUS_REPL_STR)) {
+        searchInput = searchInput.replace(JobsConstants.PLUS_REPL_STR, JobsConstants.PLUS_STR);
+    }
+    if (StringUtils.contains(searchInput, JobsConstants.COMMA_REPL_STR)) {
+        searchInput = searchInput.replace(JobsConstants.COMMA_REPL_STR, JobsConstants.COMMA_STR);
+    }
+
+    if (StringUtils.contains(searchInput, JobsConstants.PERCENT_CHAR)
+            || StringUtils.contains(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
+
+        if (StringUtils.contains(searchInput, JobsConstants.PERCENT_CHAR)) {
+            replacedInput = searchInput.replace("%", "\\%");
+        } else if (StringUtils.contains(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
+            replacedInput = searchInput.replace("_", "\\_");
+        } else {
+            replacedInput = searchInput;
         }
-        """;
 
-    mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(body))
-            .andExpect(status().isOk());
+        strbldr.append(JobsConstants.PERCENT_STR)
+               .append(replacedInput)
+               .append(JobsConstants.PERCENT_STR);
+
+        studyNameVal = strbldr.toString();
+    } else {
+        studyNameVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
+    }
+
+    return studyNameVal;
 }
