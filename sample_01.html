@@ -1,71 +1,152 @@
-package com.optum.fads.pgp.jobs.api.service.util;
+package com.optum.fads.pgp.jobs.api.config;
 
+import org.bouncycastle.util.io.pem.PemObject;
+import org.bouncycastle.util.io.pem.PemWriter;
+import org.junit.jupiter.api.Test;
 
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.StringWriter;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
+import java.security.Signature;
 
-public class ServiceUtil {
-    private static final Logger logit = LoggerFactory
-            .getLogger(ServiceUtil.class);
+import static org.junit.jupiter.api.Assertions.*;
 
-    public static String replStudyName(String searchInput) {
-        StringBuilder strbldr = new StringBuilder();
-        String studyNameVal;
-        String replacedInput = "";
-        // the space is an encoded string %20
-        if (StringUtils.containsAny(searchInput, JobsConstants.SPACE_ENCODED_STR)) {
-            searchInput = searchInput.replaceAll(JobsConstants.SPACE_ENCODED_STR, JobsConstants.BLANK_STR);
-        }
-        if (StringUtils.containsAny(searchInput, JobsConstants.PLUS_REPL_STR)) {
-            searchInput = searchInput.replaceAll(JobsConstants.PLUS_REPL_STR, JobsConstants.PLUS_STR);
-        }
-        if (StringUtils.containsAny(searchInput, JobsConstants.COMMA_REPL_STR)) {
-            searchInput = searchInput.replaceAll(JobsConstants.COMMA_REPL_STR, JobsConstants.COMMA_STR);
-        }
-        if (StringUtils.containsAny(searchInput, JobsConstants.PERCENT_CHAR)
-                || StringUtils.containsAny(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
-            if (StringUtils.containsAny(searchInput, JobsConstants.PERCENT_CHAR)) {
-                replacedInput = searchInput.replaceAll("\\%", "\\\\%");
-            } else if (StringUtils.containsAny(searchInput, JobsConstants.UNDERSCORE_CHAR)) {
-                replacedInput = searchInput.replaceAll("\\_", "\\\\_");
-            } else {
-                replacedInput = searchInput;
-            }
-            strbldr.append(JobsConstants.PERCENT_STR);
-            strbldr.append(replacedInput);
-            strbldr.append(JobsConstants.PERCENT_STR);
-            studyNameVal = strbldr.toString();
-        } else {
-            studyNameVal = JobsConstants.PERCENT_STR + searchInput + JobsConstants.PERCENT_STR;
-        }
-        return studyNameVal;
+class PemKeyLoaderTest {
+
+    @Test
+    void loadPrivateKeyPem_shouldLoadUnencryptedPkcs8() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+
+        String pem = toPkcs8Pem(kp.getPrivate().getEncoded());
+
+        PrivateKey loaded = PemKeyLoader.loadPrivateKeyPem(pem, null);
+
+        assertNotNull(loaded);
+        assertEquals("RSA", loaded.getAlgorithm());
+
+        // Sanity: key works for signing
+        byte[] data = "hello".getBytes();
+        Signature sig = Signature.getInstance("SHA256withRSA");
+        sig.initSign(loaded);
+        sig.update(data);
+        byte[] signature = sig.sign();
+
+        Signature verify = Signature.getInstance("SHA256withRSA");
+        verify.initVerify(kp.getPublic());
+        verify.update(data);
+        assertTrue(verify.verify(signature));
     }
 
-    public static String createCaseId(String caPrmNodeCd, String caScndNodeCd, Integer caSequenceId, Integer caYearId) {
-        StringBuffer ikey = new StringBuffer();
-        ikey.append(caPrmNodeCd);
-        ikey.append("-");
-        //if secondaryNode is not null, then we need to append
-        if(null != caScndNodeCd && caScndNodeCd.length()>0){
-            ikey.append(caScndNodeCd);
-            ikey.append("-");
+    private static String toPkcs8Pem(byte[] pkcs8Der) throws Exception {
+        StringWriter sw = new StringWriter();
+        try (PemWriter pw = new PemWriter(sw)) {
+            pw.writeObject(new PemObject("PRIVATE KEY", pkcs8Der));
         }
-        ikey.append(caYearId);
-        ikey.append("-");
-        ikey.append(getFormattedSequenceId(caSequenceId));
-        return ikey.toString();
+        return sw.toString();
+    }
+}
+package com.optum.fads.pgp.jobs.api.config;
+
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.Payload;
+import com.nimbusds.jose.PlainHeader;
+import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+
+import java.util.Date;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class SecurityConfigTest {
+
+    @Test
+    void jwtDecoder_shouldParseJwtAndReturnSpringJwt() throws Exception {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        JwtDecoder decoder = cfg.jwtDecoder();
+
+        Date now = new Date();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("user1")
+                .issueTime(now)        // iat-like
+                .expirationTime(new Date(now.getTime() + 60_000))
+                .claim("role", "ADMIN")
+                .build();
+
+        // Plain (unsigned) JWT
+        PlainJWT jwt = new PlainJWT(claims);
+        String token = jwt.serialize();
+
+        Jwt decoded = decoder.decode(token);
+
+        assertNotNull(decoded);
+        assertEquals("user1", decoded.getSubject());
+        assertEquals("ADMIN", decoded.getClaim("role"));
     }
 
-    private static String getFormattedSequenceId(long number) {
-        String formatNumber = "" + number;
-        try {
-            String format = String.format("%%0%dd", 5);
-            formatNumber = String.format(format, number);
-        } catch (Exception e) {
-            logit.error("Error at JobMonitorUtil.getFormattedSequenceId():", e);
-        }
-        return formatNumber;
+    @Test
+    void corsConfigurationSource_shouldAllowAll() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        var source = cfg.corsConfigurationSource();
+        assertNotNull(source);
+    }
+}
+package com.optum.fads.pgp.jobs.api.config;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import javax.sql.DataSource;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
+
+class ServiceConfigSQLTest {
+
+    @Test
+    void fadsSQLDataSource_shouldUseSecretsFromKeyVault() {
+        SecretClient secretClient = Mockito.mock(SecretClient.class);
+
+        KeyVaultSecret userSecret = Mockito.mock(KeyVaultSecret.class);
+        KeyVaultSecret passSecret = Mockito.mock(KeyVaultSecret.class);
+
+        when(secretClient.getSecret("sql-username-secret")).thenReturn(userSecret);
+        when(secretClient.getSecret("sql-password-secret")).thenReturn(passSecret);
+
+        when(userSecret.getValue()).thenReturn("dbUser");
+        when(passSecret.getValue()).thenReturn("dbPass");
+
+        ServiceConfigSQL cfg = new ServiceConfigSQL(secretClient);
+
+        ReflectionTestUtils.setField(cfg, "userName", "sql-username-secret");
+        ReflectionTestUtils.setField(cfg, "password", "sql-password-secret");
+        ReflectionTestUtils.setField(cfg, "url", "jdbc:mysql://localhost:3306/testdb");
+        ReflectionTestUtils.setField(cfg, "driverClassName", "com.mysql.cj.jdbc.Driver");
+
+        DataSource ds = cfg.fadsSQLDataSource();
+        assertNotNull(ds);
+        assertTrue(ds instanceof DriverManagerDataSource);
+
+        DriverManagerDataSource dmds = (DriverManagerDataSource) ds;
+        assertEquals("dbUser", dmds.getUsername());
+        assertEquals("dbPass", dmds.getPassword());
+        assertEquals("jdbc:mysql://localhost:3306/testdb", dmds.getUrl());
+        assertEquals("com.mysql.cj.jdbc.Driver", dmds.getDriverClassName());
     }
 }
