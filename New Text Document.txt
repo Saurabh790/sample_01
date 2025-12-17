@@ -1,21 +1,117 @@
-2-17T09:29:06.762667500
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.660 s -- in com.optum.fads.pgp.jobs.api.service.impl.JobMonitorDataServiceTest
-[INFO] Running com.optum.fads.pgp.jobs.api.service.impl.UserDetailsServiceTest
-[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.146 s -- in com.optum.fads.pgp.jobs.api.service.impl.UserDetailsServiceTest
-[INFO] Running com.optum.fads.pgp.jobs.api.service.impl.util.ServiceUtilTest
-[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.063 s -- in com.optum.fads.pgp.jobs.api.service.impl.util.ServiceUtilTest
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   CommonConfigTest.postConstruct_shouldSetTimezone:55 expected: <-14400000> but was: <0>
-[INFO]
-[ERROR] Tests run: 38, Failures: 1, Errors: 0, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  28.880 s
-[INFO] Finished at: 2025-12-17T09:29:07+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api: There are test failures.
+package com.optum.fads.pgp.jobs.api.config;
+
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+import com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    private final IUserDetailsService userDetailsService;
+
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
+    public SecurityConfig(IUserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+        http.csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/actuator/**", "/api/**")
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(jwtDecoder())
+                                .jwtAuthenticationConverter(userJwtAuthenticationConverter())
+                        )
+                );
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        // Custom JWT decoder that skips signature validation
+        return token -> {
+            try {
+                JWT jwt = JWTParser.parse(token);
+
+                // Convert claims, handling Date to Instant conversion
+                Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
+
+                convertDateToInstant(claims, "iat");  // issued at
+                convertDateToInstant(claims, "exp");  // expires at
+                convertDateToInstant(claims, "nbf");  // not before
+                convertDateToInstant(claims, "auth_time");  // authentication time
+
+                return Jwt.withTokenValue(token)
+                        .headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
+                        .claims(claimsMap -> claimsMap.putAll(claims))
+                        .build();
+            } catch (Exception e) {
+                throw new JwtException("Failed to parse JWT", e);
+            }
+        };
+    }
+
+    private void convertDateToInstant(Map<String, Object> claims, String claimName) {
+        Object value = claims.get(claimName);
+        if (value instanceof Date) {
+            claims.put(claimName, ((Date) value).toInstant());
+        }
+    }
+
+    @Bean
+    UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
+        return new UserJwtAuthenticationConverter(userDetailsService);
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
+        configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
+        configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        logger.info("CORS configuration registered for all paths");
+        return source;
+    }
+}
