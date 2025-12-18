@@ -1,3 +1,181 @@
-CVE-2024-12797 is an OpenSSL issue (Raw Public Keys / TLS)
+package com.optum.fads.pgp.jobs.api.security;
 
-CVE-2025-9230 is also an OpenSSL issue (CMS decryption OOB read/write) 
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class UserJwtAuthenticationConverterTest {
+
+    @Mock
+    private IUserDetailsService userDetailsService;
+
+    private UserJwtAuthenticationConverter converter;
+
+    @BeforeEach
+    void setUp() {
+        converter = new UserJwtAuthenticationConverter(userDetailsService);
+    }
+
+    @Test
+    void convert_shouldUseUpnFirst_andMapGroupsToRoleAuthorities() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "upn", "user@company.com",
+                "email", "email@company.com",
+                "groups", List.of("admin", "dev")
+        ));
+
+        User principal = new User("user@company.com", "n/a", List.of());
+        when(userDetailsService.loadUserByUsername("user@company.com")).thenReturn(principal);
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertNotNull(token);
+        assertEquals(principal, token.getPrincipal());
+        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")));
+        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_DEV")));
+        assertEquals(2, token.getAuthorities().size());
+
+        verify(userDetailsService).loadUserByUsername("user@company.com");
+    }
+
+    @Test
+    void convert_shouldFallbackToUniqueName_thenEmail_thenSub() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "unique_name", "unique-name-1",
+                "email", "email-1",
+                "sub", "sub-1",
+                "groups", List.of("qa")
+        ));
+
+        User principal = new User("unique-name-1", "n/a", List.of());
+        when(userDetailsService.loadUserByUsername("unique-name-1")).thenReturn(principal);
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertEquals(principal, token.getPrincipal());
+        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_QA")));
+        verify(userDetailsService).loadUserByUsername("unique-name-1");
+    }
+
+    @Test
+    void convert_shouldUseEmail_ifUpnAndUniqueNameMissing() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "email", "only-email",
+                "groups", List.of("ops")
+        ));
+
+        User principal = new User("only-email", "n/a", List.of());
+        when(userDetailsService.loadUserByUsername("only-email")).thenReturn(principal);
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertEquals(principal, token.getPrincipal());
+        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_OPS")));
+        verify(userDetailsService).loadUserByUsername("only-email");
+    }
+
+    @Test
+    void convert_shouldUseSub_ifOthersMissing() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "sub", "sub-user",
+                "groups", List.of("viewer")
+        ));
+
+        User principal = new User("sub-user", "n/a", List.of());
+        when(userDetailsService.loadUserByUsername("sub-user")).thenReturn(principal);
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertEquals(principal, token.getPrincipal());
+        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_VIEWER")));
+        verify(userDetailsService).loadUserByUsername("sub-user");
+    }
+
+    @Test
+    void convert_shouldThrowBadCredentials_whenUserServiceReturnsNull() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "email", "missing-user",
+                "groups", List.of("admin")
+        ));
+
+        when(userDetailsService.loadUserByUsername("missing-user")).thenReturn(null);
+
+        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
+        verify(userDetailsService).loadUserByUsername("missing-user");
+    }
+
+    @Test
+    void convert_shouldPassNullToService_ifNoUniqueIdClaimsPresent_andThenThrow() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "groups", List.of("admin")
+        ));
+
+        when(userDetailsService.loadUserByUsername(null)).thenReturn(null);
+
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+
+        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
+
+        verify(userDetailsService).loadUserByUsername(captor.capture());
+        assertNull(captor.getValue()); // getUniqueID returns null
+    }
+
+    @Test
+    void convert_shouldReturnEmptyAuthorities_whenGroupsClaimMissing() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "email", "user1"
+        ));
+
+        User principal = new User("user1", "n/a", List.of());
+        when(userDetailsService.loadUserByUsername("user1")).thenReturn(principal);
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertEquals(principal, token.getPrincipal());
+        assertNotNull(token.getAuthorities());
+        assertEquals(0, token.getAuthorities().size());
+    }
+
+    @Test
+    void convert_shouldReturnEmptyAuthorities_whenGroupsNotACollection() {
+        Jwt jwt = jwtWithClaims(Map.of(
+                "email", "user1",
+                "groups", "admin" // invalid type => should be empty authorities
+        ));
+
+        User principal = new User("user1", "n/a", List.of());
+        when(userDetailsService.loadUserByUsername("user1")).thenReturn(principal);
+
+        AbstractAuthenticationToken token = converter.convert(jwt);
+
+        assertEquals(principal, token.getPrincipal());
+        assertEquals(0, token.getAuthorities().size());
+    }
+
+    // helper
+    private Jwt jwtWithClaims(Map<String, Object> claims) {
+        return Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(3600))
+                .claims(c -> c.putAll(claims))
+                .build();
+    }
+}
