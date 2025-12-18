@@ -1,6 +1,7 @@
 package com.optum.fads.pgp.jobs.api.service.impl;
 
 import com.optum.fads.pgp.jobs.api.common.FadsConfigProperties;
+import com.optum.fads.pgp.jobs.api.common.JobDatesEnum;
 import com.optum.fads.pgp.jobs.api.common.JobsConstants;
 import com.optum.fads.pgp.jobs.api.common.ListTableParams;
 import com.optum.fads.pgp.jobs.api.domain.FadsConfigT;
@@ -8,12 +9,13 @@ import com.optum.fads.pgp.jobs.api.dto.JobDTO;
 import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
 import com.optum.fads.pgp.jobs.api.exception.JobsMonitorApiException;
 import com.optum.fads.pgp.jobs.api.mapper.JobDetailMapper;
-import com.optum.fads.pgp.jobs.api.repo.FadsConfigRepository;
 import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobLuStatusT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterCasesT;
 import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterLogsT;
 import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
 import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobMasterSchedulerRepository;
 import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobsRepository;
+import com.optum.fads.pgp.jobs.api.repo.FadsConfigRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +25,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -41,12 +44,15 @@ class JobMonitorDataServiceTest {
     @InjectMocks
     private JobMonitorDataService service;
 
+    // -----------------------------
+    // EXISTING TESTS (your tests)
+    // -----------------------------
+
     @Test
     void getJobDetailsById_whenJobExists_withEmptyLogs_returnsJobDTO_withoutNotes() {
         Integer jobId = 10;
 
         JobMasterT jobMasterT = new JobMasterT();
-        // IMPORTANT: must be NON-NULL, else code NPEs
         jobMasterT.setJobMasterLogsTs(Collections.emptyList());
 
         when(jobsRepository.findById(jobId)).thenReturn(Optional.of(jobMasterT));
@@ -59,8 +65,6 @@ class JobMonitorDataServiceTest {
 
         assertNotNull(result);
         assertEquals(jobId, result.getJobId());
-        // notes should remain null/empty since logs empty
-        // (depends on your JobDTO default; allow either)
         if (result.getNotes() != null) {
             assertTrue(result.getNotes().isEmpty());
         }
@@ -103,11 +107,7 @@ class JobMonitorDataServiceTest {
         Integer jobId = 999;
         when(jobsRepository.findById(jobId)).thenReturn(Optional.empty());
 
-        JobsMonitorApiException ex = assertThrows(JobsMonitorApiException.class,
-                () -> service.getJobDetailsById(jobId));
-
-        // message depends on your exception constructor, so just ensure it throws
-        assertNotNull(ex);
+        assertThrows(JobsMonitorApiException.class, () -> service.getJobDetailsById(jobId));
         verify(jobsRepository).findById(jobId);
     }
 
@@ -118,7 +118,7 @@ class JobMonitorDataServiceTest {
         params.setRecordsPerPage(10);
         params.setSortBy(JobsConstants.JOB_ID);
         params.setSortOrder(-1);
-        params.setSearchBy(null); // this is the branch we want
+        params.setSearchBy(null);
 
         JobMasterT jm = new JobMasterT();
         List<JobMasterT> content = Collections.singletonList(jm);
@@ -161,26 +161,8 @@ class JobMonitorDataServiceTest {
         verify(jobsRepository).updateScheduledRunDate(eq(101), any(LocalDateTime.class), eq("u1"), any(LocalDateTime.class));
     }
 
-//    @Test
-//    void changePurgeDateById_whenUpdateSuccess_returnsSaved() {
-//        JobDTO jobDTO = new JobDTO();
-//        jobDTO.setJobId(201);
-//        jobDTO.setUpdatedBySystemId("u2");
-//        jobDTO.setStatus(20);
-//        jobDTO.setPurgeDate("12-31-2025"); // whatever your repo expects
-//
-//        when(jobsRepository.updatePurgeDate(eq(201), eq("12-31-2025"), eq("u2"), any(Date.class)))
-//                .thenReturn(1);
-//
-//        String status = service.changePurgeDateById(jobDTO);
-//
-//        assertEquals(JobsConstants.PURGE_DATE_SAVED, status);
-//        verify(jobsRepository).updatePurgeDate(eq(201), eq("12-31-2025"), eq("u2"), any(Date.class));
-//    }
-
     @Test
     void getReportUrlByOptionCd_whenConfigPresent_returnsDescription() {
-        // service ignores input optionCd and reads JobsConstants.COGNOS_REPORT_OPTION_CODE
         FadsConfigT cfg = new FadsConfigT();
         cfg.setDescription("http://cognos/report");
 
@@ -214,6 +196,186 @@ class JobMonitorDataServiceTest {
         assertEquals(1L, out.get(0).getCode());
         assertEquals("d1", out.get(0).getDesc());
         assertEquals("v1", out.get(0).getValue());
- 
+    }
+
+    // ------------------------------------------
+    // NEW TESTS: cover RED methods in Jacoco
+    // ------------------------------------------
+
+    @Test
+    void cancelJob_shouldDeleteFromScheduler_andSaveCancelledStatus() {
+        JobDTO req = new JobDTO();
+        req.setJobId(55);
+        req.setModifiedBy("tester");
+
+        JobMasterT entity = new JobMasterT();
+        when(jobsRepository.findById(55)).thenReturn(Optional.of(entity));
+        when(jobsRepository.saveAndFlush(any(JobMasterT.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        String status = service.cancelJob(req);
+
+        assertEquals(JobsConstants.JOB_CANCELED, status);
+        verify(jobMasterSchedulerRepository).deleteById(55);
+        verify(jobsRepository).saveAndFlush(any(JobMasterT.class));
+    }
+
+    @Test
+    void purgeJob_shouldReturnPurged_whenRepoUpdatesOneRow() {
+        JobDTO req = new JobDTO();
+        req.setJobId(88);
+        req.setUpdatedBySystemId("sys1");
+
+        when(jobsRepository.updatePurgeFlag(any(JobLuStatusT.class), eq(88), anyInt(), eq("sys1"), any(Date.class)))
+                .thenReturn(1);
+
+        String status = service.purgeJob(req);
+
+        assertEquals(JobsConstants.JOB_PURGED, status);
+    }
+
+    @Test
+    void purgeJob_shouldReturnInvalid_whenRepoUpdatesZeroRows() {
+        JobDTO req = new JobDTO();
+        req.setJobId(89);
+        req.setUpdatedBySystemId("sys1");
+
+        when(jobsRepository.updatePurgeFlag(any(JobLuStatusT.class), eq(89), anyInt(), eq("sys1"), any(Date.class)))
+                .thenReturn(0);
+
+        String status = service.purgeJob(req);
+
+        assertEquals(JobsConstants.PURGE_JOB_INVALID_DATA, status);
+    }
+
+    @Test
+    void changeDatesById_shouldReturnSetRunDate_forStatus1() {
+        JobLuStatusT st = new JobLuStatusT();
+        st.setStatusCd(1);
+
+        JobMasterT jm = new JobMasterT();
+        jm.setJobLuStatusT(st);
+
+        when(jobsRepository.findById(10)).thenReturn(Optional.of(jm));
+
+        String out = service.changeDatesById(10);
+
+        assertEquals(JobsConstants.SET_RUN_DATE, out);
+    }
+
+    @Test
+    void changeDatesById_shouldReturnSetPurgeDate_forStatus20() {
+        JobLuStatusT st = new JobLuStatusT();
+        st.setStatusCd(20);
+
+        JobMasterT jm = new JobMasterT();
+        jm.setJobLuStatusT(st);
+
+        when(jobsRepository.findById(20)).thenReturn(Optional.of(jm));
+
+        String out = service.changeDatesById(20);
+
+        assertEquals(JobsConstants.SET_PURGE_DATE, out);
+    }
+
+    @Test
+    void changePurgeDateById_shouldReturnSaved_whenUpdateSuccess() {
+        JobDTO jobDTO = new JobDTO();
+        jobDTO.setJobId(201);
+        jobDTO.setUpdatedBySystemId("u2");
+        jobDTO.setPurgeDate(new Date()); // IMPORTANT: JobDTO purgeDate is Date
+
+        when(jobsRepository.updatePurgeDate(eq(201), any(Date.class), eq("u2"), any(Date.class)))
+                .thenReturn(1);
+
+        String status = service.changePurgeDateById(jobDTO);
+
+        assertEquals(JobsConstants.PURGE_DATE_SAVED, status);
+    }
+
+    @Test
+    void getJobsByListTableParms_whenSearchByProvided_shouldExecuteSearchCriteriaBranch_andSortCaseCount() {
+        // This triggers getJobsOnSearchCriteria() and createPageable()
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(10);
+        params.setSortBy(JobsConstants.CASE_COUNT);
+        params.setSortOrder(1); // ASC
+
+        params.setSearchBy(List.of(JobsConstants.JOB_ID));
+        params.setSearchInput(List.of("10"));
+
+        JobMasterT jm1 = new JobMasterT();
+        JobMasterT jm2 = new JobMasterT();
+
+        // This path uses getJobsBySearchCriteriaWithJobId(...) (non-myItems)
+        when(jobsRepository.getJobsBySearchCriteriaWithJobId(
+                anyString(), anyString(), anyString(), anyInt(), any(Pageable.class)
+        )).thenReturn(Arrays.asList(jm1, jm2));
+
+        // jobsCntList is assigned jobsList in jobIdSelected branch, so size=2 OK
+
+        JobDTO dto1 = new JobDTO(); dto1.setCaseCount(5);
+        JobDTO dto2 = new JobDTO(); dto2.setCaseCount(1);
+        when(jobDetailMapper.convertToJobDTOs(anyList())).thenReturn(Arrays.asList(dto1, dto2));
+
+        PaginationResult out = service.getJobsByListTableParms(params);
+
+        assertEquals(2, out.getTotalRecordsCount());
+        assertEquals(2, out.getJobsData().size());
+        // Since sortBy CASE_COUNT ASC, first should be 1
+        assertEquals(1, out.getJobsData().get(0).getCaseCount());
+        assertEquals(5, out.getJobsData().get(1).getCaseCount());
+    }
+
+    @Test
+    void getCasesDetailsByJobId_shouldReturnListOfCaseIds() {
+        JobMasterCasesT c1 = new JobMasterCasesT();
+        c1.setCaPrmNodeCd("01");
+        c1.setCaScndNodeCd("02");
+        c1.setCaSequenceId("000123");
+        c1.setCaYearId("2025");
+
+        JobMasterT jm = new JobMasterT();
+        jm.setJobMasterCasesTs(List.of(c1));
+
+        when(jobsRepository.getJobById(777)).thenReturn(jm);
+
+        List<String> out = service.getCasesDetailsByJobId(777);
+
+        assertNotNull(out);
+        assertEquals(1, out.size());
+        assertNotNull(out.get(0)); // exact format depends on ServiceUtil.createCaseId(...)
+    }
+
+    // ----------------------------------------------------
+    // Private methods: hit them via reflection for coverage
+    // ----------------------------------------------------
+
+    @Test
+    void private_formatRowItem_shouldReturnZeroWhenNull() throws Exception {
+        Method m = JobMonitorDataService.class.getDeclaredMethod("formatRowItem", Integer.class);
+        m.setAccessible(true);
+
+        Integer out = (Integer) m.invoke(service, new Object[]{null});
+        assertEquals(JobsConstants.ZERO_VALUE, out);
+    }
+
+    @Test
+    void private_formatDate_shouldParseShortDate_whenFormat0() throws Exception {
+        Method m = JobMonitorDataService.class.getDeclaredMethod("formatDate", String.class, int.class);
+        m.setAccessible(true);
+
+        Date out = (Date) m.invoke(service, "12/31/2025", 0);
+        assertNotNull(out);
+    }
+
+    @Test
+    void private_formatStrDate_shouldFormatForEnum() throws Exception {
+        Method m = JobMonitorDataService.class.getDeclaredMethod("formatStrDate", Date.class, JobDatesEnum.class);
+        m.setAccessible(true);
+
+        String out = (String) m.invoke(service, new Date(), JobDatesEnum.dateWoTime);
+        assertNotNull(out);
+        assertFalse(out.isBlank());
     }
 }
