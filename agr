@@ -1,154 +1,113 @@
 package com.optum.fads.pgp.jobs.api.config;
 
-import java.time.Instant;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-
-import com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverter;
 import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-@Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
-public class SecurityConfigTest {
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
 
-    private final IUserDetailsService userDetailsService;
-    private static final Logger logger = LoggerFactory.getLogger(SecurityConfigTest.class);
+import static org.junit.jupiter.api.Assertions.*;
 
-    public SecurityConfigTest(IUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
+class SecurityConfigTest {
+
+    @Test
+    void passwordEncoder_shouldCreate() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        PasswordEncoder encoder = cfg.passwordEncoder();
+
+        assertNotNull(encoder);
+        assertTrue(encoder.matches("pass", encoder.encode("pass")));
     }
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Test
+    void corsConfigurationSource_shouldAllowAll() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
 
-        http.csrf(csrf -> csrf
-                        .ignoringRequestMatchers("/actuator/**", "/api/**")
-                )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2
-                        .jwt(jwt -> jwt
-                                .decoder(jwtDecoder())
-                                .jwtAuthenticationConverter(userJwtAuthenticationConverter())
-                        )
-                );
+        CorsConfigurationSource source = cfg.corsConfigurationSource();
+        assertNotNull(source);
 
-        return http.build();
+        CorsConfiguration conf = source.getCorsConfiguration(null);
+        assertNotNull(conf);
+
+        // You configured ALL for origins/methods/headers
+        assertTrue(conf.getAllowedOrigins() == null || conf.getAllowedOrigins().contains("*"));
+        assertTrue(conf.getAllowedMethods() == null || conf.getAllowedMethods().contains("*"));
+        assertTrue(conf.getAllowedHeaders() == null || conf.getAllowedHeaders().contains("*"));
     }
 
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        // Custom JWT decoder that skips signature validation
-        return token -> {
-            try {
-                JWT jwt = JWTParser.parse(token);
+    @Test
+    void jwtDecoder_shouldConvertTimeClaimsToInstant_includingAuthTimeNumber() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
 
-                Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
+        JwtDecoder decoder = cfg.jwtDecoder();
 
-                // Convert time-based claims to Instant (handles Date + epoch seconds Number)
-                convertToInstantIfPresent(claims, "iat");       // issued at
-                convertToInstantIfPresent(claims, "exp");       // expires at
-                convertToInstantIfPresent(claims, "nbf");       // not before
-                convertToInstantIfPresent(claims, "auth_time"); // authentication time
+        // alg=none JWT so Nimbus JWTParser can parse it:
+        long now = Instant.now().getEpochSecond();
 
-                return Jwt.withTokenValue(token)
-                        .headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
-                        .claims(claimsMap -> claimsMap.putAll(claims))
-                        .build();
+        String token = unsignedJwt(MapJson.of(
+                "sub", "user1",
+                "iat", now,               // Number -> should become Instant
+                "exp", now + 3600,        // Number -> should become Instant
+                "nbf", now - 10,          // Number -> should become Instant
+                "auth_time", now - 100    // Number -> should become Instant (this was your failing case)
+        ));
 
-            } catch (Exception e) {
-                throw new JwtException("Failed to parse JWT", e);
+        Jwt jwt = decoder.decode(token);
+
+        assertNotNull(jwt);
+        assertEquals("user1", jwt.getClaimAsString("sub"));
+
+        assertTrue(jwt.getClaim("iat") instanceof Instant, "iat should be Instant");
+        assertTrue(jwt.getClaim("exp") instanceof Instant, "exp should be Instant");
+        assertTrue(jwt.getClaim("nbf") instanceof Instant, "nbf should be Instant");
+        assertTrue(jwt.getClaim("auth_time") instanceof Instant, "auth_time should be Instant");
+    }
+
+    // ---- helpers ----
+
+    /** Creates an unsigned JWT (alg=none): header.payload. */
+    private static String unsignedJwt(String payloadJson) {
+        String headerJson = "{\"alg\":\"none\",\"typ\":\"JWT\"}";
+        return b64Url(headerJson) + "." + b64Url(payloadJson) + ".";
+    }
+
+    private static String b64Url(String s) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(s.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** tiny JSON builder for test payloads */
+    static class MapJson {
+        static String of(Object... kv) {
+            StringBuilder sb = new StringBuilder("{");
+            for (int i = 0; i < kv.length; i += 2) {
+                if (i > 0) sb.append(",");
+                String k = String.valueOf(kv[i]);
+                Object v = kv[i + 1];
+                sb.append("\"").append(k).append("\":");
+                if (v instanceof Number || v instanceof Boolean) {
+                    sb.append(v);
+                } else {
+                    sb.append("\"").append(escape(String.valueOf(v))).append("\"");
+                }
             }
-        };
-    }
-
-    /**
-     * Converts common JWT time claims to Instant.
-     * Nimbus may return:
-     *  - Date for standard claims
-     *  - Number (epoch seconds) for some claims like auth_time depending on token format
-     */
-    private void convertToInstantIfPresent(Map<String, Object> claims, String claimName) {
-        Object value = claims.get(claimName);
-        if (value == null) return;
-
-        if (value instanceof Date) {
-            claims.put(claimName, ((Date) value).toInstant());
-            return;
+            sb.append("}");
+            return sb.toString();
         }
 
-        if (value instanceof Number) {
-            long epochSeconds = ((Number) value).longValue();
-            claims.put(claimName, Instant.ofEpochSecond(epochSeconds));
+        private static String escape(String s) {
+            return s.replace("\\", "\\\\").replace("\"", "\\\"");
         }
-    }
-
-    @Bean
-    UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
-        return new UserJwtAuthenticationConverter(userDetailsService);
-    }
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
-
-    @Bean
-    CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
-        configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
-        configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-
-        logger.info("CORS configuration registered for all paths");
-        return source;
     }
 }
-
-[INFO] -------------------------------------------------------------
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-jobmonitor-api/src/main/java/com/optum/fads/pgp/jobs/api/config/SecurityConfig.java:[39,66] cannot find symbol
-  symbol:   class SecurityConfigTest
-  location: class com.optum.fads.pgp.jobs.api.config.SecurityConfig
-[INFO] 1 error
-[INFO] -------------------------------------------------------------
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  12.173 s
-[INFO] Finished at: 2025-12-18T16:21:03+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project fads-pgp-jobmonitor-api: Compilation failure
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-jobmonitor-api/src/main/java/com/optum/fads/pgp/jobs/api/config/SecurityConfig.java:[39,66] cannot find symbol
-[ERROR]   symbol:   class SecurityConfigTest
-[ERROR]   location: class com.optum.fads.pgp.jobs.api.config.SecurityConfig
-[ERROR]
-[ERROR] -> [Help 1]
-[ERROR]
