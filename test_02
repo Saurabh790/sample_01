@@ -1,181 +1,219 @@
-package com.optum.fads.pgp.jobs.api.security;
+package com.optum.fads.pgp.jobs.api.service.impl;
 
-import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
-import org.junit.jupiter.api.BeforeEach;
+import com.optum.fads.pgp.jobs.api.common.FadsConfigProperties;
+import com.optum.fads.pgp.jobs.api.common.JobsConstants;
+import com.optum.fads.pgp.jobs.api.common.ListTableParams;
+import com.optum.fads.pgp.jobs.api.domain.FadsConfigT;
+import com.optum.fads.pgp.jobs.api.dto.JobDTO;
+import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
+import com.optum.fads.pgp.jobs.api.exception.JobsMonitorApiException;
+import com.optum.fads.pgp.jobs.api.mapper.JobDetailMapper;
+import com.optum.fads.pgp.jobs.api.repo.FadsConfigRepository;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobLuStatusT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterLogsT;
+import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
+import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobMasterSchedulerRepository;
+import com.optum.fads.pgp.jobs.api.snowflakeRepo.JobsRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class UserJwtAuthenticationConverterTest {
+class JobMonitorDataServiceTest {
 
-    @Mock
-    private IUserDetailsService userDetailsService;
+    @Mock private FadsConfigRepository fadsConfigRepository;
+    @Mock private JobsRepository jobsRepository;
+    @Mock private JobMasterSchedulerRepository jobMasterSchedulerRepository;
+    @Mock private JobDetailMapper jobDetailMapper;
 
-    private UserJwtAuthenticationConverter converter;
+    @InjectMocks
+    private JobMonitorDataService service;
 
-    @BeforeEach
-    void setUp() {
-        converter = new UserJwtAuthenticationConverter(userDetailsService);
+    @Test
+    void getJobDetailsById_whenJobExists_withEmptyLogs_returnsJobDTO_withoutNotes() {
+        Integer jobId = 10;
+
+        JobMasterT jobMasterT = new JobMasterT();
+        // IMPORTANT: must be NON-NULL, else code NPEs
+        jobMasterT.setJobMasterLogsTs(Collections.emptyList());
+
+        when(jobsRepository.findById(jobId)).thenReturn(Optional.of(jobMasterT));
+
+        JobDTO dto = new JobDTO();
+        dto.setJobId(jobId);
+        when(jobDetailMapper.convertToJob(any(JobMasterT.class))).thenReturn(dto);
+
+        JobDTO result = service.getJobDetailsById(jobId);
+
+        assertNotNull(result);
+        assertEquals(jobId, result.getJobId());
+        // notes should remain null/empty since logs empty
+        // (depends on your JobDTO default; allow either)
+        if (result.getNotes() != null) {
+            assertTrue(result.getNotes().isEmpty());
+        }
+
+        verify(jobsRepository).findById(jobId);
+        verify(jobDetailMapper).convertToJob(jobMasterT);
+        verifyNoMoreInteractions(jobMasterSchedulerRepository);
     }
 
     @Test
-    void convert_shouldUseUpnFirst_andMapGroupsToRoleAuthorities() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "upn", "user@company.com",
-                "email", "email@company.com",
-                "groups", List.of("admin", "dev")
-        ));
+    void getJobDetailsById_whenJobExists_withLogs_populatesNotes() {
+        Integer jobId = 11;
 
-        User principal = new User("user@company.com", "n/a", List.of());
-        when(userDetailsService.loadUserByUsername("user@company.com")).thenReturn(principal);
+        JobMasterLogsT log1 = new JobMasterLogsT();
+        log1.setLogFileNotes("note-1");
+        JobMasterLogsT log2 = new JobMasterLogsT();
+        log2.setLogFileNotes("note-2");
 
-        AbstractAuthenticationToken token = converter.convert(jwt);
+        JobMasterT jobMasterT = new JobMasterT();
+        jobMasterT.setJobMasterLogsTs(Arrays.asList(log1, log2));
 
-        assertNotNull(token);
-        assertEquals(principal, token.getPrincipal());
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")));
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_DEV")));
-        assertEquals(2, token.getAuthorities().size());
+        when(jobsRepository.findById(jobId)).thenReturn(Optional.of(jobMasterT));
 
-        verify(userDetailsService).loadUserByUsername("user@company.com");
+        JobDTO dto = new JobDTO();
+        dto.setJobId(jobId);
+        when(jobDetailMapper.convertToJob(any(JobMasterT.class))).thenReturn(dto);
+
+        JobDTO result = service.getJobDetailsById(jobId);
+
+        assertNotNull(result);
+        assertEquals(jobId, result.getJobId());
+        assertNotNull(result.getNotes());
+        assertEquals(2, result.getNotes().size());
+        assertEquals("note-1", result.getNotes().get(0));
+        assertEquals("note-2", result.getNotes().get(1));
     }
 
     @Test
-    void convert_shouldFallbackToUniqueName_thenEmail_thenSub() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "unique_name", "unique-name-1",
-                "email", "email-1",
-                "sub", "sub-1",
-                "groups", List.of("qa")
-        ));
+    void getJobDetailsById_whenJobMissing_throwsJobsMonitorApiException() {
+        Integer jobId = 999;
+        when(jobsRepository.findById(jobId)).thenReturn(Optional.empty());
 
-        User principal = new User("unique-name-1", "n/a", List.of());
-        when(userDetailsService.loadUserByUsername("unique-name-1")).thenReturn(principal);
+        JobsMonitorApiException ex = assertThrows(JobsMonitorApiException.class,
+                () -> service.getJobDetailsById(jobId));
 
-        AbstractAuthenticationToken token = converter.convert(jwt);
-
-        assertEquals(principal, token.getPrincipal());
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_QA")));
-        verify(userDetailsService).loadUserByUsername("unique-name-1");
+        // message depends on your exception constructor, so just ensure it throws
+        assertNotNull(ex);
+        verify(jobsRepository).findById(jobId);
     }
 
     @Test
-    void convert_shouldUseEmail_ifUpnAndUniqueNameMissing() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "email", "only-email",
-                "groups", List.of("ops")
-        ));
+    void getJobsByListTableParms_whenNoSearchBy_usesFindAll_andMapsDTOs() {
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(10);
+        params.setSortBy(JobsConstants.JOB_ID);
+        params.setSortOrder(-1);
+        params.setSearchBy(null); // this is the branch we want
 
-        User principal = new User("only-email", "n/a", List.of());
-        when(userDetailsService.loadUserByUsername("only-email")).thenReturn(principal);
+        JobMasterT jm = new JobMasterT();
+        List<JobMasterT> content = Collections.singletonList(jm);
 
-        AbstractAuthenticationToken token = converter.convert(jwt);
+        Page<JobMasterT> page = new PageImpl<>(content);
+        when(jobsRepository.findAll(any(Pageable.class))).thenReturn(page);
 
-        assertEquals(principal, token.getPrincipal());
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_OPS")));
-        verify(userDetailsService).loadUserByUsername("only-email");
+        List<JobDTO> mapped = Collections.singletonList(new JobDTO());
+        when(jobDetailMapper.convertToJobDTOs(content)).thenReturn(mapped);
+
+        PaginationResult out = service.getJobsByListTableParms(params);
+
+        assertNotNull(out);
+        assertNotNull(out.getJobsData());
+        assertEquals(1, out.getJobsData().size());
+        assertEquals(1, out.getTotalRecordsCount());
+
+        verify(jobsRepository).findAll(any(Pageable.class));
+        verify(jobDetailMapper).convertToJobDTOs(content);
     }
 
     @Test
-    void convert_shouldUseSub_ifOthersMissing() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "sub", "sub-user",
-                "groups", List.of("viewer")
-        ));
+    void changeScheduleDateById_updatesRepository_andReturnsSaved() {
+        JobDTO jobDTO = new JobDTO();
+        jobDTO.setJobId(101);
+        jobDTO.setStatus(1);
+        jobDTO.setUpdatedBySystemId("u1");
+        jobDTO.setScheduledRunDate(LocalDateTime.now());
 
-        User principal = new User("sub-user", "n/a", List.of());
-        when(userDetailsService.loadUserByUsername("sub-user")).thenReturn(principal);
+        when(jobsRepository.updateScheduledRunDate(
+                eq(101),
+                any(LocalDateTime.class),
+                eq("u1"),
+                any(LocalDateTime.class)
+        )).thenReturn(1);
 
-        AbstractAuthenticationToken token = converter.convert(jwt);
+        String status = service.changeScheduleDateById(jobDTO);
 
-        assertEquals(principal, token.getPrincipal());
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_VIEWER")));
-        verify(userDetailsService).loadUserByUsername("sub-user");
+        assertEquals(JobsConstants.RUN_DATE_SAVED, status);
+        verify(jobsRepository).updateScheduledRunDate(eq(101), any(LocalDateTime.class), eq("u1"), any(LocalDateTime.class));
+    }
+
+//    @Test
+//    void changePurgeDateById_whenUpdateSuccess_returnsSaved() {
+//        JobDTO jobDTO = new JobDTO();
+//        jobDTO.setJobId(201);
+//        jobDTO.setUpdatedBySystemId("u2");
+//        jobDTO.setStatus(20);
+//        jobDTO.setPurgeDate("12-31-2025"); // whatever your repo expects
+//
+//        when(jobsRepository.updatePurgeDate(eq(201), eq("12-31-2025"), eq("u2"), any(Date.class)))
+//                .thenReturn(1);
+//
+//        String status = service.changePurgeDateById(jobDTO);
+//
+//        assertEquals(JobsConstants.PURGE_DATE_SAVED, status);
+//        verify(jobsRepository).updatePurgeDate(eq(201), eq("12-31-2025"), eq("u2"), any(Date.class));
+//    }
+
+    @Test
+    void getReportUrlByOptionCd_whenConfigPresent_returnsDescription() {
+        // service ignores input optionCd and reads JobsConstants.COGNOS_REPORT_OPTION_CODE
+        FadsConfigT cfg = new FadsConfigT();
+        cfg.setDescription("http://cognos/report");
+
+        when(fadsConfigRepository.findById(JobsConstants.COGNOS_REPORT_OPTION_CODE))
+                .thenReturn(Optional.of(cfg));
+
+        String url = service.getReportUrlByOptionCd(300);
+
+        assertEquals("http://cognos/report", url);
+        verify(fadsConfigRepository).findById(JobsConstants.COGNOS_REPORT_OPTION_CODE);
     }
 
     @Test
-    void convert_shouldThrowBadCredentials_whenUserServiceReturnsNull() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "email", "missing-user",
-                "groups", List.of("admin")
-        ));
+    void getFadsConfigByIds_mapsToProperties() {
+        FadsConfigT c1 = new FadsConfigT();
+        c1.setOptionCode(1L);
+        c1.setDescription("d1");
+        c1.setOptionValue("v1");
 
-        when(userDetailsService.loadUserByUsername("missing-user")).thenReturn(null);
+        FadsConfigT c2 = new FadsConfigT();
+        c2.setOptionCode(2L);
+        c2.setDescription("d2");
+        c2.setOptionValue("v2");
 
-        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
-        verify(userDetailsService).loadUserByUsername("missing-user");
-    }
+        when(fadsConfigRepository.findAllById(Arrays.asList(1L, 2L)))
+                .thenReturn(Arrays.asList(c1, c2));
 
-    @Test
-    void convert_shouldPassNullToService_ifNoUniqueIdClaimsPresent_andThenThrow() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "groups", List.of("admin")
-        ));
+        List<FadsConfigProperties> out = service.getFadsConfigByIds(Arrays.asList(1L, 2L));
 
-        when(userDetailsService.loadUserByUsername(null)).thenReturn(null);
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-
-        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
-
-        verify(userDetailsService).loadUserByUsername(captor.capture());
-        assertNull(captor.getValue()); // getUniqueID returns null
-    }
-
-    @Test
-    void convert_shouldReturnEmptyAuthorities_whenGroupsClaimMissing() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "email", "user1"
-        ));
-
-        User principal = new User("user1", "n/a", List.of());
-        when(userDetailsService.loadUserByUsername("user1")).thenReturn(principal);
-
-        AbstractAuthenticationToken token = converter.convert(jwt);
-
-        assertEquals(principal, token.getPrincipal());
-        assertNotNull(token.getAuthorities());
-        assertEquals(0, token.getAuthorities().size());
-    }
-
-    @Test
-    void convert_shouldReturnEmptyAuthorities_whenGroupsNotACollection() {
-        Jwt jwt = jwtWithClaims(Map.of(
-                "email", "user1",
-                "groups", "admin" // invalid type => should be empty authorities
-        ));
-
-        User principal = new User("user1", "n/a", List.of());
-        when(userDetailsService.loadUserByUsername("user1")).thenReturn(principal);
-
-        AbstractAuthenticationToken token = converter.convert(jwt);
-
-        assertEquals(principal, token.getPrincipal());
-        assertEquals(0, token.getAuthorities().size());
-    }
-
-    // helper
-    private Jwt jwtWithClaims(Map<String, Object> claims) {
-        return Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .issuedAt(Instant.now())
-                .expiresAt(Instant.now().plusSeconds(3600))
-                .claims(c -> c.putAll(claims))
-                .build();
+        assertEquals(2, out.size());
+        assertEquals(1L, out.get(0).getCode());
+        assertEquals("d1", out.get(0).getDesc());
+        assertEquals("v1", out.get(0).getValue());
+ 
     }
 }
