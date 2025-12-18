@@ -1,79 +1,35 @@
-package com.optum.fads.pgp.jobs.api.security;
+@Test
+void getCasesDetailsByJobId_shouldReturnListOfCaseIds() {
+    Integer jobId = 10;
 
+    // Arrange
+    JobMasterCasesT c1 = new JobMasterCasesT();
+    c1.setCaPrmNodeCd("A");
+    c1.setCaScndNodeCd("B");
+    c1.setCaSequenceId(1);     // MUST NOT be null
+    c1.setCaYearId(2025);      // set this too (avoid null surprises)
 
-import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
-import org.springframework.core.convert.converter.Converter;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.jwt.Jwt;
+    JobMasterCasesT c2 = new JobMasterCasesT();
+    c2.setCaPrmNodeCd("C");
+    c2.setCaScndNodeCd("D");
+    c2.setCaSequenceId(2);     // MUST NOT be null
+    c2.setCaYearId(2025);
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+    JobMasterT job = new JobMasterT();
+    job.setJobMasterCasesTs(List.of(c1, c2)); // MUST NOT be null
 
-//@SuppressWarnings("unused")
-public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
+    when(jobsRepository.getJobById(jobId)).thenReturn(job);
 
+    // Act
+    List<String> out = service.getCasesDetailsByJobId(jobId);
 
-    private static final String GROUPS_CLAIM = "groups";
-    private static final String ROLE_PREFIX = "ROLE_";
+    // Assert
+    assertNotNull(out);
+    assertEquals(2, out.size());
 
-    private final IUserDetailsService userDetailsService;
+    // Optional: verify exact values if you know the format createCaseId uses
+    // assertEquals("A-B-1-2025", out.get(0));
+    // assertEquals("C-D-2-2025", out.get(1));
 
-    public UserJwtAuthenticationConverter(
-            IUserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
-
-    @Override
-    public AbstractAuthenticationToken convert(Jwt jwt) {
-        Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
-        return Optional.ofNullable(
-                        userDetailsService.loadUserByUsername(getUniqueID(jwt)))
-                .map(u -> new UsernamePasswordAuthenticationToken(u, "n/a", authorities))
-                .orElseThrow(() -> new BadCredentialsException("No user found"));
-    }
-
-    private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
-        return this.getGroups(jwt).stream()
-                .map(authority -> ROLE_PREFIX + authority.toUpperCase())
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
-    }
-
-    @SuppressWarnings("unchecked")
-    private Collection<String> getGroups(Jwt jwt) {
-        Object groups = jwt.getClaims().get(GROUPS_CLAIM);
-        if (groups instanceof Collection) {
-            return (Collection<String>) groups;
-        }
-
-        return Collections.emptyList();
-    }
-
-    private String getUniqueID(Jwt jwt) {
-
-        return Stream.of("upn", "unique_name", "email", "sub")
-                .map(jwt::getClaimAsString)
-                .filter(v -> v != null && !v.isBlank())
-                .findFirst()
-                .orElse(null);
-    }
-
-//    private String getUniqueID(Jwt jwt) {
-//
-//        if (jwt.getClaimAsString("email") != null) {
-//            return jwt.getClaimAsString("email");
-//        }
-//        if (jwt.getClaimAsString("preferred_username") != null) {
-//            return jwt.getClaimAsString("preferred_username");
-//        }
-//
-//        return null;
-//    }
+    verify(jobsRepository).getJobById(jobId);
 }
