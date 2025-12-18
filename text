@@ -1,98 +1,83 @@
-package com.optum.fads.pgp.jobs.api.config;
+[ERROR] Errors:
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldFallbackToUniqueName_thenEmail_thenSub:73 ClassCast class java.lang.Object cannot be cast to class org.springframework.security.core.userdetails.UserDetails (java.lang.Object is in module java.base of loader 'bootstrap'; org.springframework.security.core.userdetails.UserDetails is in unnamed module of loader 'app')
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldPassNullToService_ifNoUniqueIdClaimsPresent:125 UnfinishedStubbing
+Unfinished stubbing detected here:
+-> at com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverterTest.convert_shouldReturnEmptyAuthorities_whenGroupsNotACollection(UserJwtAuthenticationConverterTest.java:174)
 
-import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
+E.g. thenReturn() may be missing.
+Examples of correct stubbing:
+    when(mock.isOk()).thenReturn(true);
+    when(mock.isOk()).thenThrow(exception);
+    doThrow(exception).when(mock).someVoidMethod();
+Hints:
+ 1. missing thenReturn()
+ 2. you are trying to stub a final method, which is not supported
+ 3. you are stubbing the behaviour of another mock inside before 'thenReturn' instruction is completed
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Base64;
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldReturnEmptyAuthorities_whenGroupsClaimMissing:156 ClassCast class java.lang.Object cannot be cast to class org.springframework.security.core.userdetails.UserDetails (java.lang.Object is in module java.base of loader 'bootstrap'; org.springframework.security.core.userdetails.UserDetails is in unnamed module of loader 'app')
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldReturnEmptyAuthorities_whenGroupsNotACollection:174 ClassCast class java.lang.Object cannot be cast to class org.springframework.security.core.userdetails.UserDetails (java.lang.Object is in module java.base of loader 'bootstrap'; org.springframework.security.core.userdetails.UserDetails is in unnamed module of loader 'app')
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldUseEmail_ifUpnAndUniqueNameMissing:91 UnfinishedStubbing
+Unfinished stubbing detected here:
+-> at com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverterTest.convert_shouldFallbackToUniqueName_thenEmail_thenSub(UserJwtAuthenticationConverterTest.java:73)
 
-import static org.junit.jupiter.api.Assertions.*;
+E.g. thenReturn() may be missing.
+Examples of correct stubbing:
+    when(mock.isOk()).thenReturn(true);
+    when(mock.isOk()).thenThrow(exception);
+    doThrow(exception).when(mock).someVoidMethod();
+Hints:
+ 1. missing thenReturn()
+ 2. you are trying to stub a final method, which is not supported
+ 3. you are stubbing the behaviour of another mock inside before 'thenReturn' instruction is completed
 
-class SecurityConfigTest {
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldUseSub_ifOthersMissing:109 ClassCast class java.lang.Object cannot be cast to class org.springframework.security.core.userdetails.UserDetails (java.lang.Object is in module java.base of loader 'bootstrap'; org.springframework.security.core.userdetails.UserDetails is in unnamed module of loader 'app')
+[ERROR]   UserJwtAuthenticationConverterTest.convert_shouldUseUpnFirst_andMapGroupsToRoleAuthorities:45 UnfinishedStubbing
+Unfinished stubbing detected here:
+-> at com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverterTest.convert_shouldReturnEmptyAuthorities_whenGroupsClaimMissing(UserJwtAuthenticationConverterTest.java:156)
 
-    @Test
-    void passwordEncoder_shouldCreate() {
-        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
+E.g. thenReturn() may be missing.
+Examples of correct stubbing:
+    when(mock.isOk()).thenReturn(true);
+    when(mock.isOk()).thenThrow(exception);
+    doThrow(exception).when(mock).someVoidMethod();
+Hints:
+ 1. missing thenReturn()
+ 2. you are trying to stub a final method, which is not supported
+ 3. you are stubbing the behaviour of another mock inside before 'thenReturn' instruction is completed
 
-        PasswordEncoder encoder = cfg.passwordEncoder();
+[ERROR]   JobMonitorDataServiceTest.getJobDetailsById_whenJobExists_withLogs_populatesNotes:85 UnfinishedStubbing
+Unfinished stubbing detected here:
+-> at com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverterTest.convert_shouldUseSub_ifOthersMissing(UserJwtAuthenticationConverterTest.java:109)
 
-        assertNotNull(encoder);
-        assertTrue(encoder.matches("pass", encoder.encode("pass")));
-    }
+E.g. thenReturn() may be missing.
+Examples of correct stubbing:
+    when(mock.isOk()).thenReturn(true);
+    when(mock.isOk()).thenThrow(exception);
+    doThrow(exception).when(mock).someVoidMethod();
+Hints:
+ 1. missing thenReturn()
+ 2. you are trying to stub a final method, which is not supported
+ 3. you are stubbing the behaviour of another mock inside before 'thenReturn' instruction is completed
 
-    @Test
-    void corsConfigurationSource_shouldAllowAll() {
-        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
+[INFO]
+[ERROR] Tests run: 54, Failures: 0, Errors: 8, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  33.058 s
+[INFO] Finished at: 2025-12-18T16:47:34+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api:
+[ERROR]
+[ERROR] Please refer to C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-        CorsConfigurationSource source = cfg.corsConfigurationSource();
-        assertNotNull(source);
-
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRequestURI("/any");
-
-        CorsConfiguration conf = source.getCorsConfiguration(request);
-        assertNotNull(conf);
-
-        // You used CorsConfiguration.ALL which is "*"
-        assertTrue(conf.getAllowedOrigins() == null || conf.getAllowedOrigins().contains("*"));
-        assertTrue(conf.getAllowedMethods() == null || conf.getAllowedMethods().contains("*"));
-        assertTrue(conf.getAllowedHeaders() == null || conf.getAllowedHeaders().contains("*"));
-    }
-
-    @Test
-    void jwtDecoder_shouldConvertStandardDateClaimsToInstant_andLeaveAuthTimeAsNumber() {
-        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
-
-        JwtDecoder decoder = cfg.jwtDecoder();
-
-        long now = Instant.now().getEpochSecond();
-
-        // alg=none token so JWTParser can parse it (no signature)
-        String token = unsignedJwt("""
-            {
-              "sub":"user1",
-              "iat": %d,
-              "exp": %d,
-              "nbf": %d,
-              "auth_time": %d
-            }
-            """.formatted(now, now + 3600, now - 10, now - 100));
-
-        Jwt jwt = decoder.decode(token);
-        assertNotNull(jwt);
-        assertEquals("user1", jwt.getClaimAsString("sub"));
-
-        // In many Nimbus cases: iat/exp/nbf become Date -> your code converts to Instant
-        assertTrue(jwt.getClaim("iat") instanceof Instant, "iat should be Instant");
-        assertTrue(jwt.getClaim("exp") instanceof Instant, "exp should be Instant");
-        assertTrue(jwt.getClaim("nbf") instanceof Instant, "nbf should be Instant");
-
-        // IMPORTANT: your main code converts ONLY Date -> Instant.
-        // Nimbus commonly keeps auth_time as Number, so it will NOT become Instant.
-        assertTrue(jwt.getClaim("auth_time") instanceof Number, "auth_time should remain Number with current main code");
-    }
-
-    // ---------------- helpers ----------------
-
-    /** Creates an unsigned JWT token (alg=none): header.payload. */
-    private static String unsignedJwt(String payloadJson) {
-        String headerJson = "{\"alg\":\"none\",\"typ\":\"JWT\"}";
-        return b64Url(headerJson) + "." + b64Url(payloadJson.trim()) + ".";
-    }
-
-    private static String b64Url(String s) {
-        return Base64.getUrlEncoder().withoutPadding()
-                .encodeToString(s.getBytes(StandardCharsets.UTF_8));
-    }
-}
+C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api>
