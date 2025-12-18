@@ -1,234 +1,154 @@
-package com.optum.fads.pgp.jobs.api.controller;
+package com.optum.fads.pgp.jobs.api.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.optum.fads.pgp.jobs.api.common.FadsConfigProperties;
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import com.optum.fads.pgp.jobs.api.common.ListTableParams;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
-import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import com.optum.fads.pgp.jobs.api.util.TestUtil;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import com.optum.fads.pgp.jobs.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfigTest {
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT) // avoids UnnecessaryStubbing errors
-public class JobMonitorControllerTest {
+    private final IUserDetailsService userDetailsService;
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfigTest.class);
 
-    private MockMvc mockMvc;
-
-    @Mock private IJobMonitorDataService iJobMonitorDataService;
-    @Mock private FadsUser appUser;
-    @Mock private Authentication authentication;
-    @Mock private SecurityContext securityContext;
-
-    @InjectMocks private JobMonitorController jobMonitorController;
-
-    private ObjectMapper objectMapper;
-    private PaginationResult result;
-    private List<JobDTO> jobDTOS;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        mockMvc = MockMvcBuilders.standaloneSetup(jobMonitorController).build();
-
-        // SecurityContextHolder setup
-        SecurityContextHolder.setContext(securityContext);
-        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
-        lenient().when(authentication.getPrincipal()).thenReturn(appUser);
-        lenient().when(appUser.getUserSystemId()).thenReturn("test-user");
-
-        result = new PaginationResult();
-
-        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
-        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
-        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
-        result.setJobsData(jobDTOS);
-
-        objectMapper = new ObjectMapper();
+    public SecurityConfigTest(IUserDetailsService userDetailsService) {
+        this.userDetailsService = userDetailsService;
     }
 
-    @Test
-    void sanity() {
-        assertNotNull(mockMvc);
-        assertNotNull(jobDTOS);
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+        http.csrf(csrf -> csrf
+                        .ignoringRequestMatchers("/actuator/**", "/api/**")
+                )
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(jwtDecoder())
+                                .jwtAuthenticationConverter(userJwtAuthenticationConverter())
+                        )
+                );
+
+        return http.build();
     }
 
-    @Test
-    void canceljobByIdTest_ok() throws Exception {
-        JobDTO dto = jobDTOS.get(0);
-        dto.setStatus(10); // MUST NOT be 14/15/18/20 (nonCancelledList)
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        // Custom JWT decoder that skips signature validation
+        return token -> {
+            try {
+                JWT jwt = JWTParser.parse(token);
 
-        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(dto);
-        when(iJobMonitorDataService.cancelJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_CANCELED);
+                Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
 
-        mockMvc.perform(MockMvcRequestBuilders.put("/canceljob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+                // Convert time-based claims to Instant (handles Date + epoch seconds Number)
+                convertToInstantIfPresent(claims, "iat");       // issued at
+                convertToInstantIfPresent(claims, "exp");       // expires at
+                convertToInstantIfPresent(claims, "nbf");       // not before
+                convertToInstantIfPresent(claims, "auth_time"); // authentication time
 
-    @Test
-    void purgeJobsByIdTest_ok() throws Exception {
-        JobDTO dto = jobDTOS.get(0);
-        dto.setCaseCount(0);  // controller invalid when caseCount > 0
-        dto.setStatus(14);    // controller invalid when status==1 || 15 || (6..12)
+                return Jwt.withTokenValue(token)
+                        .headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
+                        .claims(claimsMap -> claimsMap.putAll(claims))
+                        .build();
 
-        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(dto);
-        when(iJobMonitorDataService.purgeJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_PURGED);
-
-        mockMvc.perform(MockMvcRequestBuilders.delete("/purgejob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changeScheduleDateByIdTest_ok() throws Exception {
-        JobDTO dto = jobDTOS.get(0);
-        dto.setStatus(1); // allowed ONLY for 1 or 3
-
-        when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.RUN_DATE_SAVED);
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/changescheduledate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changePurgeDateById_ok() throws Exception {
-        when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
-
-        // MUST be status=20, and purgeDate must match JobDTO JsonFormat "MM/dd/yyyy"
-        String body = """
-            {
-              "jobId": 10,
-              "status": 20,
-              "purgeDate": "12/31/2025"
+            } catch (Exception e) {
+                throw new JwtException("Failed to parse JWT", e);
             }
-            """;
-
-        mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk());
+        };
     }
 
-    @Test
-    void getJobsByParmsTest_ok() throws Exception {
-        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
+    /**
+     * Converts common JWT time claims to Instant.
+     * Nimbus may return:
+     *  - Date for standard claims
+     *  - Number (epoch seconds) for some claims like auth_time depending on token format
+     */
+    private void convertToInstantIfPresent(Map<String, Object> claims, String claimName) {
+        Object value = claims.get(claimName);
+        if (value == null) return;
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10")
-                        .param("sortBy", "jobId")
-                        .param("sortOrder", "-1")
-                        .param("searchInput", "abc"))
-                .andExpect(status().isOk());
+        if (value instanceof Date) {
+            claims.put(claimName, ((Date) value).toInstant());
+            return;
+        }
+
+        if (value instanceof Number) {
+            long epochSeconds = ((Number) value).longValue();
+            claims.put(claimName, Instant.ofEpochSecond(epochSeconds));
+        }
     }
 
-    @Test
-    void getMyJobsByParmsTest_ok() throws Exception {
-        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getmyjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10"))
-                .andExpect(status().isOk());
+    @Bean
+    UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
+        return new UserJwtAuthenticationConverter(userDetailsService);
     }
 
-    @Test
-    void getJobDetailsByIdTest_ok() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(eq(10))).thenReturn(jobDTOS.get(0));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobdetails/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
-    @Test
-    void changeDateByIdTest_ok() throws Exception {
-        when(iJobMonitorDataService.changeDatesById(eq(10)))
-                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
+        configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
+        configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/changedates/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
 
-    @Test
-    void getreportURLTest_ok() throws Exception {
-        when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong())).thenReturn("COGNOS_REPORT_URL");
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getreporturl/300")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    // ✅ Adds coverage for: getCasesDetailsByJobId(Integer)
-    @Test
-    void getCasesDetailsByJobId_ok() throws Exception {
-        when(iJobMonitorDataService.getCasesDetailsByJobId(eq(10)))
-                .thenReturn(Arrays.asList("A-2025-00001", "B-2025-00002"));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getCasesDetails/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-
-    // ✅ Adds coverage for: getFadsConfigDetails(List)
-    @Test
-    void getFadsConfigDetails_ok() throws Exception {
-        FadsConfigProperties p1 = new FadsConfigProperties();
-        p1.setCode(300L);
-        p1.setDesc("desc");
-        p1.setValue("val");
-
-        when(iJobMonitorDataService.getFadsConfigByIds(anyList()))
-                .thenReturn(List.of(p1));
-
-        mockMvc.perform(MockMvcRequestBuilders.get("/getFadsConfigDetails")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("optionCodes", "300", "301"))
-                .andExpect(status().isOk());
-    }
-
-    // ✅ Covers NumberFormatException branch in getFadsConfigDetails
-    @Test
-    void getFadsConfigDetails_badRequest_whenOptionCodesNotNumeric() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.get("/getFadsConfigDetails")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("optionCodes", "ABC"))
-                .andExpect(status().isBadRequest());
+        logger.info("CORS configuration registered for all paths");
+        return source;
     }
 }
+
+[INFO] -------------------------------------------------------------
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-jobmonitor-api/src/main/java/com/optum/fads/pgp/jobs/api/config/SecurityConfig.java:[39,66] cannot find symbol
+  symbol:   class SecurityConfigTest
+  location: class com.optum.fads.pgp.jobs.api.config.SecurityConfig
+[INFO] 1 error
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.173 s
+[INFO] Finished at: 2025-12-18T16:21:03+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project fads-pgp-jobmonitor-api: Compilation failure
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-jobmonitor-api/src/main/java/com/optum/fads/pgp/jobs/api/config/SecurityConfig.java:[39,66] cannot find symbol
+[ERROR]   symbol:   class SecurityConfigTest
+[ERROR]   location: class com.optum.fads.pgp.jobs.api.config.SecurityConfig
+[ERROR]
+[ERROR] -> [Help 1]
+[ERROR]
