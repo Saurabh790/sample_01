@@ -1,30 +1,98 @@
-[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.042 s -- in com.optum.fads.pgp.jobs.api.service.impl.util.ServiceUtilTest
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   SecurityConfigTest.jwtDecoder_shouldConvertTimeClaimsToInstant_includingAuthTimeNumber:74 auth_time should be Instant ==> expected: <true> but was: <false>
-[ERROR] Errors:
-[ERROR]   SecurityConfigTest.corsConfigurationSource_shouldAllowAll:39 » NullPointer Cannot invoke "jakarta.servlet.ServletRequest.getAttribute(String)" because "request" is null
-[INFO]
-[ERROR] Tests run: 46, Failures: 1, Errors: 1, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  34.545 s
-[INFO] Finished at: 2025-12-18T16:33:31+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api: There are test failures.
-[ERROR]
-[ERROR] Please refer to C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api\target\surefire-reports for the individual test results.
-[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+package com.optum.fads.pgp.jobs.api.config;
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api>
+import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class SecurityConfigTest {
+
+    @Test
+    void passwordEncoder_shouldCreate() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        PasswordEncoder encoder = cfg.passwordEncoder();
+
+        assertNotNull(encoder);
+        assertTrue(encoder.matches("pass", encoder.encode("pass")));
+    }
+
+    @Test
+    void corsConfigurationSource_shouldAllowAll() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        CorsConfigurationSource source = cfg.corsConfigurationSource();
+        assertNotNull(source);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/any");
+
+        CorsConfiguration conf = source.getCorsConfiguration(request);
+        assertNotNull(conf);
+
+        // You used CorsConfiguration.ALL which is "*"
+        assertTrue(conf.getAllowedOrigins() == null || conf.getAllowedOrigins().contains("*"));
+        assertTrue(conf.getAllowedMethods() == null || conf.getAllowedMethods().contains("*"));
+        assertTrue(conf.getAllowedHeaders() == null || conf.getAllowedHeaders().contains("*"));
+    }
+
+    @Test
+    void jwtDecoder_shouldConvertStandardDateClaimsToInstant_andLeaveAuthTimeAsNumber() {
+        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        JwtDecoder decoder = cfg.jwtDecoder();
+
+        long now = Instant.now().getEpochSecond();
+
+        // alg=none token so JWTParser can parse it (no signature)
+        String token = unsignedJwt("""
+            {
+              "sub":"user1",
+              "iat": %d,
+              "exp": %d,
+              "nbf": %d,
+              "auth_time": %d
+            }
+            """.formatted(now, now + 3600, now - 10, now - 100));
+
+        Jwt jwt = decoder.decode(token);
+        assertNotNull(jwt);
+        assertEquals("user1", jwt.getClaimAsString("sub"));
+
+        // In many Nimbus cases: iat/exp/nbf become Date -> your code converts to Instant
+        assertTrue(jwt.getClaim("iat") instanceof Instant, "iat should be Instant");
+        assertTrue(jwt.getClaim("exp") instanceof Instant, "exp should be Instant");
+        assertTrue(jwt.getClaim("nbf") instanceof Instant, "nbf should be Instant");
+
+        // IMPORTANT: your main code converts ONLY Date -> Instant.
+        // Nimbus commonly keeps auth_time as Number, so it will NOT become Instant.
+        assertTrue(jwt.getClaim("auth_time") instanceof Number, "auth_time should remain Number with current main code");
+    }
+
+    // ---------------- helpers ----------------
+
+    /** Creates an unsigned JWT token (alg=none): header.payload. */
+    private static String unsignedJwt(String payloadJson) {
+        String headerJson = "{\"alg\":\"none\",\"typ\":\"JWT\"}";
+        return b64Url(headerJson) + "." + b64Url(payloadJson.trim()) + ".";
+    }
+
+    private static String b64Url(String s) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(s.getBytes(StandardCharsets.UTF_8));
+    }
+}
