@@ -1,186 +1,564 @@
-package com.optum.fads.pgp.jobs.api.controller;
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0">
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.optum.fads.pgp.jobs.api.common.JobsConstants;
-import com.optum.fads.pgp.jobs.api.common.ListTableParams;
-import com.optum.fads.pgp.jobs.api.dto.FadsUser;
-import com.optum.fads.pgp.jobs.api.dto.JobDTO;
-import com.optum.fads.pgp.jobs.api.dto.PaginationResult;
-import com.optum.fads.pgp.jobs.api.service.IJobMonitorDataService;
-import com.optum.fads.pgp.jobs.api.snowflakeDomain.JobMasterT;
-import com.optum.fads.pgp.jobs.api.util.TestUtil;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+    <modelVersion>4.0.0</modelVersion>
 
-import java.util.ArrayList;
-import java.util.List;
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-case-reminders-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.8</version>
+        <relativePath/>
+    </parent>
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT) // avoids UnnecessaryStubbing errors
-public class JobMonitorControllerTest {
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>centraluhg.jfrog.io-releases</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
 
-    private MockMvc mockMvc;
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <surefire.skip>${skipTests}</surefire.skip>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+        <netty.version>4.1.125.Final</netty.version>
+		<reactor-netty.version>1.2.8</reactor-netty.version>
+        <log4j2.version>2.17.2</log4j2.version>
+        <java.version>17</java.version>
+        <spring.boot.version>3.5.8</spring.boot.version>
+        <spring.cloud.version>2025.0.0</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.3.0</jwt.version>
+        <cloudsdk.version>4.2.0-RELEASE</cloudsdk.version>
+        <modelmapper.version>2.3.0</modelmapper.version>
+        <jacoco.version>0.8.4</jacoco.version>
+        <springrunner.version>0.1.0</springrunner.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>6.0</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <restassured.version>3.3.0</restassured.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <hibernate.core.version>6.2.3.Final</hibernate.core.version>
+        <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+        <sonar.coverage.exclusions>
+            **/com/optum/fads/casereminders.api/**,
+        </sonar.coverage.exclusions>
+        <bcp.version>1.68</bcp.version>
+    </properties>
 
-    @Mock private IJobMonitorDataService iJobMonitorDataService;
-    @Mock private FadsUser appUser;
-    @Mock private Authentication authentication;
-    @Mock private SecurityContext securityContext;
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>2.16.0</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
-    @InjectMocks private JobMonitorController jobMonitorController;
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-bom</artifactId>
+				<version>4.1.124.Final</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 
-    private ObjectMapper objectMapper;
-    private PaginationResult result;
-    private List<JobDTO> jobDTOS;
+        </dependencies>
+    </dependencyManagement>
 
-    @BeforeEach
-    void setUp() throws Exception {
-        mockMvc = MockMvcBuilders.standaloneSetup(jobMonitorController).build();
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+        </dependency>
 
-        // Put our mocked SecurityContext into SecurityContextHolder
-        SecurityContextHolder.setContext(securityContext);
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
 
-        // LENIENT stubs: not every endpoint uses security, so strict mode complains otherwise
-        lenient().when(securityContext.getAuthentication()).thenReturn(authentication);
-        lenient().when(authentication.getPrincipal()).thenReturn(appUser);
-        lenient().when(appUser.getUserSystemId()).thenReturn("test-user");
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+            <dependency>
+    <groupId>org.apache.tomcat.embed</groupId>
+    <artifactId>tomcat-embed-core</artifactId>
+    <version>10.1.47</version>
+</dependency>
 
-        result = new PaginationResult();
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-email -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-email</artifactId>
+            <version>1.5</version>
+        </dependency>
 
-        List<JobMasterT> jobMasterSnowFlakeTS = new ArrayList<>();
-        jobMasterSnowFlakeTS.add(TestUtil.initializeJobs(10));
-        jobDTOS = TestUtil.populateJobDataList(jobMasterSnowFlakeTS);
-        result.setJobsData(jobDTOS);
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.20</version>
+        </dependency>
 
-        objectMapper = new ObjectMapper();
-    }
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.5.20</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.14</version>
+        </dependency>
 
-    @Test
-    void sanity() {
-        assertNotNull(mockMvc);
-        assertNotNull(jobDTOS);
-    }
 
-    @Test
-    void canceljobByIdTest() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(jobDTOS.get(0));
-        when(iJobMonitorDataService.cancelJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_CANCELED);
+        <!-- Model Mapper -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.put("/canceljob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+        <!-- MapStruct -->
 
-    @Test
-    void purgeJobsByIdTest() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(anyInt())).thenReturn(jobDTOS.get(0));
-        when(iJobMonitorDataService.purgeJob(any(JobDTO.class))).thenReturn(JobsConstants.JOB_PURGED);
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.delete("/purgejob/10")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+        <!-- Jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
 
-    @Test
-    void changeScheduleDateByIdTest() throws Exception {
-        when(iJobMonitorDataService.changeScheduleDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.RUN_DATE_SAVED);
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.put("/changescheduledate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(jobDTOS.get(0))))
-                .andExpect(status().isOk());
-    }
+        <!--Used in Getter/Setter Verifier @NonNull  -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
 
-    @Test
-    void changePurgeDateById_ok() throws Exception {
-        when(iJobMonitorDataService.changePurgeDateById(any(JobDTO.class)))
-                .thenReturn(JobsConstants.PURGE_DATE_SAVED);
+       <dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			 <version>3.18.0</version>
+		</dependency>
 
-        String body = """
-            {
-              "jobId": 10,
-              "status": 20,
-              "purgeDate": "12/31/2025"
-            }
-            """;
 
-        mockMvc.perform(MockMvcRequestBuilders.put("/changepurgedate")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isOk());
-    }
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
-    @Test
-    void getJobsByParmsTest() throws Exception {
-        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
+        <!-- JSON logging-->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10")
-                        .param("sortBy", "jobId")
-                        .param("sortOrder", "-1")
-                        .param("searchInput", "abc"))
-                .andExpect(status().isOk());
-    }
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
 
-    @Test
-    void getMyJobsByParmsTest() throws Exception {
-        when(iJobMonitorDataService.getJobsByListTableParms(any(ListTableParams.class)))
-                .thenReturn(result);
+        <!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
+        <dependency>
+            <groupId>org.codehaus.jettison</groupId>
+            <artifactId>jettison</artifactId>
+            <version>1.5.4</version>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getmyjobs/")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .param("pageNumber", "1")
-                        .param("recordsPerPage", "10"))
-                .andExpect(status().isOk());
-    }
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-    @Test
-    void getJobDetailsByIdTest() throws Exception {
-        when(iJobMonitorDataService.getJobDetailsById(eq(10))).thenReturn(jobDTOS.get(0));
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getjobdetails/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
+        </dependency>
 
-    @Test
-    void changeDateByIdTest() throws Exception {
-        when(iJobMonitorDataService.changeDatesById(eq(10)))
-                .thenReturn(JobsConstants.CHANGE_DATES_INVALID_REQUEST);
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/changedates/10")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.bitbucket.radistao.test</groupId>
+            <artifactId>before-after-spring-test-runner</artifactId>
+            <version>${springrunner.version}</version>
+            <scope>test</scope>
+        </dependency>
 
-    @Test
-    void getreportURLTest() throws Exception {
-        when(iJobMonitorDataService.getReportUrlByOptionCd(anyLong())).thenReturn("COGNOS_REPORT_URL");
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <scope>test</scope>
+        </dependency>
 
-        mockMvc.perform(MockMvcRequestBuilders.get("/getreporturl/300")
-                        .accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-    }
-}
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+        </dependency>
+
+        <!-- Quartz-Java dependency Remediation Upgrade  -->
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${hibernate.core.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+        
+        
+		<dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>json-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>accessors-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-http</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-core</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http2</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler-proxy</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-socks</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-buffer</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-unix-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-classes-epoll</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<!-- Native classifiers that Reactor Netty pulls in -->
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-epoll</artifactId>
+			<version>${netty.version}</version>
+			<classifier>linux-x86_64</classifier>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-classes-macos</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-native-macos</artifactId>
+			<version>${netty.version}</version>
+			<classifier>osx-x86_64</classifier>
+		</dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${org.mapstruct.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.0.0-M2</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring.boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skip>${surefire.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
+
+this is current pom and surefire reports are not generating anything folder is empty 
