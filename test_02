@@ -1,11 +1,20 @@
- public List<String> getCasesDetailsByJobId(Integer jobId) {
-        JobMasterT jobById = jobsRepository.getJobById(jobId);
-        List<JobMasterCasesT> cases = jobById.getJobMasterCasesTs();
-        List<String> caseIds = new ArrayList<>();
-        Iterator<JobMasterCasesT> caseIterator = cases.iterator();
-        while (caseIterator.hasNext()) {
-            JobMasterCasesT obj = caseIterator.next();
-            caseIds.add(ServiceUtil.createCaseId(obj.getCaPrmNodeCd(), obj.getCaScndNodeCd(), obj.getCaSequenceId(), obj.getCaYearId()));
-        }
-        return caseIds;
+package com.optum.fads.casereminders.api.repo;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class UserRepositoryTest {
+
+    @Mock
+    private UserRepository repository;
+
+    @Test
+    void repositoryLoads() {
+        assertNotNull(repository);
     }
+}
