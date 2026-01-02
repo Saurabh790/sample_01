@@ -1,128 +1,64 @@
-// src/test/java/com/optum/fads/casereminders/api/service/impl/ReminderEmailServiceTest.java
-package com.optum.fads.casereminders.api.service.impl;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+// src/test/java/com/optum/fads/casereminders/api/repo/CaseConfigRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
 
-import java.util.Collections;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
-import com.optum.fads.casereminders.api.domain.CaEmailsT;
-import com.optum.fads.casereminders.api.domain.CaEmailsTPK;
-import com.optum.fads.casereminders.api.dto.EmailSpecs;
-import com.optum.fads.casereminders.api.general.CaseRemindersUtil;
-import com.optum.fads.casereminders.api.repo.CaEmailsRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
-@ExtendWith(MockitoExtension.class)
-class ReminderEmailServiceTest {
+@DataJpaTest
+class CaseConfigRepositoryTest {
 
-    @Mock
-    private CaEmailsRepository caEmailsRepository;
-
-    @Mock
-    private CaseRemindersUtil remindersUtil;
-
-    @InjectMocks
-    private ReminderEmailService reminderEmailService;
+    @Autowired
+    private CaseConfigRepository repository;
 
     @Test
-    void sendAllReminderMails_whenNoReminders_doesNothing() {
-        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
-                .thenReturn(Collections.emptyList());
-
-        reminderEmailService.sendAllReminderMails();
-
-        verify(remindersUtil, never()).getEmailSpecs();
-        verify(remindersUtil, never()).sendMail(any());
-        verify(caEmailsRepository, never()).save(any());
-    }
-
-    @Test
-    void sendAllReminderMails_whenSendMailTrue_marksSentAndSaves() {
-        // reminder + PK (avoid NPE on reminder.getId().getCaseId())
-        CaEmailsTPK pk = mock(CaEmailsTPK.class);
-        when(pk.getCaseId()).thenReturn("C1");
-        when(pk.getSeqNum()).thenReturn(1);
-
-        CaEmailsT reminder = mock(CaEmailsT.class);
-        when(reminder.getId()).thenReturn(pk);
-
-        when(reminder.getToEmail()).thenReturn("to@test.com");
-        when(reminder.getCcEmail()).thenReturn("cc@test.com");
-        when(reminder.getBccEmail()).thenReturn("bcc@test.com");
-        when(reminder.getSubjEmail()).thenReturn("subject");
-        when(reminder.getRemComment()).thenReturn("body");
-
-        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
-                .thenReturn(Collections.singletonList(reminder));
-
-        EmailSpecs specs = new EmailSpecs();
-        when(remindersUtil.getEmailSpecs()).thenReturn(specs);
-
-        when(remindersUtil.sendMail(any(EmailSpecs.class))).thenReturn(true);
-
-        reminderEmailService.sendAllReminderMails();
-
-        verify(remindersUtil, times(1)).getEmailSpecs();
-        verify(remindersUtil, times(1)).sendMail(any(EmailSpecs.class));
-        verify(reminder, times(1)).setSentFlag("Y");
-        verify(caEmailsRepository, times(1)).save(reminder);
-    }
-
-    @Test
-    void sendAllReminderMails_whenSendMailFalse_doesNotSave() {
-        CaEmailsTPK pk = mock(CaEmailsTPK.class);
-        when(pk.getCaseId()).thenReturn("C2");
-        when(pk.getSeqNum()).thenReturn(2);
-
-        CaEmailsT reminder = mock(CaEmailsT.class);
-        when(reminder.getId()).thenReturn(pk);
-
-        when(reminder.getToEmail()).thenReturn("to@test.com");
-        when(reminder.getSubjEmail()).thenReturn("subject");
-        when(reminder.getRemComment()).thenReturn("body");
-
-        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
-                .thenReturn(Collections.singletonList(reminder));
-
-        when(remindersUtil.getEmailSpecs()).thenReturn(new EmailSpecs());
-        when(remindersUtil.sendMail(any(EmailSpecs.class))).thenReturn(false);
-
-        reminderEmailService.sendAllReminderMails();
-
-        verify(reminder, never()).setSentFlag("Y");
-        verify(caEmailsRepository, never()).save(any());
-        verify(remindersUtil, times(1)).sendMail(any(EmailSpecs.class));
-    }
-
-    @Test
-    void sendAllReminderMails_whenSendMailThrows_exceptionIsCaught_andMethodContinues() {
-        CaEmailsTPK pk = mock(CaEmailsTPK.class);
-        when(pk.getCaseId()).thenReturn("C3");
-        when(pk.getSeqNum()).thenReturn(3);
-
-        CaEmailsT reminder = mock(CaEmailsT.class);
-        when(reminder.getId()).thenReturn(pk);
-
-        when(reminder.getToEmail()).thenReturn("to@test.com");
-        when(reminder.getSubjEmail()).thenReturn("subject");
-        when(reminder.getRemComment()).thenReturn("body");
-
-        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
-                .thenReturn(Collections.singletonList(reminder));
-
-        when(remindersUtil.getEmailSpecs()).thenReturn(new EmailSpecs());
-        when(remindersUtil.sendMail(any(EmailSpecs.class))).thenThrow(new RuntimeException("smtp down"));
-
-        assertDoesNotThrow(() -> reminderEmailService.sendAllReminderMails());
-
-        verify(caEmailsRepository, never()).save(any());
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
     }
 }
 
+
+// src/test/java/com/optum/fads/casereminders/api/repo/FadsConfigRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+@DataJpaTest
+class FadsConfigRepositoryTest {
+
+    @Autowired
+    private FadsConfigRepository repository;
+
+    @Test
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
+    }
+}
+
+// src/test/java/com/optum/fads/casereminders/api/repo/UserRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+@DataJpaTest
+class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository repository;
+
+    @Test
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
+    }
+}
