@@ -1,26 +1,206 @@
-[INFO] Results:
-[INFO]
-[ERROR] Errors:
-[ERROR]   JobMonitorDataServiceTest.getCasesDetailsByJobId_shouldReturnListOfCaseIds:343 » NullPointer Cannot invoke "java.lang.Integer.intValue()" because "caSequenceId" is null
-[INFO]
-[ERROR] Tests run: 65, Failures: 0, Errors: 1, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  31.753 s
-[INFO] Finished at: 2025-12-18T17:03:51+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-pgp-jobmonitor-api:
-[ERROR]
-[ERROR] Please refer to C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api\target\surefire-reports for the individual test results.
-[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+// src/test/java/com/optum/fads/casereminders/api/service/impl/ReminderEmailServiceTest.java
+package com.optum.fads.casereminders.api.service.impl;
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-jobmonitor-api>
+import static org.mockito.Mockito.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
+import com.optum.fads.casereminders.api.domain.CaEmailsT;
+import com.optum.fads.casereminders.api.dto.EmailSpecs;
+import com.optum.fads.casereminders.api.general.CaseRemindersUtil;
+import com.optum.fads.casereminders.api.repo.CaEmailsRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class ReminderEmailServiceTest {
+
+    @Mock
+    private CaEmailsRepository caEmailsRepository;
+
+    @Mock
+    private CaseRemindersUtil remindersUtil;
+
+    @InjectMocks
+    private ReminderEmailService reminderEmailService;
+
+    @Test
+    void sendAllReminderMails_whenNoReminders_doesNothing() {
+        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
+                .thenReturn(Collections.emptyList());
+        when(remindersUtil.getEmailSpecs()).thenReturn(new EmailSpecs());
+
+        reminderEmailService.sendAllReminderMails();
+
+        verify(caEmailsRepository, never()).save(any());
+        verify(remindersUtil, never()).sendMail(any());
+    }
+
+    @Test
+    void sendAllReminderMails_whenSendMailTrue_marksSentAndSaves() {
+        CaEmailsT r1 = mock(CaEmailsT.class);
+        when(r1.getToEmail()).thenReturn("to1@test.com");
+        when(r1.getCcEmail()).thenReturn("cc1@test.com");
+        when(r1.getBccEmail()).thenReturn("bcc1@test.com");
+        when(r1.getSubjEmail()).thenReturn("subj1");
+        when(r1.getRemComment()).thenReturn("body1");
+
+        List<CaEmailsT> list = Arrays.asList(r1);
+
+        EmailSpecs specs = spy(new EmailSpecs());
+        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE)).thenReturn(list);
+        when(remindersUtil.getEmailSpecs()).thenReturn(specs);
+        when(remindersUtil.sendMail(any(EmailSpecs.class))).thenReturn(true);
+
+        reminderEmailService.sendAllReminderMails();
+
+        verify(remindersUtil, times(1)).sendMail(any(EmailSpecs.class));
+        verify(r1, times(1)).setSentFlag("Y");
+        verify(caEmailsRepository, times(1)).save(r1);
+    }
+
+    @Test
+    void sendAllReminderMails_whenSendMailFalse_doesNotSave() {
+        CaEmailsT r1 = mock(CaEmailsT.class);
+        when(r1.getToEmail()).thenReturn("to1@test.com");
+        when(r1.getCcEmail()).thenReturn(null);
+        when(r1.getBccEmail()).thenReturn(null);
+        when(r1.getSubjEmail()).thenReturn("subj1");
+        when(r1.getRemComment()).thenReturn("body1");
+
+        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
+                .thenReturn(Collections.singletonList(r1));
+        when(remindersUtil.getEmailSpecs()).thenReturn(new EmailSpecs());
+        when(remindersUtil.sendMail(any(EmailSpecs.class))).thenReturn(false);
+
+        reminderEmailService.sendAllReminderMails();
+
+        verify(r1, never()).setSentFlag("Y");
+        verify(caEmailsRepository, never()).save(any());
+    }
+
+    @Test
+    void sendAllReminderMails_whenExceptionThrown_doesNotFailTestRun() {
+        when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
+                .thenThrow(new RuntimeException("db down"));
+
+        reminderEmailService.sendAllReminderMails();
+
+        verify(caEmailsRepository, times(1)).findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE);
+    }
+}
+
+
+// src/test/java/com/optum/fads/casereminders/api/config/CommonConfigTest.java
+package com.optum.fads.casereminders.api.config;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+
+class CommonConfigTest {
+
+    @Test
+    void modelMapperBean_isPrototype_andHasStrictMatching() {
+        CommonConfig cfg = new CommonConfig();
+
+        ModelMapper m1 = cfg.modelMapper();
+        ModelMapper m2 = cfg.modelMapper();
+
+        assertNotNull(m1);
+        assertNotNull(m2);
+        assertNotSame(m1, m2);
+
+        assertTrue(m1.getConfiguration().isAmbiguityIgnored());
+        assertEquals(MatchingStrategies.STRICT, m1.getConfiguration().getMatchingStrategy());
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/config/RemindersJobConfigTest.java
+package com.optum.fads.casereminders.api.config;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import com.optum.fads.casereminders.api.job.SendRemindersJob;
+import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
+import org.junit.jupiter.api.Test;
+import org.quartz.CronTrigger;
+import org.quartz.JobDetail;
+import org.quartz.Trigger;
+
+class RemindersJobConfigTest {
+
+    @Test
+    void sendRemindersJobDetails_createsExpectedJobDetail() {
+        RemindersJobConfig cfg = new RemindersJobConfig();
+
+        JobDetail jd = cfg.sendRemindersJobDetails();
+
+        assertNotNull(jd);
+        assertEquals("sendremindersjob", jd.getKey().getName());
+        assertTrue(jd.isDurable());
+        assertEquals(SendRemindersJob.class, jd.getJobClass());
+    }
+
+    @Test
+    void sendRemindersJobTrigger_usesCronFromRepository() {
+        RemindersJobConfig cfg = new RemindersJobConfig();
+        CaseConfigRepository repo = mock(CaseConfigRepository.class);
+
+        when(repo.getOptionValue("CRON_EXPRESSION")).thenReturn("0 * * * * ?");
+
+        Trigger trigger = cfg.sendRemindersJobTrigger(repo);
+
+        assertNotNull(trigger);
+        assertEquals("SendRemindersJobTrigger", trigger.getKey().getName());
+        assertEquals("TestGroup", trigger.getKey().getGroup());
+        assertEquals("sendremindersjob", trigger.getJobKey().getName());
+
+        assertTrue(trigger instanceof CronTrigger);
+        CronTrigger ct = (CronTrigger) trigger;
+        assertEquals("0 * * * * ?", ct.getCronExpression());
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/config/ServiceConfigSQLTest.java
+package com.optum.fads.casereminders.api.config;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import jakarta.persistence.EntityManagerFactory;
+import org.junit.jupiter.api.Test;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.orm.jpa.JpaTransactionManager;
+
+class ServiceConfigSQLTest {
+
+    @Test
+    void txManagerSQL_createsJpaTransactionManager() {
+        ServiceConfigSQL cfg = new ServiceConfigSQL();
+
+        EntityManagerFactory emf = cfg.sqlEntityManagerFactory().getObject();
+        PlatformTransactionManager tx = cfg.txManagerSQL(emf);
+
+        assertNotNull(tx);
+        assertTrue(tx instanceof JpaTransactionManager);
+    }
+
+    @Test
+    void sqlEntityManagerFactory_hasPackagesToScanConfigured() {
+        ServiceConfigSQL cfg = new ServiceConfigSQL();
+
+        LocalContainerEntityManagerFactoryBean bean = cfg.sqlEntityManagerFactory();
+
+        assertNotNull(bean);
+        // just verify it was set (we avoid bootstrapping a real DataSource)
+        assertNotNull(bean.getJpaVendorAdapter());
+    }
+}
