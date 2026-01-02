@@ -1,34 +1,16 @@
-package com.optum.fads.casereminders.api.controller;
+@Test
+void sendAllReminderMails_whenNoReminders_doesNotSendMailOrSave() {
+    when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
+            .thenReturn(Collections.emptyList());
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+    when(remindersUtil.getEmailSpecs()).thenReturn(new EmailSpecs());
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+    reminderEmailService.sendAllReminderMails();
 
-import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
-import com.optum.fads.casereminders.api.service.IReminderEmailService;
+    // getEmailSpecs() IS called even if list is empty
+    verify(remindersUtil, times(1)).getEmailSpecs();
 
-@ExtendWith(MockitoExtension.class)
-public class RemindersControllerTests {
-
-    @Mock
-    private IReminderEmailService reminderEmailService;
-
-    @InjectMocks
-    private RemindersController remindersController;
-
-    @Test
-    void sendRemindersTest() {
-
-        ResponseEntity<String> responseEntity = remindersController.sendReminders();
-
-        assertNotNull(responseEntity);
-        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
-    }
+    // but these should not happen
+    verify(remindersUtil, never()).sendMail(any(EmailSpecs.class));
+    verify(caEmailsRepository, never()).save(any());
 }
