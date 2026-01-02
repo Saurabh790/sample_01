@@ -1,16 +1,209 @@
-@Test
-void sendAllReminderMails_whenNoReminders_doesNotSendMailOrSave() {
-    when(caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE))
-            .thenReturn(Collections.emptyList());
+// src/test/java/com/optum/fads/casereminders/api/job/SendRemindersJobTest.java
+package com.optum.fads.casereminders.api.job;
 
-    when(remindersUtil.getEmailSpecs()).thenReturn(new EmailSpecs());
+import static org.mockito.Mockito.*;
 
-    reminderEmailService.sendAllReminderMails();
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.quartz.JobExecutionContext;
 
-    // getEmailSpecs() IS called even if list is empty
-    verify(remindersUtil, times(1)).getEmailSpecs();
+import com.optum.fads.casereminders.api.service.IReminderEmailService;
 
-    // but these should not happen
-    verify(remindersUtil, never()).sendMail(any(EmailSpecs.class));
-    verify(caEmailsRepository, never()).save(any());
+@ExtendWith(MockitoExtension.class)
+class SendRemindersJobTest {
+
+    @Mock
+    private IReminderEmailService reminderEmailService;
+
+    @Mock
+    private JobExecutionContext context;
+
+    @InjectMocks
+    private SendRemindersJob job;
+
+    @Test
+    void executeInternal_callsService() throws Exception {
+        job.executeInternal(context);
+
+        verify(reminderEmailService, times(1)).sendAllReminderMails();
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/repo/CaEmailsRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
+
+@DataJpaTest
+@Import(TestJpaConfig.class)
+class CaEmailsRepositoryTest {
+
+    private final CaEmailsRepository repository;
+
+    CaEmailsRepositoryTest(CaEmailsRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/repo/CaseConfigRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+@DataJpaTest
+class CaseConfigRepositoryTest {
+
+    private final CaseConfigRepository repository;
+
+    CaseConfigRepositoryTest(CaseConfigRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/repo/FadsConfigRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+@DataJpaTest
+class FadsConfigRepositoryTest {
+
+    private final FadsConfigRepository repository;
+
+    FadsConfigRepositoryTest(FadsConfigRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/repo/UserRepositoryTest.java
+package com.optum.fads.casereminders.api.repo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+@DataJpaTest
+class UserRepositoryTest {
+
+    private final UserRepository repository;
+
+    UserRepositoryTest(UserRepository repository) {
+        this.repository = repository;
+    }
+
+    @Test
+    void repositoryLoads() {
+        assertThat(repository).isNotNull();
+    }
+}
+// src/test/java/com/optum/fads/casereminders/api/general/CaseRemindersUtilTest.java
+package com.optum.fads.casereminders.api.general;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.Optional;
+
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
+import com.optum.fads.casereminders.api.domain.UiUserBase;
+import com.optum.fads.casereminders.api.dto.EmailSpecs;
+import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
+import com.optum.fads.casereminders.api.repo.FadsConfigRepository;
+import com.optum.fads.casereminders.api.repo.UserRepository;
+
+@ExtendWith(MockitoExtension.class)
+class CaseRemindersUtilTest {
+
+    @Mock
+    private FadsConfigRepository fadsConfigRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private CaseConfigRepository caseConfigRepository;
+
+    @InjectMocks
+    private CaseRemindersUtil util;
+
+    @Test
+    void createJsonInput_buildsJsonCorrectly() {
+        String json = util.createJsonInput(
+                "to@test.com",
+                "cc@test.com",
+                "bcc@test.com",
+                "subject",
+                "body"
+        );
+
+        assertTrue(json.contains("EmailSubject"));
+        assertTrue(json.contains("EmailText"));
+        assertTrue(json.contains("SendTo"));
+        assertTrue(json.contains("cc"));
+        assertTrue(json.contains("bcc"));
+    }
+
+    @Test
+    void getCtAdminSystemId_whenUserExists_returnsSystemId() {
+        when(caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID))
+                .thenReturn("admin@test.com");
+
+        UiUserBase user = mock(UiUserBase.class);
+        when(user.getUiSystemId()).thenReturn("SYS123");
+
+        when(userRepository.findByUiEMailAddress("admin@test.com"))
+                .thenReturn(Optional.of(user));
+
+        String result = util.getCtAdminSystemId();
+
+        assertEquals("SYS123", result);
+    }
+
+    @Test
+    void sendMail_whenAzureLogicAppPath_returnsTrue() {
+        EmailSpecs specs = new EmailSpecs();
+        specs.setSmtpHostName(null);
+        specs.setHttpPost(mock(HttpPost.class));
+        specs.setHttpClient(mock(HttpClient.class));
+        specs.setSendToEmail("to@test.com");
+        specs.setEmailSubject("subject");
+        specs.setEmailText("body");
+
+        boolean result = util.sendMail(specs);
+
+        assertTrue(result);
+    }
 }
