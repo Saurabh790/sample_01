@@ -1,215 +1,51 @@
-package com.optum.fads.casereminders.api.service.impl;
+2026-01-02T11:38:08.025+05:30  INFO  --- [           main] c.o.f.c.a.s.impl.ReminderEmailService    : Processing reminder Case = 2 2
+2026-01-02T11:38:08.028+05:30  INFO  --- [           main] c.o.f.c.a.s.impl.ReminderEmailService    : sendAllReminderMails ends...
+[ERROR] Tests run: 4, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.656 s <<< FAILURE! -- in com.optum.fads.casereminders.api.service.impl.ReminderEmailServiceTest
+[ERROR] com.optum.fads.casereminders.api.service.impl.ReminderEmailServiceTest.sendAllReminderMails_whenNoReminders_doesNothing -- Time elapsed: 0.072 s <<< FAILURE!
+org.mockito.exceptions.verification.NeverWantedButInvoked:
 
-import java.util.List;
+remindersUtil.getEmailSpecs();
+Never wanted here:
+-> at com.optum.fads.casereminders.api.general.CaseRemindersUtil.getEmailSpecs(CaseRemindersUtil.java:157)
+But invoked here:
+-> at com.optum.fads.casereminders.api.service.impl.ReminderEmailService.sendAllReminderMails(ReminderEmailService.java:40) with arguments: []
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+        at com.optum.fads.casereminders.api.general.CaseRemindersUtil.getEmailSpecs(CaseRemindersUtil.java:157)
+        at com.optum.fads.casereminders.api.service.impl.ReminderEmailServiceTest.sendAllReminderMails_whenNoReminders_doesNothing(ReminderEmailServiceTest.java:40)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
 
-import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
-import com.optum.fads.casereminders.api.domain.CaEmailsT;
-import com.optum.fads.casereminders.api.dto.EmailSpecs;
-import com.optum.fads.casereminders.api.general.CaseRemindersUtil;
-import com.optum.fads.casereminders.api.repo.CaEmailsRepository;
-import com.optum.fads.casereminders.api.service.IReminderEmailService;
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   ReminderEmailServiceTest.sendAllReminderMails_whenNoReminders_doesNothing:40
+remindersUtil.getEmailSpecs();
+Never wanted here:
+-> at com.optum.fads.casereminders.api.general.CaseRemindersUtil.getEmailSpecs(CaseRemindersUtil.java:157)
+But invoked here:
+-> at com.optum.fads.casereminders.api.service.impl.ReminderEmailService.sendAllReminderMails(ReminderEmailService.java:40) with arguments: []
 
-import lombok.extern.slf4j.Slf4j;
+[INFO]
+[ERROR] Tests run: 10, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  21.779 s
+[INFO] Finished at: 2026-01-02T11:38:08+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test (default-test) on project fads-case-reminders-api: There are test failures.
+[ERROR]
+[ERROR] Please refer to C:\Users\sgupt664\BE_Projects\fads-case-reminders-api\target\surefire-reports for the individual test results.
+[ERROR] Please refer to dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-@Slf4j
-@Component
-public class ReminderEmailService implements IReminderEmailService {
-
-	// private static final String SMTP_HOST_NAME = "SMTP_HOST_NAME";
-
-	@Autowired
-	private CaEmailsRepository caEmailsRepository;
-	/*
-	@Autowired
-	private UiUserBaseRepository uiUserBaseRepository;
-	*/
-	@Autowired
-	private CaseRemindersUtil remindersUtil;
-
-	/**
-	 * Send Reminder emails
-	 * @param none
-	 */
-	public void sendAllReminderMails() {
-		log.info("sendAllReminderMails starts...");
-		boolean mailStatus = false;
-		List<CaEmailsT> list = caEmailsRepository.findTodaysReminders(CaseEntryConstants.REMINDER_EMAIL_TYPE);
-		EmailSpecs emailSpecs = remindersUtil.getEmailSpecs();
-		try {
-			for (CaEmailsT reminder : list) {
-				log.info("Processing reminder Case = " + reminder.getId().getCaseId() + " " + reminder.getId().getSeqNum());
-				emailSpecs.setSendToEmail(reminder.getToEmail());
-				emailSpecs.setCcEmail(reminder.getCcEmail());
-				emailSpecs.setBccEmail(reminder.getBccEmail());
-				emailSpecs.setEmailSubject(reminder.getSubjEmail());
-				emailSpecs.setEmailText(reminder.getRemComment());
-				mailStatus = remindersUtil.sendMail(emailSpecs);
-				if (mailStatus) {
-					reminder.setSentFlag("Y");	// Existing CaEmailsT - Update Sent flag to 'Y'
-					caEmailsRepository.save(reminder);
-				}
-			}
-		} catch (Exception e) {
-			log.info("sendAllReminderMails Exception = " + e.getMessage());
-		} 	
-		log.info("sendAllReminderMails ends...");
-	}
-
-}
-
-
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
-
-package com.optum.fads.casereminders.api.config;
-
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
-
-/**
- * The CommonConfig holds spring based configuration
- */
-@Configuration
-public class CommonConfig {
-
-    /**
-     * Model Mapper for mapping objects
-     *
-     * @return modelMapper
-     */
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
-    }
-}
-package com.optum.fads.casereminders.api.config;
-
-import org.quartz.CronScheduleBuilder;
-import org.quartz.JobBuilder;
-import org.quartz.JobDetail;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import com.optum.fads.casereminders.api.job.SendRemindersJob;
-import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
-
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
-@Configuration
-public class RemindersJobConfig {
-
-	private static final String CRON_EXPRESSION = "CRON_EXPRESSION";
-	
-// 	Cron job parameters - second minute hour day of month month day of week command to execute
-//	Question mark (?) - to input �no specific value� for the �day of the month� and �day of the week� fields.
-//  @Scheduled(cron = "0 * * * * ?")	// Run task every minute
-//  @Scheduled(cron = "0 */30 * * * ?")	// Run task every 30 minutes
-//	String cronExpression =  "0 0 0 29 2 ?";// Cron expression for job that will execute only on Feb 29
-//	String cronExpression = "0 * * * * ?";		// Run every minute
-//	String cronExpression = "0 0 0/4 ? * * *";	// Run every 4 hours
-	
-	@Bean
-	public JobDetail sendRemindersJobDetails() {
-		
-		return JobBuilder.newJob(SendRemindersJob.class).withIdentity("sendremindersjob")
-				.storeDurably().build();
-	}
-
-	@Bean
-	public Trigger sendRemindersJobTrigger(CaseConfigRepository caseConfigRepository) {		
-		String cronExpression = caseConfigRepository.getOptionValue(CRON_EXPRESSION);
-
-		log.info("sendRemindersJobTrigger set up with Cron Expression " + cronExpression);
-		return TriggerBuilder.newTrigger().forJob(sendRemindersJobDetails()).withIdentity("SendRemindersJobTrigger", "TestGroup")
-				.withSchedule(CronScheduleBuilder.cronSchedule(cronExpression)).build();
-	}
-
-}
-package com.optum.fads.casereminders.api.config;
-
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import jakarta.persistence.EntityManagerFactory;
-
-/**
- * @author sbajaj8
- *
- */
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
-						transactionManagerRef = "txManagerSQL",
-						basePackages = "com.optum.fads.casereminders.api.repo" )
-		public class ServiceConfigSQL 
-		{
-			@Bean(name = "fadsSQLDataSource")
-			@ConfigurationProperties("spring.datasource.sql") 
-				public DataSource fadsSQLDataSource() {
-					return DataSourceBuilder.create().build(); 
-			}
-	
-			@Bean(name = "sqlEntityManagerFactory")
-				public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
-					{
-						LocalContainerEntityManagerFactoryBean em
-								= new LocalContainerEntityManagerFactoryBean();
-						em.setDataSource(fadsSQLDataSource());
-						em.setPackagesToScan(
-								new String[] { "com.optum.fads.casereminders.api.domain" });
-						HibernateJpaVendorAdapter vendorAdapter
-							= new HibernateJpaVendorAdapter();
-						em.setJpaVendorAdapter(vendorAdapter);
-					return em;
-					}
-	 
-	 
-	 @Bean(name = "txManagerSQL")
-	 public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
-	 {
-		 JpaTransactionManager txManager = new JpaTransactionManager();
-	        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
-	        return txManager;
-	 }
-	 
-	}
-
-
-	
-
+C:\Users\sgupt664\BE_Projects\fads-case-reminders-api>
