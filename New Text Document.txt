@@ -1,21 +1,306 @@
-<!-- 2) REPLACE your existing jacoco plugin in <build><plugins> with this -->
-<plugin>
-    <groupId>org.jacoco</groupId>
-    <artifactId>jacoco-maven-plugin</artifactId>
-    <version>${jacoco.version}</version>
-    <executions>
-        <execution>
-            <id>prepare-agent</id>
-            <goals>
-                <goal>prepare-agent</goal>
-            </goals>
-        </execution>
-        <execution>
-            <id>report</id>
-            <phase>verify</phase>
-            <goals>
-                <goal>report</goal>
-            </goals>
-        </execution>
-    </executions>
-</plugin>
+package com.optum.fads.casereminders.api.job;
+
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.quartz.QuartzJobBean;
+
+import com.optum.fads.casereminders.api.service.IReminderEmailService;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class SendRemindersJob extends QuartzJobBean {
+
+	@Autowired
+	private IReminderEmailService reminderEmailService;
+
+	@Override
+	protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
+		log.info("Send Reminders job is starting...");
+		reminderEmailService.sendAllReminderMails();
+		log.info("Sending Reminders job end...");
+	}
+
+	
+
+}
+package com.optum.fads.casereminders.api.repo;
+
+import java.util.List;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.optum.fads.casereminders.api.domain.CaEmailsT;
+import com.optum.fads.casereminders.api.domain.CaEmailsTPK;
+
+@Repository
+public interface CaEmailsRepository extends  JpaRepository<CaEmailsT, CaEmailsTPK>{
+	
+//	@Query("select e from CaReminderT e where e.remDt <= sysdate and e.sentFlag ='N'")
+	@Query(" FROM CaEmailsT e  where e.emailType = :reminderType and e.remDt <= GETDATE() and e.sentFlag ='N'")
+	List<CaEmailsT> findTodaysReminders(@Param("reminderType") String reminderType);
+	
+	@Query(value = "SELECT  Max(SEQ_NUM+1) FROM CA_EMAILS_T where CASE_ID = :caseId ", nativeQuery = true)
+	Integer getNextSequenceId(@Param("caseId") Integer caseId);
+
+}
+package com.optum.fads.casereminders.api.repo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.optum.fads.casereminders.api.domain.CaseConfigT;
+
+@Repository
+public interface CaseConfigRepository extends JpaRepository<CaseConfigT, String>{
+	
+	@Query("select e.optionValue from CaseConfigT e where e.optionCode = :optionCode")
+	public String getOptionValue(@Param("optionCode") String optionCode);
+	
+}
+/**
+ * 
+ */
+package com.optum.fads.casereminders.api.repo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
+import com.optum.fads.casereminders.api.domain.FadsConfigT;
+/**
+ * @author awagh
+ *
+ */
+public interface FadsConfigRepository extends JpaRepository<FadsConfigT,Long> , JpaSpecificationExecutor<FadsConfigT> {
+
+}
+package com.optum.fads.casereminders.api.repo;
+
+import java.util.Optional;
+
+import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.optum.fads.casereminders.api.domain.UiUserBase;
+
+@Transactional
+@Repository
+public interface UserRepository extends JpaRepository<UiUserBase, String> {
+
+	Optional<UiUserBase> findByUiUserId(String userId);
+	
+	Optional<UiUserBase> findByUiEMailAddress(String userEmail);
+
+}
+package com.optum.fads.casereminders.api.general;
+
+
+import java.util.Optional;
+
+import org.apache.commons.mail.Email;
+import org.apache.commons.mail.SimpleEmail;
+import org.apache.http.Consts;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClients;
+import org.codehaus.jettison.json.JSONException;
+import org.codehaus.jettison.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+//import com.optum.fads.casetracking.constants.FadsSchedulerConstants;
+import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
+import com.optum.fads.casereminders.api.domain.UiUserBase;
+import com.optum.fads.casereminders.api.dto.EmailSpecs;
+import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
+import com.optum.fads.casereminders.api.repo.FadsConfigRepository;
+import com.optum.fads.casereminders.api.repo.UserRepository;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Component
+public class CaseRemindersUtil {
+	
+	@Autowired
+	private FadsConfigRepository fadsConfigRepository;
+	
+	@Autowired
+	private UserRepository userRepository;
+	
+	@Autowired
+	private CaseConfigRepository caseConfigRepository;
+	
+	private static final int PORT = 25;
+    private static final boolean SSL_FLAG = false; 
+	
+	public String createJsonInput(String sendToEmail, String ccEmail, String bccEmail, String emailSubject, String emailText) {
+		
+		JSONObject emailTriggerProperties = new JSONObject();
+		try {
+			emailTriggerProperties.put("EmailSubject", emailSubject);
+			emailTriggerProperties.put("EmailText", emailText);
+			emailTriggerProperties.put("SendTo", sendToEmail);
+			if (ccEmail != null) {
+				emailTriggerProperties.put("cc", ccEmail);
+			}
+			if (bccEmail != null) {
+				emailTriggerProperties.put("bcc", bccEmail);
+			}
+		} catch (JSONException e) {
+	        log.error("Error at createJsonInput::", e);
+	    }
+		log.info("remindersUtil:createJsonInput " + emailTriggerProperties.toString());
+		return emailTriggerProperties.toString();
+	}
+	
+	/**
+	  * this method will send an email via the Azure Logic App
+	  * 
+	  * Parameters - HttpPost, HttpClient, jsonInputString 
+	  */
+	
+	public synchronized  boolean sendMailLogicAppPost(HttpPost httpPost, HttpClient httpClient, String jsonInputString) {
+		boolean mailStatus = false;
+		try {
+			log.info("sendMailLogicAppPost - use HttpPost to send email");
+			//Execute and get the response.
+			StringEntity stringEntity = new StringEntity(jsonInputString,
+			        ContentType.create("plain/text", Consts.UTF_8));
+			httpPost.setEntity(stringEntity);
+			HttpResponse response = httpClient.execute(httpPost);
+			/*
+			HttpEntity entity = response.getEntity();
+			if (entity != null) {
+				BufferedReader br = new BufferedReader(new InputStreamReader(entity.getContent()));
+				StringBuilder totalResponse = new StringBuilder();
+			    String responseLine = CaseEntryConstants.EMPTY_STR;
+			    while ((responseLine = br.readLine()) != null) {
+			    	totalResponse.append(responseLine.trim());
+			    }
+			    log.info("sendMailLogicAppPost response = " + totalResponse.toString());
+			}
+			*/
+			mailStatus = true;
+		} catch (Exception e) {
+			log.error("Error at remindersUtil.sendMailLogicApp::", e);
+		}
+		
+		return mailStatus;
+	}
+	/**
+	  * New method, that will send an email via Azure logic app or SMTP server
+	  * 
+	  * Parameters - EmailSpecs 
+	  */
+	//public synchronized  boolean sendMail(String sendToEmail, String ccEmail, String bccEmail, String emailSubject, String emailText) {
+	public synchronized  boolean sendMail(EmailSpecs emailSpecs) {
+		boolean mailStatus = false;
+		String jsonInputString;
+		
+		try { 
+		//	String smtpHostName = caseConfigRepository.getOptionValue(CaseEntryConstants.SMTP_HOST_NAME);
+			if (emailSpecs.getSmtpHostName() == null) {
+				jsonInputString = createJsonInput(emailSpecs.getSendToEmail(), emailSpecs.getCcEmail(), emailSpecs.getBccEmail(), 
+						emailSpecs.getEmailSubject(), emailSpecs.getEmailText());
+			//	mailStatus = sendMailLogicApp(emailSpecs.getHttpURLConnection(), jsonInputString);
+				mailStatus = sendMailLogicAppPost(emailSpecs.getHttpPost(), emailSpecs.getHttpClient(), jsonInputString);
+			} else {
+				mailStatus = sendSimpleMailSmtp(emailSpecs);
+			}
+		} catch (Exception e) {
+			log.error("Error at remindersUtil:sendMail:: ", e);
+		}
+		
+		return mailStatus;
+	}
+	/**
+	  * this method will send an email using SMTP Mail Server
+	  * 
+	  * Parameters - EmailSpecs 
+	  */
+	public synchronized  boolean sendSimpleMailSmtp(EmailSpecs emailSpecs) {
+		boolean mailStatus = false;
+		try {
+			Email email = emailSpecs.getEmail();
+            email.setFrom(emailSpecs.getCtAdminEmailAddress());
+            email.setSubject(emailSpecs.getEmailSubject());
+            email.setMsg(emailSpecs.getEmailText());
+            email.addTo(emailSpecs.getSendToEmail());
+            if (emailSpecs.getCcEmail() != null && !emailSpecs.getCcEmail().isEmpty()) {
+            	email.addCc(emailSpecs.getCcEmail());
+            }
+            if (emailSpecs.getBccEmail() != null && !emailSpecs.getBccEmail().isEmpty()) {
+            	email.addBcc(emailSpecs.getBccEmail());
+            }
+            email.send();
+		} catch (Exception e) {
+			log.error("Error at remindersUtil:sendMailSmtp:: ", e);
+		}
+		return mailStatus;
+	}	
+	/** 
+	 * This method will get the Email Specs that contain entries needed for sending emails 
+	 * Parameters: None
+	 */
+	public EmailSpecs getEmailSpecs()
+	{
+		EmailSpecs emailSpecs = new EmailSpecs();
+		try {
+			emailSpecs.setCtAdminEmailAddress(caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID));
+			emailSpecs.setAzureLogicAppUrl(caseConfigRepository.getOptionValue(CaseEntryConstants.AZURE_LOGIC_APP_URL));
+			emailSpecs.setSmtpHostName(caseConfigRepository.getOptionValue(CaseEntryConstants.SMTP_HOST_NAME)); 
+			emailSpecs.setCtAdminSystemId(getCtAdminSystemId());
+			if (emailSpecs.getSmtpHostName() == null) {
+				log.info("remindersUtil:getEmailSpecs SmtpHostName is null, Using Azure Logic App");
+				HttpPost httpPost = new HttpPost(emailSpecs.getAzureLogicAppUrl());
+				httpPost.setHeader("Content-Type", "application/json; charset=UTF-8");
+				httpPost.setHeader("Accept", "application/json");
+				emailSpecs.setHttpPost(httpPost);
+				HttpClient httpClient = HttpClients.createDefault();
+				emailSpecs.setHttpClient(httpClient);			
+			} else {
+				log.info("remindersUtil:getEmailSpecs AzureLogicAppUrl is null, Using SMTP Email Server");
+				Email email = new SimpleEmail();
+	            email.setHostName(emailSpecs.getSmtpHostName());
+	            email.setSmtpPort(PORT);
+	            email.setSSLOnConnect(SSL_FLAG);
+				emailSpecs.setEmail(email);
+			}
+		} catch (Exception e) {
+			log.error("Error at remindersUtil:sendMailSmtp:getEmailSpecs:: ", e);
+		}
+		return emailSpecs;
+	}	
+	/** 
+	 * This method will get the User System Id corresponding CT_ADMIN which has corresponding email address stored in CASE_CONFIG
+	 * Parameters: None
+	 */
+	public String getCtAdminSystemId()
+	{
+		UiUserBase uiUserBase = null;
+		String adminSystemId = null;
+		
+		String adminEmailAddress = caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID);
+			
+		Optional<UiUserBase> userBaseOptional = userRepository.findByUiEMailAddress(adminEmailAddress);
+		if (userBaseOptional.isPresent()) {
+			uiUserBase = userBaseOptional.get();
+			adminSystemId = uiUserBase.getUiSystemId();
+		} else {
+			log.error("No UiUserBase Record found with Email Address " + adminEmailAddress); 
+		}
+		return adminSystemId;
+	}
+}
