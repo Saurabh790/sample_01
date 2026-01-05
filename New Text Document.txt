@@ -1,18 +1,101 @@
-<sonar.coverage.exclusions>
-    **/exception/**,
-    **/*Application.java,
-    **/config/**,
-    **/dto/**,
-    **/domain/**
-</sonar.coverage.exclusions>
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
 
-  <!-- ✅ Exclude exception package -->
-                    <exclude>**/exception/**</exclude>
+package com.optum.fads.casereminders.api.controller;
 
-                    <!-- ✅ Exclude Spring Boot main class -->
-                    <exclude>**/*Application.class</exclude>
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-                    <!-- OPTIONAL but common -->
-                    <exclude>**/config/**</exclude>
-                    <exclude>**/dto/**</exclude>
-                    <exclude>**/domain/**</exclude>
+import com.optum.fads.casereminders.api.exception.CaseEntryApiException;
+import com.optum.fads.casereminders.api.service.IReminderEmailService;
+
+import lombok.extern.slf4j.Slf4j;
+/**
+ * Controller class containing routes for API business logic.
+ *
+ */
+@Component
+@RestController
+@CrossOrigin
+@Slf4j
+public class RemindersController {
+
+   // private ResponseBuilder responseBuilder;
+      
+    @Autowired
+  	private IReminderEmailService reminderEmailService;
+	
+	/**
+	 * this method will request send reminders email
+	 * 
+	 * @param - none
+	 */
+	
+	@PostMapping(value = { "/sendreminders" })
+	public ResponseEntity<String> sendReminders() {
+		try {
+			reminderEmailService.sendAllReminderMails();
+			return ResponseEntity.status(HttpStatus.OK).body("postReminderssMailSuccess");
+		} catch (Exception ex) {
+			log.error(ex.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+		}
+		
+	}
+
+
+
+
+
+
+}
+
+
+
+
+
+package com.optum.fads.casereminders.api.controller;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
+import com.optum.fads.casereminders.api.service.IReminderEmailService;
+
+@ExtendWith(MockitoExtension.class)
+public class RemindersControllerTests {
+
+    @Mock
+    private IReminderEmailService reminderEmailService;
+
+    @InjectMocks
+    private RemindersController remindersController;
+
+    @Test
+    void sendRemindersTest() {
+
+        ResponseEntity<String> responseEntity = remindersController.sendReminders();
+
+        assertNotNull(responseEntity);
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+    }
+}
