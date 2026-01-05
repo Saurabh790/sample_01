@@ -365,4 +365,13 @@ class CaseRemindersUtilTest {
     }
 
     @Test
-    void getCtAdminSystemId_whenRepoThrows_propagatesExce
+    void getCtAdminSystemId_whenRepoThrows_propagatesException() {
+        // NOTE: this method does NOT catch exceptions; it will throw.
+        when(caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID))
+                .thenReturn("admin@test.com");
+        when(userRepository.findByUiEMailAddress("admin@test.com"))
+                .thenThrow(new RuntimeException("db down"));
+
+        assertThrows(RuntimeException.class, () -> util.getCtAdminSystemId());
+    }
+}
