@@ -1,209 +1,103 @@
-// src/test/java/com/optum/fads/casereminders/api/job/SendRemindersJobTest.java
-package com.optum.fads.casereminders.api.job;
-
-import static org.mockito.Mockito.*;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.quartz.JobExecutionContext;
-
-import com.optum.fads.casereminders.api.service.IReminderEmailService;
-
-@ExtendWith(MockitoExtension.class)
-class SendRemindersJobTest {
-
-    @Mock
-    private IReminderEmailService reminderEmailService;
-
-    @Mock
-    private JobExecutionContext context;
-
-    @InjectMocks
-    private SendRemindersJob job;
-
-    @Test
-    void executeInternal_callsService() throws Exception {
-        job.executeInternal(context);
-
-        verify(reminderEmailService, times(1)).sendAllReminderMails();
-    }
-}
-// src/test/java/com/optum/fads/casereminders/api/repo/CaEmailsRepositoryTest.java
 package com.optum.fads.casereminders.api.repo;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
-
-@DataJpaTest
-@Import(TestJpaConfig.class)
-class CaEmailsRepositoryTest {
-
-    private final CaEmailsRepository repository;
-
-    CaEmailsRepositoryTest(CaEmailsRepository repository) {
-        this.repository = repository;
-    }
-
-    @Test
-    void repositoryLoads() {
-        assertThat(repository).isNotNull();
-    }
-}
-// src/test/java/com/optum/fads/casereminders/api/repo/CaseConfigRepositoryTest.java
-package com.optum.fads.casereminders.api.repo;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-
-@DataJpaTest
-class CaseConfigRepositoryTest {
-
-    private final CaseConfigRepository repository;
-
-    CaseConfigRepositoryTest(CaseConfigRepository repository) {
-        this.repository = repository;
-    }
-
-    @Test
-    void repositoryLoads() {
-        assertThat(repository).isNotNull();
-    }
-}
-// src/test/java/com/optum/fads/casereminders/api/repo/FadsConfigRepositoryTest.java
-package com.optum.fads.casereminders.api.repo;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-
-@DataJpaTest
-class FadsConfigRepositoryTest {
-
-    private final FadsConfigRepository repository;
-
-    FadsConfigRepositoryTest(FadsConfigRepository repository) {
-        this.repository = repository;
-    }
-
-    @Test
-    void repositoryLoads() {
-        assertThat(repository).isNotNull();
-    }
-}
-// src/test/java/com/optum/fads/casereminders/api/repo/UserRepositoryTest.java
-package com.optum.fads.casereminders.api.repo;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-
-@DataJpaTest
-class UserRepositoryTest {
-
-    private final UserRepository repository;
-
-    UserRepositoryTest(UserRepository repository) {
-        this.repository = repository;
-    }
-
-    @Test
-    void repositoryLoads() {
-        assertThat(repository).isNotNull();
-    }
-}
-// src/test/java/com/optum/fads/casereminders/api/general/CaseRemindersUtilTest.java
-package com.optum.fads.casereminders.api.general;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.List;
 
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
 
-import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
-import com.optum.fads.casereminders.api.domain.UiUserBase;
-import com.optum.fads.casereminders.api.dto.EmailSpecs;
-import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
-import com.optum.fads.casereminders.api.repo.FadsConfigRepository;
-import com.optum.fads.casereminders.api.repo.UserRepository;
+import com.optum.fads.casereminders.api.domain.CaEmailsT;
+import com.optum.fads.casereminders.api.domain.CaEmailsTPK;
 
-@ExtendWith(MockitoExtension.class)
-class CaseRemindersUtilTest {
+/**
+ * Repository test for CaEmailsRepository.
+ *
+ * Uses H2 in MSSQLServer compatibility mode so GETDATE() works.
+ */
+@DataJpaTest
+@TestPropertySource(properties = {
+        // H2 in SQL Server mode so GETDATE() is supported
+        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=MSSQLServer;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+        "spring.datasource.driverClassName=org.h2.Driver",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
 
-    @Mock
-    private FadsConfigRepository fadsConfigRepository;
+        // Let Hibernate create tables from entities
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.show-sql=false"
+})
+class CaEmailsRepositoryTest {
 
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private CaseConfigRepository caseConfigRepository;
-
-    @InjectMocks
-    private CaseRemindersUtil util;
+    @Autowired
+    private CaEmailsRepository repository;
 
     @Test
-    void createJsonInput_buildsJsonCorrectly() {
-        String json = util.createJsonInput(
-                "to@test.com",
-                "cc@test.com",
-                "bcc@test.com",
-                "subject",
-                "body"
-        );
+    void findTodaysReminders_returnsOnlyDueUnsentMatchingType() {
+        // GIVEN
+        saveEmail(1, 1, "REM", LocalDateTime.now().minusHours(1), "N"); // should match
+        saveEmail(1, 2, "REM", LocalDateTime.now().plusDays(1), "N");   // future -> not match
+        saveEmail(1, 3, "REM", LocalDateTime.now().minusHours(1), "Y"); // sent -> not match
+        saveEmail(1, 4, "OTHER", LocalDateTime.now().minusHours(1), "N"); // type diff -> not match
 
-        assertTrue(json.contains("EmailSubject"));
-        assertTrue(json.contains("EmailText"));
-        assertTrue(json.contains("SendTo"));
-        assertTrue(json.contains("cc"));
-        assertTrue(json.contains("bcc"));
+        // WHEN
+        List<CaEmailsT> results = repository.findTodaysReminders("REM");
+
+        // THEN
+        assertEquals(1, results.size());
+        assertNotNull(results.get(0).getId());
+        assertEquals(1, results.get(0).getId().getCaseId());
+        assertEquals(1, results.get(0).getId().getSeqNum());
     }
 
     @Test
-    void getCtAdminSystemId_whenUserExists_returnsSystemId() {
-        when(caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID))
-                .thenReturn("admin@test.com");
+    void getNextSequenceId_returnsMaxPlusOne_forCaseId() {
+        // GIVEN caseId=99 has seq 1 and 2
+        saveEmail(99, 1, "REM", LocalDateTime.now().minusHours(1), "N");
+        saveEmail(99, 2, "REM", LocalDateTime.now().minusHours(1), "N");
 
-        UiUserBase user = mock(UiUserBase.class);
-        when(user.getUiSystemId()).thenReturn("SYS123");
+        // WHEN
+        Integer next = repository.getNextSequenceId(99);
 
-        when(userRepository.findByUiEMailAddress("admin@test.com"))
-                .thenReturn(Optional.of(user));
-
-        String result = util.getCtAdminSystemId();
-
-        assertEquals("SYS123", result);
+        // THEN
+        // query is: Max(SEQ_NUM+1) => max seq 2 => returns 3
+        assertEquals(3, next);
     }
 
     @Test
-    void sendMail_whenAzureLogicAppPath_returnsTrue() {
-        EmailSpecs specs = new EmailSpecs();
-        specs.setSmtpHostName(null);
-        specs.setHttpPost(mock(HttpPost.class));
-        specs.setHttpClient(mock(HttpClient.class));
-        specs.setSendToEmail("to@test.com");
-        specs.setEmailSubject("subject");
-        specs.setEmailText("body");
+    void getNextSequenceId_whenNoRows_returnsNull() {
+        Integer next = repository.getNextSequenceId(55555);
+        assertNull(next);
+    }
 
-        boolean result = util.sendMail(specs);
+    // -------------------------
+    // helper
+    // -------------------------
 
-        assertTrue(result);
+    private CaEmailsT saveEmail(int caseId, int seqNum, String emailType, LocalDateTime remDt, String sentFlag) {
+        CaEmailsTPK pk = new CaEmailsTPK();
+        pk.setCaseId(caseId);
+        pk.setSeqNum(seqNum);
+
+        CaEmailsT entity = new CaEmailsT();
+        entity.setId(pk);
+
+        entity.setEmailType(emailType);
+        entity.setSentFlag(sentFlag);
+
+        // remDt type depends on your entity field type
+        // If your CaEmailsT.remDt is LocalDateTime, this is perfect.
+        // If it's java.util.Date or java.sql.Timestamp, convert here.
+        entity.setRemDt(remDt);
+
+        // optional fields (if required by DB constraints, set them)
+        entity.setToEmail("to@test.com");
+        entity.setSubjEmail("subject");
+        entity.setRemComment("text");
+
+        return repository.save(entity);
     }
 }
