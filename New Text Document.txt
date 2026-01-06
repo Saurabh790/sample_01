@@ -1,291 +1,446 @@
-package com.optum.fads.casereminders.api.general;
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+    <modelVersion>4.0.0</modelVersion>
 
-import java.util.Optional;
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-case-claimcorrections-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/>
+    </parent>
 
-import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
-import com.optum.fads.casereminders.api.domain.UiUserBase;
-import com.optum.fads.casereminders.api.dto.EmailSpecs;
-import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
-import com.optum.fads.casereminders.api.repo.FadsConfigRepository;
-import com.optum.fads.casereminders.api.repo.UserRepository;
+    <repositories>
+        <repository>
+            <id>artifactory</id>
+            <name>Artifactory</name>
+            <url>https://repo1.uhc.com/artifactory/repo</url>
+        </repository>
+    </repositories>
 
-@ExtendWith(MockitoExtension.class)
-class CaseRemindersUtilTest {
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <!-- >surefire.skip>${skipTests}</surefire.skip -->
+        <failsafe.skip>${skipTests}</failsafe.skip>
 
-    @Mock
-    private FadsConfigRepository fadsConfigRepository;
+        <java.version>17</java.version>
+        <spring.boot.version>3.5.7</spring.boot.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
+        <springrunner.version>0.1.0</springrunner.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>8.0</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <hibernate.version>6.3.2.Final</hibernate.version>
+        <restassured.version>3.3.0</restassured.version>
+        <mockito.version>5.3.1</mockito.version>
+        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
+        <javax-ws-rs-api.version>2.1.1</javax-ws-rs-api.version>
+        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+        <log4j.version>2.24.3</log4j.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <jaxb.version>2.3.1</jaxb.version>
+        <sonar.version>3.9.1.2184</sonar.version>
+        <springdoc.version>2.0.0</springdoc.version>
+        <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
+        <mockserver.version>5.15.0</mockserver.version>
+	    <bcp.version>1.70</bcp.version>
+    </properties>
 
-    @Mock
-    private UserRepository userRepository;
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
-    @Mock
-    private CaseConfigRepository caseConfigRepository;
-
-    @InjectMocks
-    private CaseRemindersUtil util;
-
-    @Test
-    void createJsonInput_buildsJsonCorrectly() {
-        String json = util.createJsonInput(
-                "to@test.com",
-                "cc@test.com",
-                "bcc@test.com",
-                "subject",
-                "body"
-        );
-
-        assertTrue(json.contains("EmailSubject"));
-        assertTrue(json.contains("EmailText"));
-        assertTrue(json.contains("SendTo"));
-        assertTrue(json.contains("cc"));
-        assertTrue(json.contains("bcc"));
-    }
-
-    @Test
-    void getCtAdminSystemId_whenUserExists_returnsSystemId() {
-        when(caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID))
-                .thenReturn("admin@test.com");
-
-        UiUserBase user = mock(UiUserBase.class);
-        when(user.getUiSystemId()).thenReturn("SYS123");
-
-        when(userRepository.findByUiEMailAddress("admin@test.com"))
-                .thenReturn(Optional.of(user));
-
-        String result = util.getCtAdminSystemId();
-
-        assertEquals("SYS123", result);
-    }
-
-    @Test
-    void sendMail_whenAzureLogicAppPath_returnsTrue() {
-        EmailSpecs specs = new EmailSpecs();
-        specs.setSmtpHostName(null);
-        specs.setHttpPost(mock(HttpPost.class));
-        specs.setHttpClient(mock(HttpClient.class));
-        specs.setSendToEmail("to@test.com");
-        specs.setEmailSubject("subject");
-        specs.setEmailText("body");
-
-        boolean result = util.sendMail(specs);
-
-        assertTrue(result);
-    }
-}
-
-
-package com.optum.fads.casereminders.api.general;
-
-
-import java.util.Optional;
-
-import org.apache.commons.mail.Email;
-import org.apache.commons.mail.SimpleEmail;
-import org.apache.http.Consts;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClients;
-import org.codehaus.jettison.json.JSONException;
-import org.codehaus.jettison.json.JSONObject;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-
-//import com.optum.fads.casetracking.constants.FadsSchedulerConstants;
-import com.optum.fads.casereminders.api.common.constants.CaseEntryConstants;
-import com.optum.fads.casereminders.api.domain.UiUserBase;
-import com.optum.fads.casereminders.api.dto.EmailSpecs;
-import com.optum.fads.casereminders.api.repo.CaseConfigRepository;
-import com.optum.fads.casereminders.api.repo.FadsConfigRepository;
-import com.optum.fads.casereminders.api.repo.UserRepository;
-
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
-@Component
-public class CaseRemindersUtil {
-	
-	@Autowired
-	private FadsConfigRepository fadsConfigRepository;
-	
-	@Autowired
-	private UserRepository userRepository;
-	
-	@Autowired
-	private CaseConfigRepository caseConfigRepository;
-	
-	private static final int PORT = 25;
-    private static final boolean SSL_FLAG = false; 
-	
-	public String createJsonInput(String sendToEmail, String ccEmail, String bccEmail, String emailSubject, String emailText) {
-		
-		JSONObject emailTriggerProperties = new JSONObject();
-		try {
-			emailTriggerProperties.put("EmailSubject", emailSubject);
-			emailTriggerProperties.put("EmailText", emailText);
-			emailTriggerProperties.put("SendTo", sendToEmail);
-			if (ccEmail != null) {
-				emailTriggerProperties.put("cc", ccEmail);
-			}
-			if (bccEmail != null) {
-				emailTriggerProperties.put("bcc", bccEmail);
-			}
-		} catch (JSONException e) {
-	        log.error("Error at createJsonInput::", e);
-	    }
-		log.info("remindersUtil:createJsonInput " + emailTriggerProperties.toString());
-		return emailTriggerProperties.toString();
-	}
-	
-	/**
-	  * this method will send an email via the Azure Logic App
-	  * 
-	  * Parameters - HttpPost, HttpClient, jsonInputString 
-	  */
-	
-	public synchronized  boolean sendMailLogicAppPost(HttpPost httpPost, HttpClient httpClient, String jsonInputString) {
-		boolean mailStatus = false;
-		try {
-			log.info("sendMailLogicAppPost - use HttpPost to send email");
-			//Execute and get the response.
-			StringEntity stringEntity = new StringEntity(jsonInputString,
-			        ContentType.create("plain/text", Consts.UTF_8));
-			httpPost.setEntity(stringEntity);
-			HttpResponse response = httpClient.execute(httpPost);
-			/*
-			HttpEntity entity = response.getEntity();
-			if (entity != null) {
-				BufferedReader br = new BufferedReader(new InputStreamReader(entity.getContent()));
-				StringBuilder totalResponse = new StringBuilder();
-			    String responseLine = CaseEntryConstants.EMPTY_STR;
-			    while ((responseLine = br.readLine()) != null) {
-			    	totalResponse.append(responseLine.trim());
-			    }
-			    log.info("sendMailLogicAppPost response = " + totalResponse.toString());
-			}
-			*/
-			mailStatus = true;
-		} catch (Exception e) {
-			log.error("Error at remindersUtil.sendMailLogicApp::", e);
-		}
-		
-		return mailStatus;
-	}
-	/**
-	  * New method, that will send an email via Azure logic app or SMTP server
-	  * 
-	  * Parameters - EmailSpecs 
-	  */
-	//public synchronized  boolean sendMail(String sendToEmail, String ccEmail, String bccEmail, String emailSubject, String emailText) {
-	public synchronized  boolean sendMail(EmailSpecs emailSpecs) {
-		boolean mailStatus = false;
-		String jsonInputString;
-		
-		try { 
-		//	String smtpHostName = caseConfigRepository.getOptionValue(CaseEntryConstants.SMTP_HOST_NAME);
-			if (emailSpecs.getSmtpHostName() == null) {
-				jsonInputString = createJsonInput(emailSpecs.getSendToEmail(), emailSpecs.getCcEmail(), emailSpecs.getBccEmail(), 
-						emailSpecs.getEmailSubject(), emailSpecs.getEmailText());
-			//	mailStatus = sendMailLogicApp(emailSpecs.getHttpURLConnection(), jsonInputString);
-				mailStatus = sendMailLogicAppPost(emailSpecs.getHttpPost(), emailSpecs.getHttpClient(), jsonInputString);
-			} else {
-				mailStatus = sendSimpleMailSmtp(emailSpecs);
-			}
-		} catch (Exception e) {
-			log.error("Error at remindersUtil:sendMail:: ", e);
-		}
-		
-		return mailStatus;
-	}
-	/**
-	  * this method will send an email using SMTP Mail Server
-	  * 
-	  * Parameters - EmailSpecs 
-	  */
-	public synchronized  boolean sendSimpleMailSmtp(EmailSpecs emailSpecs) {
-		boolean mailStatus = false;
-		try {
-			Email email = emailSpecs.getEmail();
-            email.setFrom(emailSpecs.getCtAdminEmailAddress());
-            email.setSubject(emailSpecs.getEmailSubject());
-            email.setMsg(emailSpecs.getEmailText());
-            email.addTo(emailSpecs.getSendToEmail());
-            if (emailSpecs.getCcEmail() != null && !emailSpecs.getCcEmail().isEmpty()) {
-            	email.addCc(emailSpecs.getCcEmail());
-            }
-            if (emailSpecs.getBccEmail() != null && !emailSpecs.getBccEmail().isEmpty()) {
-            	email.addBcc(emailSpecs.getBccEmail());
-            }
-            email.send();
-		} catch (Exception e) {
-			log.error("Error at remindersUtil:sendMailSmtp:: ", e);
-		}
-		return mailStatus;
-	}	
-	/** 
-	 * This method will get the Email Specs that contain entries needed for sending emails 
-	 * Parameters: None
-	 */
-	public EmailSpecs getEmailSpecs()
-	{
-		EmailSpecs emailSpecs = new EmailSpecs();
-		try {
-			emailSpecs.setCtAdminEmailAddress(caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID));
-			emailSpecs.setAzureLogicAppUrl(caseConfigRepository.getOptionValue(CaseEntryConstants.AZURE_LOGIC_APP_URL));
-			emailSpecs.setSmtpHostName(caseConfigRepository.getOptionValue(CaseEntryConstants.SMTP_HOST_NAME)); 
-			emailSpecs.setCtAdminSystemId(getCtAdminSystemId());
-			if (emailSpecs.getSmtpHostName() == null) {
-				log.info("remindersUtil:getEmailSpecs SmtpHostName is null, Using Azure Logic App");
-				HttpPost httpPost = new HttpPost(emailSpecs.getAzureLogicAppUrl());
-				httpPost.setHeader("Content-Type", "application/json; charset=UTF-8");
-				httpPost.setHeader("Accept", "application/json");
-				emailSpecs.setHttpPost(httpPost);
-				HttpClient httpClient = HttpClients.createDefault();
-				emailSpecs.setHttpClient(httpClient);			
-			} else {
-				log.info("remindersUtil:getEmailSpecs AzureLogicAppUrl is null, Using SMTP Email Server");
-				Email email = new SimpleEmail();
-	            email.setHostName(emailSpecs.getSmtpHostName());
-	            email.setSmtpPort(PORT);
-	            email.setSSLOnConnect(SSL_FLAG);
-				emailSpecs.setEmail(email);
-			}
-		} catch (Exception e) {
-			log.error("Error at remindersUtil:sendMailSmtp:getEmailSpecs:: ", e);
-		}
-		return emailSpecs;
-	}	
-	/** 
-	 * This method will get the User System Id corresponding CT_ADMIN which has corresponding email address stored in CASE_CONFIG
-	 * Parameters: None
-	 */
-	public String getCtAdminSystemId()
-	{
-		UiUserBase uiUserBase = null;
-		String adminSystemId = null;
-		
-		String adminEmailAddress = caseConfigRepository.getOptionValue(CaseEntryConstants.CT_ADMIN_ID);
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 			
-		Optional<UiUserBase> userBaseOptional = userRepository.findByUiEMailAddress(adminEmailAddress);
-		if (userBaseOptional.isPresent()) {
-			uiUserBase = userBaseOptional.get();
-			adminSystemId = uiUserBase.getUiSystemId();
-		} else {
-			log.error("No UiUserBase Record found with Email Address " + adminEmailAddress); 
-		}
-		return adminSystemId;
-	}
-}
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.5.19 </version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.14</version>
+        </dependency>
+        
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+
+        <!-- Model Mapper -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+
+		<!--Used in Getter/Setter Verifier @NonNull  -->
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>${guava.version}</version>
+		</dependency>
+		
+        <!-- JSON logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.bitbucket.radistao.test</groupId>
+            <artifactId>before-after-spring-test-runner</artifactId>
+            <version>${springrunner.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version> 
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.5.0-M1</version>
+        </dependency>
+
+
+<!--        &lt;!&ndash; https://mvnrepository.com/artifact/org.sonarsource.scanner.maven/sonar-maven-plugin &ndash;&gt;-->
+<!--        <dependency>-->
+<!--            <groupId>org.sonarsource.scanner.maven</groupId>-->
+<!--            <artifactId>sonar-maven-plugin</artifactId>-->
+<!--            <version>${sonar.version}</version>-->
+<!--        </dependency>-->
+
+        <!-- Snowflake dependency -->
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+            </plugin>
+            <!-- Below plugin ensures the execution of test cases during maven build-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <destFile>target/jacoco.exec</destFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-site</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
+
+
+
+below is Vul , tell me all these are fixed in above or not
+
+
+CVE-2024-38819
+CVE-2025-24970
+CVE-2025-55163
+CVE-2025-58057
+CVE-2024-38816
+CVE-2025-58056
+CVE-2025-48924
+CVE-2025-67735
+CVE-2025-41234
+CVE-2025-67735
+CVE-2025-41242
+CVE-2025-53864
+CVE-2024-47535
+CVE-2025-25193
+CVE-2024-38809
+CVE-2024-38820
+CVE-2024-12798
+CVE-2025-66471
+CVE-2024-12801
+CVE-2025-11226
+CVE-2025-66418
