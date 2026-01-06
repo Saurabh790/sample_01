@@ -1,99 +1,278 @@
-CVE-2024-57699
-CVE-2025-55163
-CVE-2025-58056
-CVE-2025-58057
-CVE-2025-7962
-CVE-2025-48924
 CVE-2025-67735
-CVE-2025-67735
-CVE-2025-41242
 CVE-2025-53864
-CVE-2024-35255
-CVE-2024-35255
-CVE-2024-12798
-CVE-2024-12801
-CVE-2025-66418
-CVE-2025-11226
-CVE-2025-66471
 
 
 <?xml version="1.0" encoding="UTF-8"?>
-<project
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0">
-
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-case-entry-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-
-    <parent>
+      <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
+        <version>3.5.8</version>
         <relativePath/>
     </parent>
 
     <repositories>
         <repository>
-            <id>artifactory</id>
-            <name>Artifactory</name>
-            <url>https://repo1.uhc.com/artifactory/repo</url>
+            <id>central</id>
+			<name>centraluhg.jfrog.io-releases</name>
+			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
         </repository>
     </repositories>
 
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-gateway-api</artifactId>
+    <version>1.0.0</version>
+    <name>fads-gateway-api</name>
+    <description>FADS Gateway</description>
+
 
     <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <surefire.skip>${skipTests}</surefire.skip>
-        <failsafe.skip>${skipTests}</failsafe.skip>
-
         <java.version>17</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2023.0.3</spring.cloud.version>
-        <jackson.version>2.16.3</jackson.version>
-        <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
-        <jasypt.version>2.1.1</jasypt.version>
-        <jwt.version>4.0.0</jwt.version>
-        <modelmapper.version>3.2.2</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <springrunner.version>0.1.0</springrunner.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.28</lombok.version>
-        <restassured.version>5.4.0</restassured.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
         <log4j.version>2.24.3</log4j.version>
-        <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <bcp.version>1.67</bcp.version>
-        <snakeyaml.version>2.4</snakeyaml.version>
-        <netty.version>4.1.125.Final</netty.version>
-        <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
-        <sonar.coverage.exclusions>
-            **/com/optum/fads/caseentry.api/**,
-        </sonar.coverage.exclusions>
+        <spring.boot.version>3.5.8</spring.boot.version>
+        <netty.version>4.1.128.Final</netty.version>
+		<reactor-netty.version>1.2.8</reactor-netty.version>
     </properties>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+      
+        <dependency>    
+             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-reactor-netty</artifactId>
+				</exclusion>
+			</exclusions>
+        </dependency>
+        <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-classic</artifactId>
+		</dependency>
+        <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-core</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+		<dependency>
+		    <groupId>com.nimbusds</groupId>
+		    <artifactId>nimbus-jose-jwt</artifactId>
+		    <version>9.37.3</version> <!-- Use latest stable version -->
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+        
+        <dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>json-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>accessors-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-http</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-core</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http2</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler-proxy</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-socks</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-buffer</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-unix-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-classes-epoll</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<!-- Native classifiers that Reactor Netty pulls in -->
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-epoll</artifactId>
+			<version>${netty.version}</version>
+			<classifier>linux-x86_64</classifier>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-classes-macos</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-native-macos</artifactId>
+			<version>${netty.version}</version>
+			<classifier>osx-x86_64</classifier>
+		</dependency>
+
+    </dependencies>
     <dependencyManagement>
         <dependencies>
-
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
+                <version>${spring-cloud.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -107,541 +286,135 @@ CVE-2025-66471
         </dependencies>
     </dependencyManagement>
 
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-            <version>1.5.20</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-bom</artifactId>
-            <version>${netty.version}</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-compression</artifactId>
-            <version>4.2.5.Final</version>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version> 
-        </dependency>
-
-        <!-- Model Mapper -->
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
-
-        <!-- Jackson -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
-
-
-        <!--Used in Getter/Setter Verifier @NonNull  -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-
-       
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/org.apache.poi/POI -->
-        <dependency>
-            <groupId>org.apache.poi</groupId>
-            <artifactId>poi-ooxml</artifactId>
-            <version>5.4.0</version>
-        </dependency>
-
-
-        <!-- Snowflake dependency -->
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
-        </dependency>
-
-        <!-- JSON logging -->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Before After Spring Test Runner -->
-        <dependency>
-            <groupId>org.bitbucket.radistao.test</groupId>
-            <artifactId>before-after-spring-test-runner</artifactId>
-            <version>${springrunner.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Before After Spring Test Runner -->
-
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.data</groupId>
-            <artifactId>spring-data-commons</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context-support</artifactId>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc -->
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>13.2.1.jre11</version> 
-        </dependency>
-
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-  
-    </dependencies>
-
     <build>
-        <finalName>${project.artifactId}</finalName>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
         </plugins>
     </build>
+
 </project>
+
+
+ARNING]
 [INFO]
-[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-casetracking-api ---
-[INFO] com.optum.fads:fads-casetracking-api:jar:1.0.0
+[INFO] ------------------< com.optum.fads:fads-gateway-api >-------------------
+[INFO] Building fads-gateway-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-gateway-api ---
+[INFO] com.optum.fads:fads-gateway-api:jar:1.0.0
+[INFO] +- org.springframework.boot:spring-boot-starter-oauth2-resource-server:jar:3.5.8:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter:jar:3.5.8:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot:jar:3.5.8:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.8:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.8:compile
+[INFO] |  |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile
+[INFO] |  |  |  |  \- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile
+[INFO] |  |  |  \- org.slf4j:jul-to-slf4j:jar:2.0.17:compile
+[INFO] |  |  \- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile
+[INFO] |  +- org.springframework.security:spring-security-config:jar:6.5.7:compile
+[INFO] |  |  +- org.springframework:spring-beans:jar:6.2.14:compile
+[INFO] |  |  \- org.springframework:spring-context:jar:6.2.14:compile
+[INFO] |  +- org.springframework.security:spring-security-core:jar:6.5.7:compile
+[INFO] |  |  +- org.springframework.security:spring-security-crypto:jar:6.5.7:compile
+[INFO] |  |  \- org.springframework:spring-expression:jar:6.2.14:compile
+[INFO] |  +- org.springframework.security:spring-security-oauth2-resource-server:jar:6.5.7:compile
+[INFO] |  |  \- org.springframework.security:spring-security-oauth2-core:jar:6.5.7:compile
+[INFO] |  \- org.springframework.security:spring-security-oauth2-jose:jar:6.5.7:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-security:jar:3.5.8:compile
+[INFO] |  +- org.springframework:spring-aop:jar:6.2.14:compile
+[INFO] |  \- org.springframework.security:spring-security-web:jar:6.5.7:compile
+[INFO] +- org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j:jar:3.3.0:compile
+[INFO] |  +- org.springframework.cloud:spring-cloud-starter:jar:4.3.0:compile
+[INFO] |  |  +- org.springframework.cloud:spring-cloud-context:jar:4.3.0:compile
+[INFO] |  |  +- org.springframework.cloud:spring-cloud-commons:jar:4.3.0:compile
+[INFO] |  |  \- org.bouncycastle:bcprov-jdk18on:jar:1.80:compile
+[INFO] |  +- org.springframework.cloud:spring-cloud-circuitbreaker-resilience4j:jar:3.3.0:compile
+[INFO] |  |  +- io.github.resilience4j:resilience4j-spring-boot3:jar:2.2.0:compile
+[INFO] |  |  |  \- io.github.resilience4j:resilience4j-spring6:jar:2.2.0:compile
+[INFO] |  |  |     +- io.github.resilience4j:resilience4j-annotations:jar:2.2.0:compile
+[INFO] |  |  |     +- io.github.resilience4j:resilience4j-consumer:jar:2.2.0:compile
+[INFO] |  |  |     |  \- io.github.resilience4j:resilience4j-circularbuffer:jar:2.2.0:runtime
+[INFO] |  |  |     \- io.github.resilience4j:resilience4j-framework-common:jar:2.2.0:compile
+[INFO] |  |  \- org.springframework.boot:spring-boot-configuration-processor:jar:3.5.8:annotationProcessor
+[INFO] |  +- io.github.resilience4j:resilience4j-circuitbreaker:jar:2.2.0:compile
+[INFO] |  |  \- io.github.resilience4j:resilience4j-core:jar:2.2.0:compile
+[INFO] |  +- io.github.resilience4j:resilience4j-timelimiter:jar:2.2.0:compile
+[INFO] |  \- io.github.resilience4j:resilience4j-reactor:jar:2.2.0:compile
+[INFO] |     +- io.github.resilience4j:resilience4j-ratelimiter:jar:2.2.0:compile
+[INFO] |     +- io.github.resilience4j:resilience4j-bulkhead:jar:2.2.0:runtime
+[INFO] |     +- io.github.resilience4j:resilience4j-retry:jar:2.2.0:compile
+[INFO] |     \- io.github.resilience4j:resilience4j-micrometer:jar:2.2.0:compile
 [INFO] +- org.springframework.boot:spring-boot-starter-actuator:jar:3.5.8:compile
 [INFO] |  +- org.springframework.boot:spring-boot-actuator-autoconfigure:jar:3.5.8:compile
-[INFO] |  |  \- org.springframework.boot:spring-boot-actuator:jar:3.5.8:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-actuator:jar:3.5.8:compile
+[INFO] |  |  +- com.fasterxml.jackson.core:jackson-databind:jar:2.19.4:compile
+[INFO] |  |  |  +- com.fasterxml.jackson.core:jackson-annotations:jar:2.19.4:compile
+[INFO] |  |  |  \- com.fasterxml.jackson.core:jackson-core:jar:2.19.4:compile
+[INFO] |  |  \- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.4:compile
 [INFO] |  +- io.micrometer:micrometer-observation:jar:1.15.6:compile
 [INFO] |  |  \- io.micrometer:micrometer-commons:jar:1.15.6:compile
 [INFO] |  \- io.micrometer:micrometer-jakarta9:jar:1.15.6:compile
 [INFO] |     \- io.micrometer:micrometer-core:jar:1.15.6:compile
 [INFO] |        +- org.hdrhistogram:HdrHistogram:jar:2.2.2:runtime
 [INFO] |        \- org.latencyutils:LatencyUtils:jar:2.0.3:runtime
-[INFO] +- com.azure:azure-core:jar:1.35.0:compile
-[INFO] |  +- com.fasterxml.jackson.core:jackson-core:jar:2.19.4:compile
-[INFO] |  +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.4:compile
-[INFO] |  +- com.fasterxml.jackson.dataformat:jackson-dataformat-xml:jar:2.19.4:compile
-[INFO] |  |  \- org.codehaus.woodstox:stax2-api:jar:4.2.2:compile
-[INFO] |  +- com.fasterxml.woodstox:woodstox-core:jar:6.4.0:compile
-[INFO] |  +- org.slf4j:slf4j-api:jar:2.0.17:compile
-[INFO] |  \- io.projectreactor:reactor-core:jar:3.7.13:compile
-[INFO] |     \- org.reactivestreams:reactive-streams:jar:1.0.4:compile
-[INFO] +- com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:jar:4.6.0:compile
-[INFO] |  +- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile
-[INFO] |  |  \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile
-[INFO] |  |     \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile
-[INFO] |  |        \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile
-[INFO] |  |           +- com.azure:azure-identity:jar:1.7.3:compile
-[INFO] |  |           |  +- com.microsoft.azure:msal4j:jar:1.13.3:compile
-[INFO] |  |           |  +- com.microsoft.azure:msal4j-persistence-extension:jar:1.1.0:compile
-[INFO] |  |           |  |  \- net.java.dev.jna:jna:jar:5.5.0:compile
-[INFO] |  |           |  \- net.java.dev.jna:jna-platform:jar:5.6.0:compile
-[INFO] |  |           +- com.azure:azure-core-amqp:jar:2.8.1:compile
-[INFO] |  |           |  +- com.microsoft.azure:qpid-proton-j-extensions:jar:1.2.4:compile
-[INFO] |  |           |  \- org.apache.qpid:proton-j:jar:0.33.8:compile
-[INFO] |  |           \- com.azure:azure-core-management:jar:1.10.0:compile
-[INFO] |  \- com.azure:azure-security-keyvault-secrets:jar:4.5.3:compile
-[INFO] |     \- com.azure:azure-core-http-netty:jar:1.12.8:compile
-[INFO] |        +- io.netty:netty-handler:jar:4.1.128.Final:compile
-[INFO] |        |  +- io.netty:netty-common:jar:4.1.128.Final:compile
-[INFO] |        |  +- io.netty:netty-resolver:jar:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-transport:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-handler-proxy:jar:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-codec-socks:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-buffer:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-codec:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-codec-http:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-codec-http2:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-transport-native-unix-common:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-transport-classes-epoll:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-transport-native-kqueue:jar:osx-x86_64:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-transport-classes-kqueue:jar:4.1.128.Final:compile
-[INFO] |        \- io.netty:netty-tcnative-boringssl-static:jar:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-classes:jar:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:linux-x86_64:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:linux-aarch_64:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:osx-x86_64:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:osx-aarch_64:2.0.74.Final:compile
-[INFO] |           \- io.netty:netty-tcnative-boringssl-static:jar:windows-x86_64:2.0.74.Final:compile
 [INFO] +- org.springframework.boot:spring-boot-starter-oauth2-client:jar:3.5.8:compile
-[INFO] |  \- org.springframework.security:spring-security-core:jar:6.5.7:compile
-[INFO] |     +- org.springframework.security:spring-security-crypto:jar:6.5.7:compile
-[INFO] |     \- org.springframework:spring-expression:jar:6.2.14:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-oauth2-resource-server:jar:3.5.8:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-validation:jar:3.5.8:compile
-[INFO] |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:10.1.49:compile
-[INFO] |  \- org.hibernate.validator:hibernate-validator:jar:8.0.3.Final:compile
-[INFO] |     \- jakarta.validation:jakarta.validation-api:jar:3.0.2:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-mail:jar:3.5.8:compile
-[INFO] |  +- org.springframework:spring-context-support:jar:6.2.14:compile
-[INFO] |  \- org.eclipse.angus:jakarta.mail:jar:2.0.5:compile
-[INFO] |     +- jakarta.activation:jakarta.activation-api:jar:2.1.4:compile
-[INFO] |     \- org.eclipse.angus:angus-activation:jar:2.0.3:runtime
-[INFO] +- io.zipkin.brave:brave:jar:6.1.0:compile
-[INFO] +- org.apache.commons:commons-email:jar:1.5:compile
-[INFO] |  \- com.sun.mail:javax.mail:jar:1.5.6:compile
-[INFO] |     \- javax.activation:activation:jar:1.1:compile
-[INFO] +- org.hibernate.orm:hibernate-core:jar:6.2.5.Final:compile
-[INFO] |  +- jakarta.persistence:jakarta.persistence-api:jar:3.1.0:compile
-[INFO] |  +- jakarta.transaction:jakarta.transaction-api:jar:2.0.1:compile
-[INFO] |  +- org.jboss.logging:jboss-logging:jar:3.6.1.Final:compile
-[INFO] |  +- org.hibernate.common:hibernate-commons-annotations:jar:6.0.6.Final:runtime
-[INFO] |  +- io.smallrye:jandex:jar:3.0.5:runtime
-[INFO] |  +- com.fasterxml:classmate:jar:1.7.1:compile
-[INFO] |  +- net.bytebuddy:byte-buddy:jar:1.17.8:runtime
-[INFO] |  +- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.4:runtime
-[INFO] |  +- org.glassfish.jaxb:jaxb-runtime:jar:4.0.6:runtime
-[INFO] |  |  \- org.glassfish.jaxb:jaxb-core:jar:4.0.6:runtime
-[INFO] |  |     +- org.glassfish.jaxb:txw2:jar:4.0.6:runtime
-[INFO] |  |     \- com.sun.istack:istack-commons-runtime:jar:4.1.2:runtime
-[INFO] |  +- jakarta.inject:jakarta.inject-api:jar:2.0.1:runtime
-[INFO] |  \- org.antlr:antlr4-runtime:jar:4.10.1:compile
-[INFO] +- org.springframework.security:spring-security-config:jar:6.5.7:compile
-[INFO] |  +- org.springframework:spring-aop:jar:6.2.14:compile
-[INFO] |  +- org.springframework:spring-beans:jar:6.2.14:compile
-[INFO] |  +- org.springframework:spring-context:jar:6.2.14:compile
-[INFO] |  \- org.springframework:spring-core:jar:6.2.14:compile
-[INFO] |     \- org.springframework:spring-jcl:jar:6.2.14:compile
-[INFO] +- org.springframework.security:spring-security-oauth2-client:jar:6.5.7:compile
-[INFO] |  +- org.springframework.security:spring-security-oauth2-core:jar:6.5.7:compile
-[INFO] |  +- org.springframework.security:spring-security-web:jar:6.5.7:compile
-[INFO] |  \- com.nimbusds:oauth2-oidc-sdk:jar:9.43.6:compile
-[INFO] |     +- com.github.stephenc.jcip:jcip-annotations:jar:1.0-1:compile
-[INFO] |     +- com.nimbusds:content-type:jar:2.2:compile
-[INFO] |     \- com.nimbusds:lang-tag:jar:1.7:compile
-[INFO] +- io.projectreactor:reactor-test:jar:3.7.13:test
-[INFO] +- org.springframework.security:spring-security-test:jar:6.5.7:test
-[INFO] |  \- org.springframework:spring-test:jar:6.2.14:test
-[INFO] +- org.springframework.boot:spring-boot-starter:jar:3.5.8:compile
-[INFO] |  +- org.springframework.boot:spring-boot:jar:3.5.8:compile
-[INFO] |  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.8:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.8:compile
-[INFO] |  |  +- ch.qos.logback:logback-classic:jar:1.5.21:compile
-[INFO] |  |  |  \- ch.qos.logback:logback-core:jar:1.5.21:compile
-[INFO] |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile
-[INFO] |  |  \- org.slf4j:jul-to-slf4j:jar:2.0.17:compile
-[INFO] |  +- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile
-[INFO] |  \- org.yaml:snakeyaml:jar:2.4:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-tomcat:jar:3.5.8:compile
-[INFO] |  +- org.apache.tomcat.embed:tomcat-embed-core:jar:10.1.49:compile
-[INFO] |  \- org.apache.tomcat.embed:tomcat-embed-websocket:jar:10.1.49:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-web:jar:3.5.8:compile
+[INFO] |  \- org.springframework.security:spring-security-oauth2-client:jar:6.5.7:compile
+[INFO] |     \- com.nimbusds:oauth2-oidc-sdk:jar:9.43.6:compile
+[INFO] |        +- com.nimbusds:content-type:jar:2.2:compile
+[INFO] |        \- com.nimbusds:lang-tag:jar:1.7:compile
+[INFO] +- org.springframework.cloud:spring-cloud-starter-gateway:jar:4.3.0:compile
+[INFO] |  +- org.springframework.cloud:spring-cloud-gateway-server:jar:4.3.0:compile
+[INFO] |  |  +- org.springframework.boot:spring-boot-starter-validation:jar:3.5.8:compile
+[INFO] |  |  |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:10.1.49:compile
+[INFO] |  |  |  \- org.hibernate.validator:hibernate-validator:jar:8.0.3.Final:compile
+[INFO] |  |  |     +- jakarta.validation:jakarta.validation-api:jar:3.0.2:compile
+[INFO] |  |  |     +- org.jboss.logging:jboss-logging:jar:3.6.1.Final:compile
+[INFO] |  |  |     \- com.fasterxml:classmate:jar:1.7.1:compile
+[INFO] |  |  \- io.projectreactor.addons:reactor-extra:jar:3.5.4:compile
+[INFO] |  \- org.springframework.boot:spring-boot-properties-migrator:jar:3.5.8:compile
+[INFO] |     \- org.springframework.boot:spring-boot-configuration-metadata:jar:3.5.8:runtime
+[INFO] +- org.springframework.boot:spring-boot-starter-thymeleaf:jar:3.5.8:compile
+[INFO] |  \- org.thymeleaf:thymeleaf-spring6:jar:3.1.3.RELEASE:compile
+[INFO] |     \- org.thymeleaf:thymeleaf:jar:3.1.3.RELEASE:compile
+[INFO] |        +- org.attoparser:attoparser:jar:2.0.7.RELEASE:compile
+[INFO] |        \- org.unbescape:unbescape:jar:1.1.6.RELEASE:compile
+[INFO] +- org.springframework.cloud:spring-cloud-starter-loadbalancer:jar:4.3.0:compile
+[INFO] |  +- org.springframework.cloud:spring-cloud-loadbalancer:jar:4.3.0:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-cache:jar:3.5.8:compile
+[INFO] |  |  \- org.springframework:spring-context-support:jar:6.2.14:compile
+[INFO] |  \- com.stoyanr:evictor:jar:1.0.0:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.8:compile
 [INFO] |  +- org.springframework.boot:spring-boot-starter-json:jar:3.5.8:compile
 [INFO] |  |  +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:jar:2.19.4:compile
 [INFO] |  |  \- com.fasterxml.jackson.module:jackson-module-parameter-names:jar:2.19.4:compile
 [INFO] |  +- org.springframework:spring-web:jar:6.2.14:compile
-[INFO] |  \- org.springframework:spring-webmvc:jar:6.2.14:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.8:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-reactor-netty:jar:3.5.8:compile
-[INFO] |  |  \- io.projectreactor.netty:reactor-netty-http:jar:1.2.12:compile
-[INFO] |  |     +- io.netty:netty-resolver-dns:jar:4.1.128.Final:compile
-[INFO] |  |     |  \- io.netty:netty-codec-dns:jar:4.1.128.Final:compile
-[INFO] |  |     +- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.128.Final:compile
-[INFO] |  |     |  \- io.netty:netty-resolver-dns-classes-macos:jar:4.1.128.Final:compile
-[INFO] |  |     \- io.projectreactor.netty:reactor-netty-core:jar:1.2.12:compile
 [INFO] |  \- org.springframework:spring-webflux:jar:6.2.14:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-data-jpa:jar:3.5.8:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.8:compile
-[INFO] |  |  +- com.zaxxer:HikariCP:jar:6.3.3:compile
-[INFO] |  |  \- org.springframework:spring-jdbc:jar:6.2.14:compile
-[INFO] |  +- org.springframework.data:spring-data-jpa:jar:3.5.6:compile
-[INFO] |  |  +- org.springframework.data:spring-data-commons:jar:3.5.6:compile
-[INFO] |  |  +- org.springframework:spring-orm:jar:6.2.14:compile
-[INFO] |  |  \- org.springframework:spring-tx:jar:6.2.14:compile
-[INFO] |  \- org.springframework:spring-aspects:jar:6.2.14:compile
-[INFO] |     \- org.aspectj:aspectjweaver:jar:1.9.25:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-security:jar:3.5.8:compile
-[INFO] +- org.springframework.security:spring-security-oauth2-resource-server:jar:6.5.7:compile
-[INFO] +- org.springframework.security:spring-security-oauth2-jose:jar:6.5.7:compile
-[INFO] |  \- com.nimbusds:nimbus-jose-jwt:jar:9.37.4:compile
-[INFO] +- org.apache.httpcomponents:httpclient:jar:4.5.14:compile
-[INFO] |  +- org.apache.httpcomponents:httpcore:jar:4.4.16:compile
-[INFO] |  +- commons-logging:commons-logging:jar:1.2:compile
-[INFO] |  \- commons-codec:commons-codec:jar:1.18.0:compile
-[INFO] +- net.snowflake:snowflake-jdbc:jar:3.23.1:compile
-[INFO] +- org.bouncycastle:bcprov-jdk18on:jar:1.79:compile
-[INFO] +- org.bouncycastle:bcpkix-jdk18on:jar:1.79:compile
-[INFO] |  \- org.bouncycastle:bcutil-jdk18on:jar:1.79:compile
-[INFO] +- org.modelmapper:modelmapper:jar:3.2.3:compile
-[INFO] +- org.mapstruct:mapstruct:jar:1.6.3:compile
-[INFO] +- org.mapstruct:mapstruct-jdk8:jar:1.6.3:compile
-[INFO] +- org.mapstruct:mapstruct-processor:jar:1.6.3:compile
-[INFO] +- com.fasterxml.jackson.core:jackson-annotations:jar:2.19.4:compile
-[INFO] +- com.fasterxml.jackson.core:jackson-databind:jar:2.19.4:compile
-[INFO] +- com.google.guava:guava:jar:33.4.0-jre:compile
-[INFO] |  +- com.google.guava:failureaccess:jar:1.0.2:compile
-[INFO] |  +- com.google.guava:listenablefuture:jar:9999.0-empty-to-avoid-conflict-with-guava:compile
-[INFO] |  +- com.google.code.findbugs:jsr305:jar:3.0.2:compile
-[INFO] |  +- org.checkerframework:checker-qual:jar:3.43.0:compile
-[INFO] |  +- com.google.errorprone:error_prone_annotations:jar:2.36.0:compile
-[INFO] |  \- com.google.j2objc:j2objc-annotations:jar:3.0.0:compile
+[INFO] +- ch.qos.logback:logback-classic:jar:1.5.21:compile
+[INFO] |  \- org.slf4j:slf4j-api:jar:2.0.17:compile
+[INFO] +- ch.qos.logback:logback-core:jar:1.5.21:compile
+[INFO] +- io.projectreactor:reactor-test:jar:3.7.13:test
+[INFO] |  \- io.projectreactor:reactor-core:jar:3.7.13:compile
+[INFO] |     \- org.reactivestreams:reactive-streams:jar:1.0.4:compile
+[INFO] +- org.springframework.security:spring-security-test:jar:6.5.7:test
+[INFO] |  +- org.springframework:spring-core:jar:6.2.14:compile
+[INFO] |  |  \- org.springframework:spring-jcl:jar:6.2.14:compile
+[INFO] |  \- org.springframework:spring-test:jar:6.2.14:test
 [INFO] +- org.apache.commons:commons-lang3:jar:3.18.0:compile
-[INFO] +- com.github.librepdf:openpdf:jar:2.0.3:compile
-[INFO] +- org.apache.poi:poi:jar:5.3.0:compile
-[INFO] |  +- org.apache.commons:commons-collections4:jar:4.4:compile
-[INFO] |  +- org.apache.commons:commons-math3:jar:3.6.1:compile
-[INFO] |  +- com.zaxxer:SparseBitSet:jar:1.3:compile
-[INFO] |  \- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile
-[INFO] +- org.apache.poi:poi-ooxml:jar:5.4.0:compile
-[INFO] |  +- org.apache.poi:poi-ooxml-lite:jar:5.4.0:compile
-[INFO] |  +- org.apache.xmlbeans:xmlbeans:jar:5.3.0:compile
-[INFO] |  +- org.apache.commons:commons-compress:jar:1.27.1:compile
-[INFO] |  \- com.github.virtuald:curvesapi:jar:1.08:compile
-[INFO] +- org.hamcrest:hamcrest-library:jar:3.0:test
-[INFO] |  \- org.hamcrest:hamcrest-core:jar:3.0:test
-[INFO] +- com.microsoft.sqlserver:mssql-jdbc:jar:12.10.2.jre11:compile
-[INFO] +- org.projectlombok:lombok:jar:1.18.42:provided
-[INFO] +- org.json:json:jar:20231013:compile
-[INFO] +- org.codehaus.janino:janino:jar:3.1.12:runtime
-[INFO] |  \- org.codehaus.janino:commons-compiler:jar:3.1.12:runtime
-[INFO] +- org.codehaus.jettison:jettison:jar:1.5.4:compile
+[INFO] +- com.nimbusds:nimbus-jose-jwt:jar:9.37.3:compile
+[INFO] |  \- com.github.stephenc.jcip:jcip-annotations:jar:1.0-1:compile
 [INFO] +- org.springframework.boot:spring-boot-starter-test:jar:3.5.8:test
 [INFO] |  +- org.springframework.boot:spring-boot-test:jar:3.5.8:test
 [INFO] |  +- org.springframework.boot:spring-boot-test-autoconfigure:jar:3.5.8:test
 [INFO] |  +- com.jayway.jsonpath:json-path:jar:2.9.0:test
+[INFO] |  +- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.4:test
+[INFO] |  |  \- jakarta.activation:jakarta.activation-api:jar:2.1.4:test
 [INFO] |  +- org.assertj:assertj-core:jar:3.27.6:test
+[INFO] |  |  \- net.bytebuddy:byte-buddy:jar:1.17.8:test
 [INFO] |  +- org.awaitility:awaitility:jar:4.2.2:test
 [INFO] |  +- org.hamcrest:hamcrest:jar:3.0:test
 [INFO] |  +- org.junit.jupiter:junit-jupiter:jar:5.12.2:test
@@ -657,37 +430,36 @@ CVE-2025-66471
 [INFO] |  |  \- org.objenesis:objenesis:jar:3.3:test
 [INFO] |  +- org.mockito:mockito-junit-jupiter:jar:5.17.0:test
 [INFO] |  +- org.skyscreamer:jsonassert:jar:1.5.3:test
-[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
+[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:runtime
 [INFO] |  \- org.xmlunit:xmlunit-core:jar:2.10.4:test
-[INFO] +- junit:junit:jar:4.13.2:test
-[INFO] +- org.mockito:mockito-inline:jar:5.2.0:test
-[INFO] +- org.jacoco:jacoco-maven-plugin:jar:0.8.11:test
-[INFO] |  +- org.codehaus.plexus:plexus-utils:jar:3.0.24:test
-[INFO] |  +- org.apache.maven.shared:file-management:jar:3.1.0:test
-[INFO] |  +- org.apache.maven.reporting:maven-reporting-api:jar:3.0:test
-[INFO] |  |  \- org.apache.maven.doxia:doxia-sink-api:jar:1.0:test
-[INFO] |  +- org.jacoco:org.jacoco.agent:jar:runtime:0.8.11:test
-[INFO] |  +- org.jacoco:org.jacoco.core:jar:0.8.11:test
-[INFO] |  |  +- org.ow2.asm:asm:jar:9.6:compile
-[INFO] |  |  +- org.ow2.asm:asm-commons:jar:9.6:test
-[INFO] |  |  \- org.ow2.asm:asm-tree:jar:9.6:test
-[INFO] |  \- org.jacoco:org.jacoco.report:jar:0.8.11:test
-[INFO] +- io.rest-assured:rest-assured:jar:5.5.6:test
-[INFO] |  +- org.apache.groovy:groovy:jar:4.0.29:test
-[INFO] |  +- org.apache.groovy:groovy-xml:jar:4.0.29:test
-[INFO] |  +- org.apache.httpcomponents:httpmime:jar:4.5.13:test
-[INFO] |  +- org.ccil.cowan.tagsoup:tagsoup:jar:1.2.1:test
-[INFO] |  +- io.rest-assured:json-path:jar:5.5.6:test
-[INFO] |  |  +- org.apache.groovy:groovy-json:jar:4.0.29:test
-[INFO] |  |  \- io.rest-assured:rest-assured-common:jar:5.5.6:test
-[INFO] |  \- io.rest-assured:xml-path:jar:5.5.6:test
-[INFO] +- commons-io:commons-io:jar:2.14.0:compile
-[INFO] +- org.codehaus.jackson:jackson-core-asl:jar:1.9.13:compile
-[INFO] \- net.minidev:json-smart:jar:2.5.2:compile
-[INFO]    \- net.minidev:accessors-smart:jar:2.5.2:compile
+[INFO] +- org.yaml:snakeyaml:jar:2.2:compile
+[INFO] +- net.minidev:json-smart:jar:2.5.2:test
+[INFO] +- net.minidev:accessors-smart:jar:2.5.2:test
+[INFO] |  \- org.ow2.asm:asm:jar:9.7.1:test
+[INFO] +- io.projectreactor.netty:reactor-netty-http:jar:1.2.8:compile
+[INFO] +- io.projectreactor.netty:reactor-netty-core:jar:1.2.8:compile
+[INFO] +- io.netty:netty-codec-http2:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-codec-http:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-handler:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-handler-proxy:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-codec-socks:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-resolver-dns:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-common:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-buffer:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-transport:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-codec:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-resolver:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-codec-dns:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-transport-native-unix-common:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-transport-classes-epoll:jar:4.1.128.Final:compile
+[INFO] +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.128.Final:compile
+[INFO] +- io.netty:netty-resolver-dns-classes-macos:jar:4.1.128.Final:compile
+[INFO] \- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.128.Final:compile
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  11.155 s
-[INFO] Finished at: 2026-01-06T19:54:44+05:30
+[INFO] Total time:  7.746 s
+[INFO] Finished at: 2026-01-06T19:58:01+05:30
 [INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\fads-gateway-api>
