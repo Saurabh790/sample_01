@@ -1,20 +1,273 @@
-package com.optum.fads.casereminders.api.repo;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+#!/usr/bin/env python3
+"""
+scan_cves.py — scans source code & dependency manifests for:
+CVE-2025-48924
+CVE-2025-55163
+CVE-2025-66471
+CVE-2025-66418
+CVE-2025-24970
+CVE-2024-38819
+CVE-2024-38816
+CVE-2025-55752
+CVE-2025-49124
+CVE-2024-57699
+CVE-2026-21441
+CVE-2025-59250
+CVE-2023-52428
+CVE-2023-1370
+"""
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
 
-@ExtendWith(MockitoExtension.class)
-class CaseConfigRepositoryTest {
+# -----------------------------------------------------------
+# Version utilities
+# -----------------------------------------------------------
 
-    @Mock
-    private CaseConfigRepository repository;
+def normalize_version(v: str):
+    """Convert version string to (major, minor, patch)."""
+    if not v:
+        return (0, 0, 0)
+    parts = re.findall(r"\d+", v)
+    parts = [int(x) for x in parts[:3]]
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts)
 
-    @Test
-    void repositoryLoads() {
-        assertNotNull(repository);
-    }
+def version_in_range(v, start, end):
+    """Check if version v is >= start and < end."""
+    v = normalize_version(v)
+    s = normalize_version(start)
+    e = normalize_version(end)
+    return v >= s and v < e
+
+# -----------------------------------------------------------
+# CVE DEFINITION TABLE — all 14 CVEs you provided
+# -----------------------------------------------------------
+
+CVE_DB = {
+
+    # ---------- Apache Commons Lang ----------
+    "CVE-2025-48924": {
+        "patterns": [
+            ("commons-lang", "commons-lang", "2.0", "2.6"),
+            ("org.apache.commons", "commons-lang3", "3.0", "3.18.0"),
+        ]
+    },
+
+    # ---------- Netty HTTP/2 MadeYouReset ----------
+    "CVE-2025-55163": {
+        "patterns": [
+            ("io.netty", "netty-codec-http2", "4.1.0", "4.1.124"),
+            ("io.netty", "netty-codec-http2", "4.2.0", "4.2.4"),
+            ("io.netty", "netty-all", "4.1.0", "4.1.124"),
+            ("io.netty", "netty-all", "4.2.0", "4.2.4"),
+        ]
+    },
+
+    # ---------- urllib3 Highly Compressed Data ----------
+    "CVE-2025-66471": {
+        "py": [("urllib3", "1.0", "2.6.0")]
+    },
+
+    # ---------- urllib3 Decompression Chain ----------
+    "CVE-2025-66418": {
+        "py": [("urllib3", "1.24", "2.6.0")]
+    },
+
+    # ---------- Netty SslHandler Crash ----------
+    "CVE-2025-24970": {
+        "patterns": [
+            ("io.netty", "netty-handler", "4.1.91", "4.1.118"),
+            ("io.netty", "netty-all", "4.1.91", "4.1.118"),
+        ]
+    },
+
+    # ---------- Spring WebFlux/WebMvc Path Traversal ----------
+    "CVE-2024-38819": {
+        "patterns": [
+            ("org.springframework", "spring-webmvc", "5.3.0", "5.3.41"),
+            ("org.springframework", "spring-webmvc", "6.0.0", "6.0.25"),
+            ("org.springframework", "spring-webmvc", "6.1.0", "6.1.13"),
+            ("org.springframework", "spring-webflux", "5.3.0", "5.3.41"),
+            ("org.springframework", "spring-webflux", "6.0.0", "6.0.25"),
+            ("org.springframework", "spring-webflux", "6.1.0", "6.1.13"),
+        ]
+    },
+
+    # ---------- Spring WebFlux/WebMvc Path Traversal (Variant 2) ----------
+    "CVE-2024-38816": {
+        "patterns": [
+            ("org.springframework", "spring-webmvc", "5.3.0", "5.3.40"),
+            ("org.springframework", "spring-webmvc", "6.0.0", "6.0.24"),
+            ("org.springframework", "spring-webmvc", "6.1.0", "6.1.12"),
+            ("org.springframework", "spring-webflux", "5.3.0", "5.3.40"),
+            ("org.springframework", "spring-webflux", "6.0.0", "6.0.24"),
+            ("org.springframework", "spring-webflux", "6.1.0", "6.1.12"),
+        ]
+    },
+
+    # ---------- Apache Tomcat Rewrite Path Traversal ----------
+    "CVE-2025-55752": {
+        "patterns": [
+            ("org.apache.tomcat.embed", "tomcat-embed-core", "9.0.0", "9.0.109"),
+            ("org.apache.tomcat.embed", "tomcat-embed-core", "10.1.0", "10.1.45"),
+            ("org.apache.tomcat.embed", "tomcat-embed-core", "11.0.0", "11.0.11"),
+        ]
+    },
+
+    # ---------- Tomcat Windows Installer (not dependency) ----------
+    "CVE-2025-49124": {
+        "note": "This CVE affects Windows Tomcat installer (exe sideload). Not detectable from code."
+    },
+
+    # ---------- Json-smart Stack Exhaustion ----------
+    "CVE-2024-57699": {
+        "patterns": [
+            ("net.minidev", "json-smart", "2.5.0", "2.5.2")
+        ]
+    },
+
+    # ---------- urllib3 redirect decompression ----------
+    "CVE-2026-21441": {
+        "py": [("urllib3", "1.22", "2.6.3")]
+    },
+
+    # ---------- Microsoft JDBC Driver Spoofing ----------
+    "CVE-2025-59250": {
+        "patterns": [
+            ("com.microsoft.sqlserver", "mssql-jdbc", "10.2.0", "10.2.4"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "11.2.0", "11.2.4"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "12.2.0", "12.2.1"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "12.4.0", "12.4.3"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "12.6.0", "12.6.5"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "12.8.0", "12.8.2"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "12.10.0", "12.10.2"),
+            ("com.microsoft.sqlserver", "mssql-jdbc", "13.2.0", "13.2.1"),
+        ]
+    },
+
+    # ---------- Nimbus JOSE+JWT PBKDF2 DoS ----------
+    "CVE-2023-52428": {
+        "patterns": [
+            ("com.nimbusds", "nimbus-jose-jwt", "0", "9.37.2")
+        ]
+    },
+
+    # ---------- json-smart recursion ----------
+    "CVE-2023-1370": {
+        "patterns": [
+            ("net.minidev", "json-smart", "0", "2.4.9")
+        ]
+    },
+
 }
+
+# -----------------------------------------------------------
+# Manifest parsers
+# -----------------------------------------------------------
+
+def parse_pom(path):
+    deps = []
+    try:
+        root = ET.parse(path).getroot()
+        ns = {'m': root.tag.split('}')[0].strip('{')}
+        for d in root.findall(".//m:dependency", ns):
+            g = d.findtext("m:groupId", namespaces=ns)
+            a = d.findtext("m:artifactId", namespaces=ns)
+            v = d.findtext("m:version", namespaces=ns) or ""
+            deps.append((g, a, v))
+    except:
+        pass
+    return deps
+
+def parse_gradle(path):
+    deps = []
+    txt = open(path, encoding="utf-8", errors="ignore").read()
+    for m in re.findall(r"\"':([\w\.-]+):([\w\.-]+)[\"']", txt):
+        deps.append((m[0], m[1], m[2]))
+    return deps
+
+def parse_requirements(path):
+    deps = []
+    for line in open(path, encoding="utf-8", errors="ignore"):
+        line = line.strip()
+        if "==" in line:
+            pkg, ver = line.split("==")
+            deps.append((pkg.lower(), ver))
+    return deps
+
+# -----------------------------------------------------------
+# Matching logic
+# -----------------------------------------------------------
+
+def check_java_dep(cve, group, artifact, version):
+    if "patterns" not in CVE_DB[cve]:
+        return False
+    for g, a, start, end in CVE_DB[cve]["patterns"]:
+        if g == group and a == artifact and version_in_range(version, start, end):
+            return True
+    return False
+
+def check_python_dep(cve, pkg, version):
+    if "py" not in CVE_DB[cve]:
+        return False
+    for p, start, end in CVE_DB[cve]["py"]:
+        if p == pkg and version_in_range(version, start, end):
+            return True
+    return False
+
+# -----------------------------------------------------------
+# Core scanner
+# -----------------------------------------------------------
+
+def scan(root):
+    findings = []
+
+    for dirpath, _, files in os.walk(root):
+        for f in files:
+            full = os.path.join(dirpath, f)
+
+            # Maven
+            if f == "pom.xml":
+                for g,a,v in parse_pom(full):
+                    for cve in CVE_DB:
+                        if check_java_dep(cve, g, a, v):
+                            findings.append((cve, full, f"{g}:{a}:{v}"))
+
+            # Gradle
+            if f.endswith(".gradle") or f.endswith(".gradle.kts"):
+                for g,a,v in parse_gradle(full):
+                    for cve in CVE_DB:
+                        if check_java_dep(cve, g, a, v):
+                            findings.append((cve, full, f"{g}:{a}:{v}"))
+
+            # Python
+            if f.startswith("requirements") and f.endswith(".txt"):
+                for pkg, ver in parse_requirements(full):
+                    for cve in CVE_DB:
+                        if check_python_dep(cve, pkg, ver):
+                            findings.append((cve, full, f"{pkg}=={ver}"))
+
+    return findings
+
+# -----------------------------------------------------------
+# Main
+# -----------------------------------------------------------
+
+if __name__ == "__main__":
+    target = sys.argv[1] if len(sys.argv) > 1 else "."
+    results = scan(target)
+
+    print("\n=== CVE SCAN RESULTS ===\n")
+    if not results:
+        print("No vulnerable dependencies found.\n")
+    else:
+        for cve, file, dep in results:
+            print(f"[!] {cve}  -->  {dep}")
+            print(f"    File: {file}\n")
+
+    print("\nScan complete.\n")
