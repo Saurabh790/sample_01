@@ -1,273 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  	<modelVersion>4.0.0</modelVersion>
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-engine-service</artifactId>
+    <version>1.0.0</version>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/>
+    </parent>
+  
 
-#!/usr/bin/env python3
-"""
-scan_cves.py — scans source code & dependency manifests for:
-CVE-2025-48924
-CVE-2025-55163
-CVE-2025-66471
-CVE-2025-66418
-CVE-2025-24970
-CVE-2024-38819
-CVE-2024-38816
-CVE-2025-55752
-CVE-2025-49124
-CVE-2024-57699
-CVE-2026-21441
-CVE-2025-59250
-CVE-2023-52428
-CVE-2023-1370
-"""
+    <repositories>
+        <repository>
+             <id>central</id>
+			<name>centraluhg.jfrog.io-releases</name>
+			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
 
-import os
-import re
-import sys
-import xml.etree.ElementTree as ET
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <surefire.skip>${skipTests}</surefire.skip>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+        <java.version>17</java.version>
+        <spring.boot.version>3.5.7</spring.boot.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
+        <modelmapper.version>3.1.1</modelmapper.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <logback.encoder.version>6.0</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <javax-ws-rs-api.version>2.1.1</javax-ws-rs-api.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <openapi.version>1.7.0</openapi.version>
+        <msal4j.version>1.17.2</msal4j.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <jettison.version>1.5.4</jettison.version>
+        <commons.io.version>2.17.0</commons.io.version>
+        <sonar.coverage.exclusions>
+            **/com/optum/fads/pgp/engine/api/**,
+        </sonar.coverage.exclusions>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <hibernate.core.version>6.1.7.Final</hibernate.core.version>
+        <commons.lang.version>2.6</commons.lang.version>
+        <azure.datafactory.version>1.0.0-beta.30</azure.datafactory.version>
+        <javatuples.version>1.2</javatuples.version>
+        <bcp.version>1.76</bcp.version>
+    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.azure.spring</groupId>
+                <artifactId>spring-cloud-azure-dependencies</artifactId>
+                <version>4.6.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-# -----------------------------------------------------------
-# Version utilities
-# -----------------------------------------------------------
 
-def normalize_version(v: str):
-    """Convert version string to (major, minor, patch)."""
-    if not v:
-        return (0, 0, 0)
-    parts = re.findall(r"\d+", v)
-    parts = [int(x) for x in parts[:3]]
-    while len(parts) < 3:
-        parts.append(0)
-    return tuple(parts)
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>${openapi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
 
-def version_in_range(v, start, end):
-    """Check if version v is >= start and < end."""
-    v = normalize_version(v)
-    s = normalize_version(start)
-    e = normalize_version(end)
-    return v >= s and v < e
+        <!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-task -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-task</artifactId>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.hibernate.orm/hibernate-core -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${hibernate.core.version}</version>
+        </dependency>
 
-# -----------------------------------------------------------
-# CVE DEFINITION TABLE — all 14 CVEs you provided
-# -----------------------------------------------------------
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.javatuples</groupId>
+            <artifactId>javatuples</artifactId>
+            <version>${javatuples.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version>
+        </dependency>
+        <!-- snowflake dependencies -->
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
 
-CVE_DB = {
+        <dependency>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>msal4j</artifactId>
+            <version>${msal4j.version}</version>
+        </dependency>
 
-    # ---------- Apache Commons Lang ----------
-    "CVE-2025-48924": {
-        "patterns": [
-            ("commons-lang", "commons-lang", "2.0", "2.6"),
-            ("org.apache.commons", "commons-lang3", "3.0", "3.18.0"),
-        ]
-    },
+        <!-- Model Mapper -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
 
-    # ---------- Netty HTTP/2 MadeYouReset ----------
-    "CVE-2025-55163": {
-        "patterns": [
-            ("io.netty", "netty-codec-http2", "4.1.0", "4.1.124"),
-            ("io.netty", "netty-codec-http2", "4.2.0", "4.2.4"),
-            ("io.netty", "netty-all", "4.1.0", "4.1.124"),
-            ("io.netty", "netty-all", "4.2.0", "4.2.4"),
-        ]
-    },
+        <!--Used in Getter/Setter Verifier @NonNull -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+        <!-- Common Operations -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- JSON logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
+        <dependency>
+            <groupId>org.codehaus.jettison</groupId>
+            <artifactId>jettison</artifactId>
+            <version>${jettison.version}</version>
+        </dependency>
 
-    # ---------- urllib3 Highly Compressed Data ----------
-    "CVE-2025-66471": {
-        "py": [("urllib3", "1.0", "2.6.0")]
-    },
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-    # ---------- urllib3 Decompression Chain ----------
-    "CVE-2025-66418": {
-        "py": [("urllib3", "1.24", "2.6.0")]
-    },
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.azure.resourcemanager</groupId>
+            <artifactId>azure-resourcemanager-datafactory</artifactId>
+            <version>${azure.datafactory.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bcp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bcp.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core</artifactId>
+        </dependency>
 
-    # ---------- Netty SslHandler Crash ----------
-    "CVE-2025-24970": {
-        "patterns": [
-            ("io.netty", "netty-handler", "4.1.91", "4.1.118"),
-            ("io.netty", "netty-all", "4.1.91", "4.1.118"),
-        ]
-    },
+        <!-- Spring Cloud Azure Starter for Key Vault Secrets. -->
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-apt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons.io.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
-    # ---------- Spring WebFlux/WebMvc Path Traversal ----------
-    "CVE-2024-38819": {
-        "patterns": [
-            ("org.springframework", "spring-webmvc", "5.3.0", "5.3.41"),
-            ("org.springframework", "spring-webmvc", "6.0.0", "6.0.25"),
-            ("org.springframework", "spring-webmvc", "6.1.0", "6.1.13"),
-            ("org.springframework", "spring-webflux", "5.3.0", "5.3.41"),
-            ("org.springframework", "spring-webflux", "6.0.0", "6.0.25"),
-            ("org.springframework", "spring-webflux", "6.1.0", "6.1.13"),
-        ]
-    },
-
-    # ---------- Spring WebFlux/WebMvc Path Traversal (Variant 2) ----------
-    "CVE-2024-38816": {
-        "patterns": [
-            ("org.springframework", "spring-webmvc", "5.3.0", "5.3.40"),
-            ("org.springframework", "spring-webmvc", "6.0.0", "6.0.24"),
-            ("org.springframework", "spring-webmvc", "6.1.0", "6.1.12"),
-            ("org.springframework", "spring-webflux", "5.3.0", "5.3.40"),
-            ("org.springframework", "spring-webflux", "6.0.0", "6.0.24"),
-            ("org.springframework", "spring-webflux", "6.1.0", "6.1.12"),
-        ]
-    },
-
-    # ---------- Apache Tomcat Rewrite Path Traversal ----------
-    "CVE-2025-55752": {
-        "patterns": [
-            ("org.apache.tomcat.embed", "tomcat-embed-core", "9.0.0", "9.0.109"),
-            ("org.apache.tomcat.embed", "tomcat-embed-core", "10.1.0", "10.1.45"),
-            ("org.apache.tomcat.embed", "tomcat-embed-core", "11.0.0", "11.0.11"),
-        ]
-    },
-
-    # ---------- Tomcat Windows Installer (not dependency) ----------
-    "CVE-2025-49124": {
-        "note": "This CVE affects Windows Tomcat installer (exe sideload). Not detectable from code."
-    },
-
-    # ---------- Json-smart Stack Exhaustion ----------
-    "CVE-2024-57699": {
-        "patterns": [
-            ("net.minidev", "json-smart", "2.5.0", "2.5.2")
-        ]
-    },
-
-    # ---------- urllib3 redirect decompression ----------
-    "CVE-2026-21441": {
-        "py": [("urllib3", "1.22", "2.6.3")]
-    },
-
-    # ---------- Microsoft JDBC Driver Spoofing ----------
-    "CVE-2025-59250": {
-        "patterns": [
-            ("com.microsoft.sqlserver", "mssql-jdbc", "10.2.0", "10.2.4"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "11.2.0", "11.2.4"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "12.2.0", "12.2.1"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "12.4.0", "12.4.3"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "12.6.0", "12.6.5"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "12.8.0", "12.8.2"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "12.10.0", "12.10.2"),
-            ("com.microsoft.sqlserver", "mssql-jdbc", "13.2.0", "13.2.1"),
-        ]
-    },
-
-    # ---------- Nimbus JOSE+JWT PBKDF2 DoS ----------
-    "CVE-2023-52428": {
-        "patterns": [
-            ("com.nimbusds", "nimbus-jose-jwt", "0", "9.37.2")
-        ]
-    },
-
-    # ---------- json-smart recursion ----------
-    "CVE-2023-1370": {
-        "patterns": [
-            ("net.minidev", "json-smart", "0", "2.4.9")
-        ]
-    },
-
-}
-
-# -----------------------------------------------------------
-# Manifest parsers
-# -----------------------------------------------------------
-
-def parse_pom(path):
-    deps = []
-    try:
-        root = ET.parse(path).getroot()
-        ns = {'m': root.tag.split('}')[0].strip('{')}
-        for d in root.findall(".//m:dependency", ns):
-            g = d.findtext("m:groupId", namespaces=ns)
-            a = d.findtext("m:artifactId", namespaces=ns)
-            v = d.findtext("m:version", namespaces=ns) or ""
-            deps.append((g, a, v))
-    except:
-        pass
-    return deps
-
-def parse_gradle(path):
-    deps = []
-    txt = open(path, encoding="utf-8", errors="ignore").read()
-    for m in re.findall(r"\"':([\w\.-]+):([\w\.-]+)[\"']", txt):
-        deps.append((m[0], m[1], m[2]))
-    return deps
-
-def parse_requirements(path):
-    deps = []
-    for line in open(path, encoding="utf-8", errors="ignore"):
-        line = line.strip()
-        if "==" in line:
-            pkg, ver = line.split("==")
-            deps.append((pkg.lower(), ver))
-    return deps
-
-# -----------------------------------------------------------
-# Matching logic
-# -----------------------------------------------------------
-
-def check_java_dep(cve, group, artifact, version):
-    if "patterns" not in CVE_DB[cve]:
-        return False
-    for g, a, start, end in CVE_DB[cve]["patterns"]:
-        if g == group and a == artifact and version_in_range(version, start, end):
-            return True
-    return False
-
-def check_python_dep(cve, pkg, version):
-    if "py" not in CVE_DB[cve]:
-        return False
-    for p, start, end in CVE_DB[cve]["py"]:
-        if p == pkg and version_in_range(version, start, end):
-            return True
-    return False
-
-# -----------------------------------------------------------
-# Core scanner
-# -----------------------------------------------------------
-
-def scan(root):
-    findings = []
-
-    for dirpath, _, files in os.walk(root):
-        for f in files:
-            full = os.path.join(dirpath, f)
-
-            # Maven
-            if f == "pom.xml":
-                for g,a,v in parse_pom(full):
-                    for cve in CVE_DB:
-                        if check_java_dep(cve, g, a, v):
-                            findings.append((cve, full, f"{g}:{a}:{v}"))
-
-            # Gradle
-            if f.endswith(".gradle") or f.endswith(".gradle.kts"):
-                for g,a,v in parse_gradle(full):
-                    for cve in CVE_DB:
-                        if check_java_dep(cve, g, a, v):
-                            findings.append((cve, full, f"{g}:{a}:{v}"))
-
-            # Python
-            if f.startswith("requirements") and f.endswith(".txt"):
-                for pkg, ver in parse_requirements(full):
-                    for cve in CVE_DB:
-                        if check_python_dep(cve, pkg, ver):
-                            findings.append((cve, full, f"{pkg}=={ver}"))
-
-    return findings
-
-# -----------------------------------------------------------
-# Main
-# -----------------------------------------------------------
-
-if __name__ == "__main__":
-    target = sys.argv[1] if len(sys.argv) > 1 else "."
-    results = scan(target)
-
-    print("\n=== CVE SCAN RESULTS ===\n")
-    if not results:
-        print("No vulnerable dependencies found.\n")
-    else:
-        for cve, file, dep in results:
-            print(f"[!] {cve}  -->  {dep}")
-            print(f"    File: {file}\n")
-
-    print("\nScan complete.\n")
+            <!-- Below plugin ensures the execution of test cases during maven build-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>2.7.1</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
