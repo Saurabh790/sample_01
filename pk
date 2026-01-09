@@ -1,48 +1,197 @@
-server:
-  port: 8080
-  address: 0.0.0.0
-  servlet:
-    context-path: /reportgroup
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
 
-management:
-  server:
-    port: 8081
-    address: 0.0.0.0
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-  endpoint:
-    health:
-      enabled: true
+package com.optum.fads.pgp.reportsection.api.config;
 
-spring:
-  main:
-    allow-bean-definition-overriding: true
-    banner-mode: off
-  jpa:
-    show-sql: false
-    hibernate:
-      ddl-auto: none
-    properties:
-      hibernate:
-        implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-        physical_naming_strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import java.util.TimeZone;
+
+import jakarta.annotation.PostConstruct;
+
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.web.client.RestTemplate;
+
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
+
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+    @Bean
+	public RestTemplate restTemplate() {
+	    return new RestTemplate();
+	}
+    
+    @PostConstruct
+    void started() {
+      TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
+    }
+
+}
 
 
+package com.optum.fads.pgp.reportsection.api.config;
 
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
-spring:
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=MSSQLServer;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-    show-sql: false
-  flyway:
-    enabled: false
-  liquibase:
-    enabled: false
+import com.optum.fads.pgp.reportsection.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.pgp.reportsection.api.service.IUserDetailsService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+public class SecurityConfig {
+
+	private final IUserDetailsService userDetailsService;
+
+	private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
+	public SecurityConfig(IUserDetailsService userDetailsService) {
+		this.userDetailsService = userDetailsService;
+	}
+
+	@Bean
+	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
+		http.csrf(csrf -> csrf
+						.ignoringRequestMatchers("/actuator/**", "/api/**")
+				)
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
+						.anyRequest().authenticated())
+				.oauth2ResourceServer(oauth2 -> oauth2
+						.jwt(jwt -> jwt
+								.decoder(jwtDecoder())
+								.jwtAuthenticationConverter(userJwtAuthenticationConverter())
+						)
+				);
+
+		return http.build();
+	}
+
+	@Bean
+	public JwtDecoder jwtDecoder() {
+		// Custom JWT decoder that skips signature validation
+		return token -> {
+			try {
+				JWT jwt = JWTParser.parse(token);
+
+				// Convert claims, handling Date to Instant conversion
+				Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
+
+				convertDateToInstant(claims, "iat");  // issued at
+				convertDateToInstant(claims, "exp");  // expires at
+				convertDateToInstant(claims, "nbf");  // not before
+				convertDateToInstant(claims, "auth_time");  // authentication time
+
+				return Jwt.withTokenValue(token)
+						.headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
+						.claims(claimsMap -> claimsMap.putAll(claims))
+						.build();
+			} catch (Exception e) {
+				throw new JwtException("Failed to parse JWT", e);
+			}
+		};
+	}
+
+	private void convertDateToInstant(Map<String, Object> claims, String claimName) {
+		Object value = claims.get(claimName);
+		if (value instanceof Date) {
+			claims.put(claimName, ((Date) value).toInstant());
+		}
+	}
+
+	@Bean
+	UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
+		return new UserJwtAuthenticationConverter(userDetailsService);
+	}
+
+	@Bean
+	PasswordEncoder passwordEncoder() {
+		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+	}
+
+	@Bean
+	CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
+		configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
+		configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		logger.info("CORS configuration registered for all paths");
+		return source;
+	}
+}
+package com.optum.fads.pgp.reportsection.api.config;
+
+import javax.sql.DataSource;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.reportsection.api")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.reportsection.api" })
+public class ServiceConfig 
+{
+	@Bean(name = "fadsDataSource")
+	@ConfigurationProperties("spring.datasource")
+	public DataSource customDataSource() {
+		return DataSourceBuilder.create().build();
+	}
+
+}
