@@ -1,3 +1,67 @@
+package com.optum.fads.pgp.reportsection.api.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.pgp.reportsection.api.domain.SeSurGrpModAccess;
+import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
+import com.optum.fads.pgp.reportsection.api.dto.AccessLevel;
+import com.optum.fads.pgp.reportsection.api.dto.AppUser;
+import com.optum.fads.pgp.reportsection.api.dto.ModuleAccess;
+import com.optum.fads.pgp.reportsection.api.dto.Role;
+import com.optum.fads.pgp.reportsection.api.repo.UserRepository;
+import com.optum.fads.pgp.reportsection.api.service.IUserDetailsService;
+
+@Service
+public class UserDetailsService implements IUserDetailsService {
+
+	@Autowired
+	UserRepository userRepository;
+
+	@Override
+	@Transactional(readOnly = true)
+	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+		Optional<UiUserBase> optional = userRepository.findByUiEMailAddressOrUiUserId(username, username);
+		optional.orElseThrow(() -> new UsernameNotFoundException("Not found: " + username));
+		AppUser user = new AppUser();
+		UiUserBase uiUserBase = optional.get();
+
+		user.setUserEmail(uiUserBase.getUiEMailAddress());
+		user.setUserId(uiUserBase.getUiUserId());
+		user.setUserSystemId(uiUserBase.getUiSystemId());
+		Role role = new Role();
+		role.setId(Long.valueOf(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).toString());
+		role.setRoleName(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName());
+		List<SeSurGrpModAccess> surAccesses = uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses();
+
+		List<AccessLevel> accesses = new ArrayList<AccessLevel>();
+		surAccesses.forEach(surModuleAccess -> {
+			accesses.add(new AccessLevel(surModuleAccess.getId().getSurModuleId(),
+					ModuleAccess.getByName(surModuleAccess.getId().getSurModuleId()).toString(),
+					surModuleAccess.getSeSurModule().getSurModuleName(),
+					surModuleAccess.getSeSurAccess().getSurAccessId()));
+
+		});
+
+		role.setAllowedAccesses(accesses);
+		user.setRole(role);
+		return user;
+
+	}
+
+	
+
+}
+
+
+
 /*
 //***********************************************
 // Copyright UNITEDHEALTH GROUP CORPORATION 2018.
@@ -7,51 +71,41 @@
 //***********************************************
 */
 /** 
- *  The service contains methods to retrieve and update FADS Report Item data.
+ *  The service contains methods to retrieve and update FADS Report Section data.
  * 
  * @author Anil Wagh
  */
 package com.optum.fads.pgp.reportsection.api.service.impl;
 
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
 import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
 import com.optum.fads.pgp.reportsection.api.domain.FadsConfigT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaTPK;
-import com.optum.fads.pgp.reportsection.api.domain.PrmDrDataRuleT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmDrRangesT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmDrSingleValuesT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmErDrT;
 import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
 import com.optum.fads.pgp.reportsection.api.domain.PrmRsRiT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmRsRiTPK;
 import com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmStudyMasterT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmStudyRsRiT;
 import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
 import com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO;
-import com.optum.fads.pgp.reportsection.api.dto.DataRuleDTO;
-import com.optum.fads.pgp.reportsection.api.dto.DrCodeValueDTO;
-import com.optum.fads.pgp.reportsection.api.dto.DrRangeValuesDTO;
-import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
+import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRS;
 import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
 import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
 import com.optum.fads.pgp.reportsection.api.mapper.ReportGroupDetailMapper;
 import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternErDrRepository;
@@ -62,820 +116,463 @@ import com.optum.fads.pgp.reportsection.api.repo.ReportItemFormulasRepository;
 import com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository;
 import com.optum.fads.pgp.reportsection.api.repo.ReportSectionItemsRepository;
 import com.optum.fads.pgp.reportsection.api.repo.ReportSectionsRepository;
-import com.optum.fads.pgp.reportsection.api.service.IReportItemDataService;
+import com.optum.fads.pgp.reportsection.api.repo.StudyRepository;
+import com.optum.fads.pgp.reportsection.api.service.IReportSectionDataService;
 
-@Service("reportItemDataService")
+@Service("reportSectionDataService")
 //@Slf4j
-public class ReportItemDataService implements IReportItemDataService {
+public class ReportSectionDataService implements IReportSectionDataService  {
 
-	private static final Logger logit = LoggerFactory.getLogger(ReportItemDataService.class);
+	private static final Logger logit = LoggerFactory
+			.getLogger(ReportSectionDataService.class);
 
-//	@Autowired
-	private ReportItemsRepository reportItemsRepository;
-//	@Autowired
-	private ReportItemFormulasRepository reportItemFormulasRepository;
-//	@Autowired
+    private ReportSectionsRepository reportSectionsRepository; 
+	private StudyRepository studyRepository;
+	private ReportItemDataService reportItemDataService;
 	private ReportSectionItemsRepository reportSectionItemsRepository;
-//	@Autowired
+    private ReportItemsRepository reportItemsRepository;
+	private ReportItemFormulasRepository reportItemFormulasRepository;
 	private BehaviorPatternsRepository behaviorPatternsRepository;
-//	@Autowired
 	private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
-//	@Autowired
 	private DataRulesRepository dataRulesRepository;
-//	@Autowired
-	private ReportSectionsRepository reportSectionsRepository;
 	@Autowired
 	private FadsConfigRepository fadsConfigRepository;
 	@Autowired
 	private ReportGroupDetailMapper reportGroupDetailMapper;
-	  @Autowired
-	    public ReportItemDataService(ReportItemsRepository reportItemsRepository,
-	    		ReportItemFormulasRepository reportItemFormulasRepository,
+	 @Autowired
+	 public ReportSectionDataService(ReportSectionsRepository reportSectionsRepository,
+	    		StudyRepository studyRepository,
 	    		ReportSectionItemsRepository reportSectionItemsRepository,
+	    		ReportItemsRepository reportItemsRepository,
+	    		ReportItemFormulasRepository reportItemFormulasRepository,
 	    		BehaviorPatternsRepository behaviorPatternsRepository,
 	    		BehaviorPatternErDrRepository behaviorPatternErDrRepository,
-	    		DataRulesRepository dataRulesRepository,
-	    		ReportSectionsRepository reportSectionsRepository) {
+	    		DataRulesRepository dataRulesRepository) {
+	        
+		 	this.reportSectionsRepository = reportSectionsRepository;
+		 	this.studyRepository = studyRepository;
+	        this.reportSectionItemsRepository = reportSectionItemsRepository;
 	        this.reportItemsRepository = reportItemsRepository;
 	        this.reportItemFormulasRepository = reportItemFormulasRepository;
-	        this.reportSectionItemsRepository = reportSectionItemsRepository;
 	        this.behaviorPatternsRepository = behaviorPatternsRepository;
 	        this.behaviorPatternErDrRepository = behaviorPatternErDrRepository;
 	        this.dataRulesRepository = dataRulesRepository;
-	        this.reportSectionsRepository = reportSectionsRepository;
-	    }
+
+	        reportItemDataService = new ReportItemDataService(reportItemsRepository,
+	    			reportItemFormulasRepository, 		
+	    			reportSectionItemsRepository, 		
+	    			behaviorPatternsRepository,
+	    			behaviorPatternErDrRepository,
+	    			dataRulesRepository,
+	    			reportSectionsRepository);
+	    }   
 
 	/**
-	 * this method will give all the Report Item records data or records per page
+	 * this method will give the Report Section records data as per filter/sort criteria - per page  
 	 * 
-	 * Parameters - ListTableParams (contains sort, filter conditions; page number,
-	 * page size)
+	 * Parameters - ListTableParams (contains sort, filter conditions; page number, page size)
 	 */
-	public PaginationResultRI getReportItemsList(ListTableParams listTableParams) {
-		int reportItemsCount = 0;
-		List<ReportItemDTO> reportItemDataList = null;
-		List<PrmRiRptItemT> reportItemList;
-		List<PrmRiRptItemT> reportItemsCntList = null;
-		PaginationResultRI paginationResult;
+	public PaginationResultRS getReportSectionsList(ListTableParams listTableParams){
+		int reportSectionsCount = 0;
+		List<ReportSectionDTO> reportSectionDataList = null;
+		List<PrmRsRptSecT> reportSectionList;
+		List<PrmRsRptSecT> reportSectionsCntList = null;
+		PaginationResultRS paginationResult;
 		Pageable pageable = null;
 		if (listTableParams.getSelectedItemIds() == null) {
 			listTableParams.setSelectedItemIds(new ArrayList<>());
 		}
 		try {
-			if (listTableParams.getSearchBy() == null) {
-				pageable = createPageableReports(listTableParams);
-				if (!(listTableParams.getSelectedItemIds().isEmpty())) {
-					reportItemList = reportItemsRepository.getAvailableReportItems(listTableParams.getSelectedItemIds(),
-							pageable);
-					reportItemsCntList = reportItemsRepository
-							.getAvailableReportItems(listTableParams.getSelectedItemIds(), null);
-					reportItemsCount = reportItemsCntList.size();
-				} else {
-					reportItemList = reportItemsRepository.getReportItems(pageable);
-					reportItemsCount = (int) reportItemsRepository.count();
-				}
-				paginationResult = new PaginationResultRI();
-				reportItemDataList = populateReportItemList(reportItemList);
-				paginationResult.setReportItemsData(reportItemDataList);
-				paginationResult.setTotalRecordsCount(reportItemsCount);
-			} else {
-				paginationResult = getReportItemsOnSearchCriteria(listTableParams);
-			}
+			if (listTableParams.getSearchBy() == null) {	 
+				 pageable = reportItemDataService.createPageableReports(listTableParams);
+				 if (!(listTableParams.getSelectedItemIds().isEmpty())) {
+					 reportSectionList = reportSectionsRepository.getAvailableReportSections(listTableParams.getSelectedItemIds(),
+								pageable);
+					 reportSectionsCntList = reportSectionsRepository
+								.getAvailableReportSections(listTableParams.getSelectedItemIds(), null);
+					reportSectionsCount = reportSectionsCntList.size();
+				 } else {
+					 reportSectionList = reportSectionsRepository.getReportSections(pageable);
+					 reportSectionsCount = (int) reportSectionsRepository.count();
+				 }
+				 paginationResult = new PaginationResultRS();
+				 reportSectionDataList = populateReportSectionList(reportSectionList);
+				 paginationResult.setReportSectionsData(reportSectionDataList);
+				 paginationResult.setTotalRecordsCount(reportSectionsCount);
+			 } else {
+				 paginationResult = getReportSectionsOnSearchCriteria(listTableParams);
+			 }
 		} catch (Exception e) {
 			throw new ReportSectionApiException(e);
-		}
-		return paginationResult;
+		}            
+        return paginationResult;
 	}
-
 	/**
-	 * this method is called by getReportItemsList to apply filter and sort criteria
-	 * and fetch the report item records data
+	 * this method is called by getReportSectionsList to apply filter and sort criteria and fetch the report section records data 
 	 * 
-	 * Parameters - ListTableParams (contains sort, filter conditions; page number,
-	 * page size)
+	 * Parameters - ListTableParams (contains sort, filter conditions; page number, page size)
 	 */
-	public PaginationResultRI getReportItemsOnSearchCriteria(ListTableParams listTableParams) {
-		
-		Pageable pageable = null;
-		int reportItemsCount = 0;
-		int myItemsIndex = -1;
-		List<ReportItemDTO> reportItemDataList = null;
-		List<PrmRiRptItemT> reportItemsList = null;
-		List<PrmRiRptItemT> reportItemsCntList = null;
-		PaginationResultRI paginationResult = new PaginationResultRI();
-		pageable = createPageableReports(listTableParams);
-		if (listTableParams.getSearchBy().contains(ReportSectionConstants.USER_SYSTEM_ID)) {
-			myItemsIndex = listTableParams.getSearchBy().indexOf(ReportSectionConstants.USER_SYSTEM_ID);
+	 public PaginationResultRS getReportSectionsOnSearchCriteria(ListTableParams listTableParams) {
+		 logit.info("Set the search criteria for retrieving report sections");
+		 Pageable pageable = null;
+		 int reportSectionsCount = 0;
+		 int myItemsIndex = -1;
+		 List<ReportSectionDTO> reportSectionDataList = null;
+		 List<PrmRsRptSecT> reportSectionsList = null;
+		 List<PrmRsRptSecT> reportSectionsCntList = null;
+		 PaginationResultRS paginationResult = new PaginationResultRS();
+		 pageable = reportItemDataService.createPageableReports(listTableParams);
+		 if (listTableParams.getSearchBy().contains(ReportSectionConstants.USER_SYSTEM_ID)) {
+				myItemsIndex = listTableParams.getSearchBy().indexOf(ReportSectionConstants.USER_SYSTEM_ID);
 		}
-		String[] searchCriteriaItems = getSearchCriteria(listTableParams, myItemsIndex); // reportItemNameVal, createdByVal,
-																			// updatedByVal, sp ch in Name
-
-		if (listTableParams.getSelectedItemIds().isEmpty()) {
-			if (searchCriteriaItems[3].equals(ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR)) {// set RI/RS name contain % or underscore
-				if (myItemsIndex >= 0) {		// Retrieve my items
-					reportItemsList = reportItemsRepository.getMyReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], pageable);
-					reportItemsCntList = reportItemsRepository.getMyReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], null);
+		 String[] searchCriteriaItems = reportItemDataService.getSearchCriteria(listTableParams, myItemsIndex); // reportSectionNameVal, createdByVal, updatedByVal, sp ch in Name
+		 logit.info("Get Report Sections List by Search Criteria");
+		 if (listTableParams.getSelectedItemIds().isEmpty()) {
+			 if (searchCriteriaItems[3].equals(ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR)) {
+				 if (myItemsIndex >= 0) {		// Retrieve my items
+						reportSectionsList = reportSectionsRepository.getMyReportSectionsBySearchCritEsc(searchCriteriaItems[0], searchCriteriaItems[1], 
+								searchCriteriaItems[2], searchCriteriaItems[4], pageable );
+						reportSectionsCntList = reportSectionsRepository.getMyReportSectionsBySearchCritEsc(searchCriteriaItems[0], searchCriteriaItems[1], 
+								searchCriteriaItems[2], searchCriteriaItems[4], null );
 				} else {
-					reportItemsList = reportItemsRepository.getReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], pageable);
-					reportItemsCntList = reportItemsRepository.getReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], null);
+					 reportSectionsList = reportSectionsRepository.getReportSectionsBySearchCritEsc(searchCriteriaItems[0], searchCriteriaItems[1], 
+							 searchCriteriaItems[2], pageable );
+					 reportSectionsCntList = reportSectionsRepository.getReportSectionsBySearchCritEsc(searchCriteriaItems[0], searchCriteriaItems[1], 
+							 searchCriteriaItems[2], null );
 				}
 			} else {
 				if (myItemsIndex >= 0) {		// Retrieve my items
-					reportItemsList = reportItemsRepository.getMyReportItemsBySearchCrit(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], pageable);
-					reportItemsCntList = reportItemsRepository.getMyReportItemsBySearchCrit(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], null);
+					reportSectionsList = reportSectionsRepository.getMyReportSectionsBySearchCrit(searchCriteriaItems[0], searchCriteriaItems[1], 
+							searchCriteriaItems[2], searchCriteriaItems[4], pageable );
+					reportSectionsCntList = reportSectionsRepository.getMyReportSectionsBySearchCrit(searchCriteriaItems[0], searchCriteriaItems[1], 
+							searchCriteriaItems[2], searchCriteriaItems[4], null );
 				} else {
-					reportItemsList = reportItemsRepository.getReportItemsBySearchCrit(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], pageable);
-					reportItemsCntList = reportItemsRepository.getReportItemsBySearchCrit(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], null);
+					reportSectionsList = reportSectionsRepository.getReportSectionsBySearchCrit(searchCriteriaItems[0], searchCriteriaItems[1], 
+							searchCriteriaItems[2], pageable );
+					reportSectionsCntList = reportSectionsRepository.getReportSectionsBySearchCrit(searchCriteriaItems[0], searchCriteriaItems[1], 
+							searchCriteriaItems[2], null );
 				}
 			}
-		} else {
-			if (searchCriteriaItems[3].equals(ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR)) {// set if Report Item name or Report
-																					// Section name contain % or
-																					// underscore
-				if (myItemsIndex >= 0) {		// Retrieve my items
-					reportItemsList = reportItemsRepository.getMyAvailableReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4],  
-							listTableParams.getSelectedItemIds(), pageable);
-					reportItemsCntList = reportItemsRepository.getMyAvailableReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], 
-							listTableParams.getSelectedItemIds(), null);
-				} else {
-					reportItemsList = reportItemsRepository.getAvailableReportItemsBySearchCritEsc(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), pageable);
-					reportItemsCntList = reportItemsRepository.getAvailableReportItemsBySearchCritEsc(
-							searchCriteriaItems[0], searchCriteriaItems[1], searchCriteriaItems[2],
-							listTableParams.getSelectedItemIds(), null);
-				}
+		 } else {
+			 if (searchCriteriaItems[3].equals(ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR)) {// set if Report Item name or Report
+																								// Section name contain % or underscore
+				 if (myItemsIndex >= 0) {		// Retrieve my items
+					 reportSectionsList = reportSectionsRepository.getMyAvailableReportSectionsBySearchCritEsc(searchCriteriaItems[0],
+							 searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], listTableParams.getSelectedItemIds(), pageable);
+					 reportSectionsCntList = reportSectionsRepository.getMyAvailableReportSectionsBySearchCritEsc(
+							 searchCriteriaItems[0], searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4],
+							 listTableParams.getSelectedItemIds(), null);
+				 } else {
+					 reportSectionsList = reportSectionsRepository.getAvailableReportSectionsBySearchCritEsc(searchCriteriaItems[0],
+							 searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), pageable);
+					 reportSectionsCntList = reportSectionsRepository.getAvailableReportSectionsBySearchCritEsc(
+							 searchCriteriaItems[0], searchCriteriaItems[1], searchCriteriaItems[2],
+							 listTableParams.getSelectedItemIds(), null);
+				 }
 			} else {
 				if (myItemsIndex >= 0) {		// Retrieve my items
-					reportItemsList = reportItemsRepository.getMyAvailableReportItemsBySearchCrit(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], 
-							listTableParams.getSelectedItemIds(), pageable);
-					reportItemsCntList = reportItemsRepository.getMyAvailableReportItemsBySearchCrit(searchCriteriaItems[0],
-							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4],
-							listTableParams.getSelectedItemIds(), null);
-				} else {			
-					reportItemsList = reportItemsRepository.getAvailableReportItemsBySearchCrit(searchCriteriaItems[0],
+					reportSectionsList = reportSectionsRepository.getMyAvailableReportSectionsBySearchCrit(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], listTableParams.getSelectedItemIds(), pageable);
+					reportSectionsCntList = reportSectionsRepository.getMyAvailableReportSectionsBySearchCrit(searchCriteriaItems[0],
+							searchCriteriaItems[1], searchCriteriaItems[2], searchCriteriaItems[4], listTableParams.getSelectedItemIds(), null);
+				 } else {
+					reportSectionsList = reportSectionsRepository.getAvailableReportSectionsBySearchCrit(searchCriteriaItems[0],
 							searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), pageable);
-					reportItemsCntList = reportItemsRepository.getAvailableReportItemsBySearchCrit(searchCriteriaItems[0],
+					reportSectionsCntList = reportSectionsRepository.getAvailableReportSectionsBySearchCrit(searchCriteriaItems[0],
 							searchCriteriaItems[1], searchCriteriaItems[2], listTableParams.getSelectedItemIds(), null);
-				}
+				 }
 			}
-		}
-		reportItemsCount = reportItemsCntList.size();
-		logit.info("Total Report Item records retrieved = {}", reportItemsCount);
-		if (!reportItemsList.isEmpty()) {
-			reportItemDataList = populateReportItemList(reportItemsList);
-			paginationResult.setReportItemsData(reportItemDataList);
-		} else {
-			paginationResult.setReportItemsData(new ArrayList<>());
-			reportItemsCount = 0;
-		}
-		paginationResult.setTotalRecordsCount(reportItemsCount);
-		return paginationResult;
-	}
-
+		 }
+		 reportSectionsCount = reportSectionsCntList.size();
+		 logit.info("Total Report Section records retrieved = {}", reportSectionsList.size());
+		 logit.info("Total number of Report Section records for search criteria = {}", reportSectionsCount);
+		if (!reportSectionsList.isEmpty()) {
+			 reportSectionDataList = populateReportSectionList(reportSectionsList);
+			 paginationResult.setReportSectionsData(reportSectionDataList);
+		 } else {
+			 paginationResult.setReportSectionsData(new ArrayList<>());
+			 reportSectionsCount = 0;
+		 }
+		 paginationResult.setTotalRecordsCount(reportSectionsCount);
+		 return paginationResult;
+     }
+	public List<ReportSectionDTO> populateReportSectionList(List<PrmRsRptSecT> reportSectionList) {
+		 List<ReportSectionDTO> reportSectionDataList = new ArrayList<>();
+		 
+		 for (PrmRsRptSecT reportSectionInd  : reportSectionList) {  
+			 ReportSectionDTO reportSectionDTO = new ReportSectionDTO();
+			 reportSectionDTO.setReportSectionId(reportSectionInd.getRsId()); 
+			 reportSectionDTO.setReportSectionName(reportSectionInd.getReportSectionName()); 
+			 reportSectionDTO.setCreatedBy(reportSectionInd.getUiUserBaseCr().getUiFirstName() + ReportSectionConstants.BLANK_STR + reportSectionInd.getUiUserBaseCr().getUiLastName());
+			 reportSectionDTO.setCreatedDate(reportItemDataService.formatLocalDate(reportSectionInd.getCreateDate()));
+			 reportSectionDTO.setModifiedBy(reportSectionInd.getUiUserBaseUpd().getUiFirstName() + ReportSectionConstants.BLANK_STR + reportSectionInd.getUiUserBaseUpd().getUiLastName());
+			 reportSectionDTO.setModifiedDate(reportItemDataService.formatLocalDate(reportSectionInd.getUpdateDate())); 
+			 reportSectionDTO.setCreatedBySystemId(reportSectionInd.getUiUserBaseCr().getUiSystemId());
+			 reportSectionDataList.add(reportSectionDTO);  
+	       }
+		 return reportSectionDataList;
+	 }
 	/**
-	 * this method is called by getReportItemsOnSearchCriteria. Returns search
-	 * criteria in an array
+	 * this method will get the report section record data corresponding to Report Section ID  
 	 * 
-	 * Parameters - ListTableParams (contains sort, filter conditions; page number,
-	 * page size)
+	 * Parameters - Report Section ID
 	 */
-	protected String[] getSearchCriteria(ListTableParams listTableParams, int myItemsIndex) {
-		String[] searchCriteriaItems = {ReportSectionConstants.PERCENT_STR, // [0][ RI/RS Name
-										ReportSectionConstants.PERCENT_STR, // [1] Created by
-										ReportSectionConstants.PERCENT_STR, // [2] Modified by
-										ReportSectionConstants.ZERO_STR ,	// [3] if Name contains sp ch
-										ReportSectionConstants.NULL_STR };	// [4] User System Id
-		String searchInput;
-		String searchBy;
-		int searchCritSize = listTableParams.getSearchBy().size();
-		
-		for (int index = 0; index < searchCritSize; index++) {
-			searchInput = listTableParams.getSearchInput().get(index).toLowerCase();
-			searchBy = listTableParams.getSearchBy().get(index);
-			switch (searchBy) {
-			case ReportSectionConstants.REPORT_ITEM_NAME:
-			case ReportSectionConstants.REPORT_SECTION_NAME:
-				if (StringUtils.containsAny(searchInput, ReportSectionConstants.PERCENT_CHAR)
-						|| StringUtils.containsAny(searchInput, ReportSectionConstants.UNDERSCORE_CHAR)) {
-					searchCriteriaItems[3] = ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR;
-				}
-				searchCriteriaItems[0] = replReportItemName(searchInput); /// reportItemNameVal
-				break;
-			case ReportSectionConstants.CREATED_BY:
-				if (StringUtils.containsWhitespace(searchInput)){
-					searchInput = searchInput.trim();
-			    	searchInput = searchInput.replaceAll("\\s+", " ");
-		        }
-				searchCriteriaItems[1] = ReportSectionConstants.PERCENT_STR + searchInput + ReportSectionConstants.PERCENT_STR; // createdByVal
-				break;
-			case ReportSectionConstants.MODIFIED_BY:
-				if (StringUtils.containsWhitespace(searchInput)){
-					searchInput = searchInput.trim();
-			    	searchInput = searchInput.replaceAll("\\s+", " ");
-		        }
-				searchCriteriaItems[2] = ReportSectionConstants.PERCENT_STR + searchInput + ReportSectionConstants.PERCENT_STR; // updatedByVal
-				break;
-			case ReportSectionConstants.USER_SYSTEM_ID:
-				searchCriteriaItems[4] = searchInput;
-				break;
-			default:
-				break;
-			}
-		}
-		return searchCriteriaItems;
-	}
-
-	protected Pageable createPageableReports(ListTableParams listTableParams) {
-		Pageable pageable = null;
-		String sortStr1;
-		String sortStr2 = "";
-		String sortByStr = listTableParams.getSortBy();
-		int pageNumberI = listTableParams.getPageNumber() - 1;
-		int pageSizeI = listTableParams.getRecordsPerPage();
-		// Pageable represents the Page configuration with sorting
-		Sort.Order order1 = null;
-		Sort.Order order2 = null;
-		Sort.Direction sortDirection;
-		Sort sort1;
-		if (listTableParams.getSortOrder() > 0) {
-			sortDirection = Sort.Direction.ASC;
-		} else {
-			sortDirection = Sort.Direction.DESC;
-		}
-		switch (sortByStr) {
-		case ReportSectionConstants.REPORT_ITEM_NAME:
-		case ReportSectionConstants.REPORT_SECTION_NAME:
-			sortStr1 = sortByStr;
-			order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
-			sort1 = Sort.by(order1);
-			break;
-		case ReportSectionConstants.CREATE_DATE:
-			sortStr1 = sortByStr;
-			order1 = new Sort.Order(sortDirection, sortStr1);
-			sort1 = Sort.by(order1);
-			break;
-		case ReportSectionConstants.MODIFIED_DATE:
-			sortStr1 = ReportSectionConstants.UPDATE_DATE;
-			order1 = new Sort.Order(sortDirection, sortStr1);
-			sort1 = Sort.by(order1);
-			break;
-		case ReportSectionConstants.CREATED_BY:
-			sortStr1 = "uiUserBaseCr.uiFirstName";
-			sortStr2 = "uiUserBaseCr.uiLastName";
-			order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
-			order2 = new Sort.Order(sortDirection, sortStr2).ignoreCase();
-			sort1 = Sort.by(order1, order2);
-			break;
-		case ReportSectionConstants.MODIFIED_BY:
-			sortStr1 = "uiUserBaseUpd.uiFirstName";
-			sortStr2 = "uiUserBaseUpd.uiLastName";
-			order1 = new Sort.Order(sortDirection, sortStr1).ignoreCase();
-			order2 = new Sort.Order(sortDirection, sortStr2).ignoreCase();
-			sort1 = Sort.by(order1, order2);
-			break;
-		default:
-			sortStr1 = ReportSectionConstants.CREATE_DATE;
-			order1 = new Sort.Order(sortDirection, sortStr1);
-			sort1 = Sort.by(order1);
-			break;
-		}
-		pageable = PageRequest.of(pageNumberI, pageSizeI, sort1);
-		return pageable;
-	}
-
-	/**
-	 * this method is called by getReportItemsList, getReportItemsByPage to populate
-	 * and return a list Report items
-	 * 
-	 * Parameters - List of PrmRiRptItemTs (Report Item table)
-	 */
-	public List<ReportItemDTO> populateReportItemList(List<PrmRiRptItemT> reportItemList) {
+	public ReportSectionDTO getReportSectionById(Integer reportSectionRecId, boolean details){
+		logit.info(" Obtain Report Section for the ID = {}", reportSectionRecId );
+		ReportSectionDTO reportSectionDTO = null;
 		List<ReportItemDTO> reportItemDataList = new ArrayList<>();
+		PrmRsRptSecT reportSectionInd;
 		ReportItemDTO reportItemDTO;
-		for (PrmRiRptItemT reportItemInd : reportItemList) {
-			reportItemDTO = populateReportItemInd(reportItemInd);
-			reportItemDataList.add(reportItemDTO);
-		}
-		return reportItemDataList;
-	}
-
-	protected ReportItemDTO populateReportItemInd(PrmRiRptItemT reportItemInd) {
-		String[] calcFmtVal = { "Sum", "Percent", "Ratio" };
-		ReportItemDTO reportItemDTO = new ReportItemDTO();
-		reportItemDTO.setReportItemId(reportItemInd.getRiId());
-		reportItemDTO.setReportItemName(reportItemInd.getReportItemName());
-		reportItemDTO.setCalcFMT(Integer.parseInt(reportItemInd.getRiCalcFmt()));
-		reportItemDTO.setRatioOf(calcFmtVal[Integer.parseInt(reportItemInd.getRiCalcFmt()) - 1]);
-		reportItemDTO.setMultipleConstant(reportItemInd.getConstantNum());
-		reportItemDTO.setDivideConstant(reportItemInd.getConstantDen());
-		reportItemDTO.setMinimumDenominator(reportItemInd.getRiMinimumDenom());
-		reportItemDTO.setCreatedBy(reportItemInd.getUiUserBaseCr().getUiFirstName() + ReportSectionConstants.BLANK_STR
-				+ reportItemInd.getUiUserBaseCr().getUiLastName());
-		reportItemDTO.setCreatedDate(formatLocalDate(reportItemInd.getCreateDate()));
-		reportItemDTO.setModifiedBy(reportItemInd.getUiUserBaseUpd().getUiFirstName()
-				+ ReportSectionConstants.BLANK_STR + reportItemInd.getUiUserBaseUpd().getUiLastName());
-		reportItemDTO.setModifiedDate(formatLocalDate(reportItemInd.getUpdateDate()));
-		reportItemDTO.setCreatedBySystemId(reportItemInd.getUiUserBaseCr().getUiSystemId());
-		return reportItemDTO;
-	}
-
-	private List<BehaviorPatternDTO> getSelectedBps(PrmRiRptItemT reportItemInd) {
-		List<BehaviorPatternDTO> behaviorPatternList = new ArrayList<>();
+		
 		try {
-			for (PrmBpRiFormulaT reportItemFormula : reportItemInd.getPrmBpRiFormulaTs()) {
-				PrmBpBehaviorPatsT prmBpBehaviorPatsT = behaviorPatternsRepository
-						.getBehaviorPatternById(reportItemFormula.getId().getBpId());
-				BehaviorPatternDTO behaviorPatternDTO = populatebehaviorPatternDTO(prmBpBehaviorPatsT);
-				behaviorPatternDTO.setType(reportItemFormula.getId().getRibpType());
-				behaviorPatternDTO.setOperator(reportItemFormula.getOperatorExp());
-				logit.info("behavior Id = {} Type = {} Operator Exp = {}", behaviorPatternDTO.getBehaviorPatternId(),
-						behaviorPatternDTO.getType(), behaviorPatternDTO.getOperator());
-				behaviorPatternList.add(behaviorPatternDTO);
-			}
-		} catch (Exception e) {
-			throw new ReportSectionApiException(e);
-		}
-		return behaviorPatternList;
-	}
-
-	/**
-	 * this method will get the report item record data corresponding to Report Item
-	 * ID
-	 * 
-	 * Parameters - Report Item ID
-	 */
-	public ReportItemDTO getReportItemById(Integer reportItemId) {
-		ReportItemDTO reportItemDTO = null;
-		PrmRiRptItemT reportItemInd;
-		try {
-			reportItemInd = reportItemsRepository.getReportItemById(reportItemId);
-			if (reportItemInd == null) {
+			reportSectionInd = reportSectionsRepository.getReportSectionById(reportSectionRecId);
+			if (reportSectionInd == null ) {
 				throw new ReportSectionApiException(ReportSectionConstants.NO_DATA_FOUND_MSG);
 			}
-			reportItemDTO = populateReportItemInd(reportItemInd);
-			reportItemDTO.setNumeratorBehaviorPatterns(new ArrayList<>());
-			reportItemDTO.setDenominatorBehaviorPatterns(new ArrayList<>());
-			List<BehaviorPatternDTO> behaviorPatternList = getBehaviorPatterns(reportItemInd);
-			for (BehaviorPatternDTO behaviorPatternDTO : behaviorPatternList) {
-				if (behaviorPatternDTO.getType().equals(ReportSectionConstants.NUM_STR)) {
-					reportItemDTO.getNumeratorBehaviorPatterns().add(behaviorPatternDTO);
-				} else {
-					reportItemDTO.getDenominatorBehaviorPatterns().add(behaviorPatternDTO);
-				}
-			}
-			logit.info("Get Report Item -  DTO populated with data for ID = {}", reportItemId);
-		} catch (Exception e) {
-			throw new ReportSectionApiException(e);
-		}
-		return reportItemDTO;
-	}
-
-	/**
-	 * this method will get the behavior pattern data corresponding to Behavior
-	 * Pattern IDs of a Report Item
-	 * 
-	 * Parameters - PrmRiRptItemT
-	 */
-	public List<BehaviorPatternDTO> getBehaviorPatterns(PrmRiRptItemT reportItemInd) {
-		List<BehaviorPatternDTO> behaviorPatternList = new ArrayList<>();
-		BehaviorPatternDTO behaviorPatternDTO = null;
-		List<Object[]> behaviorPatternRS;
-		Integer behaviorPatternId;
-		try {
-			for (PrmBpRiFormulaT reportItemFormula : reportItemInd.getPrmBpRiFormulaTs()) {
-				behaviorPatternId = reportItemFormula.getId().getBpId();
-				logit.info("Retrieve Behavior Pattern By  ID = {}", behaviorPatternId);
-				behaviorPatternRS = behaviorPatternsRepository.retrieveBehaviorPatternById(behaviorPatternId);
-				if (!behaviorPatternRS.isEmpty()) {
-					Object[] behaviorPatternData = behaviorPatternRS.get(0);
-					behaviorPatternDTO = new BehaviorPatternDTO();
-					behaviorPatternDTO.setBehaviorPatternId(reportItemFormula.getId().getBpId());
-					behaviorPatternDTO.setErId((int) behaviorPatternData[0]);
-					behaviorPatternDTO.setThisBpRequiresDr((int) behaviorPatternData[0] != -1);
-					behaviorPatternDTO.setBaId((String) behaviorPatternData[1]);
-					behaviorPatternDTO.setBehaviorPatternName((String) behaviorPatternData[2]);
-					behaviorPatternDTO.setDataElementCode((int) behaviorPatternData[3]);
-					if (behaviorPatternData[4] != null) {
-						behaviorPatternDTO.setDateElementCode((int) behaviorPatternData[4]);
-					}
-					behaviorPatternDTO.setCreatedDate(formatDate((Date) behaviorPatternData[5]));
-					behaviorPatternDTO.setCreatedBy((String) behaviorPatternData[6] + ReportSectionConstants.BLANK_STR
-							+ (String) behaviorPatternData[7]);
-					behaviorPatternDTO.setModifiedDate(formatDate((Date) behaviorPatternData[8]));
-					behaviorPatternDTO.setModifiedBy((String) behaviorPatternData[9] + ReportSectionConstants.BLANK_STR
-							+ (String) behaviorPatternData[10]);
-					behaviorPatternDTO.setSumOf((String) behaviorPatternData[11]);
-					behaviorPatternDTO.setDataElementName((String) behaviorPatternData[12]);
-				//	behaviorPatternDTO.setDateElementName((String) behaviorPatternData[13]);
-					behaviorPatternDTO.setType(reportItemFormula.getId().getRibpType());
-					behaviorPatternDTO.setOperator(reportItemFormula.getOperatorExp());
-					List<DataRuleDTO> dataRules = getSelectedDataRules(behaviorPatternDTO.getErId());
-					behaviorPatternDTO.setDataRules(dataRules);
-					logit.info("BehaviorPattern Bean populated with data for ID = {}", behaviorPatternId);
-					behaviorPatternList.add(behaviorPatternDTO);
-				} else {
-					throw new ReportSectionApiException(ReportSectionConstants.NO_DATA_FOUND_MSG);
-				}
-			}
-		} catch (Exception e) {
-			throw new ReportSectionApiException(e);
-		}
-		return behaviorPatternList;
-	}
-
-	/**
-	 * this method will give the selected Data Rules records data for a Extract Rule ID
-	 * 
-	 * Parameters - erId
-	 */
-	public List<DataRuleDTO> getSelectedDataRules(Integer erId) {
-		List<DataRuleDTO> selectedDataRulesList = new ArrayList<>();
-		List<Integer> dataRuleIdList;
-		List<PrmDrDataRuleT> dataRuleDrList;
-		try {
-			List<PrmErDrT> erdrList = behaviorPatternErDrRepository.retrieveErDrValues(erId);
-			logit.info("{} Data Rule records retrieved for Extract Rule ID = {}", erdrList.size(), erId);
-			if (erdrList.isEmpty()) {
-				selectedDataRulesList = new ArrayList<>();
-			} else {
-				dataRuleIdList = new ArrayList<>();
-				for (PrmErDrT erdrInd : erdrList) {
-					dataRuleIdList.add(erdrInd.getId().getDrId());
-				}
-				dataRuleDrList = dataRulesRepository.getDataRulesByIds(dataRuleIdList);
-				selectedDataRulesList = populateDataRulesList(dataRuleDrList);
-			}
-		} catch (Exception e) {
-			throw new ReportSectionApiException(e);
-		}
-		return selectedDataRulesList;
-	}
-
-	private List<DataRuleDTO> populateDataRulesList(List<PrmDrDataRuleT> dataruleList) {
-		List<DataRuleDTO> dataRuleDataList = new ArrayList<>();
-		for (PrmDrDataRuleT dataRuleInd : dataruleList) {
-			DataRuleDTO dataRuleDTO = new DataRuleDTO();
-			dataRuleDTO.setDataRuleId(dataRuleInd.getDrId());
-			dataRuleDTO.setDataRuleName(dataRuleInd.getDataRuleName());
-			dataRuleDTO.setDataElementName(dataRuleInd.getPrmMbMasterT().getMbCustDatadesc());
-			dataRuleDTO.setOperator(dataRuleInd.getPrmDrLuOperatorT().getOperatorDesc());
-			dataRuleDTO.setCreatedBy(dataRuleInd.getUiUserBaseCr().getUiFirstName() + ReportSectionConstants.BLANK_STR
-					+ dataRuleInd.getUiUserBaseCr().getUiLastName());
-			dataRuleDTO.setCreatedDate(formatDate(dataRuleInd.getCreateDate()));
-			dataRuleDTO.setModifiedBy(dataRuleInd.getUiUserBaseUpd().getUiFirstName()
-					+ ReportSectionConstants.BLANK_STR + dataRuleInd.getUiUserBaseUpd().getUiLastName());
-			dataRuleDTO.setModifiedDate(formatDate(dataRuleInd.getUpdateDate()));
-			dataRuleDTO.setDataElementId(dataRuleInd.getPrmMbMasterT().getMbCtecFid());
-			setCodeRangeValues(dataRuleInd, dataRuleDTO);
-			dataRuleDataList.add(dataRuleDTO);
-		}
-		return dataRuleDataList;
-	}
-
-	private void setCodeRangeValues(PrmDrDataRuleT dataRuleInd, DataRuleDTO dataRuleDTO) {
-		if (!dataRuleInd.getPrmDrSingleValuesTs().isEmpty()) {
-			dataRuleDTO.setRangeValue(ReportSectionConstants.NO_VALUE);
-			List<DrCodeValueDTO> codeValuesList = new ArrayList<>();
-			for (PrmDrSingleValuesT singleValue : dataRuleInd.getPrmDrSingleValuesTs()) {
-				DrCodeValueDTO codeBean = new DrCodeValueDTO();
-				codeBean.setValue(singleValue.getDrLabel());
-				codeBean.setCode(singleValue.getId().getDrValue());
-				codeValuesList.add(codeBean);
-			}
-			dataRuleDTO.setSelectedValues(codeValuesList);
-		} else {
-			dataRuleDTO.setSelectedValues(new ArrayList<DrCodeValueDTO>());
-		}
-		if (!dataRuleInd.getPrmDrRangesTs().isEmpty()) {
-			dataRuleDTO.setRangeValue(ReportSectionConstants.HAS_VALUE);
-			List<DrRangeValuesDTO> drRangeValuesList = new ArrayList<>();
-			for (PrmDrRangesT rangeFromTo : dataRuleInd.getPrmDrRangesTs()) {
-				DrRangeValuesDTO rangeBean = new DrRangeValuesDTO();
-				rangeBean.setFrom(rangeFromTo.getDrRangeFrom());
-				rangeBean.setTo(rangeFromTo.getDrRangeTo());
-				drRangeValuesList.add(rangeBean);
-			}
-			dataRuleDTO.setRangeValues(drRangeValuesList);
-		} else {
-			dataRuleDTO.setRangeValues(new ArrayList<DrRangeValuesDTO>());
-		}
-	}
-
-	/**
-	 * this method will delete selected Report Item
-	 * 
-	 * Parameters - Report Item Id
-	 */
-	public List<String> deleteReportItem(Integer reportItemId) {
-		int reportItemsDeleted = 0;
-		int riFormulasDeleted = 0;
-		boolean delReportItemConstraint = false;
-		List<String> deleteReportItemMessages = new ArrayList<>();
-		List<Integer> rsIdList;
-		try {
-			PrmRiRptItemT reportItem = reportItemsRepository.getReportItemById(reportItemId);
-			if (reportItem == null) {
-				deleteReportItemMessages.add(ReportSectionConstants.REPORT_ITEM_DOES_NOT_EXIST);
-			} else {
-				List<PrmRsRiT> rsriList = reportSectionItemsRepository.getRsRisByRiId(reportItemId);
-				if (!rsriList.isEmpty()) {
-					if (rsriList.size() > 1) {
-						rsIdList = new ArrayList<>();
-						for (PrmRsRiT prmRsRiT : rsriList ) {
-							rsIdList.add(prmRsRiT.getId().getRsId());
+			reportSectionDTO = new ReportSectionDTO();
+			reportSectionDTO.setReportSectionId(reportSectionRecId);
+			reportSectionDTO.setReportSectionName(reportSectionInd.getReportSectionName());
+			reportSectionDTO.setCreatedBy(reportSectionInd.getUiUserBaseCr().getUiFirstName() + ReportSectionConstants.BLANK_STR + reportSectionInd.getUiUserBaseCr().getUiLastName());
+			reportSectionDTO.setCreatedDate(reportItemDataService.formatLocalDate(reportSectionInd.getCreateDate()));
+			reportSectionDTO.setModifiedBy(reportSectionInd.getUiUserBaseUpd().getUiFirstName() + ReportSectionConstants.BLANK_STR + reportSectionInd.getUiUserBaseUpd().getUiLastName());
+			reportSectionDTO.setModifiedDate(reportItemDataService.formatLocalDate(reportSectionInd.getUpdateDate())); 
+			reportSectionDTO.setCreatedBySystemId(reportSectionInd.getUiUserBaseCr().getUiSystemId());
+			for (PrmRsRiT prmRsRiT: reportSectionInd.getPrmRsRiTs()) {
+				PrmRiRptItemT prmRiRptItemT = prmRsRiT.getPrmRiRptItemT();  
+				reportItemDTO = reportItemDataService.populateReportItemInd(prmRiRptItemT);
+				reportItemDTO.setOrder(prmRsRiT.getRiOrder());
+				if (details) {
+					reportItemDTO.setNumeratorBehaviorPatterns(new ArrayList<>());
+					reportItemDTO.setDenominatorBehaviorPatterns(new ArrayList<>());
+					List<BehaviorPatternDTO> selectedBehaviorPatternList =reportItemDataService.getBehaviorPatterns(prmRiRptItemT);
+					for (BehaviorPatternDTO behaviorPatternDTO : selectedBehaviorPatternList) {
+						if (behaviorPatternDTO.getType().equals(ReportSectionConstants.NUM_STR)) {
+							reportItemDTO.getNumeratorBehaviorPatterns().add(behaviorPatternDTO);
+						} else {
+							reportItemDTO.getDenominatorBehaviorPatterns().add(behaviorPatternDTO);
 						}
-						List<PrmRsRptSecT> reportSectionList = reportSectionsRepository.getReportSectionByIds(rsIdList);
-						for (PrmRsRptSecT reportSection: reportSectionList) {
-							deleteReportItemMessages.add(ReportSectionConstants.RS_CONST + reportSection.getReportSectionName());
-						}
-					} else { 
-						PrmRsRptSecT reportSection = reportSectionsRepository.getReportSectionById(rsriList.get(0).getId().getRsId());
-						deleteReportItemMessages.add(ReportSectionConstants.RS_CONST + reportSection.getReportSectionName());
-					}
-					delReportItemConstraint = true;
-				}
-				if (!delReportItemConstraint) { 
-					riFormulasDeleted = reportItemFormulasRepository.deleteReportItemFormulaByRiId(reportItemId);
-					logit.info("Deleted {} RI Formula records for input ID", riFormulasDeleted);
-					reportItemsDeleted = reportItemsRepository.deleteReportItem(reportItemId);
-					if (reportItemsDeleted > 0) {
-						deleteReportItemMessages.add(ReportSectionConstants.DELETE_REPORT_ITEM_SUCCESS);
-					} else {
-						deleteReportItemMessages.add(ReportSectionConstants.DELETE_REPORT_ITEM_FAIL);
 					}
 				}
+				reportItemDataList.add(reportItemDTO);
 			}
+			reportSectionDTO.setReportItems(reportItemDataList);
 		} catch (Exception e) {
 			throw new ReportSectionApiException(e);
-		}
-		return deleteReportItemMessages;
+		} 
+        return reportSectionDTO;
 	}
-
 	/**
-	 * this method will create a new Report Item
-	 * 
-	 * Parameters - reportItemDTO
-	 */
-	public ReportItemDTO addReportItem(ReportItemDTO reportItemDTO) {
-		ReportItemDTO retReportItemDTO = new ReportItemDTO();
-		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
-				Locale.ENGLISH);
-		String reportItemNameLc = reportItemDTO.getReportItemName().toLowerCase().trim();
+	  * this method will delete selected Report Section 
+	  * 
+	  * Parameters - Report Section Id
+	 */		
+	 public List<String> deleteReportSection(Integer reportSectionId){
+		 int reportSectionsDeleted = 0;
+		 boolean delReportSectionConstraint = false;
+		 List<String> deleteReportSectionMessages = new ArrayList<>();
+		 List<Integer> pbIdList;
+		 logit.info(" Delete Report Section for input ID" );
 			try {
-				PrmRiRptItemT reportItem = reportItemsRepository.getReportItemByName(reportItemNameLc);
-				if (reportItem == null) {
-					Integer reportItemId = reportItemsRepository.retrieveNextRiId();
-					if(reportItemId ==null){
-                        reportItemId=1;
-                    }
-					reportItemDTO.setReportItemId(reportItemId);
-					PrmRiRptItemT ri = new PrmRiRptItemT();
-					UiUserBase uiUserBaseCr = new UiUserBase();	
-					uiUserBaseCr.setUiSystemId(reportItemDTO.getCreatedBySystemId());
-					ri.setUiUserBaseCr(uiUserBaseCr);				// Set UiUserBase
-					UiUserBase uiUserBaseUpd = new UiUserBase();
-					uiUserBaseUpd.setUiSystemId(reportItemDTO.getModifiedBySystemId());
-					ri.setUiUserBaseUpd(uiUserBaseUpd);
-					ri.setRiId(reportItemId);
-					ri.setReportItemName(reportItemDTO.getReportItemName().trim());
-					ri.setRiCalcFmt(String.valueOf(reportItemDTO.getCalcFMT()));
-					ri.setRiMinimumDenom(reportItemDTO.getMinimumDenominator());
-					ri.setConstantDen(reportItemDTO.getDivideConstant());
-					ri.setConstantDenOp(ReportSectionConstants.OP_STR);
-					ri.setConstantNum(reportItemDTO.getMultipleConstant());
-					ri.setConstantNumOp(ReportSectionConstants.OP_STR);
-					
-					ri.setCreateDate(LocalDateTime.parse(reportItemDTO.getCreatedDate(), dateTimeFormatter));
-					ri.setUpdateDate(LocalDateTime.parse(reportItemDTO.getModifiedDate(), dateTimeFormatter));
-					reportItemsRepository.saveAndFlush(ri);
-					saveReportItemFormulas(reportItemDTO);
-					retReportItemDTO.setReportItemId(reportItemId);
-					retReportItemDTO.setReportItemName(reportItemDTO.getReportItemName().trim());
-					retReportItemDTO.setCreatedDate(reportItemDTO.getCreatedDate());
-					retReportItemDTO.setModifiedDate(reportItemDTO.getModifiedDate());
-					retReportItemDTO.setModifiedBySystemId(reportItemDTO.getModifiedBySystemId());
-					retReportItemDTO.setCreatedBySystemId(reportItemDTO.getCreatedBySystemId());
-					logit.info("Report Item saved with Report Item ID = {}", reportItemId);
+				PrmRsRptSecT reportSection = reportSectionsRepository.getReportSectionById(reportSectionId);
+				if (reportSection == null) {
+					deleteReportSectionMessages.add(ReportSectionConstants.REPORT_SECTION_DOES_NOT_EXIST);
 				} else {
-					retReportItemDTO.setReportItemId(reportItem.getRiId());
-					retReportItemDTO.setReportItemName(ReportSectionConstants.REPORT_ITEM_EXISTS);
-					retReportItemDTO.setModifiedBySystemId(reportItem.getUiUserBaseUpd().getUiSystemId());
-					retReportItemDTO.setCreatedBySystemId(reportItem.getUiUserBaseCr().getUiSystemId());
+					// Check if Report Section is assigned to Study via PrmStudyRsRiT
+					List<PrmStudyRsRiT> prmStudyRsRiListInDb = reportSectionItemsRepository.getStudyRsRisByRsId(reportSectionId);
+					if (!prmStudyRsRiListInDb.isEmpty()) {
+						if (prmStudyRsRiListInDb.size() > 1) {
+							pbIdList = new ArrayList<>();
+							for (PrmStudyRsRiT prmStudyRsRiT : prmStudyRsRiListInDb ) {
+								pbIdList.add(prmStudyRsRiT.getId().getPbId());
+							}
+							List<PrmStudyMasterT> studyList = studyRepository.getStudyByPbIds(pbIdList);
+							for (PrmStudyMasterT study: studyList) {
+								deleteReportSectionMessages.add(ReportSectionConstants.STUDY_CONST + study.getPbName());
+							}
+						} else { 
+							PrmStudyMasterT prmStudyMasterT = studyRepository.getStudyByPbId(prmStudyRsRiListInDb.get(0).getId().getPbId());
+							deleteReportSectionMessages.add(ReportSectionConstants.STUDY_CONST + prmStudyMasterT.getPbName());
+						}
+						delReportSectionConstraint = true;
+					}
+					if (!delReportSectionConstraint) {
+						int reportSectionItemsDeleted = reportSectionItemsRepository.deleteReportSectionItemsByRsId(reportSectionId);
+						logit.info("Deleted {} Report Section Item record(s) for input RS ID {}", reportSectionItemsDeleted, reportSectionId );
+						reportSectionsDeleted = reportSectionsRepository.deleteReportSection(reportSectionId);
+						if (reportSectionsDeleted > 0) {
+							deleteReportSectionMessages.add(ReportSectionConstants.DELETE_REPORT_SECTION_SUCCESS);
+						} else {
+							deleteReportSectionMessages.add(ReportSectionConstants.DELETE_REPORT_SECTION_FAIL);
+						}
+					}
 				}
 			} catch (Exception e) {
-				throw new ReportSectionApiException(e);
-			}
-		return retReportItemDTO;
-	}
-
-	/**
-	 * this method will update a Report Section records based on input data
-	 * 
-	 * Parameters - reportItemDTO
+				throw new ReportSectionApiException(e );
+			} 
+	        return deleteReportSectionMessages;
+		}
+	 /**
+	  * this method will create a new Report Section  
+	  * 
+	  * Parameters - reportItemDTO
 	 */
-	public String updateReportItem(Integer reportItemId, ReportItemDTO reportItemDTO) {
-		
-		String reportItemName = reportItemDTO.getReportItemName().trim();
+	 public ReportSectionDTO addReportSection(ReportSectionDTO reportSectionDTO){
+		 ReportSectionDTO retReportSectionDTO = new ReportSectionDTO();
+		 String reportSectionNameLc = reportSectionDTO.getReportSectionName().toLowerCase().trim();
+		 
+		 try {
+			
+			PrmRsRptSecT reportSection = reportSectionsRepository.getReportSectionByName(reportSectionNameLc);
+			if (reportSection == null) {
+				Integer reportSectionId = reportSectionsRepository.retrieveNextRsId();
+				reportSectionDTO.setReportSectionId(reportSectionId);
+				saveReportSection(reportSectionDTO);
+				if(!reportSectionDTO.getReportItems().isEmpty()) { 
+					saveReportSectionItems(reportSectionDTO.getReportItems(), reportSectionId);
+				} 
+				retReportSectionDTO.setReportSectionId(reportSectionId);
+				retReportSectionDTO.setReportSectionName(reportSectionDTO.getReportSectionName().trim());
+				retReportSectionDTO.setCreatedDate(reportSectionDTO.getCreatedDate());
+				retReportSectionDTO.setModifiedDate(reportSectionDTO.getModifiedDate());
+				retReportSectionDTO.setModifiedBySystemId(reportSectionDTO.getModifiedBySystemId());
+				retReportSectionDTO.setCreatedBySystemId(reportSectionDTO.getCreatedBySystemId());
+			} else {
+				retReportSectionDTO.setReportSectionId(reportSection.getRsId());
+				retReportSectionDTO.setReportSectionName(ReportSectionConstants.REPORT_ITEM_EXISTS);
+				retReportSectionDTO.setModifiedBySystemId(reportSection.getUiUserBaseUpd().getUiSystemId());
+				retReportSectionDTO.setCreatedBySystemId(reportSection.getUiUserBaseCr().getUiSystemId());
+			}
+		} catch (Exception e) {
+			throw new ReportSectionApiException(e);
+		} 	
+	    return retReportSectionDTO;
+	}	
+	 /**
+	  * this method will save the new Report Section to the Database
+	  * 
+	  * Parameters - reportSectionDTO, Current Date
+	 */
+	 private void saveReportSection(ReportSectionDTO reportSectionDTO) {
+		 PrmRsRptSecT rs = new PrmRsRptSecT();
+		 UiUserBase uiUserBaseCr = new UiUserBase();	
+		 DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
+					Locale.ENGLISH);
+			uiUserBaseCr.setUiSystemId(reportSectionDTO.getCreatedBySystemId());
+			rs.setUiUserBaseCr(uiUserBaseCr);				// Set UiUserBase
+			UiUserBase uiUserBaseUpd = new UiUserBase();
+			uiUserBaseUpd.setUiSystemId(reportSectionDTO.getModifiedBySystemId());
+			rs.setUiUserBaseUpd(uiUserBaseUpd);
+			rs.setRsId(reportSectionDTO.getReportSectionId());
+			rs.setReportSectionName(reportSectionDTO.getReportSectionName().trim()); 
+			  
+			rs.setCreateDate(LocalDateTime.parse(reportSectionDTO.getCreatedDate(), dateTimeFormatter));
+			rs.setUpdateDate(LocalDateTime.parse(reportSectionDTO.getModifiedDate(), dateTimeFormatter));
+			reportSectionsRepository.saveAndFlush(rs);
+			logit.info("Saved the Report Section Id {}", reportSectionDTO.getReportSectionId());
+		}
+	 /**
+		 * this method will update a Report Section records based on input data  
+		 * 
+		 * Parameters - reportSectionDTO
+		 */	
+	@Transactional
+	public String updateReportSection(Integer reportSectionId, ReportSectionDTO reportSectionDTO){
 		DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMMSS_A,
 				Locale.ENGLISH);
 		try {
-
-			PrmRiRptItemT prmRiRptItemT = reportGroupDetailMapper.convertToPrmRiRptItemT(reportItemDTO);
-			prmRiRptItemT.setConstantDenOp(ReportSectionConstants.OP_STR);
-			prmRiRptItemT.setConstantNumOp(ReportSectionConstants.OP_STR);
-			prmRiRptItemT.setUpdateDate(LocalDateTime.parse(reportItemDTO.getModifiedDate(), dateTimeFormatter));
-			PrmRiRptItemT reportItemInd = reportItemsRepository.getReportItemById(reportItemId);
-			prmRiRptItemT.setCreateDate(reportItemInd.getCreateDate());
-			prmRiRptItemT = reportItemsRepository.saveAndFlush(prmRiRptItemT);
-			if (!reportItemDTO.getNumeratorBehaviorPatterns().isEmpty()
-					|| !reportItemDTO.getDenominatorBehaviorPatterns().isEmpty()) {
-				int rfsDeleted = reportItemFormulasRepository.deleteReportItemFormulaByRiId(reportItemId);
-				logit.info("Deleted {} Report Item formulas for the ID = {}", rfsDeleted, reportItemId);
-				saveReportItemFormulas(reportItemDTO);
+			
+			PrmRsRptSecT prmRsRptSecT = reportGroupDetailMapper.convertToPrmRsRptSecT(reportSectionDTO);
+			PrmRsRptSecT reportSectionInd = reportSectionsRepository.getReportSectionById(reportSectionId);
+			prmRsRptSecT.setCreateDate(reportSectionInd.getCreateDate());
+			prmRsRptSecT.setUpdateDate(LocalDateTime.parse(reportSectionDTO.getModifiedDate(), dateTimeFormatter));
+			prmRsRptSecT = reportSectionsRepository.saveAndFlush(prmRsRptSecT);
+			reportSectionItemsRepository.deleteReportSectionItemsByRsId(reportSectionId);
+			if(!reportSectionDTO.getReportItems().isEmpty()) { 
+				saveReportSectionItems(reportSectionDTO.getReportItems(), reportSectionId);
 			}
-			logit.info("Updated Report Item for the ID = {}", reportItemId);	
-
+			logit.info("Updated Report Section for the ID = {}", reportSectionId);
 		} catch (Exception e) {
-			throw new ReportSectionApiException(e);
-		}
-		return ReportSectionConstants.UPDATE_REPORT_ITEM_SUCCESS;
-	}
-	/**
-	 * this method will save report item formulas - to maintain the relationship between Report Item and its behavior patterns
-	 * the numerator, denominator Behavior Pattern IDs and Report Item ID are saved in PRM_BP_RI_FORMULA_T table
-	 * along with type (Numerator or Denominator) and operator (+, -)
-	 * 
-	 * Parameters - reportItemDTO
-	 */
-	private void saveReportItemFormulas(ReportItemDTO reportItemDTO) {
-		List<PrmBpRiFormulaT> riFormulaList = new ArrayList<>();
-		int sequence = 0;
-		List<BehaviorPatternDTO> behaviorPatternList = new ArrayList<>();
-		behaviorPatternList.addAll(reportItemDTO.getNumeratorBehaviorPatterns());
-		behaviorPatternList.addAll(reportItemDTO.getDenominatorBehaviorPatterns());
-		for (BehaviorPatternDTO behaviorPatternDTO : behaviorPatternList) {
-			PrmBpRiFormulaT rf = new PrmBpRiFormulaT();
-			PrmBpRiFormulaTPK rfPk = new PrmBpRiFormulaTPK();
-			rfPk.setRiId(reportItemDTO.getReportItemId());
-			rfPk.setBpId(behaviorPatternDTO.getBehaviorPatternId());
-			rf.setOperatorExp(behaviorPatternDTO.getOperator());
-			rfPk.setRibpSeq(++sequence);
-			rfPk.setRibpType(behaviorPatternDTO.getType());
-			rf.setId(rfPk);
-			riFormulaList.add(rf);
-		}
-		try {
-			if (!riFormulaList.isEmpty()) {
-				logit.info("Save RiFormulas = {} for Report Item ID {}", riFormulaList.size(), reportItemDTO.getReportItemId());
-				reportItemFormulasRepository.saveAll(riFormulaList);
-				reportItemFormulasRepository.flush();
-			}
-		} catch (Exception e) {
-			throw new ReportSectionApiException(e);
-		}
+			throw new ReportSectionApiException(e );
+		} 
+		return ReportSectionConstants.UPDATE_REPORT_SECTION_SUCCESS;
 	}
 
+	private void saveReportSectionItems(List<ReportItemDTO> items, Integer reportSectionId){
+		List<PrmRsRiT> rsRiList =new ArrayList<>(); 	
+		for (ReportItemDTO reportItemDTO : items) {
+			PrmRsRiT prmRsRiT = new PrmRsRiT();
+			PrmRsRiTPK prmRsRiTPK = new PrmRsRiTPK();
+			prmRsRiTPK.setRsId(reportSectionId);
+			prmRsRiTPK.setRiId(reportItemDTO.getReportItemId());
+			prmRsRiT.setId(prmRsRiTPK);
+			prmRsRiT.setRiOrder(reportItemDTO.getOrder());
+			rsRiList.add(prmRsRiT);
+		}
+		logit.info("Save the Report Section via ReportSectionsRepository");
+		reportSectionItemsRepository.saveAll(rsRiList);
+		reportSectionItemsRepository.flush();
+	}	
 	/**
-	 * this method will return the available Behavior Pattern records data, except those associated 
-	 * with the input Report Item ID
+	 * this method will give the available Report Item records data (per page) for a Report Section ID
 	 * 
-	 * Parameters - reportItemId
-	 */
-	public List<BehaviorPatternDTO> getAvailableBehaviorPatterns(Integer reportItemId) {
-		logit.info("Get Available  Behavior Patterns List ");
-		List<BehaviorPatternDTO> availableBehaviorPatternList = new ArrayList<>();
-		List<PrmBpBehaviorPatsT> behaviorPatternBPList;
+	 * Parameters - reportSectionId, ListTableParams (contains sort, filter conditions; page number, page size)
+	 */ 
+	public List<ReportItemDTO> getAvailableReportItems(Integer reportSectionId){
+		logit.info("Get Available  Report Items List ");
+		List<ReportItemDTO> availableReportItemDataList = null;
+		List<PrmRiRptItemT> reportItemRIList;
 		try {
-			PrmRiRptItemT reportItem = reportItemsRepository.getReportItemById(reportItemId);
-			if (reportItem == null) {
-				throw new ReportSectionApiException(ReportSectionConstants.REPORT_ITEM_DOES_NOT_EXIST);
-			}
-			behaviorPatternBPList = behaviorPatternsRepository.getAvailableBehaviorPatterns(reportItemId);
-			if (!behaviorPatternBPList.isEmpty()) {
-				for (PrmBpBehaviorPatsT prmBpBehaviorPatsT : behaviorPatternBPList) {
-					BehaviorPatternDTO behaviorPatternDTO = populatebehaviorPatternDTO(prmBpBehaviorPatsT);
-					availableBehaviorPatternList.add(behaviorPatternDTO);
-				}
+			reportItemRIList = reportItemsRepository.getAvailableReportItems(reportSectionId);
+			if (!reportItemRIList.isEmpty()) {
+				availableReportItemDataList = reportItemDataService.populateReportItemList(reportItemRIList);
 			} else {
+				logit.info(ReportSectionConstants.NO_DATA_FOUND_MSG);
 				throw new ReportSectionApiException(ReportSectionConstants.NO_DATA_FOUND_MSG);
 			}
 		} catch (Exception e) {
 			throw new ReportSectionApiException(e);
-		}
-		return availableBehaviorPatternList;
+		}            
+        return availableReportItemDataList;
 	}
-
-	private BehaviorPatternDTO populatebehaviorPatternDTO(PrmBpBehaviorPatsT behaviorPatternInd) {
-		
-		BehaviorPatternDTO behaviorPatternDTO = new BehaviorPatternDTO();
-		behaviorPatternDTO.setBehaviorPatternId(behaviorPatternInd.getBpId());
-		behaviorPatternDTO.setErId(behaviorPatternInd.getPrmErExtractRuleT().getErId());
-		behaviorPatternDTO.setBehaviorPatternName(behaviorPatternInd.getBehaviorPatternName());
-		behaviorPatternDTO.setBaId(behaviorPatternInd.getBaId());
-		behaviorPatternDTO.setCreatedBy(behaviorPatternInd.getUiUserBaseCr().getUiUserId());
-		behaviorPatternDTO.setCreatedDate(formatDate(behaviorPatternInd.getCreateDate()));
-		behaviorPatternDTO.setModifiedBy(behaviorPatternInd.getUiUserBaseUpd().getUiUserId());
-		behaviorPatternDTO.setModifiedDate(formatDate(behaviorPatternInd.getUpdateDate()));
-		return behaviorPatternDTO;
-	}
-
 	/**
-	 * this method will give the selected Behavior Pattern records data for an input Report Item
+	 * this method will give the selected Report Item records data for a Report Section ID
 	 * 
-	 * Parameters - reportItemId
-	 */
-	public List<BehaviorPatternDTO> getSelectedBehaviorPatterns(Integer reportItemId) {
-		logit.info("Get Selected Behavior Patterns List ");
-		List<BehaviorPatternDTO> selectedBehaviorPatternList = null;
+	 * Parameters - reportSectionId
+	 */ 
+	public List<ReportItemDTO> getSelectedReportItems(Integer reportSectionId){
+		logit.info("Get Selected  Report Items List ");
+		List<ReportItemDTO> selectedReportItemsList = null;
+		List<PrmRiRptItemT> ruleItemRIList;
 		try {
-			PrmRiRptItemT reportItem = reportItemsRepository.getReportItemById(reportItemId);
-			if (reportItem == null) {
-				throw new ReportSectionApiException(ReportSectionConstants.REPORT_ITEM_DOES_NOT_EXIST);
+			List<PrmRsRiT> rsriList = reportSectionItemsRepository.getRsRisByRsId(reportSectionId);
+			logit.info("{} Report Item records retrieved for Report Section ID = {}" , rsriList.size(), reportSectionId);
+			if (rsriList.isEmpty()) {
+				selectedReportItemsList = new ArrayList<>();
+			} else {
+				List<Integer> reportItemIdList = new ArrayList<>();
+				 for ( PrmRsRiT rsriInd : rsriList) {
+					 reportItemIdList.add(rsriInd.getId().getRiId());
+				 }	
+				 ruleItemRIList = reportItemsRepository.getReportItemsByIds(reportItemIdList);
+				 selectedReportItemsList = reportItemDataService.populateReportItemList(ruleItemRIList);	
 			}
-			selectedBehaviorPatternList = getSelectedBps(reportItem);
 		} catch (Exception e) {
 			throw new ReportSectionApiException(e);
-		}
-		return selectedBehaviorPatternList;
+		}            
+        return selectedReportItemsList;
 	}
-	/**
-	 * this method will replace all special characters in the input string
-	 * 
-	 * Parameters - searchInput
+	/** 
+	 * This method will get the ZoneId corresponding to the time zone used at the customer site
+	 * Parameters: the time zone is stored in an entry in the FADS_CONFIG_T table 
 	 */
-	protected String replReportItemName(String searchInput) {
-		StringBuilder strbldr = new StringBuilder();
-		String reportItemNameVal;
-		String replacedInput = "";
-		// the space is an encoded string %20
-		if (StringUtils.containsAny(searchInput,ReportSectionConstants.SPACE_ENCODED_STR)) {
-			searchInput = searchInput.replaceAll(ReportSectionConstants.SPACE_ENCODED_STR, ReportSectionConstants.BLANK_STR);
-		} 
-		if (StringUtils.containsAny(searchInput,ReportSectionConstants.PLUS_REPL_STR)) {
-	  		searchInput = searchInput.replaceAll(ReportSectionConstants.PLUS_REPL_STR, ReportSectionConstants.PLUS_STR );
+	public ZoneId getZoneId() {
+		ZoneId zid = ZoneId.systemDefault();;
+		Optional<FadsConfigT> optional = fadsConfigRepository.findById(ReportSectionConstants.DATE_TIME_ZONE_ID);
+		if (optional.isPresent()) {
+			FadsConfigT fadsConfigT = optional.get();
+			zid = ZoneId.of(fadsConfigT.getOptionValue());	//  the zone ID corresponding to date-time zone used
 		}
-		if (StringUtils.containsAny(searchInput,ReportSectionConstants.COMMA_REPL_STR)) {
-	  		searchInput = searchInput.replaceAll(ReportSectionConstants.COMMA_REPL_STR, ReportSectionConstants.COMMA_STR );
-		}
-		if (StringUtils.containsAny(searchInput, ReportSectionConstants.PERCENT_CHAR)
-				|| StringUtils.containsAny(searchInput, ReportSectionConstants.UNDERSCORE_CHAR)) {
-			if (StringUtils.containsAny(searchInput, ReportSectionConstants.PERCENT_CHAR)) {
-				replacedInput = searchInput.replaceAll("\\%", "\\\\%");
-			} else if (StringUtils.containsAny(searchInput, ReportSectionConstants.UNDERSCORE_CHAR)) {
-				replacedInput = searchInput.replaceAll("\\_", "\\\\_");
-			} else {
-				replacedInput = searchInput;
-			}
-			strbldr.append(ReportSectionConstants.PERCENT_STR);
-			strbldr.append(replacedInput);
-			strbldr.append(ReportSectionConstants.PERCENT_STR);
-			reportItemNameVal = strbldr.toString();
-		} else {
-			reportItemNameVal = ReportSectionConstants.PERCENT_STR + searchInput + ReportSectionConstants.PERCENT_STR;
-		}
-		return reportItemNameVal;
+		return zid;
+
 	}
-
-	public String formatDate(Date dt) {
-		if (dt == null)
-			return null;
-		SimpleDateFormat formatter = new SimpleDateFormat(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A);
-		return formatter.format(dt);
-	}
-
-		// For LocalDateTime
-		protected String formatLocalDate(LocalDateTime dt) {
-			DateTimeFormatter dateTimeFormatter;
-			if (dt == null)
-				return null;
-			dateTimeFormatter = DateTimeFormatter.ofPattern(ReportSectionConstants.DATE_FORMAT_MMDDYYYY_HHMM_A,
-					Locale.ENGLISH);
-			return dateTimeFormatter.format(dt);
-		}		
-	
-		/** 
-		 * This method will get the ZoneId corresponding to the time zone used at the customer site
-		 * Parameters: the time zone is stored in an entry in the FADS_CONFIG_T table 
-		 */
-		public ZoneId getZoneId() {
-			ZoneId zid = ZoneId.systemDefault();;
-			Optional<FadsConfigT> optional = fadsConfigRepository.findById(ReportSectionConstants.DATE_TIME_ZONE_ID);
-			if (optional.isPresent()) {
-				FadsConfigT fadsConfigT = optional.get();
-				zid = ZoneId.of(fadsConfigT.getOptionValue());	//  the zone ID corresponding to date-time zone used
-			}
-			return zid;
-
-		}
 }
