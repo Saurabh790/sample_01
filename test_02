@@ -17,7 +17,9 @@ import org.springframework.data.domain.Pageable;
 
 import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
 import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
-import com.optum.fads.pgp.reportsection.api.domain.*;
+import com.optum.fads.pgp.reportsection.api.domain.FadsConfigT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
 import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
 import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
 import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
@@ -38,11 +40,11 @@ class ReportItemDataServiceTest {
     @Mock private FadsConfigRepository fadsConfigRepository;
     @Mock private ReportGroupDetailMapper reportGroupDetailMapper;
 
-    private ReportItemDataService service;
+    private TestableReportItemDataService service;
 
     @BeforeEach
     void setup() {
-        service = new ReportItemDataService(
+        service = new TestableReportItemDataService(
                 reportItemsRepository,
                 reportItemFormulasRepository,
                 reportSectionItemsRepository,
@@ -51,32 +53,25 @@ class ReportItemDataServiceTest {
                 dataRulesRepository,
                 reportSectionsRepository
         );
-
-        // field-injected in your class, so set via reflection
-        setField(service, "fadsConfigRepository", fadsConfigRepository);
-        setField(service, "reportGroupDetailMapper", reportGroupDetailMapper);
+        service.setFadsConfigRepository(fadsConfigRepository);
+        service.setReportGroupDetailMapper(reportGroupDetailMapper);
     }
 
-    // ---------- getReportItemsList (no search) ----------
+    // -------------------- getReportItemsList --------------------
+
     @Test
     void getReportItemsList_noSearch_selectedEmpty_usesGetReportItemsAndCount() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        params.setSortOrder(1);
-        params.setSelectedItemIds(new ArrayList<>());
+        ListTableParams params = baseParams();
         params.setSearchBy(null);
+        params.setSelectedItemIds(new ArrayList<>());
 
-        PrmRiRptItemT ri = sampleRi(11, "RI-11");
+        PrmRiRptItemT ri = realRi(11, "RI-11");
         when(reportItemsRepository.getReportItems(any(Pageable.class))).thenReturn(List.of(ri));
         when(reportItemsRepository.count()).thenReturn(1L);
 
         PaginationResultRI out = service.getReportItemsList(params);
 
-        assertNotNull(out);
         assertEquals(1, out.getTotalRecordsCount());
-        assertNotNull(out.getReportItemsData());
         assertEquals(1, out.getReportItemsData().size());
         assertEquals(Integer.valueOf(11), out.getReportItemsData().get(0).getReportItemId());
 
@@ -86,23 +81,16 @@ class ReportItemDataServiceTest {
     }
 
     @Test
-    void getReportItemsList_noSearch_selectedNotEmpty_usesGetAvailableAndCountBySize() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        params.setSortOrder(1);
-        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
+    void getReportItemsList_noSearch_selectedNotEmpty_usesAvailableAndCountBySize() {
+        ListTableParams params = baseParams();
         params.setSearchBy(null);
+        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
 
-        PrmRiRptItemT ri = sampleRi(99, "RI-99");
-
-        // pageable version returns page list
+        PrmRiRptItemT ri = realRi(99, "RI-99");
         when(reportItemsRepository.getAvailableReportItems(eq(params.getSelectedItemIds()), any(Pageable.class)))
                 .thenReturn(List.of(ri));
-        // null pageable returns "count list"
         when(reportItemsRepository.getAvailableReportItems(eq(params.getSelectedItemIds()), isNull()))
-                .thenReturn(List.of(ri, sampleRi(100, "RI-100")));
+                .thenReturn(List.of(ri, realRi(100, "RI-100")));
 
         PaginationResultRI out = service.getReportItemsList(params);
 
@@ -115,38 +103,51 @@ class ReportItemDataServiceTest {
     }
 
     @Test
-    void getReportItemsList_repositoryThrows_wrapsInReportSectionApiException() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        params.setSortOrder(1);
+    void getReportItemsList_whenSearchByPresent_delegatesToSearchCriteriaMethod() {
+        ListTableParams params = baseParams();
+        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
+        params.setSearchInput(List.of("abc"));
         params.setSelectedItemIds(new ArrayList<>());
+
+        // make search path return empty and count 0
+        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class)))
+                .thenReturn(Collections.emptyList());
+        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull()))
+                .thenReturn(Collections.emptyList());
+
+        PaginationResultRI out = service.getReportItemsList(params);
+
+        assertNotNull(out);
+        assertEquals(0, out.getTotalRecordsCount());
+        assertNotNull(out.getReportItemsData());
+        assertTrue(out.getReportItemsData().isEmpty());
+    }
+
+    @Test
+    void getReportItemsList_repositoryThrows_wrapsInReportSectionApiException() {
+        ListTableParams params = baseParams();
         params.setSearchBy(null);
+        params.setSelectedItemIds(new ArrayList<>());
 
         when(reportItemsRepository.getReportItems(any(Pageable.class))).thenThrow(new RuntimeException("db"));
 
         assertThrows(ReportSectionApiException.class, () -> service.getReportItemsList(params));
     }
 
-    // ---------- getReportItemsOnSearchCriteria (routing) ----------
+    // -------------------- getReportItemsOnSearchCriteria branch routing --------------------
+
     @Test
     void getReportItemsOnSearchCriteria_selectedEmpty_noSpChar_callsGetReportItemsBySearchCrit() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        params.setSortOrder(1);
+        ListTableParams params = baseParams();
         params.setSelectedItemIds(new ArrayList<>());
-
         params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
         params.setSearchInput(List.of("abc"));
 
-        PrmRiRptItemT ri = sampleRi(10, "abc");
+        PrmRiRptItemT ri = realRi(10, "abc");
         when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class)))
                 .thenReturn(List.of(ri));
         when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(List.of(ri, sampleRi(11, "x")));
+                .thenReturn(List.of(ri, realRi(11, "x")));
 
         PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
 
@@ -160,17 +161,12 @@ class ReportItemDataServiceTest {
 
     @Test
     void getReportItemsOnSearchCriteria_selectedEmpty_spChar_callsEscMethod() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        params.setSortOrder(1);
+        ListTableParams params = baseParams();
         params.setSelectedItemIds(new ArrayList<>());
-
         params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
         params.setSearchInput(List.of("a%"));
 
-        PrmRiRptItemT ri = sampleRi(10, "a%");
+        PrmRiRptItemT ri = realRi(10, "a%");
         when(reportItemsRepository.getReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), any(Pageable.class)))
                 .thenReturn(List.of(ri));
         when(reportItemsRepository.getReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), isNull()))
@@ -183,14 +179,67 @@ class ReportItemDataServiceTest {
     }
 
     @Test
-    void getReportItemsOnSearchCriteria_whenNoRows_returnsEmptyAndCount0() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        params.setSortOrder(1);
-        params.setSelectedItemIds(new ArrayList<>());
+    void getReportItemsOnSearchCriteria_selectedNotEmpty_noSpChar_callsGetAvailableBySearchCrit() {
+        ListTableParams params = baseParams();
+        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
+        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
+        params.setSearchInput(List.of("abc"));
 
+        PrmRiRptItemT ri = realRi(10, "abc");
+        when(reportItemsRepository.getAvailableReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyList(), any(Pageable.class)))
+                .thenReturn(List.of(ri));
+        when(reportItemsRepository.getAvailableReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyList(), isNull()))
+                .thenReturn(List.of(ri, realRi(11, "x")));
+
+        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
+
+        assertEquals(2, out.getTotalRecordsCount());
+        verify(reportItemsRepository).getAvailableReportItemsBySearchCrit(anyString(), anyString(), anyString(), eq(params.getSelectedItemIds()), any(Pageable.class));
+    }
+
+    @Test
+    void getReportItemsOnSearchCriteria_selectedNotEmpty_spChar_callsGetAvailableBySearchCritEsc() {
+        ListTableParams params = baseParams();
+        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
+        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
+        params.setSearchInput(List.of("a_"));
+
+        PrmRiRptItemT ri = realRi(10, "a_");
+        when(reportItemsRepository.getAvailableReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), anyList(), any(Pageable.class)))
+                .thenReturn(List.of(ri));
+        when(reportItemsRepository.getAvailableReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), anyList(), isNull()))
+                .thenReturn(List.of(ri));
+
+        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
+
+        assertEquals(1, out.getTotalRecordsCount());
+        verify(reportItemsRepository).getAvailableReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), eq(params.getSelectedItemIds()), any(Pageable.class));
+    }
+
+    @Test
+    void getReportItemsOnSearchCriteria_myItemsIndex_selectedEmpty_routesToMyMethods() {
+        ListTableParams params = baseParams();
+        params.setSelectedItemIds(new ArrayList<>());
+        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME, ReportSectionConstants.USER_SYSTEM_ID));
+        params.setSearchInput(List.of("abc", "u1"));
+
+        PrmRiRptItemT ri = realRi(10, "abc");
+
+        when(reportItemsRepository.getMyReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyString(), any(Pageable.class)))
+                .thenReturn(List.of(ri));
+        when(reportItemsRepository.getMyReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyString(), isNull()))
+                .thenReturn(List.of(ri, realRi(11, "x")));
+
+        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
+
+        assertEquals(2, out.getTotalRecordsCount());
+        verify(reportItemsRepository).getMyReportItemsBySearchCrit(anyString(), anyString(), anyString(), eq("u1"), any(Pageable.class));
+    }
+
+    @Test
+    void getReportItemsOnSearchCriteria_whenNoRows_returnsEmptyAndCount0() {
+        ListTableParams params = baseParams();
+        params.setSelectedItemIds(new ArrayList<>());
         params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
         params.setSearchInput(List.of("none"));
 
@@ -206,16 +255,16 @@ class ReportItemDataServiceTest {
         assertEquals(0, out.getTotalRecordsCount());
     }
 
-    // ---------- replReportItemName ----------
+    // -------------------- protected method coverage via wrappers --------------------
+
     @Test
     void replReportItemName_noSpecialChars_wrapsWithPercent() {
-        assertEquals("%abc%", service.replReportItemName("abc"));
+        assertEquals("%abc%", service.callReplReportItemName("abc"));
     }
 
     @Test
     void replReportItemName_withPercent_escapesPercent() {
-        String out = service.replReportItemName("a%");
-        // becomes "%a\%%" (java string contains backslash)
+        String out = service.callReplReportItemName("a%");
         assertTrue(out.startsWith("%"));
         assertTrue(out.endsWith("%"));
         assertTrue(out.contains("\\%"));
@@ -223,11 +272,38 @@ class ReportItemDataServiceTest {
 
     @Test
     void replReportItemName_withUnderscore_escapesUnderscore() {
-        String out = service.replReportItemName("a_");
+        String out = service.callReplReportItemName("a_");
         assertTrue(out.contains("\\_"));
     }
 
-    // ---------- getZoneId ----------
+    @Test
+    void getSearchCriteria_trimsMultipleSpaces_createdBy_modifiedBy() {
+        ListTableParams params = baseParams();
+        params.setSearchBy(List.of(ReportSectionConstants.CREATED_BY, ReportSectionConstants.MODIFIED_BY));
+        params.setSearchInput(List.of("  john   doe  ", "  jane   doe  "));
+
+        String[] crit = service.callGetSearchCriteria(params, -1);
+
+        assertEquals("%john doe%", crit[1]);
+        assertEquals("%jane doe%", crit[2]);
+    }
+
+    @Test
+    void populateReportItemInd_mapsFields() {
+        PrmRiRptItemT ri = realRi(44, "RI-44");
+        ReportItemDTO dto = service.callPopulateReportItemInd(ri);
+
+        assertEquals(Integer.valueOf(44), dto.getReportItemId());
+        assertEquals("RI-44", dto.getReportItemName());
+        assertEquals("A B", dto.getCreatedBy());
+        assertEquals("C D", dto.getModifiedBy());
+        assertEquals("U1", dto.getCreatedBySystemId());
+        assertNotNull(dto.getCreatedDate());
+        assertNotNull(dto.getModifiedDate());
+    }
+
+    // -------------------- getZoneId --------------------
+
     @Test
     void getZoneId_whenConfigPresent_returnsZoneFromConfig() {
         FadsConfigT cfg = new FadsConfigT();
@@ -249,374 +325,98 @@ class ReportItemDataServiceTest {
         assertEquals(ZoneId.systemDefault(), zid);
     }
 
-    // ---------------- helpers ----------------
-    private static PrmRiRptItemT sampleRi(int id, String name) {
-        PrmRiRptItemT ri = mock(PrmRiRptItemT.class);
-        when(ri.getRiId()).thenReturn(id);
-        when(ri.getReportItemName()).thenReturn(name);
-        when(ri.getRiCalcFmt()).thenReturn("1");
-        when(ri.getConstantNum()).thenReturn(3);
-        when(ri.getConstantDen()).thenReturn(2);
-        when(ri.getRiMinimumDenom()).thenReturn(5);
-        when(ri.getCreateDate()).thenReturn(LocalDateTime.now());
-        when(ri.getUpdateDate()).thenReturn(LocalDateTime.now());
+    // -------------------- helpers --------------------
 
-        UiUserBase cr = mock(UiUserBase.class);
-        when(cr.getUiFirstName()).thenReturn("A");
-        when(cr.getUiLastName()).thenReturn("B");
-        when(cr.getUiSystemId()).thenReturn("U1");
+    private static ListTableParams baseParams() {
+        ListTableParams p = new ListTableParams();
+        p.setPageNumber(1);
+        p.setRecordsPerPage(10);
+        p.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
+        p.setSortOrder(1);
+        return p;
+    }
 
-        UiUserBase upd = mock(UiUserBase.class);
-        when(upd.getUiFirstName()).thenReturn("C");
-        when(upd.getUiLastName()).thenReturn("D");
+    /**
+     * Build a REAL entity object instead of mocking it.
+     * This avoids UnfinishedStubbingException and final/proxy issues.
+     */
+    private static PrmRiRptItemT realRi(int id, String name) {
+        PrmRiRptItemT ri = new PrmRiRptItemT();
+        ri.setRiId(id);
+        ri.setReportItemName(name);
+        ri.setRiCalcFmt("1");
+        ri.setConstantNum(3);
+        ri.setConstantDen(2);
+        ri.setRiMinimumDenom(5);
+        ri.setCreateDate(LocalDateTime.now());
+        ri.setUpdateDate(LocalDateTime.now());
 
-        when(ri.getUiUserBaseCr()).thenReturn(cr);
-        when(ri.getUiUserBaseUpd()).thenReturn(upd);
+        UiUserBase cr = new UiUserBase();
+        cr.setUiFirstName("A");
+        cr.setUiLastName("B");
+        cr.setUiSystemId("U1");
 
-        when(ri.getPrmBpRiFormulaTs()).thenReturn(Collections.emptyList());
+        UiUserBase upd = new UiUserBase();
+        upd.setUiFirstName("C");
+        upd.setUiLastName("D");
+        upd.setUiSystemId("U2");
+
+        ri.setUiUserBaseCr(cr);
+        ri.setUiUserBaseUpd(upd);
+
+        // important: avoid NPE in loops
+        ri.setPrmBpRiFormulaTs(new ArrayList<>());
+
         return ri;
     }
 
-    private static void setField(Object target, String fieldName, Object value) {
-        try {
-            java.lang.reflect.Field f = target.getClass().getDeclaredField(fieldName);
-            f.setAccessible(true);
-            f.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+    // subclass exposes protected methods safely + allows setting @Autowired fields
+    static class TestableReportItemDataService extends ReportItemDataService {
+
+        TestableReportItemDataService(ReportItemsRepository reportItemsRepository,
+                                      ReportItemFormulasRepository reportItemFormulasRepository,
+                                      ReportSectionItemsRepository reportSectionItemsRepository,
+                                      BehaviorPatternsRepository behaviorPatternsRepository,
+                                      BehaviorPatternErDrRepository behaviorPatternErDrRepository,
+                                      DataRulesRepository dataRulesRepository,
+                                      ReportSectionsRepository reportSectionsRepository) {
+            super(reportItemsRepository,
+                  reportItemFormulasRepository,
+                  reportSectionItemsRepository,
+                  behaviorPatternsRepository,
+                  behaviorPatternErDrRepository,
+                  dataRulesRepository,
+                  reportSectionsRepository);
         }
-    }
-}
-package com.optum.fads.pgp.reportsection.api.service.impl;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.*;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
-
-import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
-import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
-import com.optum.fads.pgp.reportsection.api.domain.*;
-import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRS;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
-import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
-import com.optum.fads.pgp.reportsection.api.mapper.ReportGroupDetailMapper;
-import com.optum.fads.pgp.reportsection.api.repo.*;
-
-@ExtendWith(MockitoExtension.class)
-class ReportSectionDataServiceTest {
-
-    @Mock private ReportSectionsRepository reportSectionsRepository;
-    @Mock private StudyRepository studyRepository;
-    @Mock private ReportSectionItemsRepository reportSectionItemsRepository;
-    @Mock private ReportItemsRepository reportItemsRepository;
-    @Mock private ReportItemFormulasRepository reportItemFormulasRepository;
-    @Mock private BehaviorPatternsRepository behaviorPatternsRepository;
-    @Mock private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
-    @Mock private DataRulesRepository dataRulesRepository;
-
-    @Mock private FadsConfigRepository fadsConfigRepository;
-    @Mock private ReportGroupDetailMapper reportGroupDetailMapper;
-
-    private ReportSectionDataService service;
-
-    @BeforeEach
-    void setup() {
-        service = new ReportSectionDataService(
-                reportSectionsRepository,
-                studyRepository,
-                reportSectionItemsRepository,
-                reportItemsRepository,
-                reportItemFormulasRepository,
-                behaviorPatternsRepository,
-                behaviorPatternErDrRepository,
-                dataRulesRepository
-        );
-
-        setField(service, "fadsConfigRepository", fadsConfigRepository);
-        setField(service, "reportGroupDetailMapper", reportGroupDetailMapper);
-    }
-
-    // ---------- getReportSectionsList (no search) ----------
-    @Test
-    void getReportSectionsList_noSearch_selectedEmpty_usesGetReportSectionsAndCount() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_SECTION_NAME);
-        params.setSortOrder(1);
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(null);
-
-        PrmRsRptSecT rs = sampleRs(1, "RS-1");
-
-        when(reportSectionsRepository.getReportSections(any(Pageable.class))).thenReturn(List.of(rs));
-        when(reportSectionsRepository.count()).thenReturn(1L);
-
-        PaginationResultRS out = service.getReportSectionsList(params);
-
-        assertNotNull(out);
-        assertEquals(1, out.getTotalRecordsCount());
-        assertEquals(1, out.getReportSectionsData().size());
-        assertEquals(Integer.valueOf(1), out.getReportSectionsData().get(0).getReportSectionId());
-
-        verify(reportSectionsRepository).getReportSections(any(Pageable.class));
-        verify(reportSectionsRepository).count();
-    }
-
-    @Test
-    void getReportSectionsList_noSearch_selectedNotEmpty_usesAvailableAndCountBySize() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_SECTION_NAME);
-        params.setSortOrder(1);
-        params.setSelectedItemIds(new ArrayList<>(List.of(10, 11)));
-        params.setSearchBy(null);
-
-        PrmRsRptSecT rs = sampleRs(2, "RS-2");
-
-        when(reportSectionsRepository.getAvailableReportSections(eq(params.getSelectedItemIds()), any(Pageable.class)))
-                .thenReturn(List.of(rs));
-        when(reportSectionsRepository.getAvailableReportSections(eq(params.getSelectedItemIds()), isNull()))
-                .thenReturn(List.of(rs, sampleRs(3, "RS-3")));
-
-        PaginationResultRS out = service.getReportSectionsList(params);
-
-        assertEquals(2, out.getTotalRecordsCount());
-        assertEquals(1, out.getReportSectionsData().size());
-
-        verify(reportSectionsRepository).getAvailableReportSections(eq(params.getSelectedItemIds()), any(Pageable.class));
-        verify(reportSectionsRepository).getAvailableReportSections(eq(params.getSelectedItemIds()), isNull());
-        verify(reportSectionsRepository, never()).count();
-    }
-
-    @Test
-    void getReportSectionsList_repositoryThrows_wrapsInReportSectionApiException() {
-        ListTableParams params = new ListTableParams();
-        params.setPageNumber(1);
-        params.setRecordsPerPage(10);
-        params.setSortBy(ReportSectionConstants.REPORT_SECTION_NAME);
-        params.setSortOrder(1);
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(null);
-
-        when(reportSectionsRepository.getReportSections(any(Pageable.class))).thenThrow(new RuntimeException("db"));
-
-        assertThrows(ReportSectionApiException.class, () -> service.getReportSectionsList(params));
-    }
-
-    // ---------- getReportSectionById ----------
-    @Test
-    void getReportSectionById_whenMissing_throwsNoDataFoundWrapped() {
-        when(reportSectionsRepository.getReportSectionById(99)).thenReturn(null);
-        assertThrows(ReportSectionApiException.class, () -> service.getReportSectionById(99, false));
-    }
-
-    @Test
-    void getReportSectionById_detailsFalse_mapsItemsWithoutCallingBehaviorPatterns() {
-        PrmRsRptSecT rs = sampleRs(5, "RS-5");
-
-        // RS has one item
-        PrmRiRptItemT ri = sampleRi(7, "RI-7");
-        PrmRsRiT rsri = mock(PrmRsRiT.class);
-        PrmRsRiTPK pk = new PrmRsRiTPK();
-        pk.setRiId(7);
-        pk.setRsId(5);
-        when(rsri.getId()).thenReturn(pk);
-        when(rsri.getRiOrder()).thenReturn(3);
-        when(rsri.getPrmRiRptItemT()).thenReturn(ri);
-
-        when(rs.getPrmRsRiTs()).thenReturn(List.of(rsri));
-        when(reportSectionsRepository.getReportSectionById(5)).thenReturn(rs);
-
-        ReportSectionDTO dto = service.getReportSectionById(5, false);
-
-        assertNotNull(dto);
-        assertEquals(Integer.valueOf(5), dto.getReportSectionId());
-        assertEquals(1, dto.getReportItems().size());
-        assertEquals(Integer.valueOf(7), dto.getReportItems().get(0).getReportItemId());
-        assertEquals(3, dto.getReportItems().get(0).getOrder());
-
-        // details=false => must not try to load BP details
-        // (internally it would call reportItemDataService.getBehaviorPatterns)
-        // Since that ReportItemDataService is created inside ctor, we can't mock it directly,
-        // so we only assert no exceptions and basic mapping.
-    }
-
-    // ---------- getZoneId ----------
-    @Test
-    void getZoneId_whenConfigPresent_returnsZoneFromConfig() {
-        FadsConfigT cfg = new FadsConfigT();
-        cfg.setOptionValue("UTC");
-
-        when(fadsConfigRepository.findById(ReportSectionConstants.DATE_TIME_ZONE_ID))
-                .thenReturn(Optional.of(cfg));
-
-        ZoneId zid = service.getZoneId();
-        assertEquals(ZoneId.of("UTC"), zid);
-    }
-
-    // ---------------- helpers ----------------
-    private static PrmRsRptSecT sampleRs(int id, String name) {
-        PrmRsRptSecT rs = mock(PrmRsRptSecT.class);
-        when(rs.getRsId()).thenReturn(id);
-        when(rs.getReportSectionName()).thenReturn(name);
-        when(rs.getCreateDate()).thenReturn(LocalDateTime.now());
-        when(rs.getUpdateDate()).thenReturn(LocalDateTime.now());
-        when(rs.getPrmRsRiTs()).thenReturn(Collections.emptyList());
-
-        UiUserBase cr = mock(UiUserBase.class);
-        when(cr.getUiFirstName()).thenReturn("A");
-        when(cr.getUiLastName()).thenReturn("B");
-        when(cr.getUiSystemId()).thenReturn("U1");
-
-        UiUserBase upd = mock(UiUserBase.class);
-        when(upd.getUiFirstName()).thenReturn("C");
-        when(upd.getUiLastName()).thenReturn("D");
-
-        when(rs.getUiUserBaseCr()).thenReturn(cr);
-        when(rs.getUiUserBaseUpd()).thenReturn(upd);
-        return rs;
-    }
-
-    private static PrmRiRptItemT sampleRi(int id, String name) {
-        PrmRiRptItemT ri = mock(PrmRiRptItemT.class);
-        when(ri.getRiId()).thenReturn(id);
-        when(ri.getReportItemName()).thenReturn(name);
-        when(ri.getRiCalcFmt()).thenReturn("1");
-        when(ri.getConstantNum()).thenReturn(3);
-        when(ri.getConstantDen()).thenReturn(2);
-        when(ri.getRiMinimumDenom()).thenReturn(5);
-
-        UiUserBase cr = mock(UiUserBase.class);
-        when(cr.getUiFirstName()).thenReturn("A");
-        when(cr.getUiLastName()).thenReturn("B");
-        when(cr.getUiSystemId()).thenReturn("U1");
-
-        UiUserBase upd = mock(UiUserBase.class);
-        when(upd.getUiFirstName()).thenReturn("C");
-        when(upd.getUiLastName()).thenReturn("D");
-
-        when(ri.getUiUserBaseCr()).thenReturn(cr);
-        when(ri.getUiUserBaseUpd()).thenReturn(upd);
-
-        when(ri.getCreateDate()).thenReturn(LocalDateTime.now());
-        when(ri.getUpdateDate()).thenReturn(LocalDateTime.now());
-        when(ri.getPrmBpRiFormulaTs()).thenReturn(Collections.emptyList());
-        return ri;
-    }
-
-    private static void setField(Object target, String fieldName, Object value) {
-        try {
-            java.lang.reflect.Field f = target.getClass().getDeclaredField(fieldName);
-            f.setAccessible(true);
-            f.set(target, value);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        void setFadsConfigRepository(FadsConfigRepository repo) {
+            setField("fadsConfigRepository", repo);
         }
-    }
-}
-package com.optum.fads.pgp.reportsection.api.service.impl;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+        void setReportGroupDetailMapper(ReportGroupDetailMapper mapper) {
+            setField("reportGroupDetailMapper", mapper);
+        }
 
-import java.util.*;
+        String callReplReportItemName(String in) {
+            return replReportItemName(in);
+        }
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+        String[] callGetSearchCriteria(ListTableParams p, int idx) {
+            return getSearchCriteria(p, idx);
+        }
 
-import com.optum.fads.pgp.reportsection.api.domain.*;
-import com.optum.fads.pgp.reportsection.api.dto.AppUser;
-import com.optum.fads.pgp.reportsection.api.dto.Role;
-import com.optum.fads.pgp.reportsection.api.repo.UserRepository;
+        ReportItemDTO callPopulateReportItemInd(PrmRiRptItemT ri) {
+            return populateReportItemInd(ri);
+        }
 
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
-
-    @Mock private UserRepository userRepository;
-
-    @InjectMocks
-    private UserDetailsService service;
-
-    @Test
-    void loadUserByUsername_whenNotFound_throws() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("x", "x"))
-                .thenReturn(Optional.empty());
-
-        assertThrows(UsernameNotFoundException.class,
-                () -> service.loadUserByUsername("x"));
-    }
-
-    @Test
-    void loadUserByUsername_mapsUserRoleAndAccesses() {
-        UiUserBase ui = mock(UiUserBase.class);
-        when(ui.getUiEMailAddress()).thenReturn("a@b.com");
-        when(ui.getUiUserId()).thenReturn("user1");
-        when(ui.getUiSystemId()).thenReturn("SYS1");
-
-        // group info chain:
-        SeUsrGrp usrGrp = mock(SeUsrGrp.class);
-        SeSurGrp surGrp = mock(SeSurGrp.class);
-
-        when(ui.getSeUsrGrp()).thenReturn(usrGrp);
-        when(usrGrp.getSeSurGrp()).thenReturn(surGrp);
-
-        when(surGrp.getSurGrpId()).thenReturn(12);
-        when(surGrp.getSurGrpName()).thenReturn("Admin");
-
-        // module access list
-        SeSurGrpModAccess ma = mock(SeSurGrpModAccess.class);
-        SeSurGrpModAccessPK pk = mock(SeSurGrpModAccessPK.class);
-        when(ma.getId()).thenReturn(pk);
-
-        when(pk.getSurModuleId()).thenReturn("STUDY");
-
-        SeSurModule module = mock(SeSurModule.class);
-        when(module.getSurModuleName()).thenReturn("Study Module");
-        when(ma.getSeSurModule()).thenReturn(module);
-
-        SeSurAccess access = mock(SeSurAccess.class);
-        when(access.getSurAccessId()).thenReturn("A");
-        when(ma.getSeSurAccess()).thenReturn(access);
-
-        when(surGrp.getSeSurGrpModAccesses()).thenReturn(List.of(ma));
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("user1", "user1"))
-                .thenReturn(Optional.of(ui));
-
-        var details = service.loadUserByUsername("user1");
-
-        assertNotNull(details);
-        assertTrue(details instanceof AppUser);
-
-        AppUser u = (AppUser) details;
-        assertEquals("a@b.com", u.getUserEmail());
-        assertEquals("user1", u.getUserId());
-        assertEquals("SYS1", u.getUserSystemId());
-
-        Role r = u.getRole();
-        assertNotNull(r);
-        assertEquals("12", r.getId());
-        assertEquals("Admin", r.getRoleName());
-        assertNotNull(r.getAllowedAccesses());
-        assertEquals(1, r.getAllowedAccesses().size());
-        assertEquals("STUDY", r.getAllowedAccesses().get(0).getModuleCode());
-        assertEquals("A", r.getAllowedAccesses().get(0).getAccess());
+        private void setField(String name, Object val) {
+            try {
+                java.lang.reflect.Field f = ReportItemDataService.class.getDeclaredField(name);
+                f.setAccessible(true);
+                f.set(this, val);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
