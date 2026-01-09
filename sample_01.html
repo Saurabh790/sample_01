@@ -1,152 +1,827 @@
-package com.optum.fads.pgp.jobs.api.config;
+package com.optum.fads.pgp.reportsection.api.mapper;
 
-import org.bouncycastle.util.io.pem.PemObject;
-import org.bouncycastle.util.io.pem.PemWriter;
-import org.junit.jupiter.api.Test;
+import static org.junit.Assert.*;
 
-import java.io.StringWriter;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.Signature;
+import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT;
+import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
 
-class PemKeyLoaderTest {
+public class ReportGroupDetailMapperTest {
 
-    @Test
-    void loadPrivateKeyPem_shouldLoadUnencryptedPkcs8() throws Exception {
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(2048);
-        KeyPair kp = kpg.generateKeyPair();
-
-        String pem = toPkcs8Pem(kp.getPrivate().getEncoded());
-
-        PrivateKey loaded = PemKeyLoader.loadPrivateKeyPem(pem, null);
-
-        assertNotNull(loaded);
-        assertEquals("RSA", loaded.getAlgorithm());
-
-        // Sanity: key works for signing
-        byte[] data = "hello".getBytes();
-        Signature sig = Signature.getInstance("SHA256withRSA");
-        sig.initSign(loaded);
-        sig.update(data);
-        byte[] signature = sig.sign();
-
-        Signature verify = Signature.getInstance("SHA256withRSA");
-        verify.initVerify(kp.getPublic());
-        verify.update(data);
-        assertTrue(verify.verify(signature));
-    }
-
-    private static String toPkcs8Pem(byte[] pkcs8Der) throws Exception {
-        StringWriter sw = new StringWriter();
-        try (PemWriter pw = new PemWriter(sw)) {
-            pw.writeObject(new PemObject("PRIVATE KEY", pkcs8Der));
-        }
-        return sw.toString();
-    }
-}
-package com.optum.fads.pgp.jobs.api.config;
-
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.Payload;
-import com.nimbusds.jose.PlainHeader;
-import com.nimbusds.jwt.PlainJWT;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.optum.fads.pgp.jobs.api.service.IUserDetailsService;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-
-import java.util.Date;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-class SecurityConfigTest {
+    private final ReportGroupDetailMapper mapper = ReportGroupDetailMapper.INSTANCE;
 
     @Test
-    void jwtDecoder_shouldParseJwtAndReturnSpringJwt() throws Exception {
-        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
+    public void convertToPrmRiRptItemT_mapsFieldsAndNestedUserIds() {
+        ReportItemDTO dto = new ReportItemDTO();
+        dto.setReportItemId(101);
+        dto.setReportItemName("Item-101");
+        dto.setCalcFMT("FMT");
+        dto.setMinimumDenominator(5);
+        dto.setDivideConstant(2);
+        dto.setMultipleConstant(3);
+        dto.setCreatedBySystemId("UCR");
+        dto.setModifiedBySystemId("UUPD");
 
-        JwtDecoder decoder = cfg.jwtDecoder();
+        PrmRiRptItemT entity = mapper.convertToPrmRiRptItemT(dto);
 
-        Date now = new Date();
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("user1")
-                .issueTime(now)        // iat-like
-                .expirationTime(new Date(now.getTime() + 60_000))
-                .claim("role", "ADMIN")
-                .build();
+        assertNotNull(entity);
+        assertEquals(Integer.valueOf(101), entity.getRiId());
+        assertEquals("Item-101", entity.getReportItemName());
+        assertEquals("FMT", entity.getRiCalcFmt());
+        assertEquals(Integer.valueOf(5), entity.getRiMinimumDenom());
+        assertEquals(Integer.valueOf(2), entity.getConstantDen());
+        assertEquals(Integer.valueOf(3), entity.getConstantNum());
 
-        // Plain (unsigned) JWT
-        PlainJWT jwt = new PlainJWT(claims);
-        String token = jwt.serialize();
+        // nested mapping
+        assertNotNull(entity.getUiUserBaseCr());
+        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
 
-        Jwt decoded = decoder.decode(token);
-
-        assertNotNull(decoded);
-        assertEquals("user1", decoded.getSubject());
-        assertEquals("ADMIN", decoded.getClaim("role"));
+        assertNotNull(entity.getUiUserBaseUpd());
+        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
     }
 
     @Test
-    void corsConfigurationSource_shouldAllowAll() {
-        IUserDetailsService uds = Mockito.mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
+    public void convertToPrmRsRptSecT_mapsFieldsAndNestedUserIds() {
+        ReportSectionDTO dto = new ReportSectionDTO();
+        dto.setReportSectionId(201);
+        dto.setReportSectionName("Section-201");
+        dto.setCreatedBySystemId("UCR");
+        dto.setModifiedBySystemId("UUPD");
 
-        var source = cfg.corsConfigurationSource();
-        assertNotNull(source);
+        PrmRsRptSecT entity = mapper.convertToPrmRsRptSecT(dto);
+
+        assertNotNull(entity);
+        assertEquals(Integer.valueOf(201), entity.getRsId());
+        assertEquals("Section-201", entity.getReportSectionName());
+
+        assertNotNull(entity.getUiUserBaseCr());
+        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
+
+        assertNotNull(entity.getUiUserBaseUpd());
+        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
     }
 }
-package com.optum.fads.pgp.jobs.api.config;
+package com.optum.fads.pgp.reportsection.api.repo;
 
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.util.ReflectionTestUtils;
+import static org.junit.Assert.*;
 
-import javax.sql.DataSource;
+import java.util.Arrays;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import javax.persistence.EntityManager;
 
-class ServiceConfigSQLTest {
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmErDrT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmErdrTPK;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class BehaviorPatternErDrRepositoryTest {
+
+    @Autowired private BehaviorPatternErDrRepository repo;
+    @Autowired private EntityManager em;
 
     @Test
-    void fadsSQLDataSource_shouldUseSecretsFromKeyVault() {
-        SecretClient secretClient = Mockito.mock(SecretClient.class);
+    public void retrieveErDrValues_returnsOrderedByDrId() {
+        // ER=10, DR=2 and DR=1 to validate ORDER BY
+        persistErDr(10, 2);
+        persistErDr(10, 1);
+        em.flush();
+        em.clear();
 
-        KeyVaultSecret userSecret = Mockito.mock(KeyVaultSecret.class);
-        KeyVaultSecret passSecret = Mockito.mock(KeyVaultSecret.class);
+        List<PrmErDrT> list = repo.retrieveErDrValues(10);
 
-        when(secretClient.getSecret("sql-username-secret")).thenReturn(userSecret);
-        when(secretClient.getSecret("sql-password-secret")).thenReturn(passSecret);
+        assertEquals(2, list.size());
+        assertEquals(Integer.valueOf(1), list.get(0).getId().getDrId());
+        assertEquals(Integer.valueOf(2), list.get(1).getId().getDrId());
+    }
 
-        when(userSecret.getValue()).thenReturn("dbUser");
-        when(passSecret.getValue()).thenReturn("dbPass");
+    @Test
+    public void deleteErDrById_deletesRows() {
+        persistErDr(20, 1);
+        persistErDr(20, 2);
+        persistErDr(21, 1);
+        em.flush();
 
-        ServiceConfigSQL cfg = new ServiceConfigSQL(secretClient);
+        int deleted = repo.deleteErDrById(20);
+        em.flush();
 
-        ReflectionTestUtils.setField(cfg, "userName", "sql-username-secret");
-        ReflectionTestUtils.setField(cfg, "password", "sql-password-secret");
-        ReflectionTestUtils.setField(cfg, "url", "jdbc:mysql://localhost:3306/testdb");
-        ReflectionTestUtils.setField(cfg, "driverClassName", "com.mysql.cj.jdbc.Driver");
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveErDrValues(20).size());
+        assertEquals(1, repo.retrieveErDrValues(21).size());
+    }
 
-        DataSource ds = cfg.fadsSQLDataSource();
-        assertNotNull(ds);
-        assertTrue(ds instanceof DriverManagerDataSource);
+    @Test
+    public void deleteErDrs_deletesRowsForMultipleErIds() {
+        persistErDr(30, 1);
+        persistErDr(31, 1);
+        persistErDr(32, 1);
+        em.flush();
 
-        DriverManagerDataSource dmds = (DriverManagerDataSource) ds;
-        assertEquals("dbUser", dmds.getUsername());
-        assertEquals("dbPass", dmds.getPassword());
-        assertEquals("jdbc:mysql://localhost:3306/testdb", dmds.getUrl());
-        assertEquals("com.mysql.cj.jdbc.Driver", dmds.getDriverClassName());
+        int deleted = repo.deleteErDrs(Arrays.asList(30, 31));
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveErDrValues(30).size());
+        assertEquals(0, repo.retrieveErDrValues(31).size());
+        assertEquals(1, repo.retrieveErDrValues(32).size());
+    }
+
+    private void persistErDr(int erId, int drId) {
+        PrmErdrTPK pk = new PrmErdrTPK();
+        pk.setErId(erId);
+        pk.setDrId(drId);
+
+        PrmErDrT e = new PrmErDrT();
+        e.setId(pk);
+
+        em.persist(e);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmBpBehaviorPatsT;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class BehaviorPatternsRepositoryTest {
+
+    @Autowired private BehaviorPatternsRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void getBehaviorPatternById_returnsRow() {
+        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
+        bp.setBpId(1001);
+        bp.setBehaviorPatternName("BP-1001");
+        em.persist(bp);
+        em.flush();
+        em.clear();
+
+        PrmBpBehaviorPatsT found = repo.getBehaviorPatternById(1001);
+        assertNotNull(found);
+        assertEquals(Integer.valueOf(1001), found.getBpId());
+    }
+
+    @Test
+    public void getBehaviorPatternsByIds_returnsAll() {
+        persistBp(2001);
+        persistBp(2002);
+        persistBp(2003);
+        em.flush();
+        em.clear();
+
+        List<PrmBpBehaviorPatsT> list = repo.getBehaviorPatternsByIds(Arrays.asList(2001, 2003));
+        assertEquals(2, list.size());
+    }
+
+    /**
+     * This query depends on other tables/relations (PrmBpRiFormulaT etc).
+     * Enable once you have those entities + sample rows created.
+     */
+    @Ignore("Enable after persisting PrmBpRiFormulaT mapping rows")
+    @Test
+    public void getAvailableBehaviorPatterns_excludesLinkedOnes() {
+        // TODO: persist bp rows + formula rows linking riId to bpId
+        // List<PrmBpBehaviorPatsT> list = repo.getAvailableBehaviorPatterns(riId);
+    }
+
+    /**
+     * This is a very custom query; enable once your schema/entities support it.
+     */
+    @Ignore("Enable after confirming JPQL works with your Hibernate version/schema")
+    @Test
+    public void retrieveBehaviorPatternById_returnsProjection() {
+        // List<Object[]> rows = repo.retrieveBehaviorPatternById(behaviorPatternId);
+        // assertNotNull(rows);
+    }
+
+    private void persistBp(int bpId) {
+        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
+        bp.setBpId(bpId);
+        bp.setBehaviorPatternName("BP-" + bpId);
+        em.persist(bp);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmDrDataRuleT;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class DataRulesRepositoryTest {
+
+    @Autowired private DataRulesRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void getDataRulesByIds_returnsOrdered() {
+        persistDr(10);
+        persistDr(12);
+        persistDr(11);
+        em.flush();
+        em.clear();
+
+        List<PrmDrDataRuleT> list = repo.getDataRulesByIds(Arrays.asList(12, 10, 11));
+        assertEquals(3, list.size());
+        assertEquals(Integer.valueOf(10), list.get(0).getDrId());
+        assertEquals(Integer.valueOf(11), list.get(1).getDrId());
+        assertEquals(Integer.valueOf(12), list.get(2).getDrId());
+    }
+
+    @Ignore("Enable after persisting PrmErDrT relationship rows")
+    @Test
+    public void getDataRulesByErId_returnsRows() {
+        // TODO: persist PrmErDrT rows linking erId -> drId, and PrmDrDataRuleT rows
+        // List<PrmDrDataRuleT> list = repo.getDataRulesByErId(erId);
+    }
+
+    @Ignore("Enable after persisting PrmErDrT relationship rows")
+    @Test
+    public void getAvailableDataRules_excludesLinkedOnes() {
+        // TODO: persist PrmErDrT rows to exclude some drIds
+        // List<PrmDrDataRuleT> list = repo.getAvailableDataRules(erId);
+    }
+
+    private void persistDr(int drId) {
+        PrmDrDataRuleT dr = new PrmDrDataRuleT();
+        dr.setDrId(drId);
+        em.persist(dr);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaTPK;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class ReportItemFormulasRepositoryTest {
+
+    @Autowired private ReportItemFormulasRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void findById_returnsRow() {
+        persistFormula(100, 1);
+        em.flush();
+        em.clear();
+
+        PrmBpRiFormulaTPK pk = new PrmBpRiFormulaTPK();
+        pk.setRiId(100);
+        pk.setBpId(1);
+
+        Optional<PrmBpRiFormulaT> found = repo.findById(pk);
+        assertTrue(found.isPresent());
+        assertEquals(Integer.valueOf(100), found.get().getId().getRiId());
+    }
+
+    @Test
+    public void retrieveRiFormulas_returnsAllForRiId() {
+        persistFormula(200, 1);
+        persistFormula(200, 2);
+        persistFormula(201, 1);
+        em.flush();
+        em.clear();
+
+        List<PrmBpRiFormulaT> list = repo.retrieveRiFormulas(200);
+        assertEquals(2, list.size());
+    }
+
+    @Test
+    public void deleteReportItemFormulaByRiId_deletes() {
+        persistFormula(300, 1);
+        persistFormula(300, 2);
+        persistFormula(301, 1);
+        em.flush();
+
+        int deleted = repo.deleteReportItemFormulaByRiId(300);
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveRiFormulas(300).size());
+        assertEquals(1, repo.retrieveRiFormulas(301).size());
+    }
+
+    @Test
+    public void deleteReportItemFormulas_deletesForList() {
+        persistFormula(400, 1);
+        persistFormula(401, 1);
+        persistFormula(402, 1);
+        em.flush();
+
+        int deleted = repo.deleteReportItemFormulas(Arrays.asList(400, 401));
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveRiFormulas(400).size());
+        assertEquals(0, repo.retrieveRiFormulas(401).size());
+        assertEquals(1, repo.retrieveRiFormulas(402).size());
+    }
+
+    private void persistFormula(int riId, int bpId) {
+        PrmBpRiFormulaTPK pk = new PrmBpRiFormulaTPK();
+        pk.setRiId(riId);
+        pk.setBpId(bpId);
+
+        PrmBpRiFormulaT e = new PrmBpRiFormulaT();
+        e.setId(pk);
+
+        em.persist(e);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class ReportItemsRepositoryTest {
+
+    @Autowired private ReportItemsRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void getReportItemById_returnsRow() {
+        PrmRiRptItemT ri = new PrmRiRptItemT();
+        ri.setRiId(1);
+        ri.setReportItemName("abc");
+        em.persist(ri);
+        em.flush();
+        em.clear();
+
+        PrmRiRptItemT found = repo.getReportItemById(1);
+        assertNotNull(found);
+        assertEquals(Integer.valueOf(1), found.getRiId());
+    }
+
+    @Test
+    public void getReportItemsByIds_returnsAll() {
+        persistRi(10, "x");
+        persistRi(11, "y");
+        persistRi(12, "z");
+        em.flush();
+        em.clear();
+
+        List<PrmRiRptItemT> list = repo.getReportItemsByIds(Arrays.asList(10, 12));
+        assertEquals(2, list.size());
+    }
+
+    @Test
+    public void deleteReportItem_deletes() {
+        persistRi(99, "delete-me");
+        em.flush();
+
+        int deleted = repo.deleteReportItem(99);
+        em.flush();
+
+        assertEquals(1, deleted);
+        assertNull(repo.getReportItemById(99));
+    }
+
+    @Test
+    public void getReportItems_pageable_returnsSome() {
+        persistRi(201, "a");
+        persistRi(202, "b");
+        em.flush();
+        em.clear();
+
+        List<PrmRiRptItemT> list = repo.getReportItems(PageRequest.of(0, 10));
+        assertTrue(list.size() >= 2);
+    }
+
+    @Ignore("Enable after ensuring uiUserBaseCr/uiUserBaseUpd are persisted correctly")
+    @Test
+    public void getReportItemsBySearchCrit_filtersCorrectly() {
+        // TODO: create PrmRiRptItemT + set uiUserBaseCr.userFullName/uiLastName and uiUserBaseUpd...
+        // repo.getReportItemsBySearchCrit("%abc%", "%john%", "%doe%", PageRequest.of(0, 10));
+    }
+
+    private void persistRi(int id, String name) {
+        PrmRiRptItemT ri = new PrmRiRptItemT();
+        ri.setRiId(id);
+        ri.setReportItemName(name);
+        em.persist(ri);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmRsRiT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmRsRiTPK;
+import com.optum.fads.pgp.reportsection.api.domain.PrmStudyRsRiT;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class ReportSectionItemsRepositoryTest {
+
+    @Autowired private ReportSectionItemsRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void getReportSectionItemsByRsId_ordersByRiOrder() {
+        persistRsRi(10, 1, 2);
+        persistRsRi(10, 2, 1);
+        em.flush();
+        em.clear();
+
+        List<PrmRsRiT> list = repo.getReportSectionItemsByRsId(10);
+        assertEquals(2, list.size());
+        assertEquals(Integer.valueOf(1), list.get(0).getRiOrder());
+        assertEquals(Integer.valueOf(2), list.get(1).getRiOrder());
+    }
+
+    @Test
+    public void deleteReportSectionItemsByRsId_deletes() {
+        persistRsRi(20, 1, 1);
+        persistRsRi(20, 2, 2);
+        persistRsRi(21, 1, 1);
+        em.flush();
+
+        int deleted = repo.deleteReportSectionItemsByRsId(20);
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.getReportSectionItemsByRsId(20).size());
+        assertEquals(1, repo.getReportSectionItemsByRsId(21).size());
+    }
+
+    @Test
+    public void deleteReportSectionItemByRiIds_deletes() {
+        persistRsRi(30, 100, 1);
+        persistRsRi(31, 101, 1);
+        persistRsRi(32, 102, 1);
+        em.flush();
+
+        int deleted = repo.deleteReportSectionItemByRiIds(Arrays.asList(100, 102));
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.getRsRisByRiId(100).size());
+        assertEquals(1, repo.getRsRisByRiId(101).size());
+        assertEquals(0, repo.getRsRisByRiId(102).size());
+    }
+
+    @Test
+    public void updateReportItemOrder_updates() {
+        persistRsRi(40, 200, 5);
+        em.flush();
+
+        int updated = repo.updateReportItemOrder(9, 200);
+        em.flush();
+        em.clear();
+
+        assertEquals(1, updated);
+        List<PrmRsRiT> list = repo.getRsRisByRiId(200);
+        assertEquals(1, list.size());
+        assertEquals(Integer.valueOf(9), list.get(0).getRiOrder());
+    }
+
+    @Ignore("Enable after PrmStudyRsRiT is mapped/persistable in test schema")
+    @Test
+    public void getStudyRsRisByRsId_returnsRows() {
+        List<PrmStudyRsRiT> list = repo.getStudyRsRisByRsId(10);
+        assertNotNull(list);
+    }
+
+    private void persistRsRi(int rsId, int riId, int riOrder) {
+        PrmRsRiTPK pk = new PrmRsRiTPK();
+        pk.setRsId(rsId);
+        pk.setRiId(riId);
+
+        PrmRsRiT e = new PrmRsRiT();
+        e.setId(pk);
+        e.setRiOrder(riOrder);
+
+        em.persist(e);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class ReportSectionsRepositoryTest {
+
+    @Autowired private ReportSectionsRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void getReportSectionById_returnsRow() {
+        PrmRsRptSecT rs = new PrmRsRptSecT();
+        rs.setRsId(1);
+        rs.setReportSectionName("sec");
+        em.persist(rs);
+        em.flush();
+        em.clear();
+
+        PrmRsRptSecT found = repo.getReportSectionById(1);
+        assertNotNull(found);
+        assertEquals(Integer.valueOf(1), found.getRsId());
+    }
+
+    @Test
+    public void getReportSectionsByIds_returnsAll() {
+        persistRs(10, "a");
+        persistRs(11, "b");
+        persistRs(12, "c");
+        em.flush();
+        em.clear();
+
+        List<PrmRsRptSecT> list = repo.getReportSectionsByIds(Arrays.asList(10, 12));
+        assertEquals(2, list.size());
+    }
+
+    @Test
+    public void deleteReportSection_deletes() {
+        persistRs(99, "delete");
+        em.flush();
+
+        int deleted = repo.deleteReportSection(99);
+        em.flush();
+
+        assertEquals(1, deleted);
+        assertNull(repo.getReportSectionById(99));
+    }
+
+    @Test
+    public void getReportSections_pageable_returnsSome() {
+        persistRs(201, "x");
+        persistRs(202, "y");
+        em.flush();
+        em.clear();
+
+        List<PrmRsRptSecT> list = repo.getReportSections(PageRequest.of(0, 10));
+        assertTrue(list.size() >= 2);
+    }
+
+    @Ignore("Enable after uiUserBaseCr/uiUserBaseUpd are persisted correctly")
+    @Test
+    public void getReportSectionsBySearchCrit_filtersCorrectly() {
+        // TODO: persist PrmRsRptSecT with uiUserBaseCr/uiUserBaseUpd fields for name/createdBy/updatedBy filters
+        // repo.getReportSectionsBySearchCrit("%sec%", "%john%", "%doe%", PageRequest.of(0, 10));
+    }
+
+    private void persistRs(int id, String name) {
+        PrmRsRptSecT rs = new PrmRsRptSecT();
+        rs.setRsId(id);
+        rs.setReportSectionName(name);
+        em.persist(rs);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmStudyMasterT;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class StudyRepositoryTest {
+
+    @Autowired private StudyRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void getStudyByPbId_returnsRow() {
+        PrmStudyMasterT s = new PrmStudyMasterT();
+        s.setPbId(100);
+        em.persist(s);
+        em.flush();
+        em.clear();
+
+        PrmStudyMasterT found = repo.getStudyByPbId(100);
+        assertNotNull(found);
+        assertEquals(Integer.valueOf(100), found.getPbId());
+    }
+
+    @Test
+    public void getStudyByPbIds_returnsRows() {
+        persistStudy(200);
+        persistStudy(201);
+        persistStudy(202);
+        em.flush();
+        em.clear();
+
+        List<PrmStudyMasterT> list = repo.getStudyByPbIds(Arrays.asList(200, 202));
+        assertEquals(2, list.size());
+    }
+
+    private void persistStudy(int pbId) {
+        PrmStudyMasterT s = new PrmStudyMasterT();
+        s.setPbId(pbId);
+        em.persist(s);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repo;
+
+import static org.junit.Assert.*;
+
+import java.util.Optional;
+
+import javax.persistence.EntityManager;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+public class UserRepositoryTest {
+
+    @Autowired private UserRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    public void findByUiEMailAddressOrUiUserId_byEmail_returnsRow() {
+        UiUserBase u = new UiUserBase();
+        u.setUiSystemId("SYS1"); // assuming this is @Id (String)
+        u.setUiEMailAddress("a@b.com");
+        u.setUiUserId("login1");
+        em.persist(u);
+        em.flush();
+        em.clear();
+
+        Optional<UiUserBase> found = repo.findByUiEMailAddressOrUiUserId("a@b.com", "nope");
+        assertTrue(found.isPresent());
+        assertEquals("SYS1", found.get().getUiSystemId());
+    }
+
+    @Test
+    public void findByUiEMailAddressOrUiUserId_byUserId_returnsRow() {
+        UiUserBase u = new UiUserBase();
+        u.setUiSystemId("SYS2");
+        u.setUiEMailAddress("x@y.com");
+        u.setUiUserId("login2");
+        em.persist(u);
+        em.flush();
+        em.clear();
+
+        Optional<UiUserBase> found = repo.findByUiEMailAddressOrUiUserId("nope@nope.com", "login2");
+        assertTrue(found.isPresent());
+        assertEquals("SYS2", found.get().getUiSystemId());
     }
 }
