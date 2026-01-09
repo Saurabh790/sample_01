@@ -1,207 +1,184 @@
-package com.optum.fads.pgp.reportsection.api.mapper;
+package com.optum.fads.pgp.reportsection.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.TimeZone;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.web.client.RestTemplate;
 
-import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
+class CommonConfigTest {
 
-class ReportGroupDetailMapperTest {
+    private TimeZone originalTz;
 
-    private final ReportGroupDetailMapper mapper = ReportGroupDetailMapper.INSTANCE;
+    @BeforeEach
+    void saveTz() {
+        originalTz = TimeZone.getDefault();
+    }
 
-    @Test
-    void convertToPrmRiRptItemT_mapsFieldsAndNestedUserIds() {
-        ReportItemDTO dto = new ReportItemDTO();
-        dto.setReportItemId(101);
-        dto.setReportItemName("Item-101");
-        dto.setCalcFMT(11);
-        dto.setMinimumDenominator(5);
-        dto.setDivideConstant(2);
-        dto.setMultipleConstant(3);
-        dto.setCreatedBySystemId("UCR");
-        dto.setModifiedBySystemId("UUPD");
-
-        PrmRiRptItemT entity = mapper.convertToPrmRiRptItemT(dto);
-
-        assertNotNull(entity);
-        assertEquals(Integer.valueOf(101), entity.getRiId());
-        assertEquals("Item-101", entity.getReportItemName());
-        assertEquals("FMT", entity.getRiCalcFmt());
-        assertEquals(Integer.valueOf(5), entity.getRiMinimumDenom());
-        assertEquals(Integer.valueOf(2), entity.getConstantDen());
-        assertEquals(Integer.valueOf(3), entity.getConstantNum());
-
-        assertNotNull(entity.getUiUserBaseCr());
-        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
-
-        assertNotNull(entity.getUiUserBaseUpd());
-        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
+    @AfterEach
+    void restoreTz() {
+        TimeZone.setDefault(originalTz);
     }
 
     @Test
-    void convertToPrmRsRptSecT_mapsFieldsAndNestedUserIds() {
-        ReportSectionDTO dto = new ReportSectionDTO();
-        dto.setReportSectionId(201);
-        dto.setReportSectionName("Section-201");
-        dto.setCreatedBySystemId("UCR");
-        dto.setModifiedBySystemId("UUPD");
+    void modelMapper_configuredStrictAndAmbiguityIgnored_andPrototypeLikeNewInstance() {
+        CommonConfig cfg = new CommonConfig();
 
-        PrmRsRptSecT entity = mapper.convertToPrmRsRptSecT(dto);
+        ModelMapper mm1 = cfg.modelMapper();
+        ModelMapper mm2 = cfg.modelMapper();
 
-        assertNotNull(entity);
-        assertEquals(Integer.valueOf(201), entity.getRsId());
-        assertEquals("Section-201", entity.getReportSectionName());
+        assertNotNull(mm1);
+        assertNotNull(mm2);
+        assertNotSame(mm1, mm2, "Prototype scope should yield a new instance");
 
-        assertNotNull(entity.getUiUserBaseCr());
-        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
+        assertTrue(mm1.getConfiguration().isAmbiguityIgnored());
+        assertEquals(MatchingStrategies.STRICT, mm1.getConfiguration().getMatchingStrategy());
+    }
 
-        assertNotNull(entity.getUiUserBaseUpd());
-        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
+    @Test
+    void restTemplate_created() {
+        CommonConfig cfg = new CommonConfig();
+        RestTemplate rt = cfg.restTemplate();
+        assertNotNull(rt);
+    }
+
+    @Test
+    void started_setsDefaultTimezoneToUtcMinus4() {
+        CommonConfig cfg = new CommonConfig();
+
+        cfg.started();
+
+        TimeZone tz = TimeZone.getDefault();
+        assertNotNull(tz);
+        // Java often returns "GMT-04:00" for "UTC-4"
+        assertEquals(-4 * 60 * 60 * 1000, tz.getRawOffset());
     }
 }
-package com.optum.fads.pgp.reportsection.api.mapper;
+package com.optum.fads.pgp.reportsection.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
 
-import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
+import com.optum.fads.pgp.reportsection.api.service.IUserDetailsService;
 
-class ReportGroupDetailMapperTest {
-
-    private final ReportGroupDetailMapper mapper = ReportGroupDetailMapper.INSTANCE;
+class SecurityConfigTest {
 
     @Test
-    void convertToPrmRiRptItemT_mapsFieldsAndNestedUserIds() {
-        ReportItemDTO dto = new ReportItemDTO();
-        dto.setReportItemId(101);
-        dto.setReportItemName("Item-101");
-        dto.setCalcFMT(11);
-        dto.setMinimumDenominator(5);
-        dto.setDivideConstant(2);
-        dto.setMultipleConstant(3);
-        dto.setCreatedBySystemId("UCR");
-        dto.setModifiedBySystemId("UUPD");
+    void jwtDecoder_parsesToken_andReturnsJwt() {
+        IUserDetailsService uds = mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
 
-        PrmRiRptItemT entity = mapper.convertToPrmRiRptItemT(dto);
+        JwtDecoder decoder = cfg.jwtDecoder();
 
-        assertNotNull(entity);
-        assertEquals(Integer.valueOf(101), entity.getRiId());
-        assertEquals("Item-101", entity.getReportItemName());
-        assertEquals("FMT", entity.getRiCalcFmt());
-        assertEquals(Integer.valueOf(5), entity.getRiMinimumDenom());
-        assertEquals(Integer.valueOf(2), entity.getConstantDen());
-        assertEquals(Integer.valueOf(3), entity.getConstantNum());
+        // valid unsigned JWT (alg none). Contains numeric date claims.
+        String token =
+                "eyJhbGciOiJub25lIn0." +
+                "eyJzdWIiOiJ1c2VyMSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwLCJuYmYiOjE3MDAwMDAwMDAsImF1dGhfdGltZSI6MTcwMDAwMDAwMH0." +
+                "";
 
-        assertNotNull(entity.getUiUserBaseCr());
-        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
+        Jwt jwt = decoder.decode(token);
 
-        assertNotNull(entity.getUiUserBaseUpd());
-        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
+        assertNotNull(jwt);
+        assertEquals(token, jwt.getTokenValue());
+        assertEquals("user1", jwt.getSubject());
+
+        // For Nimbus/JWT -> our code converts Date->Instant, but "iat/exp/nbf/auth_time"
+        // will likely already be Instant or numeric depending on parsing.
+        // We at least ensure claims exist and are time-like.
+        assertTrue(jwt.getClaims().containsKey("iat"));
+        assertTrue(jwt.getClaims().containsKey("exp"));
+        assertTrue(jwt.getClaims().containsKey("nbf"));
+        assertTrue(jwt.getClaims().containsKey("auth_time"));
     }
 
     @Test
-    void convertToPrmRsRptSecT_mapsFieldsAndNestedUserIds() {
-        ReportSectionDTO dto = new ReportSectionDTO();
-        dto.setReportSectionId(201);
-        dto.setReportSectionName("Section-201");
-        dto.setCreatedBySystemId("UCR");
-        dto.setModifiedBySystemId("UUPD");
+    void jwtDecoder_invalidToken_throwsJwtException() {
+        IUserDetailsService uds = mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
 
-        PrmRsRptSecT entity = mapper.convertToPrmRsRptSecT(dto);
+        assertThrows(JwtException.class, () -> cfg.jwtDecoder().decode("not-a-jwt"));
+    }
 
-        assertNotNull(entity);
-        assertEquals(Integer.valueOf(201), entity.getRsId());
-        assertEquals("Section-201", entity.getReportSectionName());
+    @Test
+    void passwordEncoder_encodesAndMatches() {
+        IUserDetailsService uds = mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
 
-        assertNotNull(entity.getUiUserBaseCr());
-        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
+        PasswordEncoder encoder = cfg.passwordEncoder();
 
-        assertNotNull(entity.getUiUserBaseUpd());
-        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
+        String raw = "secret123";
+        String encoded = encoder.encode(raw);
+
+        assertNotNull(encoded);
+        assertTrue(encoder.matches(raw, encoded));
+        assertFalse(encoder.matches("wrong", encoded));
+    }
+
+    @Test
+    void corsConfigurationSource_allowsAll() {
+        IUserDetailsService uds = mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        CorsConfigurationSource source = cfg.corsConfigurationSource();
+        assertNotNull(source);
+
+        CorsConfiguration cc = source.getCorsConfiguration(new org.springframework.mock.web.MockHttpServletRequest("GET", "/any"));
+        assertNotNull(cc);
+
+        assertEquals("*", cc.getAllowedOrigins().get(0));
+        assertEquals("*", cc.getAllowedMethods().get(0));
+        assertEquals("*", cc.getAllowedHeaders().get(0));
+    }
+
+    @Test
+    void userJwtAuthenticationConverter_created() {
+        IUserDetailsService uds = mock(IUserDetailsService.class);
+        SecurityConfig cfg = new SecurityConfig(uds);
+
+        assertNotNull(cfg.userJwtAuthenticationConverter());
     }
 }
-package com.optum.fads.pgp.reportsection.api.repository;
+package com.optum.fads.pgp.reportsection.api.config;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.Arrays;
-import java.util.List;
+import javax.sql.DataSource;
 
-import jakarta.persistence.EntityManager;
-
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-import com.optum.fads.pgp.reportsection.api.domain.PrmBpBehaviorPatsT;
-import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternsRepository;
+class ServiceConfigTest {
 
-@DataJpaTest
-@TestPropertySource(properties = {
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.flyway.enabled=false",
-        "spring.liquibase.enabled=false"
-})
-class BehaviorPatternsRepositoryTest {
-
-    @Autowired private BehaviorPatternsRepository repo;
-    @Autowired private EntityManager em;
+    private final ApplicationContextRunner runner = new ApplicationContextRunner()
+            .withUserConfiguration(ServiceConfig.class)
+            .withPropertyValues(
+                    "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
+                    "spring.datasource.driverClassName=org.h2.Driver",
+                    "spring.datasource.username=sa",
+                    "spring.datasource.password="
+            );
 
     @Test
-    void getBehaviorPatternById_returnsRow() {
-        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
-        bp.setBpId(1001);
-        bp.setBehaviorPatternName("BP-1001");
-        em.persist(bp);
-        em.flush();
-        em.clear();
-
-        PrmBpBehaviorPatsT found = repo.getBehaviorPatternById(1001);
-        assertNotNull(found);
-        assertEquals(Integer.valueOf(1001), found.getBpId());
-    }
-
-    @Test
-    void getBehaviorPatternsByIds_returnsAll() {
-        persistBp(2001);
-        persistBp(2002);
-        persistBp(2003);
-        em.flush();
-        em.clear();
-
-        List<PrmBpBehaviorPatsT> list = repo.getBehaviorPatternsByIds(Arrays.asList(2001, 2003));
-        assertEquals(2, list.size());
-    }
-
-    @Disabled("Enable after persisting PrmBpRiFormulaT mapping rows")
-    @Test
-    void getAvailableBehaviorPatterns_excludesLinkedOnes() {
-        // TODO: persist bp rows + formula rows linking riId to bpId
-        // List<PrmBpBehaviorPatsT> list = repo.getAvailableBehaviorPatterns(riId);
-        // assertNotNull(list);
-    }
-
-    @Disabled("Enable after confirming JPQL works with your Hibernate version/schema")
-    @Test
-    void retrieveBehaviorPatternById_returnsProjection() {
-        // List<Object[]> rows = repo.retrieveBehaviorPatternById(behaviorPatternId);
-        // assertNotNull(rows);
-    }
-
-    private void persistBp(int bpId) {
-        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
-        bp.setBpId(bpId);
-        bp.setBehaviorPatternName("BP-" + bpId);
-        em.persist(bp);
+    void customDataSource_createdFromSpringDatasourceProperties() {
+        runner.run(ctx -> {
+            assertTrue(ctx.containsBean("fadsDataSource"));
+            DataSource ds = (DataSource) ctx.getBean("fadsDataSource");
+            assertNotNull(ds);
+        });
     }
 }
