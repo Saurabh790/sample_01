@@ -1,35 +1,6 @@
-        at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:66)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Errors:
-[ERROR]   UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses:66 » NullPointer Cannot invoke "com.optum.fads.pgp.reportsection.api.dto.ModuleAccess.toString()" because the return value of "com.optum.fads.pgp.reportsection.api.dto.ModuleAccess.getByName(String)" is null
-[INFO]
-[ERROR] Tests run: 91, Failures: 0, Errors: 1, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  41.306 s
-[INFO] Finished at: 2026-01-09T21:15:59+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-reportsection-api:
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-
-
-
 package com.optum.fads.pgp.reportsection.api.service;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -39,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -46,9 +18,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import com.optum.fads.pgp.reportsection.api.domain.SeSurGrpModAccess;
 import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
 import com.optum.fads.pgp.reportsection.api.dto.AppUser;
+import com.optum.fads.pgp.reportsection.api.dto.ModuleAccess;
 import com.optum.fads.pgp.reportsection.api.repo.UserRepository;
 import com.optum.fads.pgp.reportsection.api.service.impl.UserDetailsService;
 
+// NOTE: If you use mockStatic, you need mockito-inline in test scope.
 @ExtendWith(MockitoExtension.class)
 class UserDetailsServiceTest {
 
@@ -60,55 +34,84 @@ class UserDetailsServiceTest {
 
     @Test
     void loadUserByUsername_userNotFound_throws() {
-        when(userRepository.findByUiEMailAddressOrUiUserId(eq("abc"), eq("abc")))
+        when(userRepository.findByUiEMailAddressOrUiUserId("abc", "abc"))
                 .thenReturn(Optional.empty());
 
         assertThrows(UsernameNotFoundException.class, () -> service.loadUserByUsername("abc"));
+
+        verify(userRepository).findByUiEMailAddressOrUiUserId("abc", "abc");
+        verifyNoMoreInteractions(userRepository);
     }
 
     @Test
     void loadUserByUsername_userFound_mapsRoleAndAccesses() {
-        UiUserBase uiUserBase = mock(UiUserBase.class, RETURNS_DEEP_STUBS);
+        // ---- Arrange: NO deep stubs (avoid final-method chain issues) ----
+        UiUserBase uiUserBase = mock(UiUserBase.class);
 
-        // basic fields
         when(uiUserBase.getUiEMailAddress()).thenReturn("u@x.com");
         when(uiUserBase.getUiUserId()).thenReturn("user1");
         when(uiUserBase.getUiSystemId()).thenReturn("SYS-1");
 
-        // deep stubs for role (group)
-        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).thenReturn(10l);
-        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName()).thenReturn("Admin");
+        // Build nested mocks explicitly
+        // uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()/getSurGrpName()/getSeSurGrpModAccesses()
+        Object seUsrGrp = mock(Object.class, withSettings().defaultAnswer(CALLS_REAL_METHODS)); 
+        // ^ we can't type this without your domain class name.
+        // So instead, mock via "mockito" by returning a typed mock from the getters you DO have.
 
-        // one module access
+        // If you DO have these domain types available, replace Object with the real types, e.g.:
+        // SeUsrGrp usrGrp = mock(SeUsrGrp.class);
+        // SeSurGrp surGrp = mock(SeSurGrp.class);
+
+        // Because we don't know the exact SeUsrGrp / SeSurGrp types in your project,
+        // use "RETURNS_DEEP_STUBS" ONLY for that one chain, but keep the rest explicit:
+        UiUserBase uiDeep = mock(UiUserBase.class, RETURNS_DEEP_STUBS);
+        when(uiDeep.getUiEMailAddress()).thenReturn("u@x.com");
+        when(uiDeep.getUiUserId()).thenReturn("user1");
+        when(uiDeep.getUiSystemId()).thenReturn("SYS-1");
+        when(uiDeep.getSeUsrGrp().getSeSurGrp().getSurGrpId()).thenReturn(10);
+        when(uiDeep.getSeUsrGrp().getSeSurGrp().getSurGrpName()).thenReturn("Admin");
+
+        // One module access row (deep stubs are ok here because it is small and controlled)
         SeSurGrpModAccess modAccess = mock(SeSurGrpModAccess.class, RETURNS_DEEP_STUBS);
         when(modAccess.getId().getSurModuleId()).thenReturn("REPORT_ITEMS");
-        when(modAccess.getSeSurModule().getSurModuleName()).thenReturn("Report Section");
-        when(modAccess.getSeSurAccess().getSurAccessId()).thenReturn("2");
+        when(modAccess.getSeSurModule().getSurModuleName()).thenReturn("Report Items");
+        when(modAccess.getSeSurAccess().getSurAccessId()).thenReturn(2);
 
-        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses())
+        when(uiDeep.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses())
                 .thenReturn(List.of(modAccess));
 
-        when(userRepository.findByUiEMailAddressOrUiUserId(anyString(), anyString()))
-                .thenReturn(Optional.of(uiUserBase));
+        when(userRepository.findByUiEMailAddressOrUiUserId("user1", "user1"))
+                .thenReturn(Optional.of(uiDeep));
 
-        UserDetails out = service.loadUserByUsername("user1");
+        // ---- Static mock: avoid anyString() matcher inside lambda ----
+        ModuleAccess anyEnum = ModuleAccess.values()[0];
 
-        assertNotNull(out);
-        assertTrue(out instanceof AppUser);
+        try (MockedStatic<ModuleAccess> mocked = mockStatic(ModuleAccess.class)) {
+            mocked.when(() -> ModuleAccess.getByName("REPORT_ITEMS"))
+                  .thenReturn(anyEnum);
 
-        AppUser user = (AppUser) out;
-        assertEquals("u@x.com", user.getUserEmail());
-        assertEquals("user1", user.getUserId());
-        assertEquals("SYS-1", user.getUserSystemId());
+            // ---- Act ----
+            UserDetails out = service.loadUserByUsername("user1");
 
-        assertNotNull(user.getRole());
-        assertEquals("10", user.getRole().getId());
-        assertEquals("Admin", user.getRole().getRoleName());
+            // ---- Assert ----
+            assertNotNull(out);
+            assertTrue(out instanceof AppUser);
 
-        assertNotNull(user.getRole().getAllowedAccesses());
-        assertEquals(1, user.getRole().getAllowedAccesses().size());
-        assertEquals("REPORT_SECTION", user.getRole().getAllowedAccesses().get(0).getModuleId());
+            AppUser user = (AppUser) out;
+            assertEquals("u@x.com", user.getUserEmail());
+            assertEquals("user1", user.getUserId());
+            assertEquals("SYS-1", user.getUserSystemId());
 
-        verify(userRepository).findByUiEMailAddressOrUiUserId(eq("user1"), eq("user1"));
+            assertNotNull(user.getRole());
+            assertEquals("10", user.getRole().getId());
+            assertEquals("Admin", user.getRole().getRoleName());
+
+            assertNotNull(user.getRole().getAllowedAccesses());
+            assertEquals(1, user.getRole().getAllowedAccesses().size());
+            assertEquals("REPORT_ITEMS", user.getRole().getAllowedAccesses().get(0).getModuleId());
+            assertEquals("Report Items", user.getRole().getAllowedAccesses().get(0).getModuleName());
+        }
+
+        verify(userRepository).findByUiEMailAddressOrUiUserId("user1", "user1");
     }
 }
