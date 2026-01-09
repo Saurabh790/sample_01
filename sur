@@ -1,6 +1,114 @@
-DetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses:66 » NullPointer Cannot invoke "com.optum.fads.pgp.reportsection.api.dto.ModuleAccess.toString()" because the return value of "com.optum.fads.pgp.reportsection.api.dto.ModuleAccess.getByName(String)" is null
+        at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:66)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Errors:
+[ERROR]   UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses:66 » NullPointer Cannot invoke "com.optum.fads.pgp.reportsection.api.dto.ModuleAccess.toString()" because the return value of "com.optum.fads.pgp.reportsection.api.dto.ModuleAccess.getByName(String)" is null
 [INFO]
 [ERROR] Tests run: 91, Failures: 0, Errors: 1, Skipped: 0
 [INFO]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  41.306 s
+[INFO] Finished at: 2026-01-09T21:15:59+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-reportsection-api:
+[ERROR]
+[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+
+
+
+package com.optum.fads.pgp.reportsection.api.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.pgp.reportsection.api.domain.SeSurGrpModAccess;
+import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
+import com.optum.fads.pgp.reportsection.api.dto.AppUser;
+import com.optum.fads.pgp.reportsection.api.repo.UserRepository;
+import com.optum.fads.pgp.reportsection.api.service.impl.UserDetailsService;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserDetailsService service;
+
+    @Test
+    void loadUserByUsername_userNotFound_throws() {
+        when(userRepository.findByUiEMailAddressOrUiUserId(eq("abc"), eq("abc")))
+                .thenReturn(Optional.empty());
+
+        assertThrows(UsernameNotFoundException.class, () -> service.loadUserByUsername("abc"));
+    }
+
+    @Test
+    void loadUserByUsername_userFound_mapsRoleAndAccesses() {
+        UiUserBase uiUserBase = mock(UiUserBase.class, RETURNS_DEEP_STUBS);
+
+        // basic fields
+        when(uiUserBase.getUiEMailAddress()).thenReturn("u@x.com");
+        when(uiUserBase.getUiUserId()).thenReturn("user1");
+        when(uiUserBase.getUiSystemId()).thenReturn("SYS-1");
+
+        // deep stubs for role (group)
+        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).thenReturn(10l);
+        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName()).thenReturn("Admin");
+
+        // one module access
+        SeSurGrpModAccess modAccess = mock(SeSurGrpModAccess.class, RETURNS_DEEP_STUBS);
+        when(modAccess.getId().getSurModuleId()).thenReturn("REPORT_ITEMS");
+        when(modAccess.getSeSurModule().getSurModuleName()).thenReturn("Report Section");
+        when(modAccess.getSeSurAccess().getSurAccessId()).thenReturn("2");
+
+        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses())
+                .thenReturn(List.of(modAccess));
+
+        when(userRepository.findByUiEMailAddressOrUiUserId(anyString(), anyString()))
+                .thenReturn(Optional.of(uiUserBase));
+
+        UserDetails out = service.loadUserByUsername("user1");
+
+        assertNotNull(out);
+        assertTrue(out instanceof AppUser);
+
+        AppUser user = (AppUser) out;
+        assertEquals("u@x.com", user.getUserEmail());
+        assertEquals("user1", user.getUserId());
+        assertEquals("SYS-1", user.getUserSystemId());
+
+        assertNotNull(user.getRole());
+        assertEquals("10", user.getRole().getId());
+        assertEquals("Admin", user.getRole().getRoleName());
+
+        assertNotNull(user.getRole().getAllowedAccesses());
+        assertEquals(1, user.getRole().getAllowedAccesses().size());
+        assertEquals("REPORT_SECTION", user.getRole().getAllowedAccesses().get(0).getModuleId());
+
+        verify(userRepository).findByUiEMailAddressOrUiUserId(eq("user1"), eq("user1"));
+    }
+}
