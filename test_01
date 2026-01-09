@@ -1,16 +1,87 @@
-<dependency>
-  <groupId>com.h2database</groupId>
-  <artifactId>h2</artifactId>
-  <scope>test</scope>
-</dependency>
+package com.optum.fads.pgp.reportsection.api.repository;
 
+import static org.junit.jupiter.api.Assertions.*;
 
-spring.datasource.url=jdbc:h2:mem:testdb;MODE=MSSQLServer;DB_CLOSE_DELAY=-1
-spring.datasource.driverClassName=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-spring.jpa.hibernate.ddl-auto=create-drop
-spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
-spring.sql.init.mode=never
-spring.flyway.enabled=false
-spring.liquibase.enabled=false
+import java.util.Arrays;
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmErDrT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmErdrTPK;
+import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternErDrRepository;
+
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+class BehaviorPatternErDrRepositoryTest {
+
+    @Autowired private BehaviorPatternErDrRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    void retrieveErDrValues_returnsOrderedByDrId() {
+        persistErDr(10, 2);
+        persistErDr(10, 1);
+        em.flush();
+        em.clear();
+
+        List<PrmErDrT> list = repo.retrieveErDrValues(10);
+
+        assertEquals(2, list.size());
+        assertEquals(Integer.valueOf(1), list.get(0).getId().getDrId());
+        assertEquals(Integer.valueOf(2), list.get(1).getId().getDrId());
+    }
+
+    @Test
+    void deleteErDrById_deletesRows() {
+        persistErDr(20, 1);
+        persistErDr(20, 2);
+        persistErDr(21, 1);
+        em.flush();
+
+        int deleted = repo.deleteErDrById(20);
+        em.flush();
+        em.clear();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveErDrValues(20).size());
+        assertEquals(1, repo.retrieveErDrValues(21).size());
+    }
+
+    @Test
+    void deleteErDrs_deletesRowsForMultipleErIds() {
+        persistErDr(30, 1);
+        persistErDr(31, 1);
+        persistErDr(32, 1);
+        em.flush();
+
+        int deleted = repo.deleteErDrs(Arrays.asList(30, 31));
+        em.flush();
+        em.clear();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveErDrValues(30).size());
+        assertEquals(0, repo.retrieveErDrValues(31).size());
+        assertEquals(1, repo.retrieveErDrValues(32).size());
+    }
+
+    private void persistErDr(int erId, int drId) {
+        PrmErdrTPK pk = new PrmErdrTPK();
+        pk.setErId(erId);
+        pk.setDrId(drId);
+
+        PrmErDrT e = new PrmErDrT();
+        e.setId(pk);
+
+        em.persist(e);
+    }
+}
