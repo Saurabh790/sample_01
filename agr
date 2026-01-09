@@ -1,20 +1,1020 @@
-✅ Replace
+package com.optum.fads.pgp.reportsection.api.controller;
 
-@RunWith(SpringRunner.class)
-with
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
-@ExtendWith(SpringExtension.class) (optional with @DataJpaTest, it’s already included)
+import java.time.ZoneId;
+import java.util.*;
 
-✅ Replace
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
-org.junit.Test
-with
+import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
+import com.optum.fads.pgp.reportsection.api.common.ListTableParamsReq;
+import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
+import com.optum.fads.pgp.reportsection.api.dto.*;
+import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
+import com.optum.fads.pgp.reportsection.api.service.IReportItemDataService;
 
-org.junit.jupiter.api.Test
+@ExtendWith(MockitoExtension.class)
+class ReportItemControllerTests {
 
-✅ Replace
+    @InjectMocks
+    private ReportItemController controller;
 
-javax.persistence.EntityManager
-with
+    @Mock
+    private IReportItemDataService service;
 
-jakarta.persistence.EntityManager (Boot 3 uses Jakarta)
+    @Mock
+    private SecurityContext securityContext;
+
+    @Mock
+    private Authentication authentication;
+
+    private AppUser userWithA; // access A
+    private AppUser userWithB; // access B
+    private AppUser userWithC; // no access
+
+    @BeforeEach
+    void setup() {
+        SecurityContextHolder.setContext(securityContext);
+        when(service.getZoneId()).thenReturn(ZoneId.systemDefault());
+
+        userWithA = buildUser("U1", "A");
+        userWithB = buildUser("U1", "B");
+        userWithC = buildUser("U1", "C");
+    }
+
+    @AfterEach
+    void cleanup() {
+        SecurityContextHolder.clearContext();
+    }
+
+    // ---------- helpers ----------
+    private void mockAuth(AppUser user) {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getPrincipal()).thenReturn(user);
+    }
+
+    private AppUser buildUser(String systemId, String access) {
+        AppUser u = mock(AppUser.class);
+        when(u.getUserSystemId()).thenReturn(systemId);
+
+        AccessLevel al = mock(AccessLevel.class);
+        when(al.getModuleCode()).thenReturn("STUDY");
+        when(al.getAccess()).thenReturn(access);
+
+        Role role = mock(Role.class);
+        when(role.getAllowedAccesses()).thenReturn(Collections.singletonList(al));
+
+        when(u.getRole()).thenReturn(role);
+        return u;
+    }
+
+    // ---------- getReportItems ----------
+    @Test
+    void getReportItems_ok() {
+        ListTableParamsReq req = new ListTableParamsReq();
+        req.setPageNumber(1);
+        req.setRecordsPerPage(10);
+        req.setSearchBy(Arrays.asList("reportItemName"));
+        req.setSelectedItemIds(Arrays.asList(1, 2));
+        req.setSortBy("reportItemName");
+        req.setSortOrder(1);
+
+        PaginationResultRI pr = new PaginationResultRI();
+        when(service.getReportItemsList(any(ListTableParams.class))).thenReturn(pr);
+
+        ResponseEntity<?> resp = controller.getReportItems(req, "opioids");
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(pr, resp.getBody());
+
+        verify(service).getReportItemsList(argThat(p ->
+                p.getPageNumber() == 1 &&
+                p.getRecordsPerPage() == 10 &&
+                "reportItemName".equals(p.getSortBy()) &&
+                p.getSortOrder() == 1 &&
+                p.getSearchInput().equals(Collections.singletonList("opioids")) &&
+                p.getSelectedItemIds().equals(Arrays.asList(1, 2))
+        ));
+    }
+
+    @Test
+    void getReportItems_exception_returns400() {
+        ListTableParamsReq req = new ListTableParamsReq();
+        when(service.getReportItemsList(any(ListTableParams.class)))
+                .thenThrow(new ReportSectionApiException("boom"));
+
+        ResponseEntity<?> resp = controller.getReportItems(req, "x");
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getReportItemById ----------
+    @Test
+    void getReportItemById_ok() {
+        ReportItemDTO dto = new ReportItemDTO();
+        dto.setReportItemId(10);
+
+        when(service.getReportItemById(10)).thenReturn(dto);
+
+        ResponseEntity<?> resp = controller.getReportItemById(10);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        ReportItemDTO body = (ReportItemDTO) resp.getBody();
+        assertNotNull(body);
+        assertEquals(Integer.valueOf(10), body.getReportItemId());
+    }
+
+    @Test
+    void getReportItemById_exception_returns400() {
+        when(service.getReportItemById(10)).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getReportItemById(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- deleteReportItemById ----------
+    @Test
+    void deleteReportItemById_ok() {
+        List<String> msgs = Collections.singletonList("deleted");
+        when(service.deleteReportItem(10)).thenReturn(msgs);
+
+        ResponseEntity<?> resp = controller.deleteReportItemById(10);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(msgs, resp.getBody());
+    }
+
+    @Test
+    void deleteReportItemById_exception_returns400() {
+        when(service.deleteReportItem(10)).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.deleteReportItemById(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- newReportItem ----------
+    @Test
+    void newReportItem_accessA_created() {
+        mockAuth(userWithA);
+
+        ReportItemDTO in = new ReportItemDTO();
+        ReportItemDTO out = new ReportItemDTO();
+        out.setReportItemId(999);
+
+        when(service.addReportItem(any(ReportItemDTO.class))).thenReturn(out);
+
+        ResponseEntity<?> resp = controller.newReportItem(in);
+
+        assertEquals(HttpStatus.CREATED, resp.getStatusCode());
+        assertSame(out, resp.getBody());
+
+        verify(service).addReportItem(argThat(dto ->
+                "U1".equals(dto.getCreatedBySystemId()) &&
+                "U1".equals(dto.getModifiedBySystemId()) &&
+                dto.getCreatedDate() != null &&
+                dto.getModifiedDate() != null
+        ));
+    }
+
+    @Test
+    void newReportItem_accessB_created() {
+        mockAuth(userWithB);
+
+        when(service.addReportItem(any(ReportItemDTO.class))).thenReturn(new ReportItemDTO());
+
+        ResponseEntity<?> resp = controller.newReportItem(new ReportItemDTO());
+        assertEquals(HttpStatus.CREATED, resp.getStatusCode());
+    }
+
+    @Test
+    void newReportItem_noAccess_forbidden() {
+        mockAuth(userWithC);
+
+        ResponseEntity<?> resp = controller.newReportItem(new ReportItemDTO());
+
+        assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
+
+        verify(service, never()).addReportItem(any());
+    }
+
+    @Test
+    void newReportItem_exception_returns400() {
+        mockAuth(userWithA);
+
+        when(service.addReportItem(any())).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.newReportItem(new ReportItemDTO());
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- updateReportItem ----------
+    @Test
+    void updateReportItem_accessA_ok() {
+        mockAuth(userWithA);
+
+        ReportItemDTO dto = new ReportItemDTO();
+        dto.setCreatedBySystemId("SOMEONE_ELSE"); // A can update anyone
+
+        when(service.updateReportItem(eq(9), any(ReportItemDTO.class)))
+                .thenReturn("updated");
+
+        ResponseEntity<String> resp = controller.updateReportItem(9, dto);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertEquals("updated", resp.getBody());
+
+        verify(service).updateReportItem(eq(9), argThat(x ->
+                "U1".equals(x.getModifiedBySystemId()) &&
+                x.getModifiedDate() != null
+        ));
+    }
+
+    @Test
+    void updateReportItem_accessB_owner_ok() {
+        mockAuth(userWithB);
+
+        ReportItemDTO dto = new ReportItemDTO();
+        dto.setCreatedBySystemId("U1"); // owner
+
+        when(service.updateReportItem(eq(9), any(ReportItemDTO.class)))
+                .thenReturn("updated");
+
+        ResponseEntity<String> resp = controller.updateReportItem(9, dto);
+
+        assertEquals(HttpStatus.OK, resp.getStatus code());
+        assertEquals("updated", resp.getBody());
+    }
+
+    @Test
+    void updateReportItem_accessB_notOwner_forbidden() {
+        mockAuth(userWithB);
+
+        ReportItemDTO dto = new ReportItemDTO();
+        dto.setCreatedBySystemId("OTHER"); // not owner
+
+        ResponseEntity<String> resp = controller.updateReportItem(9, dto);
+
+        assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
+
+        verify(service, never()).updateReportItem(anyInt(), any());
+    }
+
+    @Test
+    void updateReportItem_noAccess_forbidden() {
+        mockAuth(userWithC);
+
+        ResponseEntity<String> resp = controller.updateReportItem(9, new ReportItemDTO());
+
+        assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
+    }
+
+    @Test
+    void updateReportItem_exception_returns400() {
+        mockAuth(userWithA);
+
+        when(service.updateReportItem(eq(9), any()))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<String> resp = controller.updateReportItem(9, new ReportItemDTO());
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getAvailableBehaviors ----------
+    @Test
+    void getAvailableBehaviors_ok() {
+        List<BehaviorPatternDTO> list = new ArrayList<>();
+        list.add(new BehaviorPatternDTO());
+
+        when(service.getAvailableBehaviorPatterns(7)).thenReturn(list);
+
+        ResponseEntity<?> resp = controller.getAvailableBehaviors(7);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(list, resp.getBody());
+    }
+
+    @Test
+    void getAvailableBehaviors_exception_returns400() {
+        when(service.getAvailableBehaviorPatterns(7)).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getAvailableBehaviors(7);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getSelectedBehaviors ----------
+    @Test
+    void getSelectedBehaviors_ok() {
+        List<BehaviorPatternDTO> list = new ArrayList<>();
+        list.add(new BehaviorPatternDTO());
+
+        when(service.getSelectedBehaviorPatterns(7)).thenReturn(list);
+
+        ResponseEntity<?> resp = controller.getSelectedBehaviors(7);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(list, resp.getBody());
+    }
+
+    @Test
+    void getSelectedBehaviors_exception_returns400() {
+        when(service.getSelectedBehaviorPatterns(7)).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getSelectedBehaviors(7);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getMyReportItems ----------
+    @Test
+    void getMyReportItems_addsUserSystemIdFilter_ok() {
+        mockAuth(userWithA);
+
+        ListTableParams params = new ListTableParams();
+        params.setSearchBy(null); // simulate no searchBy
+
+        PaginationResultRI pr = new PaginationResultRI();
+        when(service.getReportItemsList(any(ListTableParams.class))).thenReturn(pr);
+
+        ResponseEntity<?> resp = controller.getMyReportItems(params);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(pr, resp.getBody());
+
+        assertNotNull(params.getSearchBy());
+        assertNotNull(params.getSearchInput());
+        assertTrue(params.getSearchBy().contains(ReportSectionConstants.USER_SYSTEM_ID));
+        assertTrue(params.getSearchInput().contains("U1"));
+    }
+
+    @Test
+    void getMyReportItems_exception_returns400() {
+        mockAuth(userWithA);
+
+        when(service.getReportItemsList(any(ListTableParams.class)))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getMyReportItems(new ListTableParams());
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+}
+package com.optum.fads.pgp.reportsection.api.controller;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.time.ZoneId;
+import java.util.*;
+
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.*;
+
+import com.optum.fads.pgp.reportsection.api.common.*;
+import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
+import com.optum.fads.pgp.reportsection.api.dto.*;
+import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
+import com.optum.fads.pgp.reportsection.api.service.IReportSectionDataService;
+
+@ExtendWith(MockitoExtension.class)
+class ReportSectionControllerTests {
+
+    @InjectMocks
+    private ReportSectionController controller;
+
+    @Mock
+    private IReportSectionDataService service;
+
+    @Mock
+    private SecurityContext securityContext;
+
+    @Mock
+    private Authentication authentication;
+
+    private AppUser userWithA;
+    private AppUser userWithB;
+    private AppUser userWithC;
+
+    @BeforeEach
+    void setup() {
+        SecurityContextHolder.setContext(securityContext);
+        when(service.getZoneId()).thenReturn(ZoneId.systemDefault());
+
+        userWithA = buildUser("U1", "A");
+        userWithB = buildUser("U1", "B");
+        userWithC = buildUser("U1", "C");
+    }
+
+    @AfterEach
+    void cleanup() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void mockAuth(AppUser user) {
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        when(authentication.getPrincipal()).thenReturn(user);
+    }
+
+    private AppUser buildUser(String systemId, String access) {
+        AppUser u = mock(AppUser.class);
+        when(u.getUserSystemId()).thenReturn(systemId);
+
+        AccessLevel al = mock(AccessLevel.class);
+        when(al.getModuleCode()).thenReturn("STUDY");
+        when(al.getAccess()).thenReturn(access);
+
+        Role role = mock(Role.class);
+        when(role.getAllowedAccesses()).thenReturn(Collections.singletonList(al));
+        when(u.getRole()).thenReturn(role);
+
+        return u;
+    }
+
+    // ---------- getReportSections ----------
+    @Test
+    void getReportSections_ok() {
+        ListTableParamsReq req = new ListTableParamsReq();
+        req.setPageNumber(1);
+        req.setRecordsPerPage(20);
+        req.setSearchBy(Arrays.asList("reportSectionName"));
+        req.setSelectedItemIds(Arrays.asList(11, 12));
+        req.setSortBy("reportSectionName");
+        req.setSortOrder(1);
+
+        PaginationResultRS pr = new PaginationResultRS();
+        when(service.getReportSectionsList(any(ListTableParams.class))).thenReturn(pr);
+
+        ResponseEntity<?> resp = controller.getReportSections(req, "opioids");
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(pr, resp.getBody());
+
+        verify(service).getReportSectionsList(argThat(p ->
+                p.getPageNumber() == 1 &&
+                p.getRecordsPerPage() == 20 &&
+                "reportSectionName".equals(p.getSortBy()) &&
+                p.getSortOrder() == 1 &&
+                p.getSearchBy().equals(Arrays.asList("reportSectionName")) &&
+                p.getSearchInput().equals(Collections.singletonList("opioids")) &&
+                p.getSelectedItemIds().equals(Arrays.asList(11, 12))
+        ));
+    }
+
+    @Test
+    void getReportSections_exception_returns400() {
+        ListTableParamsReq req = new ListTableParamsReq();
+        when(service.getReportSectionsList(any(ListTableParams.class)))
+                .thenThrow(new ReportSectionApiException("boom"));
+
+        ResponseEntity<?> resp = controller.getReportSections(req, "x");
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getReportSectionDetails ----------
+    @Test
+    void getReportSectionDetails_ok_detailsTrue() {
+        ReportSectionDTO dto = new ReportSectionDTO();
+        when(service.getReportSectionById(10, true)).thenReturn(dto);
+
+        ResponseEntity<?> resp = controller.getReportSectionDetails(10);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(dto, resp.getBody());
+        verify(service).getReportSectionById(10, true);
+    }
+
+    @Test
+    void getReportSectionDetails_exception_returns400() {
+        when(service.getReportSectionById(10, true))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getReportSectionDetails(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getReportSection ----------
+    @Test
+    void getReportSection_ok_detailsFalse() {
+        ReportSectionDTO dto = new ReportSectionDTO();
+        when(service.getReportSectionById(10, false)).thenReturn(dto);
+
+        ResponseEntity<?> resp = controller.getReportSection(10);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(dto, resp.getBody());
+        verify(service).getReportSectionById(10, false);
+    }
+
+    @Test
+    void getReportSection_exception_returns400() {
+        when(service.getReportSectionById(10, false))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getReportSection(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- deleteReportSectionById ----------
+    @Test
+    void deleteReportSectionById_ok() {
+        List<String> msgs = Collections.singletonList("deleted");
+        when(service.deleteReportSection(10)).thenReturn(msgs);
+
+        ResponseEntity<?> resp = controller.deleteReportSectionById(10);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(msgs, resp.getBody());
+    }
+
+    @Test
+    void deleteReportSectionById_exception_returns400() {
+        when(service.deleteReportSection(10))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.deleteReportSectionById(10);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- newReportSection ----------
+    @Test
+    void newReportSection_accessA_created() {
+        mockAuth(userWithA);
+
+        ReportSectionDTO in = new ReportSectionDTO();
+        ReportSectionDTO out = new ReportSectionDTO();
+
+        when(service.addReportSection(any(ReportSectionDTO.class))).thenReturn(out);
+
+        ResponseEntity<?> resp = controller.newReporteportSection(in);
+
+        assertEquals(HttpStatus.CREATED, resp.getStatusCode());
+        assertSame(out, resp.getBody());
+
+        verify(service).addReportSection(argThat(dto ->
+                "U1".equals(dto.getCreatedBySystemId()) &&
+                "U1".equals(dto.getModifiedBySystemId()) &&
+                dto.getCreatedDate() != null &&
+                dto.getModifiedDate() != null
+        ));
+    }
+
+    @Test
+    void newReportSection_accessB_created() {
+        mockAuth(userWithB);
+
+        when(service.addReportSection(any(ReportSectionDTO.class))).thenReturn(new ReportSectionDTO());
+
+        ResponseEntity<?> resp = controller.newReportSection(new ReportSectionDTO());
+
+        assertEquals(HttpStatus.CREATED, resp.getStatusCode());
+    }
+
+    @Test
+    void newReportSection_noAccess_forbidden() {
+        mockAuth(userWithC);
+
+        ResponseEntity<?> resp = controller.newReportSection(new ReportSectionDTO());
+
+        assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
+        verify(service, never()).addReportSection(any());
+    }
+
+    @Test
+    void newReportSection_exception_returns400() {
+        mockAuth(userWithA);
+
+        when(service.addReportSection(any())).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.newReportSection(new ReportSectionDTO());
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- updateReportSection ----------
+    @Test
+    void updateReportSection_accessA_ok() {
+        mockAuth(userWithA);
+
+        ReportSectionDTO dto = new ReportSectionDTO();
+        dto.setCreatedBySystemId("OTHER"); // A can update anyone
+
+        when(service.updateReportSection(eq(9), any(ReportSectionDTO.class))).thenReturn("updated");
+
+        ResponseEntity<String> resp = controller.updateReportSection(9, dto);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertEquals("updated", resp.getBody());
+
+        verify(service).updateReportSection(eq(9), argThat(x ->
+                "U1".equals(x.getModifiedBySystemId()) &&
+                x.getModifiedDate() != null
+        ));
+    }
+
+    @Test
+    void updateReportSection_accessB_owner_ok() {
+        mockAuth(userWithB);
+
+        ReportSectionDTO dto = new ReportSectionDTO();
+        dto.setCreatedBySystemId("U1"); // owner
+
+        when(service.updateReportSection(eq(9), any(ReportSectionDTO.class))).thenReturn("updated");
+
+        ResponseEntity<String> resp = controller.updateReportSection(9, dto);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertEquals("updated", resp.getBody());
+    }
+
+    @Test
+    void updateReportSection_accessB_notOwner_forbidden() {
+        mockAuth(userWithB);
+
+        ReportSectionDTO dto = new ReportSectionDTO();
+        dto.setCreatedBySystemId("OTHER"); // not owner
+
+        ResponseEntity<String> resp = controller.updateReportSection(9, dto);
+
+        assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
+
+        verify(service, never()).updateReportSection(anyInt(), any());
+    }
+
+    @Test
+    void updateReportSection_noAccess_forbidden() {
+        mockAuth(userWithC);
+
+        ResponseEntity<String> resp = controller.updateReportSection(9, new ReportSectionDTO());
+
+        assertEquals(HttpStatus.FORBIDDEN, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
+    }
+
+    @Test
+    void updateReportSection_exception_returns400() {
+        mockAuth(userWithA);
+
+        when(service.updateReportSection(eq(9), any()))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<String> resp = controller.updateReportSection(9, new ReportSectionDTO());
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getAvailableReportItems ----------
+    @Test
+    void getAvailableReportItems_ok() {
+        List<ReportItemDTO> list = new ArrayList<>();
+        list.add(new ReportItemDTO());
+
+        when(service.getAvailableReportItems(7)).thenReturn(list);
+
+        ResponseEntity<?> resp = controller.getAvailableReportItems(7);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(list, resp.getBody());
+    }
+
+    @Test
+    void getAvailableReportItems_exception_returns400() {
+        when(service.getAvailableReportItems(7)).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getAvailableReportItems(7);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getSelectedReportItems ----------
+    @Test
+    void getSelectedReportItems_ok() {
+        List<ReportItemDTO> list = new ArrayList<>();
+        list.add(new ReportItemDTO());
+
+        when(service.getSelectedReportItems(7)).thenReturn(list);
+
+        ResponseEntity<?> resp = controller.getSelectedReportItems(7);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(list, resp.getBody());
+    }
+
+    @Test
+    void getSelectedReportItems_exception_returns400() {
+        when(service.getSelectedReportItems(7)).thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getSelectedReportItems(7);
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+
+    // ---------- getMyReportSections ----------
+    @Test
+    void getMyReportSections_addsUserSystemIdFilter_ok() {
+        mockAuth(userWithA);
+
+        ListTableParams params = new ListTableParams();
+        params.setSearchBy(null);
+
+        PaginationResultRS pr = new PaginationResultRS();
+        when(service.getReportSectionsList(any(ListTableParams.class))).thenReturn(pr);
+
+        ResponseEntity<?> resp = controller.getMyReportSections(params);
+
+        assertEquals(HttpStatus.OK, resp.getStatusCode());
+        assertSame(pr, resp.getBody());
+
+        assertNotNull(params.getSearchBy());
+        assertNotNull(params.getSearchInput());
+        assertTrue(params.getSearchBy().contains(ReportSectionConstants.USER_SYSTEM_ID));
+        assertTrue(params.getSearchInput().contains("U1"));
+    }
+
+    @Test
+    void getMyReportSections_exception_returns400() {
+        mockAuth(userWithA);
+
+        when(service.getReportSectionsList(any(ListTableParams.class)))
+                .thenThrow(new ReportSectionApiException("err"));
+
+        ResponseEntity<?> resp = controller.getMyReportSections(new ListTableParams());
+
+        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
+    }
+}
+package com.optum.fads.pgp.reportsection.api.mapper;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT;
+import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
+import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
+
+class ReportGroupDetailMapperTest {
+
+    private final ReportGroupDetailMapper mapper = ReportGroupDetailMapper.INSTANCE;
+
+    @Test
+    void convertToPrmRiRptItemT_mapsFieldsAndNestedUserIds() {
+        ReportItemDTO dto = new ReportItemDTO();
+        dto.setReportItemId(101);
+        dto.setReportItemName("Item-101");
+        dto.setCalcFMT("FMT");
+        dto.setMinimumDenominator(5);
+        dto.setDivideConstant(2);
+        dto.setMultipleConstant(3);
+        dto.setCreatedBySystemId("UCR");
+        dto.setModifiedBySystemId("UUPD");
+
+        PrmRiRptItemT entity = mapper.convertToPrmRiRptItemT(dto);
+
+        assertNotNull(entity);
+        assertEquals(Integer.valueOf(101), entity.getRiId());
+        assertEquals("Item-101", entity.getReportItemName());
+        assertEquals("FMT", entity.getRiCalcFmt());
+        assertEquals(Integer.valueOf(5), entity.getRiMinimumDenom());
+        assertEquals(Integer.valueOf(2), entity.getConstantDen());
+        assertEquals(Integer.valueOf(3), entity.getConstantNum());
+
+        assertNotNull(entity.getUiUserBaseCr());
+        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
+
+        assertNotNull(entity.getUiUserBaseUpd());
+        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
+    }
+
+    @Test
+    void convertToPrmRsRptSecT_mapsFieldsAndNestedUserIds() {
+        ReportSectionDTO dto = new ReportSectionDTO();
+        dto.setReportSectionId(201);
+        dto.setReportSectionName("Section-201");
+        dto.setCreatedBySystemId("UCR");
+        dto.setModifiedBySystemId("UUPD");
+
+        PrmRsRptSecT entity = mapper.convertToPrmRsRptSecT(dto);
+
+        assertNotNull(entity);
+        assertEquals(Integer.valueOf(201), entity.getRsId());
+        assertEquals("Section-201", entity.getReportSectionName());
+
+        assertNotNull(entity.getUiUserBaseCr());
+        assertEquals("UCR", entity.getUiUserBaseCr().getUiSystemId());
+
+        assertNotNull(entity.getUiUserBaseUpd());
+        assertEquals("UUPD", entity.getUiUserBaseUpd().getUiSystemId());
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repository;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmErDrT;
+import com.optum.fads.pgp.reportsection.api.domain.PrmErdrTPK;
+import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternErDrRepository;
+
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+class BehaviorPatternErDrRepositoryTest {
+
+    @Autowired private BehaviorPatternErDrRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    void retrieveErDrValues_returnsOrderedByDrId() {
+        persistErDr(10, 2);
+        persistErDr(10, 1);
+        em.flush();
+        em.clear();
+
+        List<PrmErDrT> list = repo.retrieveErDrValues(10);
+
+        assertEquals(2, list.size());
+        assertEquals(Integer.valueOf(1), list.get(0).getId().getDrId());
+        assertEquals(Integer.valueOf(2), list.get(1).getId().getDrId());
+    }
+
+    @Test
+    void deleteErDrById_deletesRows() {
+        persistErDr(20, 1);
+        persistErDr(20, 2);
+        persistErDr(21, 1);
+        em.flush();
+
+        int deleted = repo.deleteErDrById(20);
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveErDrValues(20).size());
+        assertEquals(1, repo.retrieveErDrValues(21).size());
+    }
+
+    @Test
+    void deleteErDrs_deletesRowsForMultipleErIds() {
+        persistErDr(30, 1);
+        persistErDr(31, 1);
+        persistErDr(32, 1);
+        em.flush();
+
+        int deleted = repo.deleteErDrs(Arrays.asList(30, 31));
+        em.flush();
+
+        assertEquals(2, deleted);
+        assertEquals(0, repo.retrieveErDrValues(30).size());
+        assertEquals(0, repo.retrieveErDrValues(31).size());
+        assertEquals(1, repo.retrieveErDrValues(32).size());
+    }
+
+    private void persistErDr(int erId, int drId) {
+        PrmErdrTPK pk = new PrmErdrTPK();
+        pk.setErId(erId);
+        pk.setDrId(drId);
+
+        PrmErDrT e = new PrmErDrT();
+        e.setId(pk);
+
+        em.persist(e);
+    }
+}
+package com.optum.fads.pgp.reportsection.api.repository;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Arrays;
+import java.util.List;
+
+import jakarta.persistence.EntityManager;
+
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.TestPropertySource;
+
+import com.optum.fads.pgp.reportsection.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternsRepository;
+
+@DataJpaTest
+@TestPropertySource(properties = {
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
+        "spring.liquibase.enabled=false"
+})
+class BehaviorPatternsRepositoryTest {
+
+    @Autowired private BehaviorPatternsRepository repo;
+    @Autowired private EntityManager em;
+
+    @Test
+    void getBehaviorPatternById_returnsRow() {
+        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
+        bp.setBpId(1001);
+        bp.setBehaviorPatternName("BP-1001");
+        em.persist(bp);
+        em.flush();
+        em.clear();
+
+        PrmBpBehaviorPatsT found = repo.getBehaviorPatternById(1001);
+        assertNotNull(found);
+        assertEquals(Integer.valueOf(1001), found.getBpId());
+    }
+
+    @Test
+    void getBehaviorPatternsByIds_returnsAll() {
+        persistBp(2001);
+        persistBp(2002);
+        persistBp(2003);
+        em.flush();
+        em.clear();
+
+        List<PrmBpBehaviorPatsT> list = repo.getBehaviorPatternsByIds(Arrays.asList(2001, 2003));
+        assertEquals(2, list.size());
+    }
+
+    @Disabled("Enable after persisting PrmBpRiFormulaT mapping rows")
+    @Test
+    void getAvailableBehaviorPatterns_excludesLinkedOnes() {
+        // TODO: persist bp rows + formula rows linking riId to bpId
+        // List<PrmBpBehaviorPatsT> list = repo.getAvailableBehaviorPatterns(riId);
+        // assertNotNull(list);
+    }
+
+    @Disabled("Enable after confirming JPQL works with your Hibernate version/schema")
+    @Test
+    void retrieveBehaviorPatternById_returnsProjection() {
+        // List<Object[]> rows = repo.retrieveBehaviorPatternById(behaviorPatternId);
+        // assertNotNull(rows);
+    }
+
+    private void persistBp(int bpId) {
+        PrmBpBehaviorPatsT bp = new PrmBpBehaviorPatsT();
+        bp.setBpId(bpId);
+        bp.setBehaviorPatternName("BP-" + bpId);
+        em.persist(bp);
+    }
+}
