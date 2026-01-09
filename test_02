@@ -1,184 +1,37 @@
-package com.optum.fads.pgp.reportsection.api.config;
+1-09T16:46:51.344+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+2026-01-09T16:46:51.371+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+2026-01-09T16:46:51.396+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+2026-01-09T16:46:51.405+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+2026-01-09T16:46:51.440+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+2026-01-09T16:46:51.446+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+2026-01-09T16:46:51.469+05:30 ERROR  --- [           main] c.o.f.p.r.a.c.ReportSectionController    : Exception occured
+[INFO] Tests run: 23, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.310 s -- in com.optum.fads.pgp.reportsection.api.controller.ReportSectionControllerTests
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   CommonConfigTest.started_setsDefaultTimezoneToUtcMinus4:60 expected: <-14400000> but was: <0>
+[ERROR] Errors:
+[ERROR]   ServiceConfigTest.customDataSource_createdFromSpringDatasourceProperties:23->lambda$customDataSource_createdFromSpringDatasourceProperties$0:24 » IllegalState Unstarted application context org.springframework.boot.test.context.assertj.AssertableApplicationContext[startupFailure=org.springframework.beans.factory.BeanCreationException] failed to start
+[INFO]
+[ERROR] Tests run: 53, Failures: 1, Errors: 1, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  49.707 s
+[INFO] Finished at: 2026-01-09T16:46:51+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-reportsection-api: There are test failures.
+[ERROR]
+[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.TimeZone;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.web.client.RestTemplate;
-
-class CommonConfigTest {
-
-    private TimeZone originalTz;
-
-    @BeforeEach
-    void saveTz() {
-        originalTz = TimeZone.getDefault();
-    }
-
-    @AfterEach
-    void restoreTz() {
-        TimeZone.setDefault(originalTz);
-    }
-
-    @Test
-    void modelMapper_configuredStrictAndAmbiguityIgnored_andPrototypeLikeNewInstance() {
-        CommonConfig cfg = new CommonConfig();
-
-        ModelMapper mm1 = cfg.modelMapper();
-        ModelMapper mm2 = cfg.modelMapper();
-
-        assertNotNull(mm1);
-        assertNotNull(mm2);
-        assertNotSame(mm1, mm2, "Prototype scope should yield a new instance");
-
-        assertTrue(mm1.getConfiguration().isAmbiguityIgnored());
-        assertEquals(MatchingStrategies.STRICT, mm1.getConfiguration().getMatchingStrategy());
-    }
-
-    @Test
-    void restTemplate_created() {
-        CommonConfig cfg = new CommonConfig();
-        RestTemplate rt = cfg.restTemplate();
-        assertNotNull(rt);
-    }
-
-    @Test
-    void started_setsDefaultTimezoneToUtcMinus4() {
-        CommonConfig cfg = new CommonConfig();
-
-        cfg.started();
-
-        TimeZone tz = TimeZone.getDefault();
-        assertNotNull(tz);
-        // Java often returns "GMT-04:00" for "UTC-4"
-        assertEquals(-4 * 60 * 60 * 1000, tz.getRawOffset());
-    }
-}
-package com.optum.fads.pgp.reportsection.api.config;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import java.time.Instant;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-
-import com.optum.fads.pgp.reportsection.api.service.IUserDetailsService;
-
-class SecurityConfigTest {
-
-    @Test
-    void jwtDecoder_parsesToken_andReturnsJwt() {
-        IUserDetailsService uds = mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
-
-        JwtDecoder decoder = cfg.jwtDecoder();
-
-        // valid unsigned JWT (alg none). Contains numeric date claims.
-        String token =
-                "eyJhbGciOiJub25lIn0." +
-                "eyJzdWIiOiJ1c2VyMSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzAwMDAzNjAwLCJuYmYiOjE3MDAwMDAwMDAsImF1dGhfdGltZSI6MTcwMDAwMDAwMH0." +
-                "";
-
-        Jwt jwt = decoder.decode(token);
-
-        assertNotNull(jwt);
-        assertEquals(token, jwt.getTokenValue());
-        assertEquals("user1", jwt.getSubject());
-
-        // For Nimbus/JWT -> our code converts Date->Instant, but "iat/exp/nbf/auth_time"
-        // will likely already be Instant or numeric depending on parsing.
-        // We at least ensure claims exist and are time-like.
-        assertTrue(jwt.getClaims().containsKey("iat"));
-        assertTrue(jwt.getClaims().containsKey("exp"));
-        assertTrue(jwt.getClaims().containsKey("nbf"));
-        assertTrue(jwt.getClaims().containsKey("auth_time"));
-    }
-
-    @Test
-    void jwtDecoder_invalidToken_throwsJwtException() {
-        IUserDetailsService uds = mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
-
-        assertThrows(JwtException.class, () -> cfg.jwtDecoder().decode("not-a-jwt"));
-    }
-
-    @Test
-    void passwordEncoder_encodesAndMatches() {
-        IUserDetailsService uds = mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
-
-        PasswordEncoder encoder = cfg.passwordEncoder();
-
-        String raw = "secret123";
-        String encoded = encoder.encode(raw);
-
-        assertNotNull(encoded);
-        assertTrue(encoder.matches(raw, encoded));
-        assertFalse(encoder.matches("wrong", encoded));
-    }
-
-    @Test
-    void corsConfigurationSource_allowsAll() {
-        IUserDetailsService uds = mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
-
-        CorsConfigurationSource source = cfg.corsConfigurationSource();
-        assertNotNull(source);
-
-        CorsConfiguration cc = source.getCorsConfiguration(new org.springframework.mock.web.MockHttpServletRequest("GET", "/any"));
-        assertNotNull(cc);
-
-        assertEquals("*", cc.getAllowedOrigins().get(0));
-        assertEquals("*", cc.getAllowedMethods().get(0));
-        assertEquals("*", cc.getAllowedHeaders().get(0));
-    }
-
-    @Test
-    void userJwtAuthenticationConverter_created() {
-        IUserDetailsService uds = mock(IUserDetailsService.class);
-        SecurityConfig cfg = new SecurityConfig(uds);
-
-        assertNotNull(cfg.userJwtAuthenticationConverter());
-    }
-}
-package com.optum.fads.pgp.reportsection.api.config;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import javax.sql.DataSource;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-
-class ServiceConfigTest {
-
-    private final ApplicationContextRunner runner = new ApplicationContextRunner()
-            .withUserConfiguration(ServiceConfig.class)
-            .withPropertyValues(
-                    "spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1",
-                    "spring.datasource.driverClassName=org.h2.Driver",
-                    "spring.datasource.username=sa",
-                    "spring.datasource.password="
-            );
-
-    @Test
-    void customDataSource_createdFromSpringDatasourceProperties() {
-        runner.run(ctx -> {
-            assertTrue(ctx.containsBean("fadsDataSource"));
-            DataSource ds = (DataSource) ctx.getBean("fadsDataSource");
-            assertNotNull(ds);
-        });
-    }
-}
+C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api>
