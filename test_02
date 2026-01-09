@@ -1,422 +1,481 @@
-package com.optum.fads.pgp.reportsection.api.service.impl;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.*;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
-
-import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
-import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
-import com.optum.fads.pgp.reportsection.api.domain.FadsConfigT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
-import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
-import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
-import com.optum.fads.pgp.reportsection.api.mapper.ReportGroupDetailMapper;
-import com.optum.fads.pgp.reportsection.api.repo.*;
-
-@ExtendWith(MockitoExtension.class)
-class ReportItemDataServiceTest {
-
-    @Mock private ReportItemsRepository reportItemsRepository;
-    @Mock private ReportItemFormulasRepository reportItemFormulasRepository;
-    @Mock private ReportSectionItemsRepository reportSectionItemsRepository;
-    @Mock private BehaviorPatternsRepository behaviorPatternsRepository;
-    @Mock private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
-    @Mock private DataRulesRepository dataRulesRepository;
-    @Mock private ReportSectionsRepository reportSectionsRepository;
-
-    @Mock private FadsConfigRepository fadsConfigRepository;
-    @Mock private ReportGroupDetailMapper reportGroupDetailMapper;
-
-    private TestableReportItemDataService service;
-
-    @BeforeEach
-    void setup() {
-        service = new TestableReportItemDataService(
-                reportItemsRepository,
-                reportItemFormulasRepository,
-                reportSectionItemsRepository,
-                behaviorPatternsRepository,
-                behaviorPatternErDrRepository,
-                dataRulesRepository,
-                reportSectionsRepository
-        );
-        service.setFadsConfigRepository(fadsConfigRepository);
-        service.setReportGroupDetailMapper(reportGroupDetailMapper);
-    }
-
-    // -------------------- getReportItemsList --------------------
-
-    @Test
-    void getReportItemsList_noSearch_selectedEmpty_usesGetReportItemsAndCount() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(null);
-        params.setSelectedItemIds(new ArrayList<>());
-
-        PrmRiRptItemT ri = realRi(11, "RI-11");
-        when(reportItemsRepository.getReportItems(any(Pageable.class))).thenReturn(List.of(ri));
-        when(reportItemsRepository.count()).thenReturn(1L);
-
-        PaginationResultRI out = service.getReportItemsList(params);
-
-        assertEquals(1, out.getTotalRecordsCount());
-        assertEquals(1, out.getReportItemsData().size());
-        assertEquals(Integer.valueOf(11), out.getReportItemsData().get(0).getReportItemId());
-
-        verify(reportItemsRepository).getReportItems(any(Pageable.class));
-        verify(reportItemsRepository).count();
-        verify(reportItemsRepository, never()).getAvailableReportItems(anyList(), any());
-    }
-
-    @Test
-    void getReportItemsList_noSearch_selectedNotEmpty_usesAvailableAndCountBySize() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(null);
-        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
-
-        PrmRiRptItemT ri = realRi(99, "RI-99");
-        when(reportItemsRepository.getAvailableReportItems(eq(params.getSelectedItemIds()), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getAvailableReportItems(eq(params.getSelectedItemIds()), isNull()))
-                .thenReturn(List.of(ri, realRi(100, "RI-100")));
-
-        PaginationResultRI out = service.getReportItemsList(params);
-
-        assertEquals(2, out.getTotalRecordsCount());
-        assertEquals(1, out.getReportItemsData().size());
-
-        verify(reportItemsRepository).getAvailableReportItems(eq(params.getSelectedItemIds()), any(Pageable.class));
-        verify(reportItemsRepository).getAvailableReportItems(eq(params.getSelectedItemIds()), isNull());
-        verify(reportItemsRepository, never()).count();
-    }
-
-    @Test
-    void getReportItemsList_whenSearchByPresent_delegatesToSearchCriteriaMethod() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("abc"));
-        params.setSelectedItemIds(new ArrayList<>());
-
-        // make search path return empty and count 0
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(Collections.emptyList());
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(Collections.emptyList());
-
-        PaginationResultRI out = service.getReportItemsList(params);
-
-        assertNotNull(out);
-        assertEquals(0, out.getTotalRecordsCount());
-        assertNotNull(out.getReportItemsData());
-        assertTrue(out.getReportItemsData().isEmpty());
-    }
-
-    @Test
-    void getReportItemsList_repositoryThrows_wrapsInReportSectionApiException() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(null);
-        params.setSelectedItemIds(new ArrayList<>());
-
-        when(reportItemsRepository.getReportItems(any(Pageable.class))).thenThrow(new RuntimeException("db"));
-
-        assertThrows(ReportSectionApiException.class, () -> service.getReportItemsList(params));
-    }
-
-    // -------------------- getReportItemsOnSearchCriteria branch routing --------------------
-
-    @Test
-    void getReportItemsOnSearchCriteria_selectedEmpty_noSpChar_callsGetReportItemsBySearchCrit() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("abc"));
-
-        PrmRiRptItemT ri = realRi(10, "abc");
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(List.of(ri, realRi(11, "x")));
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertEquals(2, out.getTotalRecordsCount());
-        assertEquals(1, out.getReportItemsData().size());
-
-        verify(reportItemsRepository).getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class));
-        verify(reportItemsRepository).getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull());
-        verify(reportItemsRepository, never()).getReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), any());
-    }
-
-    @Test
-    void getReportItemsOnSearchCriteria_selectedEmpty_spChar_callsEscMethod() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("a%"));
-
-        PrmRiRptItemT ri = realRi(10, "a%");
-        when(reportItemsRepository.getReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(List.of(ri));
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertEquals(1, out.getTotalRecordsCount());
-        verify(reportItemsRepository).getReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), any(Pageable.class));
-    }
-
-    @Test
-    void getReportItemsOnSearchCriteria_selectedNotEmpty_noSpChar_callsGetAvailableBySearchCrit() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("abc"));
-
-        PrmRiRptItemT ri = realRi(10, "abc");
-        when(reportItemsRepository.getAvailableReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyList(), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getAvailableReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyList(), isNull()))
-                .thenReturn(List.of(ri, realRi(11, "x")));
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertEquals(2, out.getTotalRecordsCount());
-        verify(reportItemsRepository).getAvailableReportItemsBySearchCrit(anyString(), anyString(), anyString(), eq(params.getSelectedItemIds()), any(Pageable.class));
-    }
-
-    @Test
-    void getReportItemsOnSearchCriteria_selectedNotEmpty_spChar_callsGetAvailableBySearchCritEsc() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("a_"));
-
-        PrmRiRptItemT ri = realRi(10, "a_");
-        when(reportItemsRepository.getAvailableReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), anyList(), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getAvailableReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), anyList(), isNull()))
-                .thenReturn(List.of(ri));
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertEquals(1, out.getTotalRecordsCount());
-        verify(reportItemsRepository).getAvailableReportItemsBySearchCritEsc(anyString(), anyString(), anyString(), eq(params.getSelectedItemIds()), any(Pageable.class));
-    }
-
-    @Test
-    void getReportItemsOnSearchCriteria_myItemsIndex_selectedEmpty_routesToMyMethods() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME, ReportSectionConstants.USER_SYSTEM_ID));
-        params.setSearchInput(List.of("abc", "u1"));
-
-        PrmRiRptItemT ri = realRi(10, "abc");
-
-        when(reportItemsRepository.getMyReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getMyReportItemsBySearchCrit(anyString(), anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(List.of(ri, realRi(11, "x")));
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertEquals(2, out.getTotalRecordsCount());
-        verify(reportItemsRepository).getMyReportItemsBySearchCrit(anyString(), anyString(), anyString(), eq("u1"), any(Pageable.class));
-    }
-
-    @Test
-    void getReportItemsOnSearchCriteria_whenNoRows_returnsEmptyAndCount0() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("none"));
-
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(Collections.emptyList());
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(Collections.emptyList());
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertNotNull(out.getReportItemsData());
-        assertTrue(out.getReportItemsData().isEmpty());
-        assertEquals(0, out.getTotalRecordsCount());
-    }
-
-    // -------------------- protected method coverage via wrappers --------------------
-
-    @Test
-    void replReportItemName_noSpecialChars_wrapsWithPercent() {
-        assertEquals("%abc%", service.callReplReportItemName("abc"));
-    }
-
-    @Test
-    void replReportItemName_withPercent_escapesPercent() {
-        String out = service.callReplReportItemName("a%");
-        assertTrue(out.startsWith("%"));
-        assertTrue(out.endsWith("%"));
-        assertTrue(out.contains("\\%"));
-    }
-
-    @Test
-    void replReportItemName_withUnderscore_escapesUnderscore() {
-        String out = service.callReplReportItemName("a_");
-        assertTrue(out.contains("\\_"));
-    }
-
-    @Test
-    void getSearchCriteria_trimsMultipleSpaces_createdBy_modifiedBy() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(List.of(ReportSectionConstants.CREATED_BY, ReportSectionConstants.MODIFIED_BY));
-        params.setSearchInput(List.of("  john   doe  ", "  jane   doe  "));
-
-        String[] crit = service.callGetSearchCriteria(params, -1);
-
-        assertEquals("%john doe%", crit[1]);
-        assertEquals("%jane doe%", crit[2]);
-    }
-
-    @Test
-    void populateReportItemInd_mapsFields() {
-        PrmRiRptItemT ri = realRi(44, "RI-44");
-        ReportItemDTO dto = service.callPopulateReportItemInd(ri);
-
-        assertEquals(Integer.valueOf(44), dto.getReportItemId());
-        assertEquals("RI-44", dto.getReportItemName());
-        assertEquals("A B", dto.getCreatedBy());
-        assertEquals("C D", dto.getModifiedBy());
-        assertEquals("U1", dto.getCreatedBySystemId());
-        assertNotNull(dto.getCreatedDate());
-        assertNotNull(dto.getModifiedDate());
-    }
-
-    // -------------------- getZoneId --------------------
-
-    @Test
-    void getZoneId_whenConfigPresent_returnsZoneFromConfig() {
-        FadsConfigT cfg = new FadsConfigT();
-        cfg.setOptionValue("Asia/Kolkata");
-
-        when(fadsConfigRepository.findById(ReportSectionConstants.DATE_TIME_ZONE_ID))
-                .thenReturn(Optional.of(cfg));
-
-        ZoneId zid = service.getZoneId();
-        assertEquals(ZoneId.of("Asia/Kolkata"), zid);
-    }
-
-    @Test
-    void getZoneId_whenConfigMissing_returnsSystemDefault() {
-        when(fadsConfigRepository.findById(ReportSectionConstants.DATE_TIME_ZONE_ID))
-                .thenReturn(Optional.empty());
-
-        ZoneId zid = service.getZoneId();
-        assertEquals(ZoneId.systemDefault(), zid);
-    }
-
-    // -------------------- helpers --------------------
-
-    private static ListTableParams baseParams() {
-        ListTableParams p = new ListTableParams();
-        p.setPageNumber(1);
-        p.setRecordsPerPage(10);
-        p.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        p.setSortOrder(1);
-        return p;
-    }
-
-    /**
-     * Build a REAL entity object instead of mocking it.
-     * This avoids UnfinishedStubbingException and final/proxy issues.
-     */
-    private static PrmRiRptItemT realRi(int id, String name) {
-        PrmRiRptItemT ri = new PrmRiRptItemT();
-        ri.setRiId(id);
-        ri.setReportItemName(name);
-        ri.setRiCalcFmt("1");
-        ri.setConstantNum(3);
-        ri.setConstantDen(2);
-        ri.setRiMinimumDenom(5);
-        ri.setCreateDate(LocalDateTime.now());
-        ri.setUpdateDate(LocalDateTime.now());
-
-        UiUserBase cr = new UiUserBase();
-        cr.setUiFirstName("A");
-        cr.setUiLastName("B");
-        cr.setUiSystemId("U1");
-
-        UiUserBase upd = new UiUserBase();
-        upd.setUiFirstName("C");
-        upd.setUiLastName("D");
-        upd.setUiSystemId("U2");
-
-        ri.setUiUserBaseCr(cr);
-        ri.setUiUserBaseUpd(upd);
-
-        // important: avoid NPE in loops
-        ri.setPrmBpRiFormulaTs(new ArrayList<>());
-
-        return ri;
-    }
-
-    // subclass exposes protected methods safely + allows setting @Autowired fields
-    static class TestableReportItemDataService extends ReportItemDataService {
-
-        TestableReportItemDataService(ReportItemsRepository reportItemsRepository,
-                                      ReportItemFormulasRepository reportItemFormulasRepository,
-                                      ReportSectionItemsRepository reportSectionItemsRepository,
-                                      BehaviorPatternsRepository behaviorPatternsRepository,
-                                      BehaviorPatternErDrRepository behaviorPatternErDrRepository,
-                                      DataRulesRepository dataRulesRepository,
-                                      ReportSectionsRepository reportSectionsRepository) {
-            super(reportItemsRepository,
-                  reportItemFormulasRepository,
-                  reportSectionItemsRepository,
-                  behaviorPatternsRepository,
-                  behaviorPatternErDrRepository,
-                  dataRulesRepository,
-                  reportSectionsRepository);
-        }
-
-        void setFadsConfigRepository(FadsConfigRepository repo) {
-            setField("fadsConfigRepository", repo);
-        }
-
-        void setReportGroupDetailMapper(ReportGroupDetailMapper mapper) {
-            setField("reportGroupDetailMapper", mapper);
-        }
-
-        String callReplReportItemName(String in) {
-            return replReportItemName(in);
-        }
-
-        String[] callGetSearchCriteria(ListTableParams p, int idx) {
-            return getSearchCriteria(p, idx);
-        }
-
-        ReportItemDTO callPopulateReportItemInd(PrmRiRptItemT ri) {
-            return populateReportItemInd(ri);
-        }
-
-        private void setField(String name, Object val) {
-            try {
-                java.lang.reflect.Field f = ReportItemDataService.class.getDeclaredField(name);
-                f.setAccessible(true);
-                f.set(this, val);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
+// -------------------- createPageableReports branches --------------------
+
+@Test
+void createPageableReports_sortByModifiedDate_usesUpdateDateField() {
+    ListTableParams p = baseParams();
+    p.setSortBy(ReportSectionConstants.MODIFIED_DATE);
+    p.setSortOrder(1); // ASC
+    p.setPageNumber(1);
+    p.setRecordsPerPage(5);
+
+    Pageable pageable = service.callCreatePageable(p);
+
+    assertEquals(0, pageable.getPageNumber());
+    assertEquals(5, pageable.getPageSize());
+
+    Sort.Order order = pageable.getSort().stream().findFirst().orElseThrow();
+    assertEquals(ReportSectionConstants.UPDATE_DATE, order.getProperty());
+    assertEquals(Sort.Direction.ASC, order.getDirection());
+}
+
+@Test
+void createPageableReports_sortByCreatedBy_buildsTwoOrdersIgnoreCase() {
+    ListTableParams p = baseParams();
+    p.setSortBy(ReportSectionConstants.CREATED_BY);
+    p.setSortOrder(-1); // DESC
+
+    Pageable pageable = service.callCreatePageable(p);
+    List<Sort.Order> orders = pageable.getSort().stream().toList();
+
+    assertEquals(2, orders.size());
+    assertEquals("uiUserBaseCr.uiFirstName", orders.get(0).getProperty());
+    assertEquals("uiUserBaseCr.uiLastName", orders.get(1).getProperty());
+    assertEquals(Sort.Direction.DESC, orders.get(0).getDirection());
+    assertTrue(orders.get(0).isIgnoreCase());
+    assertTrue(orders.get(1).isIgnoreCase());
+}
+
+@Test
+void createPageableReports_sortByModifiedBy_buildsTwoOrdersIgnoreCase() {
+    ListTableParams p = baseParams();
+    p.setSortBy(ReportSectionConstants.MODIFIED_BY);
+    p.setSortOrder(1); // ASC
+
+    Pageable pageable = service.callCreatePageable(p);
+    List<Sort.Order> orders = pageable.getSort().stream().toList();
+
+    assertEquals(2, orders.size());
+    assertEquals("uiUserBaseUpd.uiFirstName", orders.get(0).getProperty());
+    assertEquals("uiUserBaseUpd.uiLastName", orders.get(1).getProperty());
+    assertEquals(Sort.Direction.ASC, orders.get(0).getDirection());
+    assertTrue(orders.get(0).isIgnoreCase());
+    assertTrue(orders.get(1).isIgnoreCase());
+}
+
+// -------------------- getSearchCriteria branches --------------------
+
+@Test
+void getSearchCriteria_setsCreatedByAndModifiedBy_andTrimsExtraSpaces() {
+    ListTableParams p = baseParams();
+    p.setSearchBy(List.of(ReportSectionConstants.CREATED_BY, ReportSectionConstants.MODIFIED_BY));
+    p.setSearchInput(List.of("  John   Smith  ", "  Mary   Jane  "));
+
+    String[] out = service.callGetSearchCriteria(p, -1);
+
+    assertEquals("%john smith%", out[1]);
+    assertEquals("%mary jane%", out[2]);
+}
+
+@Test
+void getSearchCriteria_detectsSpecialCharsInName_setsEscFlag() {
+    ListTableParams p = baseParams();
+    p.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
+    p.setSearchInput(List.of("ab%cd"));
+
+    String[] out = service.callGetSearchCriteria(p, -1);
+
+    assertEquals(ReportSectionConstants.SEARCH_SP_CH_IN_NM_STR, out[3]);
+    assertTrue(out[0].contains("\\%"));
+}
+
+@Test
+void getSearchCriteria_setsUserSystemId_whenPresent() {
+    ListTableParams p = baseParams();
+    p.setSearchBy(List.of(ReportSectionConstants.USER_SYSTEM_ID));
+    p.setSearchInput(List.of("ucr"));
+
+    String[] out = service.callGetSearchCriteria(p, 0);
+
+    assertEquals("ucr", out[4]);
+}
+
+// -------------------- getSelectedDataRules (covers populateDataRulesList + setCodeRangeValues) --------------------
+
+@Test
+void getSelectedDataRules_whenNoErDrRows_returnsEmptyList() {
+    when(behaviorPatternErDrRepository.retrieveErDrValues(eq(123))).thenReturn(List.of());
+
+    var out = service.getSelectedDataRules(123);
+
+    assertNotNull(out);
+    assertTrue(out.isEmpty());
+    verify(dataRulesRepository, never()).getDataRulesByIds(anyList());
+}
+
+@Test
+void getSelectedDataRules_whenRowsPresent_mapsCodeAndRangeValues() {
+    // erdr rows -> dr ids
+    var pk1 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmErdrTPK.class);
+    when(pk1.getDrId()).thenReturn(10);
+    var erdr1 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmErDrT.class);
+    when(erdr1.getId()).thenReturn(pk1);
+
+    var pk2 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmErdrTPK.class);
+    when(pk2.getDrId()).thenReturn(20);
+    var erdr2 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmErDrT.class);
+    when(erdr2.getId()).thenReturn(pk2);
+
+    when(behaviorPatternErDrRepository.retrieveErDrValues(eq(777))).thenReturn(List.of(erdr1, erdr2));
+
+    // Build PrmDrDataRuleT mocks with nested structures used in populateDataRulesList
+    var dr1 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmDrDataRuleT.class);
+    when(dr1.getDrId()).thenReturn(10);
+    when(dr1.getDataRuleName()).thenReturn("DR-10");
+
+    var mb = mock(com.optum.fads.pgp.reportsection.api.domain.PrmMbMasterT.class);
+    when(mb.getMbCustDatadesc()).thenReturn("Element-Desc");
+    when(mb.getMbCtecFid()).thenReturn(999);
+    when(dr1.getPrmMbMasterT()).thenReturn(mb);
+
+    var op = mock(com.optum.fads.pgp.reportsection.api.domain.PrmDrLuOperatorT.class);
+    when(op.getOperatorDesc()).thenReturn("EQUALS");
+    when(dr1.getPrmDrLuOperatorT()).thenReturn(op);
+
+    var cr = mock(com.optum.fads.pgp.reportsection.api.domain.UiUserBase.class);
+    when(cr.getUiFirstName()).thenReturn("C");
+    when(cr.getUiLastName()).thenReturn("R");
+    when(dr1.getUiUserBaseCr()).thenReturn(cr);
+
+    var upd = mock(com.optum.fads.pgp.reportsection.api.domain.UiUserBase.class);
+    when(upd.getUiFirstName()).thenReturn("U");
+    when(upd.getUiLastName()).thenReturn("P");
+    when(dr1.getUiUserBaseUpd()).thenReturn(upd);
+
+    // code values (PrmDrSingleValuesTs)
+    var singlePk = mock(com.optum.fads.pgp.reportsection.api.domain.PrmDrSingleValuesTPK.class);
+    when(singlePk.getDrValue()).thenReturn("A");
+    var single = mock(com.optum.fads.pgp.reportsection.api.domain.PrmDrSingleValuesT.class);
+    when(single.getId()).thenReturn(singlePk);
+    when(single.getDrLabel()).thenReturn("Alpha");
+    when(dr1.getPrmDrSingleValuesTs()).thenReturn(List.of(single));
+
+    // range values (PrmDrRangesTs)
+    var range = mock(com.optum.fads.pgp.reportsection.api.domain.PrmDrRangesT.class);
+    when(range.getDrRangeFrom()).thenReturn("1");
+    when(range.getDrRangeTo()).thenReturn("10");
+    when(dr1.getPrmDrRangesTs()).thenReturn(List.of(range));
+
+    var dr2 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmDrDataRuleT.class);
+    when(dr2.getDrId()).thenReturn(20);
+    when(dr2.getDataRuleName()).thenReturn("DR-20");
+    when(dr2.getPrmMbMasterT()).thenReturn(mb);
+    when(dr2.getPrmDrLuOperatorT()).thenReturn(op);
+    when(dr2.getUiUserBaseCr()).thenReturn(cr);
+    when(dr2.getUiUserBaseUpd()).thenReturn(upd);
+    when(dr2.getPrmDrSingleValuesTs()).thenReturn(List.of());
+    when(dr2.getPrmDrRangesTs()).thenReturn(List.of());
+
+    when(dataRulesRepository.getDataRulesByIds(eq(List.of(10, 20)))).thenReturn(List.of(dr1, dr2));
+
+    var out = service.getSelectedDataRules(777);
+
+    assertEquals(2, out.size());
+    assertEquals(Integer.valueOf(10), out.get(0).getDataRuleId());
+    assertEquals("DR-10", out.get(0).getDataRuleName());
+
+    // dr1 had both selectedValues and ranges => rangeValue should end up HAS_VALUE
+    assertNotNull(out.get(0).getSelectedValues());
+    assertEquals(1, out.get(0).getSelectedValues().size());
+    assertEquals("Alpha", out.get(0).getSelectedValues().get(0).getValue());
+    assertEquals("A", out.get(0).getSelectedValues().get(0).getCode());
+
+    assertNotNull(out.get(0).getRangeValues());
+    assertEquals(1, out.get(0).getRangeValues().size());
+    assertEquals("1", out.get(0).getRangeValues().get(0).getFrom());
+    assertEquals("10", out.get(0).getRangeValues().get(0).getTo());
+}
+
+// -------------------- getBehaviorPatterns --------------------
+
+@Test
+void getBehaviorPatterns_mapsProjectionAndCallsSelectedDataRules() {
+    // report item formula -> bpId + type + operator
+    var pk = new com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaTPK();
+    pk.setBpId(500);
+    pk.setRibpType(ReportSectionConstants.NUM_STR);
+
+    var formula = new com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaT();
+    formula.setId(pk);
+    formula.setOperatorExp("+");
+
+    PrmRiRptItemT ri = realRi(1, "RI-1");
+    ri.setPrmBpRiFormulaTs(List.of(formula));
+
+    // repository projection row (Object[])
+    Object[] row = new Object[]{
+            777,            // [0] erId
+            "BA",           // [1] baId
+            "BP-500",       // [2] name
+            100,            // [3] dataElementCode
+            null,           // [4] dateElementCode
+            new java.util.Date(), // [5] createdDate
+            "C",            // [6] createdFirst
+            "R",            // [7] createdLast
+            new java.util.Date(), // [8] modifiedDate
+            "U",            // [9] modifiedFirst
+            "P",            // [10] modifiedLast
+            "SUMOF",        // [11]
+            "DE-NAME"       // [12]
+    };
+
+    when(behaviorPatternsRepository.retrieveBehaviorPatternById(eq(500))).thenReturn(List.of(row));
+
+    // Spy to avoid deep data rule mapping here (we already tested getSelectedDataRules separately)
+    ReportItemDataService spy = spy(service);
+    doReturn(List.of()).when(spy).getSelectedDataRules(eq(777));
+
+    var out = spy.getBehaviorPatterns(ri);
+
+    assertEquals(1, out.size());
+    assertEquals(Integer.valueOf(500), out.get(0).getBehaviorPatternId());
+    assertEquals(Integer.valueOf(777), out.get(0).getErId());
+    assertEquals(ReportSectionConstants.NUM_STR, out.get(0).getType());
+    assertEquals("+", out.get(0).getOperator());
+
+    verify(behaviorPatternsRepository).retrieveBehaviorPatternById(500);
+    verify(spy).getSelectedDataRules(777);
+}
+
+@Test
+void getBehaviorPatterns_whenProjectionEmpty_throws() {
+    var pk = new com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaTPK();
+    pk.setBpId(501);
+    pk.setRibpType(ReportSectionConstants.NUM_STR);
+    var formula = new com.optum.fads.pgp.reportsection.api.domain.PrmBpRiFormulaT();
+    formula.setId(pk);
+    formula.setOperatorExp("+");
+
+    PrmRiRptItemT ri = realRi(2, "RI-2");
+    ri.setPrmBpRiFormulaTs(List.of(formula));
+
+    when(behaviorPatternsRepository.retrieveBehaviorPatternById(eq(501))).thenReturn(List.of());
+
+    assertThrows(ReportSectionApiException.class, () -> service.getBehaviorPatterns(ri));
+}
+
+// -------------------- getReportItemById --------------------
+
+@Test
+void getReportItemById_splitsNumAndDenBehaviorPatterns() {
+    PrmRiRptItemT ri = realRi(88, "RI-88");
+    when(reportItemsRepository.getReportItemById(eq(88))).thenReturn(ri);
+
+    var bpNum = new com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO();
+    bpNum.setType(ReportSectionConstants.NUM_STR);
+
+    var bpDen = new com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO();
+    bpDen.setType("DEN");
+
+    ReportItemDataService spy = spy(service);
+    doReturn(List.of(bpNum, bpDen)).when(spy).getBehaviorPatterns(eq(ri));
+
+    var out = spy.getReportItemById(88);
+
+    assertNotNull(out);
+    assertEquals(Integer.valueOf(88), out.getReportItemId());
+    assertEquals(1, out.getNumeratorBehaviorPatterns().size());
+    assertEquals(1, out.getDenominatorBehaviorPatterns().size());
+}
+
+@Test
+void getReportItemById_whenNullFromRepo_throwsNoData() {
+    when(reportItemsRepository.getReportItemById(eq(999))).thenReturn(null);
+    assertThrows(ReportSectionApiException.class, () -> service.getReportItemById(999));
+}
+
+// -------------------- getAvailableBehaviorPatterns (covers populatebehaviorPatternDTO) --------------------
+
+@Test
+void getAvailableBehaviorPatterns_whenReportItemMissing_throws() {
+    when(reportItemsRepository.getReportItemById(eq(10))).thenReturn(null);
+    assertThrows(ReportSectionApiException.class, () -> service.getAvailableBehaviorPatterns(10));
+}
+
+@Test
+void getAvailableBehaviorPatterns_mapsDtos() {
+    PrmRiRptItemT ri = realRi(10, "RI-10");
+    when(reportItemsRepository.getReportItemById(eq(10))).thenReturn(ri);
+
+    var bp = mock(com.optum.fads.pgp.reportsection.api.domain.PrmBpBehaviorPatsT.class);
+    when(bp.getBpId()).thenReturn(700);
+    when(bp.getBehaviorPatternName()).thenReturn("BP-700");
+    when(bp.getBaId()).thenReturn("BA");
+
+    var er = mock(com.optum.fads.pgp.reportsection.api.domain.PrmErExtractRuleT.class);
+    when(er.getErId()).thenReturn(777);
+    when(bp.getPrmErExtractRuleT()).thenReturn(er);
+
+    var cr = mock(com.optum.fads.pgp.reportsection.api.domain.UiUserBase.class);
+    when(cr.getUiUserId()).thenReturn("creator");
+    when(bp.getUiUserBaseCr()).thenReturn(cr);
+
+    var upd = mock(com.optum.fads.pgp.reportsection.api.domain.UiUserBase.class);
+    when(upd.getUiUserId()).thenReturn("updater");
+    when(bp.getUiUserBaseUpd()).thenReturn(upd);
+
+    when(behaviorPatternsRepository.getAvailableBehaviorPatterns(eq(10))).thenReturn(List.of(bp));
+
+    var out = service.getAvailableBehaviorPatterns(10);
+
+    assertEquals(1, out.size());
+    assertEquals(Integer.valueOf(700), out.get(0).getBehaviorPatternId());
+    assertEquals(Integer.valueOf(777), out.get(0).getErId());
+    assertEquals("BP-700", out.get(0).getBehaviorPatternName());
+    assertEquals("BA", out.get(0).getBaId());
+    assertEquals("creator", out.get(0).getCreatedBy());
+    assertEquals("updater", out.get(0).getModifiedBy());
+}
+
+// -------------------- addReportItem (covers saveReportItemFormulas private) --------------------
+
+@Test
+void addReportItem_whenItemExists_returnsExistsMarkerAndIds() {
+    PrmRiRptItemT existing = realRi(5, "EXISTS");
+
+    when(reportItemsRepository.getReportItemByName(eq("abc"))).thenReturn(existing);
+
+    var dto = new com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO();
+    dto.setReportItemName("ABC");
+    dto.setCreatedBySystemId("UCR");
+    dto.setModifiedBySystemId("UUPD");
+
+    var out = service.addReportItem(dto);
+
+    assertEquals(Integer.valueOf(5), out.getReportItemId());
+    assertEquals(ReportSectionConstants.REPORT_ITEM_EXISTS, out.getReportItemName());
+    assertEquals("UUPD", out.getModifiedBySystemId());
+    assertEquals("UCR", out.getCreatedBySystemId());
+
+    verify(reportItemsRepository, never()).saveAndFlush(any());
+}
+
+@Test
+void addReportItem_whenNew_savesRiAndFormulas() {
+    when(reportItemsRepository.getReportItemByName(eq("newri"))).thenReturn(null);
+    when(reportItemsRepository.retrieveNextRiId()).thenReturn(101);
+    when(reportItemsRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    var dto = new com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO();
+    dto.setReportItemName("NewRI");
+    dto.setCalcFMT(1);
+    dto.setMinimumDenominator(5);
+    dto.setDivideConstant(2);
+    dto.setMultipleConstant(3);
+    dto.setCreatedBySystemId("UCR");
+    dto.setModifiedBySystemId("UUPD");
+    dto.setCreatedDate("01/09/2026 05:30:00 PM");
+    dto.setModifiedDate("01/09/2026 05:30:00 PM");
+
+    // add one BP so saveReportItemFormulas executes
+    var bp = new com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO();
+    bp.setBehaviorPatternId(500);
+    bp.setOperator("+");
+    bp.setType(ReportSectionConstants.NUM_STR);
+    dto.setNumeratorBehaviorPatterns(List.of(bp));
+    dto.setDenominatorBehaviorPatterns(List.of());
+
+    var out = service.addReportItem(dto);
+
+    assertEquals(Integer.valueOf(101), out.getReportItemId());
+    assertEquals("NewRI", out.getReportItemName());
+
+    verify(reportItemsRepository).saveAndFlush(any(PrmRiRptItemT.class));
+    verify(reportItemFormulasRepository).saveAll(argThat(list -> list.size() == 1));
+    verify(reportItemFormulasRepository).flush();
+}
+
+// -------------------- updateReportItem (covers saveReportItemFormulas + delete formulas) --------------------
+
+@Test
+void updateReportItem_whenHasBehaviorPatterns_deletesOldAndSavesNew() {
+    // mapper converts dto -> entity
+    PrmRiRptItemT mapped = realRi(200, "RI-200");
+    when(reportGroupDetailMapper.convertToPrmRiRptItemT(any())).thenReturn(mapped);
+
+    // existing RI for createDate
+    PrmRiRptItemT existing = realRi(200, "RI-200");
+    existing.setCreateDate(LocalDateTime.now().minusDays(2));
+    when(reportItemsRepository.getReportItemById(eq(200))).thenReturn(existing);
+
+    when(reportItemsRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(reportItemFormulasRepository.deleteReportItemFormulaByRiId(eq(200))).thenReturn(3);
+
+    var dto = new com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO();
+    dto.setReportItemId(200);
+    dto.setReportItemName("RI-200");
+    dto.setModifiedDate("01/09/2026 05:30:00 PM");
+
+    var bp = new com.optum.fads.pgp.reportsection.api.dto.BehaviorPatternDTO();
+    bp.setBehaviorPatternId(501);
+    bp.setOperator("+");
+    bp.setType(ReportSectionConstants.NUM_STR);
+    dto.setNumeratorBehaviorPatterns(List.of(bp));
+    dto.setDenominatorBehaviorPatterns(List.of());
+
+    String out = service.updateReportItem(200, dto);
+
+    assertEquals(ReportSectionConstants.UPDATE_REPORT_ITEM_SUCCESS, out);
+    verify(reportItemFormulasRepository).deleteReportItemFormulaByRiId(200);
+    verify(reportItemFormulasRepository).saveAll(argThat(list -> list.size() == 1));
+    verify(reportItemFormulasRepository).flush();
+}
+
+// -------------------- deleteReportItem branches --------------------
+
+@Test
+void deleteReportItem_whenMissing_returnsDoesNotExistMsg() {
+    when(reportItemsRepository.getReportItemById(eq(1))).thenReturn(null);
+
+    var out = service.deleteReportItem(1);
+
+    assertEquals(1, out.size());
+    assertEquals(ReportSectionConstants.REPORT_ITEM_DOES_NOT_EXIST, out.get(0));
+}
+
+@Test
+void deleteReportItem_whenLinkedToSections_returnsSectionNamesAndDoesNotDelete() {
+    when(reportItemsRepository.getReportItemById(eq(2))).thenReturn(realRi(2, "RI-2"));
+
+    // rsri list (size > 1)
+    var rsri1 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmRsRiT.class);
+    var pk1 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmRsRiTPK.class);
+    when(pk1.getRsId()).thenReturn(10);
+    when(rsri1.getId()).thenReturn(pk1);
+
+    var rsri2 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmRsRiT.class);
+    var pk2 = mock(com.optum.fads.pgp.reportsection.api.domain.PrmRsRiTPK.class);
+    when(pk2.getRsId()).thenReturn(20);
+    when(rsri2.getId()).thenReturn(pk2);
+
+    when(reportSectionItemsRepository.getRsRisByRiId(eq(2))).thenReturn(List.of(rsri1, rsri2));
+
+    var rsA = mock(com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT.class);
+    when(rsA.getReportSectionName()).thenReturn("RS-A");
+    var rsB = mock(com.optum.fads.pgp.reportsection.api.domain.PrmRsRptSecT.class);
+    when(rsB.getReportSectionName()).thenReturn("RS-B");
+
+    when(reportSectionsRepository.getReportSectionByIds(eq(List.of(10, 20)))).thenReturn(List.of(rsA, rsB));
+
+    var out = service.deleteReportItem(2);
+
+    assertEquals(2, out.size());
+    assertTrue(out.get(0).contains("RS-A") || out.get(1).contains("RS-A"));
+    assertTrue(out.get(0).contains("RS-B") || out.get(1).contains("RS-B"));
+
+    verify(reportItemFormulasRepository, never()).deleteReportItemFormulaByRiId(anyInt());
+    verify(reportItemsRepository, never()).deleteReportItem(anyInt());
+}
+
+@Test
+void deleteReportItem_whenNotLinked_deletesFormulasThenDeletesItem_successMsg() {
+    when(reportItemsRepository.getReportItemById(eq(3))).thenReturn(realRi(3, "RI-3"));
+    when(reportSectionItemsRepository.getRsRisByRiId(eq(3))).thenReturn(List.of());
+
+    when(reportItemFormulasRepository.deleteReportItemFormulaByRiId(eq(3))).thenReturn(2);
+    when(reportItemsRepository.deleteReportItem(eq(3))).thenReturn(1);
+
+    var out = service.deleteReportItem(3);
+
+    assertEquals(1, out.size());
+    assertEquals(ReportSectionConstants.DELETE_REPORT_ITEM_SUCCESS, out.get(0));
 }
