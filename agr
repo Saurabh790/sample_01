@@ -1,777 +1,838 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+name: Java Maven Continuous Integration
 
-    <modelVersion>4.0.0</modelVersion>
+permissions:
+  actions: read
+  contents: write
+  id-token: write # This is required for requesting the JWT token for Vault access
+  pull-requests: read
+  security-events: write
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-behavior-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+on:
+  workflow_call:
+    secrets:
+      docker-build-secrets:
+        description: 'Secrets to pass to docker build'
+        required: false
+    inputs:
+      #region #!!#!! -- BEGIN DOCKER-INPUTS --!!
+      docker-tags:
+        description: 'A list of images containing the registry/image:tag to build/push'
+        required: false
+        type: string
+        default: ''
+      docker-context:
+        required: false
+        default: "."
+        type: string
+      docker-dockerfile:
+        required: false
+        default: "Dockerfile"
+        type: string
+      docker-platforms:
+        description: 'The platforms to build for in Docker'
+        required: false
+        default: 'linux/amd64'
+        type: string
+      docker-push:
+        description: 'Determines whether the Docker image should be pushed to the registry after a successful build. Set to true to enable pushing, or false to skip this step.'
+        required: false
+        default: true
+        type: boolean
+      docker-build-args:
+        description: 'Arguments for the docker build.'
+        required: false
+        default: ''
+        type: string
+      docker-labels:
+        description: 'Labels to apply to the image'
+        required: false
+        type: string
+        default: ''
+      enable-xray:
+        description: "If true, will enable JFrog Xray scanning"
+        type: boolean
+        default: true
+      enable-prisma:
+        description: "If true, will enable Prisma scanning"
+        type: boolean
+        default: true
+      cvss-score:
+        description: "The minimum CVSS score to pass the scans."
+        required: false
+        default: "10"
+        type: string
+      docker-vaulted-build-secrets:
+        description: 'A comma-separated list of vaulted secrets to pass to docker build as build secrets.'
+        required: false
+        default: ''
+        type: string
+      #endregion #!!#!! -- END DOCKER-INPUTS --!!
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
-        <relativePath/>
-    </parent>
+      #region #!!#!! -- BEGIN COMMON-INPUTS --!!
+      runs-on:
+        default: uhg-runner
+        description: The type of runner that will execute the job
+        type: string
+      # JFrog Saas inputs
+      jfrog-audit:
+        description: If true, will perform a `jf audit` to scan the repository
+        required: false
+        default: false
+        type: boolean
+      jfrog-build-name:
+        description: 'The name of the build to be used in Artifactory - if not provided, a default will be generated'
+        required: false
+        type: string
+        default: ''
+      jfrog-build-number:
+        description: 'The number of the build to be used in Artifactory - if not provided, a default will be generated'
+        required: false
+        type: string
+        default: ''
+      jfrog-cli-loglevel:
+        description: The log level for the JFrog CLI - one of [DEBUG, INFO, WARN, ERROR]
+        default: "INFO"
+        type: string
+      jfrog-create-release-bundle:
+        description: If true, create a release bundle to allow the build artifacts to be promoted through Artifactory environments
+        default: true
+        type: boolean
+      jfrog-url:
+        description: 'The URL to the JFrog SaaS instance'
+        required: false
+        default: 'https://centraluhg.jfrog.io'
+        type: string
+      jfrog-edge-url:
+        description: 'The URL to the JFrog Edge instance'
+        required: false
+        # default: 'https://edgeinternal1uhg.optum.com'
+        default: 'https://centraluhg.jfrog.io'
+        type: string
+      jfrog-project-key:
+        description: 'The JFrog project key, JFrog SaaS artifactory will be used'
+        required: true
+        type: string
+      upload-sarif:
+        description: 'Whether or not to upload sarif files so security scan results show up in the Github Security tab'
+        default: false
+        required: false
+        type: boolean
+      preprocess-action:
+        description: 'A user defined action to run before the main workflow to allow for user configuration'
+        required: false
+        type: string
+        default: ''
+      preprocess-action-with:
+        description: 'A JSON object to pass to the preprocess-action to be used as inputs'
+        required: false
+        type: string
+        default: '{}'
+      edge-node-login-wait-time:
+        description: The number of seconds to wait before logging into the edge node
+        required: false
+        type: number
+        default: 5
+      ########################
+      # REQUIRED FOR SECRETS #
+      ########################
+      secret-type:
+        description: 'The type of secrets to pull.  One of ["volcan", "prm", "github"]. PRM is the recommended method.'
+        required: false
+        type: string
+      ######################
+      # PRM SECRETS INPUTS #
+      ######################
+      ignore-not-found:
+        description: "Determines whether the action should fail if a desired secret/key is not found"
+        required: false
+        default: false
+        type: boolean
+      prm-base-url:
+        description: "The Base PRM URL to use"
+        required: false
+        default: "https://prm.optum.com"
+        type: string
+      prm-secret-list:
+        description: 'A comma-separated list of secrets to retrieve. If this is not used "prm-secret-map" must be set'
+        required: false
+        type: string
+      prm-secret-map:
+        description: 'A semicolon-separated map of secrets to retrieve. If this is not used "prm-secret-list" must be set'
+        required: false
+        type: string
+      prm-token:
+        description: "The token to use when making the PRM API request"
+        required: false
+        type: string
+      variable-prefix:
+        description: 'Used only with "prm-secret-list". Adds a prefix to each key within the PRM Secret.'
+        required: false
+        default: ""
+        type: string
+      #########################
+      # WEBHOOK INPUTS #
+      #########################
+      webhook-api-url:
+        description: "The webhook URL to the finalize the build"
+        required: false
+        type: string
+      webhook-api-timeout:
+        description: "The maximum interval to poll the webhook status in milliseconds"
+        required: false
+        type: string
+      webhook-polling-enable:
+        description: "If true, the action will poll the webhook status until it is complete"
+        required: false
+        default: true
+        type: boolean
+      webhook-polling-interval:
+        description: "The interval to poll the webhook status in milliseconds"
+        required: false
+        type: string
+      #########################
+      # IMMERSE SECRETS INPUTS #
+      #########################
+      volcan-environment:
+        description: "This input is deprecated and will be removed in the next major release. Replaced by immerse-environment"
+        default: ""
+        required: false
+        type: string
+      volcan-tools:
+        description: "This input is deprecated and will be removed in the next major release. Replaced by immerse-tools"
+        required: false
+        type: string
+      volcan-required-secrets:
+        description: "This input is deprecated and will be removed in the next major release."
+        required: false
+        type: string
+      immerse-environment:
+        description: 'The Immerse environment to pull secrets from'
+        default: ''
+        required: false
+        type: string
+      immerse-tools:
+        description: 'An array of Immerse Tools to pull enterprise secrets from'
+        required: false
+        type: string
+      ################
+      # OTHER INPUTS #
+      ################
+      environment:
+        description: "The environment to run the epl-ci job in"
+        type: string
+        required: false
+        default: ''
+      job-name:
+        description: "Allows setting the display name of the epl-ci job"
+        type: string
+        required: false
+        default: ''
+      git-submodules:
+        description: "The value to pass to the checkout action for submodules"
+        type: string
+        required: false
+        default: 'false'
+      git-fetch-depth:
+        description: "The number of commits to fetch, passed to the checkout action"
+        type: number
+        required: false
+        default: 1
+      git-lfs:
+        description: "Whether or not the set up git-lfs and then pull git-lfs files"
+        type: boolean
+        required: false
+        default: false
+      prisma-cloud-console:
+        description: "If true, the Prisma Cloud Console will be used instead of the Prisma on-prem console"
+        type: boolean
+        required: false
+        default: true
+      upload-artifacts-name:
+        description: "Input to name the artifact uploaded at the end of the CI process. Default is 'artifact'."
+        required: false
+        default: "artifact"
+        type: string
+      upload-artifacts-include-hidden:
+        description: "Input to allow uploading hidden files to the artifact."
+        required: false
+        default: false
+        type: boolean
+      upload-artifacts-path:
+        description: "A list of paths to folders/files to upload. This input is required to trigger the upload."
+        required: false
+        type: string
+      upload-artifact-tar:
+        description: "If true, tar the upload-artifacts-path before uploading to preserve permissions."
+        required: false
+        default: false
+        type: boolean
+      #endregion #!!#!! -- END COMMON-INPUTS --!!
 
-    <repositories>
-        <repository>
-            <id>artifactory</id>
-            <name>Artifactory</name>
-            <url>https://repo1.uhc.com/artifactory/repo</url>
-        </repository>
-    </repositories>
+      #########################
+      # TECHNOLOGY SETUP INPUTS #
+      #########################
+      maven-settings-setup:
+        description: 'Flag to indicate if Maven settings.xml configuration file should be written to the user home directory'
+        required: false
+        default: false
+        type: boolean
+      maven-settings-file-path:
+        description: 'Path to where the settings.xml is created'
+        required: false
+        default: '/home/runner/.m2/settings.xml'
+        type: string
+      maven-settings-use-edge:
+        description: 'Flag to use inputs.jfrog-edge-url. Defaults to inputs.jfrog-url.'
+        required: false
+        default: false
+        type: boolean
+      pip-setup:
+        description: "If true, will setup pip/Python environment"
+        required: false
+        default: false
+        type: boolean
+      npm-setup:
+        description: "If true, will setup npm/Node.js environment"
+        required: false
+        default: false
+        type: boolean
+      yarn-setup:
+        description: "If true, will setup yarn/Node.js environment"
+        required: false
+        default: false
+        type: boolean
+      terraform-setup:
+        description: "If true, will setup Terraform environment"
+        required: false
+        default: false
+        type: boolean
+      apt-setup:
+        description: "If true, will setup APT packages"
+        required: false
+        default: true
+        type: boolean
 
-    <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <!-- >surefire.skip>${skipTests}</surefire.skip -->
-        <failsafe.skip>${skipTests}</failsafe.skip>
+      #region #!!#!! -- BEGIN SONAR-INPUTS --!!
+      enable-sonar:
+        description: 'If true, will enable SonarQube scanning'
+        type: boolean
+        default: true
+      sonar-quality-gate-wait:
+        description: 'Set to true to wait for the results of the Sonar scan and fail when quality gates are not met'
+        required: false
+        default: true
+        type: boolean
+      sonar-continue-on-error:
+        description: "Whether or not to have the sonar scan continue on error or not"
+        required: false
+        default: false
+        type: boolean
+      #endregion #!!#!! -- END SONAR-INPUTS --!!
+      #region #!!#!! -- BEGIN GENERIC-INPUTS --!!
+      generic-artifact-repo-path:
+        description: "The registry path to which the artifacts are to be pushed."
+        required: false
+        default: ""
+        type: string
+      generic-package:
+        description: "Determines whether a generic package will be uploaded to JFrog SaaS (e.g., zip)"
+        required: false
+        default: "false"
+        type: string
+      #endregion #!!#!! -- END GENERIC-INPUTS --!!
 
-        <java.version>17</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2023.0.2</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
-        <modelmapper.version>3.2.2</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <springrunner.version>0.1.0</springrunner.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.28</lombok.version>
-        <restassured.version>3.3.0</restassured.version>
-        <mockito.version>5.3.1</mockito.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-        <log4j.version>2.24.3</log4j.version>
-        <snakeyaml.version>2.2</snakeyaml.version>
-        <jaxb.version>2.3.1</jaxb.version>
-        <sonar.version>3.9.1.2184</sonar.version>
+      ##################################
+      # java-maven-ci specific inputs
+      ##################################
+      ci-workflow:
+        description: "The name of the CI workflow"
+        required: false
+        default: "java-maven-ci"
+        type: string
+      java-distribution:
+        type: string
+        description: The Java distribution to use. @see https://github.com/actions/setup-java?tab=readme-ov-file#supported-distributions
+        default: temurin
+      java-version:
+        type: string
+        description: Java version to use
+        default: "21"
+      jfrog-contextual-scan:
+        description: If true, will pass a --scan=true to any jf build commands to perform a contextual XRay scan
+        default: true
+        type: boolean
+      maven-command:
+        description: Used to override the parameters for the call to 'mvn' that builds/tests your project
+        default: "-B -U verify -Dartifactory.publish.artifacts=false -Dmaven.repo.local=/home/runner/.m2/repository"
+        type: string
+      maven-sonar-command:
+        description: Used to override the parameters for the call to 'mvn' that runs SonarQube scanning
+        default: "-B -U -DskipTests -DskipIT verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dmaven.repo.local=/home/runner/.m2/repository"
+        type: string
+        required: false
+      maven-deploy:
+        description: If true, will deploy the artifacts to the Artifactory instance
+        required: false
+        default: "false"
+        type: string
+      maven-deploy-command:
+        description: Used to override the parameters for the call to 'mvn' that deploys your project to Artifactory
+        default: "-B -U -DskipTests -DskipIT deploy -Dmaven.repo.local=/home/runner/.m2/repository"
+        type: string
+        required: false
+      maven-deploy-version:
+        description: The version of the artifact to deploy, if set, will use mvn versions:set to set the version
+        required: false
+        default: ""
+        type: string
+      maven-version:
+        type: string
+        description: The Maven version to install
+        default: "3.9.9"
+      maven-use-wrapper:
+        description: Used to determine whether or not to use the maven wrapper, will auto detect the maven wrapper file by default. (true false autodetect)
+        required: false
+        default: autodetect
+        type: string
+      working-directory:
+        required: false
+        description: The workspace where the project is located
+        type: string
+        default: "."
+      publish-version:
+        description: "The version to use for the deployed artifact. If not set, the version in the Maven project will be used. This parameter will override the maven-deploy-version parameter."
+        required: false
+        default: ""
+        type: string
+      publish-version-suffix:
+        description: "The version suffix to use for the deployed artifact. If not set, the version in the Maven project will be used."
+        required: false
+        default: ""
+        type: string
+      maven-versions-set-options:
+        description: "Additional options to pass to the mvn versions:set command (e.g. -DprocessAllModules=true)"
+        required: false
+        default: ""
+        type: string
+      enable-cache:
+        description: "Flag to enable or disable caching"
+        required: false
+        default: "true"
+        type: string
 
-        <!-- ✅ ADD: Tell Sonar where JaCoCo XML will be -->
-        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-    </properties>
+    outputs:
+      #region #!!#!! -- BEGIN JFROG-OUTPUTS --!!
+      jfrog-build-name:
+        description: "The JFrog Build Name"
+        value: ${{ jobs.epl-ci.outputs.jfrog-build-name }}
+      jfrog-build-number:
+        description: "The JFrog Build Number"
+        value: ${{ jobs.epl-ci.outputs.jfrog-build-number }}
+      jfrog-release-bundle-name:
+        description: "The JFrog Release Bundle Name"
+        value: ${{ jobs.epl-ci.outputs.jfrog-release-bundle-name }}
+      jfrog-release-bundle-version:
+        description: "The JFrog Release Bundle Version"
+        value: ${{ jobs.epl-ci.outputs.jfrog-release-bundle-version }}
+      #endregion #!!#!! -- END JFROG-OUTPUTS --!!
+      #region #!!#!! -- BEGIN DOCKER-OUTPUTS --!!
+      docker-metadata:
+        description: "Docker Metadata"
+        value: ${{ jobs.epl-ci.outputs.docker-metadata }}
+      docker-tags:
+        description: "The Docker Image Tag"
+        value: ${{ jobs.epl-ci.outputs.docker-tags }}
+      prisma-sarif-file:
+        description: "Prisma SARIF file"
+        value: ${{ jobs.epl-ci.outputs.prisma-sarif-file }}
+      xray-sarif-file:  
+        description: "Xray SARIF file"
+        value: ${{ jobs.epl-ci.outputs.xray-sarif-file }}
+      #endregion #!!#!! -- END DOCKER-OUTPUTS --!!
+      #region #!!#!! -- BEGIN SONAR-OUTPUTS --!!
+      sonar-outcome:  
+        description: "The sonar scan's outcome"
+        value: ${{ jobs.epl-ci.outputs.sonar-outcome }}
+      #endregion #!!#!! -- END SONAR-OUTPUTS --!!
+      #region #!!#!! -- BEGIN GENERIC-OUTPUTS --!!
+      generic-artifact-metadata:
+        description: "Jf Metadata"
+        value: ${{ jobs.epl-ci.outputs.generic-artifact-metadata }}
+      #endregion #!!#!! -- END GENERIC-OUTPUTS --!!
+      maven-settings-file-path:
+        description: "Path where the Maven settings.xml file was created if inputs.maven-settings-setup was set to 'true'"
+        value: ${{ jobs.epl-ci.outputs.maven-settings-file-path }}
 
-    <dependencyManagement>
-        <dependencies>
+jobs:
+  #region #!!#!! -- BEGIN EPL-CI-JOB-SETUP --!!
+  epl-ci:
+    name: ${{ inputs.job-name }}
+    environment: ${{ inputs.environment }}
+    runs-on: ${{ inputs.runs-on }}
+    outputs:
+      jfrog-build-name: ${{ steps.jf-saas-setup.outputs.jfrog-build-name }}
+      jfrog-build-number: ${{ steps.jf-saas-setup.outputs.jfrog-build-number }}
+      jfrog-release-bundle-name: ${{ steps.jf-saas-setup.outputs.jfrog-release-bundle-name }}
+      jfrog-release-bundle-version: ${{ steps.jf-saas-setup.outputs.jfrog-release-bundle-version }}
+  #endregion #!!#!! -- END EPL-CI-JOB-SETUP --!!
+      #region #!!#!! -- BEGIN EPL-CI-JOB-GENERIC-OUTPUTS --!!
+      generic-artifact-metadata: ${{ steps.generic-package.outputs.generic-artifact-metadata }}
+      #endregion #!!#!! -- END EPL-CI-JOB-GENERIC-OUTPUTS --!!
+      #region #!!#!! -- BEGIN EPL-CI-JOB-DOCKER-OUTPUTS --!!
+      docker-metadata: ${{ steps.docker-build-push.outputs.docker-metadata }}
+      docker-tags: ${{ inputs.docker-tags }}
+      prisma-sarif-file: ${{ steps.docker-build-push.outputs.prisma-sarif-file }}
+      xray-sarif-file: ${{ steps.docker-build-push.outputs.xray-sarif-file }}
+      #endregion #!!#!! -- END EPL-CI-JOB-DOCKER-OUTPUTS --!!
+      #region #!!#!! -- BEGIN EPL-CI-JOB-SONAR-OUTPUTS --!!
+      sonar-outcome: ${{ steps.build-scan.outputs.sonar-outcome }}
+      #endregion #!!#!! -- END EPL-CI-JOB-SONAR-OUTPUTS --!!
+      maven-settings-file-path: ${{ steps.jf-saas-setup.outputs.maven-settings-file-path }}
+    #region #!!#!! -- BEGIN EPL-CI-JOB-SETUP-ACTIONS --!!
+    steps:
+      - name: Retrieve repository information from PRM
+        id: prm-repo-info
+        uses: uhg-pipelines/epl-prm/repo-info-composite@v3
 
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+      - name: Configure Prisma Connection Information
+        id: set-prisma-env
+        uses: uhg-pipelines/epl-set-prisma-env@v1
+        with:
+          prisma-cloud-console: ${{ inputs.prisma-cloud-console }}
 
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+      # Required for backwards compatibility. Remove in the next major release. 
+      - name: Transform Volcan Secret Type to Immerse
+        if: ${{ inputs.secret-type != '' }}
+        id: transform-secret-type
+        uses: actions/github-script@v7
+        env:
+          SECRET_TYPE: ${{ inputs.secret-type }}
+        with:
+          script: |
+            const secretType = process.env.SECRET_TYPE;
+            if (secretType === 'volcan') {
+            core.warning('The secret-type "volcan" has been rebranded to "immerse". Automatically transforming to "immerse" for backward compatibility. Update your workflows to use immerse.');
+            }
+            const transformedSecretType = secretType === 'volcan' ? 'immerse' : secretType;
+            core.setOutput('secret-type', transformedSecretType);
 
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
+      - name: Get secrets
+        if: ${{ inputs.secret-type != '' }}
+        id: get-secrets
+        uses: uhg-pipelines/get-optum-secrets@v2
+        with:
+          # Required for all secrets
+          secret-type: ${{ steps.transform-secret-type.outputs['secret-type'] }}
+          # PRM Inputs
+          # When using prm secrets, prm-secret-list or prm-secret-map must be set
+          prm-base-url: ${{ inputs.prm-base-url }}
+          prm-secret-list: ${{ inputs.prm-secret-list }}
+          prm-secret-map: ${{ inputs.prm-secret-map }}
+          prm-token: ${{ inputs.prm-token }}
+          ignore-not-found: ${{ inputs.ignore-not-found }}
+          variable-prefix: ${{ inputs.variable-prefix }}
+          # Volcan Inputs
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          immerse-environment: ${{ inputs.immerse-environment || inputs.volcan-environment }}
+          immerse-tools: ${{ inputs.immerse-tools || inputs.volcan-tools }}
+          # GitHub Inputs
+          github-secrets: ${{ toJson(secrets)}}
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
+      - name: Configure JFrog SaaS Connection
+        id: jf-saas-setup
+        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
+        with:
+          edge-node-login-wait-time: ${{ inputs.edge-node-login-wait-time }}
+          jfrog-build-name: ${{ inputs.jfrog-build-name }}
+          jfrog-build-number: ${{ inputs.jfrog-build-number }}
+          jfrog-edge-url: ${{ inputs.jfrog-edge-url }}
+          jfrog-url: ${{ inputs.jfrog-url }}
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          maven-settings-setup: ${{ inputs.maven-settings-setup || 'false' }}
+          maven-settings-file-path: ${{ inputs.maven-settings-file-path || '/home/runner/.m2/settings.xml' }}
+          maven-settings-use-edge: ${{ inputs.maven-settings-use-edge || 'false' }}
+          pip-setup: ${{ inputs.pip-setup }}
+          npm-setup: ${{ inputs.npm-setup }}
+          yarn-setup: ${{ inputs.yarn-setup }}
+          terraform-setup: ${{ inputs.terraform-setup }}
+          apt-setup: ${{ inputs.apt-setup }}
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
+      - name: Install git-lfs
+        if: ${{ inputs.git-lfs }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs
+          git lfs install
 
-        <!-- Model Mapper -->
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
+      - name: Checkout Code
+        uses: actions/checkout@v5
+        with:
+          submodules: ${{ inputs.git-submodules }}
+          token: ${{ env.GIT_SUBMODULES_TOKEN || github.token }}
+          fetch-depth: ${{ inputs.git-fetch-depth }}
+          lfs: ${{ inputs.git-lfs }}
 
-        <!-- Jackson -->
+      - name: git lfs pull
+        if: ${{ inputs.git-lfs }}
+        run: |
+          git lfs pull
+    #endregion #!!#!! -- END EPL-CI-JOB-SETUP-ACTIONS --!!
 
+      #region #!!#!! -- BEGIN PREPARE-CI-ACTIONS --!!
+      - name: Set Log Level
+        id: set-log-level
+        run: |
+          echo "JFROG_CLI_LOG_LEVEL=${{ inputs.jfrog-cli-loglevel }}" >> $GITHUB_ENV
+        shell: bash
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
+      - name: Call Preprocess Action
+        if: ${{ inputs.preprocess-action != '' }}
+        uses: uhg-pipelines/epl-dynamic-action@v1
+        with:
+          action: ${{ inputs.preprocess-action }}
+          action-with: ${{ inputs.preprocess-action-with }}
 
-        <!-- JSON logging -->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
+      - name: Retrieve EPL signing key
+        id: epl-signing-key
+        uses: uhg-pipelines/get-optum-secrets@v2
+        with:
+          prm-base-url: ${{ inputs.prm-base-url }}
+          secret-type: 'prm'
+          ignore-not-found: false
+          prm-secret-map: |
+            uhgrg-f9f649cd-17ac-43e8-95cd-7e811409c226-ns/secret.v2/epl-evidence-key private-key | EPL_EVIDENCE_KEY
 
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-        </dependency>
+      - name: Hard-coded login to https://edgeinternal1uhg.optum.com
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: https://edgeinternal1uhg.optum.com
+          username: ${{ steps.jf-saas-setup.outputs.oidc-subject }}
+          password: ${{ steps.jf-saas-setup.outputs.access-token }}
 
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+      - name: Initialize release-checks file
+        run: echo "[]" > release-checks.json
+      #endregion #!!#!! -- END PREPARE-CI-ACTIONS --!!
 
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: ${{ inputs.java-distribution }}
+          overwrite-settings: 'false'
 
-        <!-- Before After Spring Test Runner -->
-        <dependency>
-            <groupId>org.bitbucket.radistao.test</groupId>
-            <artifactId>before-after-spring-test-runner</artifactId>
-            <version>${springrunner.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-        </dependency>
-      
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-  
-    </dependencies>
+      - name: Set up Maven
+        uses: uhg-pipelines/setup-maven@v1
+        with:
+          maven-version: ${{ inputs.maven-version }}
+          base-download-url: ${{ inputs.jfrog-edge-url }}/artifactory/glb-maven-central-rem/org/apache/maven/apache-maven
+          jfrog-token: ${{ steps.jf-saas-setup.outputs.access-token }}
 
-    <build>
-<!--        <finalName>${project.artifactId}</finalName>-->
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+      - name: Download Optum CA Bundle
+        id: download-ca-bundle
+        continue-on-error: true
+        shell: bash
+        run: |
+          jf rt dl "glb-generic-uhg-loc/uhg-certsvcs/uhg-certificates/standard_trusts.jks" --flat=true
+          $JAVA_HOME/bin/keytool -importkeystore -srckeystore standard_trusts.jks -srcstorepass "password" -destkeystore $JAVA_HOME/lib/security/cacerts -deststorepass "changeit"
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
+      - name: Maven Build and Quality Scan
+        id: build-scan
+        uses: uhg-pipelines/epl-maven/build-scan@v3
+        with:
+          enable-cache: ${{ inputs.enable-cache }}
+          enable-sonar: ${{ inputs.enable-sonar }}
+          jfrog-audit: ${{ inputs.jfrog-audit }}
+          jfrog-contextual-scan: ${{ inputs.jfrog-contextual-scan }}
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          jfrog-build-name: ${{ steps.jf-saas-setup.outputs.jfrog-build-name }}
+          jfrog-build-number: ${{ steps.jf-saas-setup.outputs.jfrog-build-number }}
+          maven-command: ${{ inputs.maven-command }}
+          maven-sonar-command: ${{ inputs.maven-sonar-command }}
+          maven-deploy: ${{ inputs.maven-deploy }}
+          maven-deploy-command: ${{ inputs.maven-deploy-command }}
+          maven-deploy-version: ${{ inputs.maven-deploy-version }}
+          maven-use-wrapper: ${{ inputs.maven-use-wrapper }}
+          working-directory: ${{ inputs.working-directory }}
+          sonar-quality-gate-wait: ${{ inputs.sonar-quality-gate-wait }}
+          sonar-continue-on-error: ${{ inputs.sonar-continue-on-error }}
+          jfrog-username: ${{ steps.jf-saas-setup.outputs.oidc-subject }}
+          jfrog-password: ${{ steps.jf-saas-setup.outputs.access-token }}
+          publish-version: ${{ inputs.publish-version }}
+          publish-version-suffix: ${{ inputs.publish-version-suffix }}
+          maven-versions-set-options: ${{inputs.maven-versions-set-options}}
+      - name: Java Maven artifacts for serverless deployments
+        id: generic-package
+        if: ${{ inputs.generic-package == 'true' && inputs.docker-tags == '' }}
+        uses: uhg-pipelines/epl-generic-package/maven@v1
+        with:
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          jfrog-build-name: ${{ steps.jf-saas-setup.outputs.jfrog-build-name }}
+          jfrog-build-number: ${{ steps.jf-saas-setup.outputs.jfrog-build-number }}
+          generic-artifact-repo-path: ${{ inputs.generic-artifact-repo-path }}
+          artifact-upload-repository: ${{ inputs.jfrog-project-key }}${{ steps.jf-saas-setup.outputs.jfrog-generic-np-suffix }}
+          artifact-upload-basedir: uhg-${{ inputs.jfrog-project-key }}
+          working-directory: ${{ inputs.working-directory }}
+          generic-package: ${{ inputs.generic-package }}
 
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>${project.build.directory}/jacoco.exec</destFile>
-
-                    <!-- ensure report is created under target/site/jacoco (includes jacoco.xml) -->
-                    <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
-
-                    <excludes>
-                        <exclude>**/dto/**</exclude>
-                        <exclude>**/domain/**</exclude>
-                        <exclude>**/common/constants/**</exclude>
-                        <exclude>**/exception/**</exclude>
-                        <exclude>com/optum/fads/pgp/behavior/api/BehaviorPatternApiApplication.class</exclude>
-                        <exclude>com/optum/fads/pgp/behavior/api/config/SecurityConfig.class</exclude>
-                    </excludes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-
-                    <!-- 🔁 CHANGED: package -> verify -->
-                    <execution>
-                        <id>jacoco-report</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-
-still in  above not working
-
-, below one still shows 59% can u see any diff btwn these 2 
-
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-jobmonitor-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.7</version>
-        <relativePath/>
-    </parent>
-    <repositories>
-        <repository>
-            <id>artifactory</id>
-            <name>Artifactory</name>
-            <url>https://repo1.uhc.com/artifactory/repo</url>
-        </repository>
-    </repositories>    
-
-    <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <failsafe.skip>${skipTests}</failsafe.skip>
-
-        <java.version>17</java.version>
-        <spring.boot.version>3.5.7</spring.boot.version>
-        <spring.cloud.version>2023.0.2</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
-        <modelmapper.version>3.1.1</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.38</lombok.version>
-        <restassured.version>5.3.0</restassured.version>
-        <mockito.version>5.4.0</mockito.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-        <javax-ws-rs-api.version>2.1.2</javax-ws-rs-api.version>
-        <org.mapstruct.version>1.6.3</org.mapstruct.version>
-        <log4j.version>2.20.0</log4j.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <snakeyaml.version>2.1</snakeyaml.version>
-        <jaxb.version>2.3.3</jaxb.version>
-        <sonar.version>3.9.2.2185</sonar.version>
-        <commons.collections4>4.4</commons.collections4>
-        <bcp.version>1.78</bcp.version>
-        <mssql.jdbc.version>13.2.1.jre11</mssql.jdbc.version>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.azure.spring</groupId>
-                <artifactId>spring-cloud-azure-dependencies</artifactId>
-                <version>5.22.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.19.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>${mssql.jdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-collections4</artifactId>
-            <version>${commons.collections4}</version>
-        </dependency>
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-bom</artifactId>
-            <version>4.1.125.Final</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-                <plugin>
-                    <groupId>org.jacoco</groupId>
-                    <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>${jacoco.version}</version>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-        </plugins>
-    </build>
-</project>
+      #region #!!#!! -- BEGIN SONAR-STATUS --!!
+      - name: Add Sonar check with inline status
+        env:
+          SONAR_STATUS: ${{ steps.build-scan.outputs.sonar-outcome }}
+          SONAR_URL: ${{ steps.build-scan.outputs.sonar-scan-url }}
+        run: |
+          echo $(jq --arg name "sonar" \
+            --arg status "$SONAR_STATUS" \
+            --arg url "$SONAR_URL" \
+            '. + [{"name": $name, "status": $status, "url": $url}]' release-checks.json) > release-checks.json
+      #endregion #!!#!! -- END SONAR-STATUS --!!
 
 
+      #region #!!#!! -- BEGIN DOCKER-ACTIONS --!!
+      - name: Prepare Docker Build Secrets
+        if: ${{ inputs.docker-vaulted-build-secrets != '' }}
+        id: prepare-docker-secrets
+        uses: uhg-pipelines/epl-docker/format-secrets@v3
+        with:
+          secret-env-vars: ${{ inputs.docker-vaulted-build-secrets }}
+
+      - name: Docker Build Scan And Push
+        if: ${{ inputs.docker-tags != '' }}
+        id: docker-build-push
+        uses: uhg-pipelines/epl-docker/build-scan-push@v3
+        with:
+          ask-id: ${{ steps.prm-repo-info.outputs.chargeback-ask-id }}
+          enable-xray: ${{ inputs.enable-xray }}
+          enable-prisma: ${{ inputs.enable-prisma }}
+          docker-context: ${{ inputs.docker-context }}
+          docker-dockerfile: ${{ inputs.docker-dockerfile }}
+          docker-tags: |
+            ${{ inputs.docker-tags }}
+          docker-platforms: ${{ inputs.docker-platforms }}
+          docker-build-args: |
+              JF_EDGE_NODE=${{ steps.jf-saas-setup.outputs.jfrog-edge-node }}
+              ${{ inputs.docker-build-args }}
+          docker-build-secrets: |
+            jf-http-auth=${{ steps.jf-saas-setup.outputs.jfrog-http-auth }}
+            jf-user=${{ steps.jf-saas-setup.outputs.oidc-subject }}
+            jf-token=${{ steps.jf-saas-setup.outputs.access-token }}
+            ${{ steps.prepare-docker-secrets.outputs.docker-secrets }}
+            ${{ secrets.docker-build-secrets }}
+          docker-push: ${{ inputs.docker-push }}
+          docker-labels: ${{ inputs.docker-labels }}
+          jfrog-build-name: ${{ steps.jf-saas-setup.outputs.jfrog-build-name }}
+          jfrog-build-number: ${{ steps.jf-saas-setup.outputs.jfrog-build-number }}
+          jfrog-repository: ${{ steps.jf-saas-setup.outputs.jfrog-docker-repository }}
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          jfrog-url: ${{ inputs.jfrog-url }}
+          upload-sarif: ${{ inputs.upload-sarif }}
+          prisma-user: ${{ env.PRISMA_USER }}
+          prisma-password: ${{ env.PRISMA_PASS }}
+          prisma-url: ${{ env.PRISMA_URL }}
+          xray-auth-method: token
+          xray-user: ${{ steps.jf-saas-setup.outputs.oidc-subject }}
+          xray-password: ${{ steps.jf-saas-setup.outputs.access-token }}
+          score: ${{ inputs.cvss-score }}
+
+      - name: Add Prisma check
+        run: |
+          echo $(jq --arg name "prisma" \
+            --arg status "$( [ "${{ inputs.enable-prisma }}" = "true" ] && echo "success" || echo "skipped" )" \
+            --arg url "${{ steps.docker-build-push.outputs.prisma-sarif-file }}" \
+            '. + [{"name": $name, "status": $status, "url": $url}]' release-checks.json) > release-checks.json
+      - name: Add Xray check
+        run: |
+          echo $(jq --arg name "xray" \
+            --arg status "$( [ "${{ inputs.enable-xray }}" = "true" ] && echo "success" || echo "skipped" )" \
+            --arg url "${{ steps.docker-build-push.outputs.xray-sarif-file }}" \
+            '. + [{"name": $name, "status": $status, "url": $url}]' release-checks.json) > release-checks.json
+      #endregion #!!#!! -- END DOCKER-ACTIONS --!!
+
+      #region #!!#!! -- BEGIN FINALIZE-CI-ACTIONS --!!
+      - name: Publish Build Information to JFrog
+        uses: uhg-pipelines/epl-jf/build-publish@v4
+        with:
+          ci-workflow: ${{ inputs.ci-workflow }}
+          jfrog-build-name: ${{ steps.jf-saas-setup.outputs.jfrog-build-name }}
+          jfrog-build-number: ${{ steps.jf-saas-setup.outputs.jfrog-build-number }}
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          scan: true
+
+      - name: Create Release Bundles
+        if: ${{ inputs.jfrog-create-release-bundle && (inputs.artifact-upload || inputs.npm-publish || inputs.maven-deploy == 'true' || inputs.gradle-deploy == 'true' || inputs.jfrog-deploy == 'true' || inputs.tf-provider-deploy == 'true' || inputs.generic-package == 'true' || inputs.sbt-publish || ( inputs.docker-push && inputs.docker-tags )) }}
+        uses: uhg-pipelines/epl-jf/create-release-bundle@v4
+        with:
+          jfrog-build-name: ${{ steps.jf-saas-setup.outputs.jfrog-build-name }}
+          jfrog-build-number: ${{ steps.jf-saas-setup.outputs.jfrog-build-number }}
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          jfrog-release-bundle-name: ${{ steps.jf-saas-setup.outputs.jfrog-release-bundle-name }}
+          jfrog-release-bundle-version: ${{ steps.jf-saas-setup.outputs.jfrog-release-bundle-version }}
+
+      - name: Read release-checks.json into output
+        id: read-checks
+        shell: bash
+        run: |
+          cat release-checks.json
+          echo "json=$(cat release-checks.json | jq -c .)" >> $GITHUB_OUTPUT
+
+      - name: Sign Release Bundle
+        if: ${{ inputs.jfrog-create-release-bundle && (inputs.artifact-upload || inputs.npm-publish || inputs.maven-deploy == 'true' || inputs.gradle-deploy == 'true' || inputs.jfrog-deploy == 'true' || inputs.tf-provider-deploy == 'true' || inputs.generic-package == 'true' || inputs.sbt-publish || ( inputs.docker-push && inputs.docker-tags )) }}
+        uses: uhg-pipelines/epl-jf/sign-release-bundle@v4
+        with:
+          jfrog-project-key: ${{ inputs.jfrog-project-key }}
+          jfrog-release-bundle-name: ${{ steps.jf-saas-setup.outputs.jfrog-release-bundle-name }}
+          jfrog-release-bundle-version: ${{ steps.jf-saas-setup.outputs.jfrog-release-bundle-version }}
+          private-key: ${{ env.EPL_EVIDENCE_KEY }}
+          checks: ${{ steps.read-checks.outputs.json }}
+
+      - name: Create tar if requested
+        if: ${{ inputs.upload-artifact-tar && inputs.upload-artifacts-path }}
+        id: create-tar
+        env:
+          artifactpath: '${{ inputs.upload-artifacts-path }}'
+          artifactname: '${{ inputs.upload-artifacts-name }}'
+        run: |
+          # Set fallback if artifactpath not provided
+          [ -z "$artifactpath" ] && artifactpath='${{ inputs.working-directory }}/bin/'
+          # Sanitize artifact name
+          artifactname=$(echo "$artifactname" | tr '/' '-')
+          echo "artifact-name=$artifactname" >> $GITHUB_OUTPUT
+
+          # Use fallback paths if target doesn't exist
+          [ ! -e "$artifactpath" ] && {
+            echo "Path $artifactpath not found, using fallback"
+            for alt in bin/Release bin/Debug bin dist build out target .; do
+              [ -e "$alt" ] && { artifactpath="$alt"; break; }
+            done
+          }
+
+          tar -cf "$artifactname.tar" "$artifactpath"
+          TAR_INFO="✅ Tar created: $artifactname.tar ($(du -sh "$artifactname.tar" | cut -f1))"
+          echo "$TAR_INFO"
+          echo "$TAR_INFO" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload tarred artifact
+        if: ${{ inputs.upload-artifact-tar && inputs.upload-artifacts-path }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ steps.create-tar.outputs.artifact-name }}
+          path: ${{ steps.create-tar.outputs.artifact-name }}.tar
+
+      - name: Upload regular artifact
+        if: ${{ !inputs.upload-artifact-tar && inputs.upload-artifacts-path }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ inputs.upload-artifacts-name }}
+          include-hidden-files: ${{ inputs.upload-artifacts-include-hidden }}
+          path: ${{ inputs.upload-artifacts-path }}
+
+      - name: Trigger Build Completion Webhook
+        if: ${{ inputs.webhook-api-url != '' }}
+        uses: uhg-pipelines/immerse-actions/actions/pipelines/invoke-endpoint@v1
+        with:
+          workflow-data: ${{ toJson(steps) }}
+          api-url: ${{ inputs.webhook-api-url }}
+          api-timeout: ${{ inputs.webhook-api-timeout }}
+          polling-enable: ${{ inputs.webhook-polling-enable }}
+          polling-interval: ${{ inputs.webhook-polling-interval }}
+      #endregion #!!#!! -- END FINALIZE-CI-ACTIONS --!!
