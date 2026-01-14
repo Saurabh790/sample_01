@@ -1,419 +1,387 @@
-package com.optum.fads.pgp.reportsection.api.controller;
-
-import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
-import com.optum.fads.pgp.reportsection.api.common.ListTableParamsReq;
-import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
-import com.optum.fads.pgp.reportsection.api.dto.AccessLevel;
-import com.optum.fads.pgp.reportsection.api.dto.AppUser;
-import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRS;
-import com.optum.fads.pgp.reportsection.api.dto.ReportItemDTO;
-import com.optum.fads.pgp.reportsection.api.dto.ReportSectionDTO;
-import com.optum.fads.pgp.reportsection.api.dto.Role;
-import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
-import com.optum.fads.pgp.reportsection.api.service.IReportSectionDataService;
-
-@RunWith(MockitoJUnitRunner.class)
-public class ReportSectionControllerTests {
-
-    @InjectMocks
-    private ReportSectionController controller;
-
-    @Mock
-    private IReportSectionDataService service;
-
-    @Mock
-    private SecurityContext securityContext;
-
-    @Mock
-    private Authentication authentication;
-
-    private AppUser userWithA;
-    private AppUser userWithB;
-    private AppUser userWithC;
-
-    @Before
-    public void setup() {
-        SecurityContextHolder.setContext(securityContext);
-
-        when(service.getZoneId()).thenReturn(ZoneId.systemDefault());
-
-        userWithA = buildUser("U1", "A");
-        userWithB = buildUser("U1", "B");
-        userWithC = buildUser("U1", "C");
-    }
-
-    @After
-    public void cleanup() {
-        SecurityContextHolder.clearContext();
-    }
-
-    // ---------- helpers ----------
-    private void mockAuth(AppUser user) {
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(user);
-    }
-
-    private AppUser buildUser(String systemId, String access) {
-        AppUser u = mock(AppUser.class);
-        when(u.getUserSystemId()).thenReturn(systemId);
-
-        AccessLevel al = mock(AccessLevel.class);
-        when(al.getModuleCode()).thenReturn("STUDY");
-        when(al.getAccess()).thenReturn(access);
-
-        Role role = mock(Role.class);
-        when(role.getAllowedAccesses()).thenReturn(Collections.singletonList(al));
-        when(u.getRole()).thenReturn(role);
-
-        return u;
-    }
-
-    // ---------- getReportSections ----------
-    @Test
-    public void getReportSections_ok() {
-        ListTableParamsReq req = new ListTableParamsReq();
-        req.setPageNumber(1);
-        req.setRecordsPerPage(20);
-        req.setSearchBy(Arrays.asList("reportSectionName"));
-        req.setSelectedItemIds(Arrays.asList(11, 12));
-        req.setSortBy("reportSectionName");
-        req.setSortOrder(1);
-
-        PaginationResultRS pr = new PaginationResultRS();
-        when(service.getReportSectionsList(any(ListTableParams.class))).thenReturn(pr);
-
-        ResponseEntity resp = controller.getReportSections(req, "opioids");
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(pr, resp.getBody());
-
-        verify(service).getReportSectionsList(argThat(p ->
-                p.getPageNumber() == 1 &&
-                p.getRecordsPerPage() == 20 &&
-                "reportSectionName".equals(p.getSortBy()) &&
-                p.getSortOrder() == 1 &&
-                p.getSearchBy().equals(Arrays.asList("reportSectionName")) &&
-                p.getSearchInput().equals(Collections.singletonList("opioids")) &&
-                p.getSelectedItemIds().equals(Arrays.asList(11, 12))
-        ));
-    }
-
-    @Test
-    public void getReportSections_exception_returns400() {
-        ListTableParamsReq req = new ListTableParamsReq();
-        when(service.getReportSectionsList(any(ListTableParams.class)))
-                .thenThrow(new ReportSectionApiException("boom"));
-
-        ResponseEntity resp = controller.getReportSections(req, "x");
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- getReportSectionDetails ----------
-    @Test
-    public void getReportSectionDetails_ok_detailsTrue() {
-        ReportSectionDTO dto = new ReportSectionDTO();
-        when(service.getReportSectionById(10, true)).thenReturn(dto);
-
-        ResponseEntity resp = controller.getReportSectionDetails(10);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(dto, resp.getBody());
-        verify(service).getReportSectionById(10, true);
-    }
-
-    @Test
-    public void getReportSectionDetails_exception_returns400() {
-        when(service.getReportSectionById(10, true))
-                .thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.getReportSectionDetails(10);
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- getReportSection ----------
-    @Test
-    public void getReportSection_ok_detailsFalse() {
-        ReportSectionDTO dto = new ReportSectionDTO();
-        when(service.getReportSectionById(10, false)).thenReturn(dto);
-
-        ResponseEntity resp = controller.getReportSection(10);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(dto, resp.getBody());
-        verify(service).getReportSectionById(10, false);
-    }
-
-    @Test
-    public void getReportSection_exception_returns400() {
-        when(service.getReportSectionById(10, false))
-                .thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.getReportSection(10);
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- deleteReportSectionById ----------
-    @Test
-    public void deleteReportSectionById_ok() {
-        List<String> msgs = Collections.singletonList("deleted");
-        when(service.deleteReportSection(10)).thenReturn(msgs);
-
-        ResponseEntity resp = controller.deleteReportSectionById(10);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(msgs, resp.getBody());
-    }
-
-    @Test
-    public void deleteReportSectionById_exception_returns400() {
-        when(service.deleteReportSection(10))
-                .thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.deleteReportSectionById(10);
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- newReportSection ----------
-    @Test
-    public void newReportSection_accessA_created() {
-        mockAuth(userWithA);
-
-        ReportSectionDTO in = new ReportSectionDTO();
-        ReportSectionDTO out = new ReportSectionDTO();
-
-        when(service.addReportSection(any(ReportSectionDTO.class))).thenReturn(out);
-
-        ResponseEntity resp = controller.newReportSection(in);
-
-        assertEquals(HttpStatus.CREATED.value(), resp.getStatusCodeValue());
-        assertSame(out, resp.getBody());
-
-        verify(service).addReportSection(argThat(dto ->
-                "U1".equals(dto.getCreatedBySystemId()) &&
-                "U1".equals(dto.getModifiedBySystemId()) &&
-                dto.getCreatedDate() != null &&
-                dto.getModifiedDate() != null
-        ));
-    }
-
-    @Test
-    public void newReportSection_accessB_created() {
-        mockAuth(userWithB);
-
-        when(service.addReportSection(any(ReportSectionDTO.class))).thenReturn(new ReportSectionDTO());
-
-        ResponseEntity resp = controller.newReportSection(new ReportSectionDTO());
-
-        assertEquals(HttpStatus.CREATED.value(), resp.getStatusCodeValue());
-    }
-
-    @Test
-    public void newReportSection_noAccess_forbidden() {
-        mockAuth(userWithC);
-
-        ResponseEntity resp = controller.newReportSection(new ReportSectionDTO());
-
-        assertEquals(HttpStatus.FORBIDDEN.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
-        verify(service, never()).addReportSection(any());
-    }
-
-    @Test
-    public void newReportSection_exception_returns400() {
-        mockAuth(userWithA);
-
-        when(service.addReportSection(any())).thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.newReportSection(new ReportSectionDTO());
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- updateReportSection ----------
-    @Test
-    public void updateReportSection_accessA_ok() {
-        mockAuth(userWithA);
-
-        ReportSectionDTO dto = new ReportSectionDTO();
-        dto.setCreatedBySystemId("OTHER"); // A can update anyone
-
-        when(service.updateReportSection(eq(9), any(ReportSectionDTO.class))).thenReturn("updated");
-
-        ResponseEntity<String> resp = controller.updateReportSection(9, dto);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertEquals("updated", resp.getBody());
-
-        verify(service).updateReportSection(eq(9), argThat(x ->
-                "U1".equals(x.getModifiedBySystemId()) &&
-                x.getModifiedDate() != null
-        ));
-    }
-
-    @Test
-    public void updateReportSection_accessB_owner_ok() {
-        mockAuth(userWithB);
-
-        ReportSectionDTO dto = new ReportSectionDTO();
-        dto.setCreatedBySystemId("U1"); // owner
-
-        when(service.updateReportSection(eq(9), any(ReportSectionDTO.class))).thenReturn("updated");
-
-        ResponseEntity<String> resp = controller.updateReportSection(9, dto);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertEquals("updated", resp.getBody());
-    }
-
-    @Test
-    public void updateReportSection_accessB_notOwner_forbidden() {
-        mockAuth(userWithB);
-
-        ReportSectionDTO dto = new ReportSectionDTO();
-        dto.setCreatedBySystemId("OTHER"); // not owner
-
-        ResponseEntity<String> resp = controller.updateReportSection(9, dto);
-
-        assertEquals(HttpStatus.FORBIDDEN.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
-
-        verify(service, never()).updateReportSection(anyInt(), any());
-    }
-
-    @Test
-    public void updateReportSection_noAccess_forbidden() {
-        mockAuth(userWithC);
-
-        ResponseEntity<String> resp = controller.updateReportSection(9, new ReportSectionDTO());
-
-        assertEquals(HttpStatus.FORBIDDEN.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.NOT_AUTHORIZED, resp.getBody());
-    }
-
-    @Test
-    public void updateReportSection_exception_returns400() {
-        mockAuth(userWithA);
-
-        when(service.updateReportSection(eq(9), any()))
-                .thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity<String> resp = controller.updateReportSection(9, new ReportSectionDTO());
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- getAvailableReportItems ----------
-    @Test
-    public void getAvailableReportItems_ok() {
-        List<ReportItemDTO> list = new ArrayList<>();
-        list.add(new ReportItemDTO());
-
-        when(service.getAvailableReportItems(7)).thenReturn(list);
-
-        ResponseEntity resp = controller.getAvailableReportItems(7);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(list, resp.getBody());
-    }
-
-    @Test
-    public void getAvailableReportItems_exception_returns400() {
-        when(service.getAvailableReportItems(7)).thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.getAvailableReportItems(7);
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- getSelectedReportItems ----------
-    @Test
-    public void getSelectedReportItems_ok() {
-        List<ReportItemDTO> list = new ArrayList<>();
-        list.add(new ReportItemDTO());
-
-        when(service.getSelectedReportItems(7)).thenReturn(list);
-
-        ResponseEntity resp = controller.getSelectedReportItems(7);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(list, resp.getBody());
-    }
-
-    @Test
-    public void getSelectedReportItems_exception_returns400() {
-        when(service.getSelectedReportItems(7)).thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.getSelectedReportItems(7);
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-
-    // ---------- getMyReportSections ----------
-    @Test
-    public void getMyReportSections_addsUserSystemIdFilter_ok() {
-        mockAuth(userWithA);
-
-        ListTableParams params = new ListTableParams();
-        params.setSearchBy(null); // controller will init lists
-
-        PaginationResultRS pr = new PaginationResultRS();
-        when(service.getReportSectionsList(any(ListTableParams.class))).thenReturn(pr);
-
-        ResponseEntity resp = controller.getMyReportSections(params);
-
-        assertEquals(HttpStatus.OK.value(), resp.getStatusCodeValue());
-        assertSame(pr, resp.getBody());
-
-        assertNotNull(params.getSearchBy());
-        assertNotNull(params.getSearchInput());
-        assertTrue(params.getSearchBy().contains(ReportSectionConstants.USER_SYSTEM_ID));
-        assertTrue(params.getSearchInput().contains("U1"));
-    }
-
-    @Test
-    public void getMyReportSections_exception_returns400() {
-        mockAuth(userWithA);
-
-        when(service.getReportSectionsList(any(ListTableParams.class)))
-                .thenThrow(new ReportSectionApiException("err"));
-
-        ResponseEntity resp = controller.getMyReportSections(new ListTableParams());
-
-        assertEquals(HttpStatus.BAD_REQUEST.value(), resp.getStatusCodeValue());
-        assertEquals(ReportSectionConstants.EXCEPTION_MESSAGE, resp.getBody());
-    }
-}
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-behavior-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/>
+    </parent>
+
+    <repositories>
+        <repository>
+            <id>artifactory</id>
+            <name>Artifactory</name>
+            <url>https://repo1.uhc.com/artifactory/repo</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+
+        <java.version>17</java.version>
+        <spring.boot.version>3.5.7</spring.boot.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <springrunner.version>0.1.0</springrunner.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>7.4</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <restassured.version>3.3.0</restassured.version>
+        <mockito.version>5.3.1</mockito.version>
+        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
+        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+        <log4j.version>2.24.3</log4j.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <jaxb.version>2.3.1</jaxb.version>
+        <sonar.version>3.9.1.2184</sonar.version>
+
+        <!-- [CHANGE-1] Tell Sonar where the JaCoCo XML will be -->
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.bitbucket.radistao.test</groupId>
+            <artifactId>before-after-spring-test-runner</artifactId>
+            <version>${springrunner.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <!-- [CHANGE-2] JaCoCo: ensure jacoco.xml always exists in target/site/jacoco -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <destFile>${project.build.directory}/jacoco.exec</destFile>
+                    <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
+
+                    <!-- Force XML generation (for Sonar) -->
+                    <formats>
+                        <format>XML</format>
+                        <format>HTML</format>
+                    </formats>
+
+                    <excludes>
+                        <exclude>**/dto/**</exclude>
+                        <exclude>**/domain/**</exclude>
+                        <exclude>**/common/constants/**</exclude>
+                        <exclude>**/exception/**</exclude>
+                        <exclude>com/optum/fads/pgp/behavior/api/BehaviorPatternApiApplication.class</exclude>
+                        <exclude>com/optum/fads/pgp/behavior/api/config/SecurityConfig.class</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+
+                    <!-- Generate report on verify (uses existing jacoco.exec, does not need tests to rerun) -->
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
