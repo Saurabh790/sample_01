@@ -1,314 +1,193 @@
-package com.optum.fads.pgp.reportsection.api.service.impl;
+name: Azure Deployment
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+on:
+  push:
+    branches:
+      - dev
+      - test
+  pull_request:
+    branches:
+      - "*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: Select the Environment
+        options:
+          - azure-dev
+          - azure-test
+          - azure-demo
+          - ar-preprod
+          - ar-prod
+          - ma-ppd
+          - ma-prod
+          - al-ppd
+          - al-prod
+        required: true
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+env:
+  JAVA_VERSION: 17
+  BRANCH_NAME: ${{ github.ref_name }}
+  JFROG_EDGE_URL: https://centraluhg.jfrog.io
+  JFROG_PROJECT_KEY: com-optum-osgp
+  JACOCO_MAVEN_PLUGIN_VERSION: 0.8.10
+  JFROG_HOST: centraluhg.jfrog.io
+  JFROG_EDGE_HOST: edgeinternal1uhg.optum.com
+  PROJECT_NAME: ${{ github.event.repository.name }}
+  VAULT_URL: "https://pam-dev.uhc.com"
+  VAULT_NAMESPACE: "OPTUM/APP/MT-PSM-TENANT/DEV"
+  VAULT_METHOD: "jwt"
+  VAULT_ROLE: "hcep-osgp-actions"
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.test.util.ReflectionTestUtils;
+permissions:
+  actions: read
+  contents: write
+  pull-requests: write
+  security-events: write
+  checks: write
+  id-token: write
 
-import com.optum.fads.pgp.reportsection.api.common.ListTableParams;
-import com.optum.fads.pgp.reportsection.api.common.constants.ReportSectionConstants;
-import com.optum.fads.pgp.reportsection.api.domain.FadsConfigT;
-import com.optum.fads.pgp.reportsection.api.domain.PrmRiRptItemT;
-import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
-import com.optum.fads.pgp.reportsection.api.dto.PaginationResultRI;
-import com.optum.fads.pgp.reportsection.api.exception.ReportSectionApiException;
-import com.optum.fads.pgp.reportsection.api.mapper.ReportGroupDetailMapper;
-import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternErDrRepository;
-import com.optum.fads.pgp.reportsection.api.repo.BehaviorPatternsRepository;
-import com.optum.fads.pgp.reportsection.api.repo.DataRulesRepository;
-import com.optum.fads.pgp.reportsection.api.repo.FadsConfigRepository;
-import com.optum.fads.pgp.reportsection.api.repo.ReportItemFormulasRepository;
-import com.optum.fads.pgp.reportsection.api.repo.ReportItemsRepository;
-import com.optum.fads.pgp.reportsection.api.repo.ReportSectionItemsRepository;
-import com.optum.fads.pgp.reportsection.api.repo.ReportSectionsRepository;
+jobs:
+  setup:
+    name: Setup
+    runs-on: uhg-runner
+    outputs:
+      JFROG_NP_DOCKER: ${{ steps.output_variables.outputs.JFROG_NP_DOCKER }}
+      JAVA_VERSION: ${{ steps.output_variables.outputs.JAVA_VERSION }}
+      JFROG_PROJECT_KEY: ${{ steps.output_variables.outputs.JFROG_PROJECT_KEY }}
+      JACOCO_MAVEN_PLUGIN_VERSION: ${{ steps.output_variables.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}
+      JFROG_HOST: ${{ steps.output_variables.outputs.JFROG_HOST }}
+      PROJECT_NAME: ${{ steps.output_variables.outputs.PROJECT_NAME }}
+      ENVIRONMENT: ${{ steps.output_variables.outputs.ENVIRONMENT || github.event.inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Get Artifactory Access Token
+        id: jf-saas-setup
+        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
+        with:
+          jfrog-project-key: ${{ env.JFROG_PROJECT_KEY }}
+      - name: Setup Output Variables
+        id: output_variables
+        run: |
+          echo "JFROG_NP_DOCKER=${{ steps.jf-saas-setup.outputs.jfrog-docker-np-suffix }}" >> $GITHUB_OUTPUT
+          echo "JAVA_VERSION=${{ env.JAVA_VERSION }}" >> $GITHUB_OUTPUT
+          echo "JFROG_PROJECT_KEY=${{ env.JFROG_PROJECT_KEY }}" >> $GITHUB_OUTPUT
+          echo "JACOCO_MAVEN_PLUGIN_VERSION=${{ env.JACOCO_MAVEN_PLUGIN_VERSION }}" >> $GITHUB_OUTPUT
+          echo "JFROG_HOST=${{ env.JFROG_HOST }}" >> $GITHUB_OUTPUT
+          echo "PROJECT_NAME=${{ env.PROJECT_NAME }}" >> $GITHUB_OUTPUT
+          if [[ "${{ env.BRANCH_NAME }}" == "dev" ]]; then
+            echo "ENVIRONMENT=azure-dev" >> $GITHUB_OUTPUT
+          elif [[ "${{ env.BRANCH_NAME }}" == "test" ]]; then
+            echo "ENVIRONMENT=azure-test" >> $GITHUB_OUTPUT
+          fi
+  build-scan-artifactory:
+    name: Build, Scan, Artifactory
+    needs: setup
+    if: github.event_name != 'pull_request'
+    uses: uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
+    with:
+      java-version: ${{ needs.setup.outputs.JAVA_VERSION }}
+      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
+      maven-use-wrapper: false
+      maven-command: "-U -e clean org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:report -Dmaven.test.failure.ignore=true -B -Dci.env="
+      docker-tags: |
+        ${{ needs.setup.outputs.JFROG_HOST }}/${{ needs.setup.outputs.JFROG_PROJECT_KEY }}${{ needs.setup.outputs.JFROG_NP_DOCKER }}/${{ needs.setup.outputs.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
+      enable-prisma: false
+      enable-xray: false
 
-@ExtendWith(MockitoExtension.class)
-class ReportItemDataServiceTest {
+  build-scan:
+    name: Build, Scan
+    needs: setup
+    if: github.event_name == 'pull_request'
+    uses: uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
+    with:
+      java-version: ${{ needs.setup.outputs.JAVA_VERSION }}
+      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
+      maven-use-wrapper: false
+      maven-command: "-U -e clean org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:report -Dmaven.test.failure.ignore=true -B -Dci.env="
+      enable-prisma: false
+      enable-xray: false
 
-    @Mock private ReportItemsRepository reportItemsRepository;
-    @Mock private ReportItemFormulasRepository reportItemFormulasRepository;
-    @Mock private ReportSectionItemsRepository reportSectionItemsRepository;
-    @Mock private BehaviorPatternsRepository behaviorPatternsRepository;
-    @Mock private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
-    @Mock private DataRulesRepository dataRulesRepository;
-    @Mock private ReportSectionsRepository reportSectionsRepository;
+  docker-promote:
+    name: Docker Promote
+    needs: [setup, build-scan-artifactory]
+    if: github.event_name != 'pull_request'
+    uses: uhg-pipelines/privileged-workflows/.github/workflows/promote-docker-image.yaml@v2
+    with:
+      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
+      source-docker-image-name: ${{ needs.setup.outputs.PROJECT_NAME }}
+      source-docker-image-tag: ${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
+      target-docker-image-tag: ${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
+      promotion-type: release
 
-    @Mock private FadsConfigRepository fadsConfigRepository;
-    @Mock private ReportGroupDetailMapper reportGroupDetailMapper;
-
-    private TestableReportItemDataService service;
-
-    /** Expose protected methods for direct testing */
-    static class TestableReportItemDataService extends ReportItemDataService {
-        TestableReportItemDataService(ReportItemsRepository reportItemsRepository,
-                                      ReportItemFormulasRepository reportItemFormulasRepository,
-                                      ReportSectionItemsRepository reportSectionItemsRepository,
-                                      BehaviorPatternsRepository behaviorPatternsRepository,
-                                      BehaviorPatternErDrRepository behaviorPatternErDrRepository,
-                                      DataRulesRepository dataRulesRepository,
-                                      ReportSectionsRepository reportSectionsRepository) {
-            super(reportItemsRepository,
-                  reportItemFormulasRepository,
-                  reportSectionItemsRepository,
-                  behaviorPatternsRepository,
-                  behaviorPatternErDrRepository,
-                  dataRulesRepository,
-                  reportSectionsRepository);
-        }
-
-        String callReplReportItemName(String s) { return replReportItemName(s); }
-        String[] callGetSearchCriteria(ListTableParams p, int idx) { return getSearchCriteria(p, idx); }
-        Pageable callCreatePageable(ListTableParams p) { return createPageableReports(p); }
-    }
-
-    @BeforeEach
-    void setup() {
-        service = new TestableReportItemDataService(
-                reportItemsRepository,
-                reportItemFormulasRepository,
-                reportSectionItemsRepository,
-                behaviorPatternsRepository,
-                behaviorPatternErDrRepository,
-                dataRulesRepository,
-                reportSectionsRepository
-        );
-
-        // Fields not in constructor -> inject manually for tests
-        ReflectionTestUtils.setField(service, "fadsConfigRepository", fadsConfigRepository);
-        ReflectionTestUtils.setField(service, "reportGroupDetailMapper", reportGroupDetailMapper);
-    }
-
-    // -------------------- getReportItemsList --------------------
-
-    @Test
-    void getReportItemsList_noSearch_selectedEmpty_usesGetReportItemsAndCount() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(null);
-        params.setSelectedItemIds(new ArrayList<>()); // empty
-
-        PrmRiRptItemT ri = realRi(99, "RI-99");
-
-        when(reportItemsRepository.getReportItems(any(Pageable.class))).thenReturn(List.of(ri));
-        when(reportItemsRepository.count()).thenReturn(1L);
-
-        PaginationResultRI out = service.getReportItemsList(params);
-
-        assertNotNull(out);
-        assertEquals(1, out.getTotalRecordsCount());
-        assertNotNull(out.getReportItemsData());
-        assertEquals(1, out.getReportItemsData().size());
-        assertEquals(Integer.valueOf(99), out.getReportItemsData().get(0).getReportItemId());
-
-        verify(reportItemsRepository).getReportItems(any(Pageable.class));
-        verify(reportItemsRepository).count();
-        verify(reportItemsRepository, never()).getAvailableReportItems(anyList(), any());
-    }
-
-    @Test
-    void getReportItemsList_noSearch_selectedNotEmpty_usesGetAvailableAndCountBySize() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(null);
-        params.setSelectedItemIds(new ArrayList<>(List.of(1, 2)));
-
-        PrmRiRptItemT ri99 = realRi(99, "RI-99");
-        PrmRiRptItemT ri100 = realRi(100, "RI-100");
-
-        // pageable call
-        when(reportItemsRepository.getAvailableReportItems(eq(params.getSelectedItemIds()), any(Pageable.class)))
-                .thenReturn(List.of(ri99));
-
-        // count call uses pageable = null
-        when(reportItemsRepository.getAvailableReportItems(eq(params.getSelectedItemIds()), isNull()))
-                .thenReturn(List.of(ri99, ri100));
-
-        PaginationResultRI out = service.getReportItemsList(params);
-
-        assertNotNull(out);
-        assertEquals(2, out.getTotalRecordsCount()); // size from null pageable list
-        assertEquals(1, out.getReportItemsData().size());
-
-        verify(reportItemsRepository).getAvailableReportItems(eq(params.getSelectedItemIds()), any(Pageable.class));
-        verify(reportItemsRepository).getAvailableReportItems(eq(params.getSelectedItemIds()), isNull());
-        verify(reportItemsRepository, never()).count();
-    }
-
-    @Test
-    void getReportItemsList_whenSearchByPresent_delegatesToSearchCriteriaMethod() {
-        ReportItemDataService spy = spy(service);
-
-        ListTableParams params = baseParams();
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("abc"));
-        params.setSelectedItemIds(new ArrayList<>());
-
-        PaginationResultRI expected = new PaginationResultRI();
-        doReturn(expected).when(spy).getReportItemsOnSearchCriteria(any(ListTableParams.class));
-
-        PaginationResultRI out = spy.getReportItemsList(params);
-
-        assertSame(expected, out);
-        verify(spy).getReportItemsOnSearchCriteria(params);
-        verify(reportItemsRepository, never()).getReportItems(any());
-    }
-
-    // -------------------- getReportItemsOnSearchCriteria (one representative branch) --------------------
-
-    @Test
-    void getReportItemsOnSearchCriteria_selectedEmpty_noSpChar_callsGetReportItemsBySearchCrit() {
-        ListTableParams params = baseParams();
-        params.setSelectedItemIds(new ArrayList<>());
-        params.setSearchBy(List.of(ReportSectionConstants.REPORT_ITEM_NAME));
-        params.setSearchInput(List.of("abc"));
-
-        PrmRiRptItemT ri = realRi(10, "ABC");
-        PrmRiRptItemT ri2 = realRi(11, "ABC2");
-
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), any(Pageable.class)))
-                .thenReturn(List.of(ri));
-        when(reportItemsRepository.getReportItemsBySearchCrit(anyString(), anyString(), anyString(), isNull()))
-                .thenReturn(List.of(ri, ri2));
-
-        PaginationResultRI out = service.getReportItemsOnSearchCriteria(params);
-
-        assertNotNull(out);
-        assertEquals(2, out.getTotalRecordsCount());
-        assertEquals(1, out.getReportItemsData().size());
-
-        // Validate first argument contains "%abc%"
-        ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
-        verify(reportItemsRepository).getReportItemsBySearchCrit(nameCaptor.capture(), anyString(), anyString(), any(Pageable.class));
-        assertTrue(nameCaptor.getValue().contains("abc"));
-        assertTrue(nameCaptor.getValue().startsWith("%"));
-        assertTrue(nameCaptor.getValue().endsWith("%"));
-    }
-
-    @Test
-    void getReportItemsList_wrapsAnyExceptionIntoReportSectionApiException() {
-        ListTableParams params = baseParams();
-        params.setSearchBy(null);
-        params.setSelectedItemIds(new ArrayList<>());
-
-        when(reportItemsRepository.getReportItems(any(Pageable.class)))
-                .thenThrow(new RuntimeException("db down"));
-
-        assertThrows(ReportSectionApiException.class, () -> service.getReportItemsList(params));
-    }
-
-    // -------------------- protected method coverage: replReportItemName --------------------
-
-    @Test
-    void replReportItemName_noSpecialChars_wrapsWithPercent() {
-        assertEquals("%abc%", service.callReplReportItemName("abc"));
-    }
-
-    @Test
-    void replReportItemName_withPercent_escapesPercent() {
-        String out = service.callReplReportItemName("a%");
-        assertTrue(out.startsWith("%"));
-        assertTrue(out.endsWith("%"));
-        assertTrue(out.contains("\\%")); // escaped %
-    }
-
-    @Test
-    void replReportItemName_withUnderscore_escapesUnderscore() {
-        String out = service.callReplReportItemName("a_");
-        assertTrue(out.contains("\\_")); // escaped _
-    }
-
-    @Test
-    void replReportItemName_replacesEncodedSpace_plus_comma() {
-        // %20 -> ""  ,  %2B -> + , %2C -> ,
-        // Using your constants (space encoded, plus repl, comma repl)
-        String in = "ab" + ReportSectionConstants.SPACE_ENCODED_STR
-                + "cd" + ReportSectionConstants.PLUS_REPL_STR
-                + "ef" + ReportSectionConstants.COMMA_REPL_STR + "gh";
-
-        String out = service.callReplReportItemName(in.toLowerCase());
-
-        assertTrue(out.startsWith("%"));
-        assertTrue(out.endsWith("%"));
-        assertFalse(out.contains(ReportSectionConstants.SPACE_ENCODED_STR));
-        assertTrue(out.contains(ReportSectionConstants.PLUS_STR));
-        assertTrue(out.contains(ReportSectionConstants.COMMA_STR));
-    }
-
-    // -------------------- getZoneId --------------------
-
-    @Test
-    void getZoneId_whenConfigPresent_returnsConfiguredZone() {
-        FadsConfigT cfg = mock(FadsConfigT.class);
-        when(cfg.getOptionValue()).thenReturn("UTC");
-        when(fadsConfigRepository.findById(eq(ReportSectionConstants.DATE_TIME_ZONE_ID)))
-                .thenReturn(Optional.of(cfg));
-
-        ZoneId zid = service.getZoneId();
-
-        assertEquals(ZoneId.of("UTC"), zid);
-    }
-
-    @Test
-    void getZoneId_whenConfigMissing_returnsSystemDefault() {
-        when(fadsConfigRepository.findById(eq(ReportSectionConstants.DATE_TIME_ZONE_ID)))
-                .thenReturn(Optional.empty());
-
-        ZoneId zid = service.getZoneId();
-
-        assertEquals(ZoneId.systemDefault(), zid);
-    }
-
-    // -------------------- helpers --------------------
-
-    private static ListTableParams baseParams() {
-        ListTableParams p = new ListTableParams();
-        p.setPageNumber(1);
-        p.setRecordsPerPage(10);
-        p.setSortBy(ReportSectionConstants.REPORT_ITEM_NAME);
-        p.setSortOrder(1);
-        // intentionally leave searchBy/searchInput null unless test sets them
-        return p;
-    }
-
-    /**
-     * IMPORTANT: Real entity (no Mockito). This prevents UnfinishedStubbing & UnnecessaryStubbing.
-     */
-    private static PrmRiRptItemT realRi(int id, String name) {
-        PrmRiRptItemT ri = new PrmRiRptItemT();
-        ri.setRiId(id);
-        ri.setReportItemName(name);
-        ri.setRiCalcFmt("1");
-        ri.setRiMinimumDenom(5);
-        ri.setConstantDen(2);
-        ri.setConstantNum(3);
-
-        UiUserBase cr = new UiUserBase();
-        cr.setUiFirstName("C");
-        cr.setUiLastName("R");
-        cr.setUiSystemId("UCR");
-        ri.setUiUserBaseCr(cr);
-
-        UiUserBase upd = new UiUserBase();
-        upd.setUiFirstName("U");
-        upd.setUiLastName("P");
-        upd.setUiSystemId("UUPD");
-        ri.setUiUserBaseUpd(upd);
-
-        ri.setCreateDate(LocalDateTime.now().minusDays(1));
-        ri.setUpdateDate(LocalDateTime.now());
-        return ri;
-    }
-}
+  azure-deploy:
+    name: Azure Deploy
+    needs: [setup, docker-promote]
+    if: github.event_name != 'pull_request'
+    runs-on: uhg-runner
+    steps:
+      - name: Fetch UHG CA information
+        run: |
+          echo UHG_CA_BASE64=$(cat /usr/local/share/ca-certificates/Optum_ProxyMITM_Bundle.crt | base64) >> $GITHUB_ENV
+      - name: Get Workflow Secrets
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ env.VAULT_URL }}
+          caCertificate: ${{ env.UHG_CA_BASE64 }}
+          method: ${{ env.VAULT_METHOD }}
+          role: ${{ env.VAULT_ROLE }}
+          namespace: ${{ env.VAULT_NAMESPACE }}
+          secrets: |
+            gh-actions/data/hcep/azure/fads/acr ${{ needs.setup.outputs.ENVIRONMENT }} | ACR_CREDENTIAL ;
+            gh-actions/data/hcep/azure/fads/aks ${{ needs.setup.outputs.ENVIRONMENT }} | AKS_CREDENTIAL ;
+            gh-actions/data/hcep/azure/fads/webapp ${{ needs.setup.outputs.ENVIRONMENT }} | WEBAPP_CONFIG ;
+      - name: Setup Vault Variables
+        id: vault_variables
+        run: |
+          echo "ACR_HOST=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .host)" >> $GITHUB_ENV
+          echo "ACR_USERNAME=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .username)" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .password)" >> $GITHUB_ENV
+          echo "AKS_CLIENT_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .clientId)" >> $GITHUB_ENV
+          echo "AKS_CLIENT_SECRET=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .clientSecret)" >> $GITHUB_ENV
+          echo "AKS_SUBSCRIPTION_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .subscriptionId)" >> $GITHUB_ENV
+          echo "AKS_TENANT_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .tenantId)" >> $GITHUB_ENV
+          echo "WEBAPP_RESOURCE_GROUP=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .resourceGroup)" >> $GITHUB_ENV
+          KEY=${{ env.PROJECT_NAME }}
+          VALUE=$(echo '${{ env.WEBAPP_CONFIG }}' | jq -r --arg key "$KEY" '.[$key]')
+          echo "WEBAPP_APP_NAME=$VALUE" >> $GITHUB_ENV
+      - name: Get Artifactory Access Token
+        id: jf-saas-setup
+        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
+        with:
+          jfrog-project-key: ${{ env.JFROG_PROJECT_KEY }}
+      - name: JFROG SAAS Login
+        continue-on-error: true
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.JFROG_EDGE_HOST }}
+          username: ${{ steps.jf-saas-setup.outputs.oidc-subject }}
+          password: ${{ steps.jf-saas-setup.outputs.access-token }}
+      - name: JFROG SAAS Docker Pull
+        run: |
+          docker pull ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
+      - name: ACR Login
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ACR_HOST }}
+          username: ${{ env.ACR_USERNAME }}
+          password: ${{ env.ACR_PASSWORD }}
+      - name: ACR Docker Push
+        run: |
+          docker tag ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }} ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
+          docker tag ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }} ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:latest
+          docker push ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
+          docker push ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:latest
+      - name: Azure Deployment
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az login --service-principal -u ${{ env.AKS_CLIENT_ID }} -p ${{ env.AKS_CLIENT_SECRET }} -t ${{ env.AKS_TENANT_ID }}
+            az account set --subscription ${{ env.AKS_SUBSCRIPTION_ID }}
+            az webapp restart --name ${{ env.WEBAPP_APP_NAME }} --resource-group ${{ env.WEBAP
