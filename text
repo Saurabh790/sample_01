@@ -1,1 +1,21 @@
-jar tf target\fads-pgp-engine-service.jar | findstr /i "azure-identity"
+<dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-identity</artifactId>
+      <version>1.12.2</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.microsoft.azure</groupId>
+      <artifactId>msal4j</artifactId>
+      <version>1.17.2</version>
+    </dependency>
+
+    mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.azure:azure-identity
+mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.microsoft.azure:msal4j
+
+
+
+mvn -DskipTests clean package
+
+jar tf target\*.jar | findstr /i "azure-identity"
+jar tf target\*.jar | findstr /i "msal4j"
