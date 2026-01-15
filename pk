@@ -1,14 +1,22 @@
-@Test
-void started_setsDefaultTimezone_toWhatJavaResolvesUtcMinus4To() {
-    TimeZone expected = TimeZone.getTimeZone("UTC-4"); // may resolve to GMT on some JDKs
-    CommonConfig cfg = new CommonConfig();
+<project>
+    ...
+    <properties>
+        ...
+    </properties>
 
-    cfg.started();
+    <!-- ADD THIS HERE -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.18.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-    TimeZone actual = TimeZone.getDefault();
-    assertNotNull(actual);
-
-    // Compare what Java resolves, not a hardcoded offset
-    assertEquals(expected.getID(), actual.getID());
-    assertEquals(expected.getRawOffset(), actual.getRawOffset());
-}
+    <dependencies>
+        <!-- your existing dependencies -->
+    </dependencies>
+    ...
+</project>
