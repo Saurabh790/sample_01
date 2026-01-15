@@ -1,194 +1,150 @@
-ame: Azure Deployment
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>    mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.azure:azure-identity
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 251, column 34
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 257, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 391, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 399, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-authorization-api >----------------
+[INFO] Building fads-authorization-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-authorization-api ---
+[INFO] com.optum.fads:fads-authorization-api:jar:1.0.0
+[INFO] \- com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:jar:4.6.0:compile
+[INFO]    \- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]       \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]          \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]             \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]                \- com.azure:azure-identity:jar:1.12.2:compile (version managed from 1.7.3)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.001 s
+[INFO] Finished at: 2026-01-15T15:39:40+05:30
+[INFO] ------------------------------------------------------------------------
 
-on:
-  push:
-    branches:
-      - dev
-      - test
-  pull_request:
-    branches:
-      - dev
-      - test
-  workflow_dispatch:
-    inputs:
-      environment:
-        type: choice
-        description: Select the Environment
-        options:
-          - azure-dev
-          - azure-test
-          - azure-demo
-          - ar-ppd
-          - ar-prod
-          - ma-ppd
-          - ma-prod
-          - al-ppd
-          - al-prod
-        required: true
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.microsoft.azure:msal4j
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 251, column 34
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 257, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 391, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 399, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-authorization-api >----------------
+[INFO] Building fads-authorization-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-authorization-api ---
+[INFO] com.optum.fads:fads-authorization-api:jar:1.0.0
+[INFO] \- com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:jar:4.6.0:compile
+[INFO]    \- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]       \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]          \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]             \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]                \- com.azure:azure-identity:jar:1.12.2:compile (version managed from 1.7.3)
+[INFO]                   +- com.microsoft.azure:msal4j:jar:1.17.2:compile (version managed from 1.15.1)
+[INFO]                   \- com.microsoft.azure:msal4j-persistence-extension:jar:1.3.0:compile
+[INFO]                      \- (com.microsoft.azure:msal4j:jar:1.17.2:compile - version managed from 1.15.0; omitted for duplicate)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.260 s
+[INFO] Finished at: 2026-01-15T15:40:00+05:30
+[INFO] ------------------------------------------------------------------------
 
-env:
-  JAVA_VERSION: 17
-  BRANCH_NAME: ${{ github.ref_name }}
-  JFROG_EDGE_URL: https://centraluhg.jfrog.io
-  JFROG_PROJECT_KEY: com-optum-osgp
-  JACOCO_MAVEN_PLUGIN_VERSION: 0.8.10
-  JFROG_HOST: centraluhg.jfrog.io
-  JFROG_EDGE_HOST: edgeinternal1uhg.optum.com
-  PROJECT_NAME: ${{ github.event.repository.name }}
-  VAULT_URL: "https://pam-dev.uhc.com"
-  VAULT_NAMESPACE: "OPTUM/APP/MT-PSM-TENANT/DEV"
-  VAULT_METHOD: "jwt"
-  VAULT_ROLE: "hcep-osgp-actions"
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn -DskipTests clean package
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 251, column 34
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 257, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 391, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 399, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-authorization-api >----------------
+[INFO] Building fads-authorization-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ fads-authorization-api ---
+[INFO] Deleting C:\Users\sgupt664\BE_Projects\fads-authorization-api\target
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven) @ fads-authorization-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO]
+[INFO] --- jacoco:0.8.10:prepare-agent (jacoco-initialize) @ fads-authorization-api ---
+[INFO] argLine set to -javaagent:C:\\Users\\sgupt664\\.m2\\repo1\\m3-3.9.9\\org\\jacoco\\org.jacoco.agent\\0.8.10\\org.jacoco.agent-0.8.10-runtime.jar=destfile=C:\\Users\\sgupt664\\BE_Projects\\fads-authorization-api\\target\\jacoco.exec
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ fads-authorization-api ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.14.1:compile (default-compile) @ fads-authorization-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 52 source files with javac [debug parameters release 17] to target\classes
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/CaseTypeModule.java:[22,34] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/PgpRole.java:[24,38] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/CaseRole.java:[29,35] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/CaseRole.java:[30,44] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/controller/AuthorizationController.java:[29,1] Field 'log' already exists.
+[INFO] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/FADSUser.java: C:\Users\sgupt664\BE_Projects\fads-authorization-api\src\main\java\com\optum\fads\authorization\api\dto\FADSUser.java uses unchecked or unsafe operations.
+[INFO] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/FADSUser.java: Recompile with -Xlint:unchecked for details.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ fads-authorization-api ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO]
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ fads-authorization-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters release 17] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.4:test (default-test) @ fads-authorization-api ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ fads-authorization-api ---
+[INFO] Building jar: C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar
+[INFO]
+[INFO] --- spring-boot:3.5.7:repackage (repackage) @ fads-authorization-api ---
+[INFO] Replacing main artifact C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar.original
+[INFO]
+[INFO] --- spring-boot:3.5.7:repackage (default) @ fads-authorization-api ---
+[INFO] Replacing main artifact C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar.original
+[INFO]
+[INFO] --- jacoco:0.8.10:report (jacoco-site) @ fads-authorization-api ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  16.839 s
+[INFO] Finished at: 2026-01-15T15:40:21+05:30
+[INFO] ------------------------------------------------------------------------
 
-permissions:
-  actions: read
-  contents: write
-  pull-requests: write
-  security-events: write
-  checks: write
-  id-token: write
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>jar tf target\*.jar | findstr /i "azure-identity"
+BOOT-INF/lib/azure-identity-1.12.2.jar
 
-jobs:
-  setup:
-    name: Setup
-    runs-on: uhg-runner
-    outputs:
-      JFROG_NP_DOCKER: ${{ steps.output_variables.outputs.JFROG_NP_DOCKER }}
-      JAVA_VERSION: ${{ steps.output_variables.outputs.JAVA_VERSION }}
-      JFROG_PROJECT_KEY: ${{ steps.output_variables.outputs.JFROG_PROJECT_KEY }}
-      JACOCO_MAVEN_PLUGIN_VERSION: ${{ steps.output_variables.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}
-      JFROG_HOST: ${{ steps.output_variables.outputs.JFROG_HOST }}
-      PROJECT_NAME: ${{ steps.output_variables.outputs.PROJECT_NAME }}
-      ENVIRONMENT: ${{ steps.output_variables.outputs.ENVIRONMENT || github.event.inputs.environment }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Get Artifactory Access Token
-        id: jf-saas-setup
-        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
-        with:
-          jfrog-project-key: ${{ env.JFROG_PROJECT_KEY }}
-      - name: Setup Output Variables
-        id: output_variables
-        run: |
-          echo "JFROG_NP_DOCKER=${{ steps.jf-saas-setup.outputs.jfrog-docker-np-suffix }}" >> $GITHUB_OUTPUT
-          echo "JAVA_VERSION=${{ env.JAVA_VERSION }}" >> $GITHUB_OUTPUT
-          echo "JFROG_PROJECT_KEY=${{ env.JFROG_PROJECT_KEY }}" >> $GITHUB_OUTPUT
-          echo "JACOCO_MAVEN_PLUGIN_VERSION=${{ env.JACOCO_MAVEN_PLUGIN_VERSION }}" >> $GITHUB_OUTPUT
-          echo "JFROG_HOST=${{ env.JFROG_HOST }}" >> $GITHUB_OUTPUT
-          echo "PROJECT_NAME=${{ env.PROJECT_NAME }}" >> $GITHUB_OUTPUT
-          if [[ "${{ env.BRANCH_NAME }}" == "dev" ]]; then
-            echo "ENVIRONMENT=azure-dev" >> $GITHUB_OUTPUT
-          elif [[ "${{ env.BRANCH_NAME }}" == "test" ]]; then
-            echo "ENVIRONMENT=azure-test" >> $GITHUB_OUTPUT
-          fi
-  build-scan-artifactory:
-    name: Build, Scan, Artifactory
-    needs: setup
-    if: github.event_name != 'pull_request'
-    uses: uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
-    with:
-      java-version: ${{ needs.setup.outputs.JAVA_VERSION }}
-      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
-      maven-use-wrapper: false
-      maven-command: "-U -e clean org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:report -Dmaven.test.failure.ignore=true -B -Dci.env="
-      docker-tags: |
-        ${{ needs.setup.outputs.JFROG_HOST }}/${{ needs.setup.outputs.JFROG_PROJECT_KEY }}${{ needs.setup.outputs.JFROG_NP_DOCKER }}/${{ needs.setup.outputs.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      enable-prisma: false
-      enable-xray: false
-
-  build-scan:
-    name: Build, Scan
-    needs: setup
-    if: github.event_name == 'pull_request'
-    uses: uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
-    with:
-      java-version: ${{ needs.setup.outputs.JAVA_VERSION }}
-      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
-      maven-use-wrapper: false
-      maven-command: "-U -e clean org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:report -Dmaven.test.failure.ignore=true -B -Dci.env="
-      enable-prisma: false
-      enable-xray: false
-
-  docker-promote:
-    name: Docker Promote
-    needs: [setup, build-scan-artifactory]
-    if: github.event_name != 'pull_request'
-    uses: uhg-pipelines/privileged-workflows/.github/workflows/promote-docker-image.yaml@v2
-    with:
-      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
-      source-docker-image-name: ${{ needs.setup.outputs.PROJECT_NAME }}
-      source-docker-image-tag: ${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      target-docker-image-tag: ${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      promotion-type: release
-
-  azure-deploy:
-    name: Azure Deploy
-    needs: [setup, docker-promote]
-    if: github.event_name != 'pull_request'
-    runs-on: uhg-runner
-    steps:
-      - name: Fetch UHG CA information
-        run: |
-          echo UHG_CA_BASE64=$(cat /usr/local/share/ca-certificates/Optum_ProxyMITM_Bundle.crt | base64) >> $GITHUB_ENV
-      - name: Get Workflow Secrets
-        uses: hashicorp/vault-action@v3
-        with:
-          url: ${{ env.VAULT_URL }}
-          caCertificate: ${{ env.UHG_CA_BASE64 }}
-          method: ${{ env.VAULT_METHOD }}
-          role: ${{ env.VAULT_ROLE }}
-          namespace: ${{ env.VAULT_NAMESPACE }}
-          secrets: |
-            gh-actions/data/hcep/azure/fads/acr ${{ needs.setup.outputs.ENVIRONMENT }} | ACR_CREDENTIAL ;
-            gh-actions/data/hcep/azure/fads/aks ${{ needs.setup.outputs.ENVIRONMENT }} | AKS_CREDENTIAL ;
-            gh-actions/data/hcep/azure/fads/webapp ${{ needs.setup.outputs.ENVIRONMENT }} | WEBAPP_CONFIG ;
-      - name: Setup Vault Variables
-        id: vault_variables
-        run: |
-          echo "ACR_HOST=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .host)" >> $GITHUB_ENV
-          echo "ACR_USERNAME=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .username)" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .password)" >> $GITHUB_ENV
-          echo "AKS_CLIENT_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .clientId)" >> $GITHUB_ENV
-          echo "AKS_CLIENT_SECRET=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .clientSecret)" >> $GITHUB_ENV
-          echo "AKS_SUBSCRIPTION_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .subscriptionId)" >> $GITHUB_ENV
-          echo "AKS_TENANT_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .tenantId)" >> $GITHUB_ENV
-          echo "WEBAPP_RESOURCE_GROUP=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .resourceGroup)" >> $GITHUB_ENV
-          KEY=${{ env.PROJECT_NAME }}
-          VALUE=$(echo '${{ env.WEBAPP_CONFIG }}' | jq -r --arg key "$KEY" '.[$key]')
-          echo "WEBAPP_APP_NAME=$VALUE" >> $GITHUB_ENV
-      - name: Get Artifactory Access Token
-        id: jf-saas-setup
-        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
-        with:
-          jfrog-project-key: ${{ env.JFROG_PROJECT_KEY }}
-      - name: JFROG SAAS Login
-        continue-on-error: true
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.JFROG_EDGE_HOST }}
-          username: ${{ steps.jf-saas-setup.outputs.oidc-subject }}
-          password: ${{ steps.jf-saas-setup.outputs.access-token }}
-      - name: JFROG SAAS Docker Pull
-        run: |
-          docker pull ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      - name: ACR Login
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.ACR_HOST }}
-          username: ${{ env.ACR_USERNAME }}
-          password: ${{ env.ACR_PASSWORD }}
-      - name: ACR Docker Push
-        run: |
-          docker tag ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }} ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-          docker tag ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }} ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:latest
-          docker push ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-          docker push ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:latest
-      - name: Azure Deployment
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az login --service-principal -u ${{ env.AKS_CLIENT_ID }} -p ${{ env.AKS_CLIENT_SECRET }} -t ${{ env.AKS_TENANT_ID }}
-            az account set --subscription ${{ env.AKS_SUBSCRIPTION_ID }}
-            az webapp restart --name ${{ env.WEBAPP_APP_NAME }} --resource-group ${{ env.WEBAPP_RESOURCE_GROUP }}
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>jar tf target\*.jar | findstr /i "msal4j"
+BOOT-INF/lib/msal4j-1.17.2.jar
+BOOT-INF/lib/msal4j-persistence-extension-1.3.0.jar
