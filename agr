@@ -1,12 +1,5 @@
-after this line
-uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
+# 1) Check if commons-lang3 exists anywhere AND which versions
+mvn -DskipTests dependency:tree -Dverbose -Dincludes=org.apache.commons:commons-lang3
 
-
-we need to add below it will work 
-
-
-maven-sonar-command: >
-  -B -U -DskipTests -DskipIT verify
-  org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
-  -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-  -Dmaven.repo.local=/home/runner/.m2/repository
+# 2) Check if old commons-lang (2.x) exists anywhere
+mvn -DskipTests dependency:tree -Dverbose -Dincludes=commons-lang:commons-lang
