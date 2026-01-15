@@ -1,34 +1,96 @@
-<dependency>
-      <groupId>com.azure</groupId>
-      <artifactId>azure-identity</artifactId>
-      <version>1.12.2</version>
-    </dependency>
+package com.optum.fads.pgp.engine.api.config;
 
-    <dependency>
-      <groupId>com.microsoft.azure</groupId>
-      <artifactId>msal4j</artifactId>
-      <version>1.17.2</version>
-    </dependency>
+import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
 
-    mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.azure:azure-identity
-mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.microsoft.azure:msal4j
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
+import com.azure.security.keyvault.secrets.SecretClient;
 
+@Configuration
+@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
+@EnableTransactionManagement
+@EnableJpaRepositories(
+        entityManagerFactoryRef = "sqlEntityManagerFactory",
+        transactionManagerRef = "txManagerSQL",
+        basePackages = { "com.optum.fads.pgp.engine.api.repo" }
+)
+@ComponentScan(basePackages = { "com.optum.fads.pgp.engine" })
+public class DatasourceConfig {
 
-mvn -DskipTests clean package
+    @Value("${spring.datasource.sql.userName}")
+    private String userName;
 
-jar tf target\*.jar | findstr /i "azure-identity"
-jar tf target\*.jar | findstr /i "msal4j"
+    @Value("${spring.datasource.sql.password}")
+    private String password;
 
-<dependency>
-  <groupId>com.azure</groupId>
-  <artifactId>azure-identity</artifactId>
-</dependency>
+    @Value("${spring.datasource.sql.jdbcUrl}")
+    private String url;
 
-<dependency>
-  <groupId>com.microsoft.azure</groupId>
-  <artifactId>msal4j</artifactId>
-</dependency>
+    @Value("${spring.datasource.sql.driverClassName}")
+    private String driverClassName;
 
+    private final SecretClient secretClient;
 
-jar tf target\*.jar | findstr /i "azure-identity msal4j-1.13 msal4j-1.4 msal4j-1.15 azure-identity-1.7"
+    public DatasourceConfig(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Primary
+    @Bean(name = "fadsSQLDataSource")
+    public DataSource fadsSQLDataSource() {
+        String userNameValue = secretClient.getSecret(userName).getValue();
+        String passwordValue = secretClient.getSecret(password).getValue();
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName(driverClassName);
+        dataSource.setUsername(userNameValue);
+        dataSource.setPassword(passwordValue);
+        dataSource.setUrl(url);
+
+        return dataSource;
+    }
+
+    @Primary
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory(
+            @Qualifier("fadsSQLDataSource") DataSource dataSource) {
+
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource);
+        em.setPackagesToScan("com.optum.fads.pgp.engine.api.domain");
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+
+        return em;
+    }
+
+    @Primary
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(
+            @Qualifier("sqlEntityManagerFactory") EntityManagerFactory emf) {
+
+        return new JpaTransactionManager(emf);
+    }
+
+    @Bean(name = "jdbcSQLServer")
+    public JdbcTemplate jdbcSQLServerTemplate(
+            @Qualifier("fadsSQLDataSource") DataSource dataSource) {
+
+        return new JdbcTemplate(dataSource);
+    }
+}
