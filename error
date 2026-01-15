@@ -1,193 +1,74 @@
-name: Azure Deployment
 
-on:
-  push:
-    branches:
-      - dev
-      - test
-  pull_request:
-    branches:
-      - "*"
-  workflow_dispatch:
-    inputs:
-      environment:
-        type: choice
-        description: Select the Environment
-        options:
-          - azure-dev
-          - azure-test
-          - azure-demo
-          - ar-preprod
-          - ar-prod
-          - ma-ppd
-          - ma-prod
-          - al-ppd
-          - al-prod
-        required: true
+C:\Users\sgupt664\BE_Projects\fads-pgp-engine>mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.azure:azure-identity
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-pgp-engine-service:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.projectlombok:lombok:jar -> duplicate declaration of version (?) @ line 303, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-pgp-engine-service >---------------
+[INFO] Building fads-pgp-engine-service 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/lang-tag/maven-metadata.xml
+Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/lang-tag/maven-metadata.xml (695 B at 116 B/s)
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/nimbus-jose-jwt/maven-metadata.xml
+Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/nimbus-jose-jwt/maven-metadata.xml (12 kB at 4.0 kB/s)
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-pgp-engine-service ---
+[INFO] com.optum.fads:fads-pgp-engine-service:jar:1.0.0
+[INFO] \- com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:jar:4.6.0:compile
+[INFO]    \- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]       \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]          \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]             \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]                \- com.azure:azure-identity:jar:1.7.3:compile (version managed from 1.7.3)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  14.405 s
+[INFO] Finished at: 2026-01-15T12:52:54+05:30
+[INFO] ------------------------------------------------------------------------
 
-env:
-  JAVA_VERSION: 17
-  BRANCH_NAME: ${{ github.ref_name }}
-  JFROG_EDGE_URL: https://centraluhg.jfrog.io
-  JFROG_PROJECT_KEY: com-optum-osgp
-  JACOCO_MAVEN_PLUGIN_VERSION: 0.8.10
-  JFROG_HOST: centraluhg.jfrog.io
-  JFROG_EDGE_HOST: edgeinternal1uhg.optum.com
-  PROJECT_NAME: ${{ github.event.repository.name }}
-  VAULT_URL: "https://pam-dev.uhc.com"
-  VAULT_NAMESPACE: "OPTUM/APP/MT-PSM-TENANT/DEV"
-  VAULT_METHOD: "jwt"
-  VAULT_ROLE: "hcep-osgp-actions"
-
-permissions:
-  actions: read
-  contents: write
-  pull-requests: write
-  security-events: write
-  checks: write
-  id-token: write
-
-jobs:
-  setup:
-    name: Setup
-    runs-on: uhg-runner
-    outputs:
-      JFROG_NP_DOCKER: ${{ steps.output_variables.outputs.JFROG_NP_DOCKER }}
-      JAVA_VERSION: ${{ steps.output_variables.outputs.JAVA_VERSION }}
-      JFROG_PROJECT_KEY: ${{ steps.output_variables.outputs.JFROG_PROJECT_KEY }}
-      JACOCO_MAVEN_PLUGIN_VERSION: ${{ steps.output_variables.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}
-      JFROG_HOST: ${{ steps.output_variables.outputs.JFROG_HOST }}
-      PROJECT_NAME: ${{ steps.output_variables.outputs.PROJECT_NAME }}
-      ENVIRONMENT: ${{ steps.output_variables.outputs.ENVIRONMENT || github.event.inputs.environment }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Get Artifactory Access Token
-        id: jf-saas-setup
-        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
-        with:
-          jfrog-project-key: ${{ env.JFROG_PROJECT_KEY }}
-      - name: Setup Output Variables
-        id: output_variables
-        run: |
-          echo "JFROG_NP_DOCKER=${{ steps.jf-saas-setup.outputs.jfrog-docker-np-suffix }}" >> $GITHUB_OUTPUT
-          echo "JAVA_VERSION=${{ env.JAVA_VERSION }}" >> $GITHUB_OUTPUT
-          echo "JFROG_PROJECT_KEY=${{ env.JFROG_PROJECT_KEY }}" >> $GITHUB_OUTPUT
-          echo "JACOCO_MAVEN_PLUGIN_VERSION=${{ env.JACOCO_MAVEN_PLUGIN_VERSION }}" >> $GITHUB_OUTPUT
-          echo "JFROG_HOST=${{ env.JFROG_HOST }}" >> $GITHUB_OUTPUT
-          echo "PROJECT_NAME=${{ env.PROJECT_NAME }}" >> $GITHUB_OUTPUT
-          if [[ "${{ env.BRANCH_NAME }}" == "dev" ]]; then
-            echo "ENVIRONMENT=azure-dev" >> $GITHUB_OUTPUT
-          elif [[ "${{ env.BRANCH_NAME }}" == "test" ]]; then
-            echo "ENVIRONMENT=azure-test" >> $GITHUB_OUTPUT
-          fi
-  build-scan-artifactory:
-    name: Build, Scan, Artifactory
-    needs: setup
-    if: github.event_name != 'pull_request'
-    uses: uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
-    with:
-      java-version: ${{ needs.setup.outputs.JAVA_VERSION }}
-      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
-      maven-use-wrapper: false
-      maven-command: "-U -e clean org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:report -Dmaven.test.failure.ignore=true -B -Dci.env="
-      docker-tags: |
-        ${{ needs.setup.outputs.JFROG_HOST }}/${{ needs.setup.outputs.JFROG_PROJECT_KEY }}${{ needs.setup.outputs.JFROG_NP_DOCKER }}/${{ needs.setup.outputs.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      enable-prisma: false
-      enable-xray: false
-
-  build-scan:
-    name: Build, Scan
-    needs: setup
-    if: github.event_name == 'pull_request'
-    uses: uhg-pipelines/ci-workflows/.github/workflows/java-maven-ci.yml@v2
-    with:
-      java-version: ${{ needs.setup.outputs.JAVA_VERSION }}
-      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
-      maven-use-wrapper: false
-      maven-command: "-U -e clean org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ needs.setup.outputs.JACOCO_MAVEN_PLUGIN_VERSION }}:report -Dmaven.test.failure.ignore=true -B -Dci.env="
-      enable-prisma: false
-      enable-xray: false
-
-  docker-promote:
-    name: Docker Promote
-    needs: [setup, build-scan-artifactory]
-    if: github.event_name != 'pull_request'
-    uses: uhg-pipelines/privileged-workflows/.github/workflows/promote-docker-image.yaml@v2
-    with:
-      jfrog-project-key: ${{ needs.setup.outputs.JFROG_PROJECT_KEY }}
-      source-docker-image-name: ${{ needs.setup.outputs.PROJECT_NAME }}
-      source-docker-image-tag: ${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      target-docker-image-tag: ${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      promotion-type: release
-
-  azure-deploy:
-    name: Azure Deploy
-    needs: [setup, docker-promote]
-    if: github.event_name != 'pull_request'
-    runs-on: uhg-runner
-    steps:
-      - name: Fetch UHG CA information
-        run: |
-          echo UHG_CA_BASE64=$(cat /usr/local/share/ca-certificates/Optum_ProxyMITM_Bundle.crt | base64) >> $GITHUB_ENV
-      - name: Get Workflow Secrets
-        uses: hashicorp/vault-action@v3
-        with:
-          url: ${{ env.VAULT_URL }}
-          caCertificate: ${{ env.UHG_CA_BASE64 }}
-          method: ${{ env.VAULT_METHOD }}
-          role: ${{ env.VAULT_ROLE }}
-          namespace: ${{ env.VAULT_NAMESPACE }}
-          secrets: |
-            gh-actions/data/hcep/azure/fads/acr ${{ needs.setup.outputs.ENVIRONMENT }} | ACR_CREDENTIAL ;
-            gh-actions/data/hcep/azure/fads/aks ${{ needs.setup.outputs.ENVIRONMENT }} | AKS_CREDENTIAL ;
-            gh-actions/data/hcep/azure/fads/webapp ${{ needs.setup.outputs.ENVIRONMENT }} | WEBAPP_CONFIG ;
-      - name: Setup Vault Variables
-        id: vault_variables
-        run: |
-          echo "ACR_HOST=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .host)" >> $GITHUB_ENV
-          echo "ACR_USERNAME=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .username)" >> $GITHUB_ENV
-          echo "ACR_PASSWORD=$(echo '${{ env.ACR_CREDENTIAL }}' | jq -r .password)" >> $GITHUB_ENV
-          echo "AKS_CLIENT_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .clientId)" >> $GITHUB_ENV
-          echo "AKS_CLIENT_SECRET=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .clientSecret)" >> $GITHUB_ENV
-          echo "AKS_SUBSCRIPTION_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .subscriptionId)" >> $GITHUB_ENV
-          echo "AKS_TENANT_ID=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .tenantId)" >> $GITHUB_ENV
-          echo "WEBAPP_RESOURCE_GROUP=$(echo '${{ env.AKS_CREDENTIAL }}' | jq -r .resourceGroup)" >> $GITHUB_ENV
-          KEY=${{ env.PROJECT_NAME }}
-          VALUE=$(echo '${{ env.WEBAPP_CONFIG }}' | jq -r --arg key "$KEY" '.[$key]')
-          echo "WEBAPP_APP_NAME=$VALUE" >> $GITHUB_ENV
-      - name: Get Artifactory Access Token
-        id: jf-saas-setup
-        uses: uhg-pipelines/epl-jf/configure-saas-connection@v4
-        with:
-          jfrog-project-key: ${{ env.JFROG_PROJECT_KEY }}
-      - name: JFROG SAAS Login
-        continue-on-error: true
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.JFROG_EDGE_HOST }}
-          username: ${{ steps.jf-saas-setup.outputs.oidc-subject }}
-          password: ${{ steps.jf-saas-setup.outputs.access-token }}
-      - name: JFROG SAAS Docker Pull
-        run: |
-          docker pull ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }}
-      - name: ACR Login
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.ACR_HOST }}
-          username: ${{ env.ACR_USERNAME }}
-          password: ${{ env.ACR_PASSWORD }}
-      - name: ACR Docker Push
-        run: |
-          docker tag ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }} ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-          docker tag ${{ env.JFROG_HOST }}/${{ env.JFROG_PROJECT_KEY }}${{ steps.jf-saas-setup.outputs.jfrog-docker-prod-suffix }}/${{ env.PROJECT_NAME }}:${{ needs.setup.outputs.ENVIRONMENT }}-${{ github.run_number }} ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:latest
-          docker push ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:${{ github.run_number }}
-          docker push ${{ env.ACR_HOST }}/${{ env.PROJECT_NAME }}:latest
-      - name: Azure Deployment
-        uses: azure/cli@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            az login --service-principal -u ${{ env.AKS_CLIENT_ID }} -p ${{ env.AKS_CLIENT_SECRET }} -t ${{ env.AKS_TENANT_ID }}
-            az account set --subscription ${{ env.AKS_SUBSCRIPTION_ID }}
-            az webapp restart --name ${{ env.WEBAPP_APP_NAME }} --resource-group ${{ env.WEBAP
+C:\Users\sgupt664\BE_Projects\fads-pgp-engine>mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.microsoft.azure:msal4j
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-pgp-engine-service:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.projectlombok:lombok:jar -> duplicate declaration of version (?) @ line 303, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-pgp-engine-service >---------------
+[INFO] Building fads-pgp-engine-service 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/lang-tag/maven-metadata.xml
+Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/lang-tag/maven-metadata.xml (695 B at 1.8 kB/s)
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/nimbus-jose-jwt/maven-metadata.xml
+Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/nimbus-jose-jwt/maven-metadata.xml (12 kB at 159 kB/s)
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-pgp-engine-service ---
+[INFO] com.optum.fads:fads-pgp-engine-service:jar:1.0.0
+[INFO] +- com.microsoft.azure:msal4j:jar:1.17.2:compile
+[INFO] \- com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:jar:4.6.0:compile
+[INFO]    \- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]       \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]          \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]             \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO]                \- com.azure:azure-identity:jar:1.7.3:compile (version managed from 1.7.3)
+[INFO]                   +- (com.microsoft.azure:msal4j:jar:1.13.3:compile - omitted for conflict with 1.17.2)
+[INFO]                   \- com.microsoft.azure:msal4j-persistence-extension:jar:1.1.0:compile
+[INFO]                      \- (com.microsoft.azure:msal4j:jar:1.4.0:compile - omitted for conflict with 1.17.2)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.674 s
+[INFO] Finished at: 2026-01-15T12:53:16+05:30
+[INFO] ------------------------------------------------------------------------
