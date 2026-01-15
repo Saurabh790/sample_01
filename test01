@@ -1,515 +1,15 @@
-/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2024-35255	6/10/2024 16:00	2026-01-08T20:27:12.0438271Z	FixAvailable	fads-authorization-api	5.5	CVSS:3.0/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N/E:U/RL:O/RC:C	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-authorization-api-images-sha256:15f123b2e4e6fa5a8bd20e3bba13b2910c684ea516be879590d1c7f9c580c8ed
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>jar tf target\*.jar | findstr /i "msal4j"
+BOOT-INF/lib/msal4j-persistence-extension-1.3.0.jar
+BOOT-INF/lib/msal4j-1.17.2.jar
 
-
-
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-    <modelVersion>4.0.0</modelVersion>
-
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-case-entry-batch</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
-    
-     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-         <version>3.5.8</version>
-        <relativePath/>
-    </parent>
-
-    <repositories>
-        <repository>
-            <id>artifactory</id>
-            <name>Artifactory</name>
-            <url>https://repo1.uhc.com/artifactory/repo</url>
-        </repository>
-    </repositories>
-
-    <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <surefire.skip>${skipTests}</surefire.skip>
-        <failsafe.skip>${skipTests}</failsafe.skip>
-	    <log4j2.version>2.16.0</log4j2.version>
-        <java.version>17</java.version>
-        <spring.boot.version>3.5.8</spring.boot.version>
-        <spring.cloud.version>2025.0.0</spring.cloud.version>
-        <jasypt.version>3.0.5</jasypt.version>
-        <jwt.version>4.4.0</jwt.version>
-        <cloudsdk.version>4.2.0-RELEASE</cloudsdk.version>
-        <modelmapper.version>3.2.2</modelmapper.version>
-        <jacoco.version>0.8.12</jacoco.version>
-        <springrunner.version>0.1.0</springrunner.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <logback.encoder.version>7.4</logback.encoder.version>
-        <lombok.version>1.18.28</lombok.version>
-        <restassured.version>5.5.0</restassured.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <snakeyaml.version>2.0</snakeyaml.version>
-	    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-        <sonar.coverage.exclusions>
-            **/com/optum/fads/caseentrybatch.api/**,
-        </sonar.coverage.exclusions>
-        <bcp.version>1.67</bcp.version>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.azure.spring</groupId>
-                <artifactId>spring-cloud-azure-dependencies</artifactId>
-                <version>4.6.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-			<dependency>
-				<groupId>org.apache.logging.log4j</groupId>
-				<artifactId>log4j-bom</artifactId>
-				<version>2.24.3</version>
-				<scope>import</scope>
-				<type>pom</type>
-			</dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>${spring.boot.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            
-            <dependency>
-			  <groupId>com.azure</groupId>
-			  <artifactId>azure-identity</artifactId>
-			  <version>1.12.2</version>
-			</dependency>
-			
-			<dependency>
-			  <groupId>com.microsoft.azure</groupId>
-			  <artifactId>msal4j</artifactId>
-			  <version>1.17.2</version>
-			</dependency>
-
-        </dependencies>
-    </dependencyManagement>
-
-    <dependencies>
-        <dependency>
-            <groupId>com.azure</groupId>
-            <artifactId>azure-core</artifactId>
-        </dependency>
-        
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-        </dependency>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-         <dependency>
-		    <groupId>ch.qos.logback</groupId>
-		    <artifactId>logback-classic</artifactId>
-		</dependency>
-		<dependency>
-		    <groupId>ch.qos.logback</groupId>
-		    <artifactId>logback-core</artifactId>
-		</dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-		
-		<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
-		<dependency>
-		    <groupId>org.springframework.boot</groupId>
-		    <artifactId>spring-boot-starter-mail</artifactId>
-		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-email -->
-		<dependency>
-		    <groupId>org.apache.commons</groupId>
-		    <artifactId>commons-email</artifactId>
-		    <version>1.5</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			 <version>3.18.0</version> 
-		</dependency>
-
-		<dependency>
-			<groupId>org.hibernate.javax.persistence</groupId>
-			<artifactId>hibernate-jpa-2.1-api</artifactId>
-			<version>1.0.2.Final</version>
-		</dependency>
-		
-		<!-- Micrometer Prometheus registry  -->
-		<dependency>
-		    <groupId>io.micrometer</groupId>
-		    <artifactId>micrometer-registry-prometheus</artifactId>
-		</dependency>
-
-        <!-- Password Encryption -->
-        <dependency>
-            <groupId>com.github.ulisesbocchio</groupId>
-            <artifactId>jasypt-spring-boot-starter</artifactId>
-            <version>${jasypt.version}</version>
-        </dependency>
-
-        <!-- JWT -->
-        <dependency>
-            <groupId>com.auth0</groupId>
-            <artifactId>java-jwt</artifactId>
-            <version>${jwt.version}</version>
-        </dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt</artifactId>
-			<version>0.12.6</version>
-		</dependency>
-		
- 		<dependency>
-		    <groupId>org.apache.httpcomponents</groupId>
-		    <artifactId>httpclient</artifactId>
-		    <version>4.5.14</version>
-		</dependency>
-
-        <!-- Model Mapper -->
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
-        
-        <!-- MapStruct -->
-
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-jdk8</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-processor</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-
-        <!-- Jackson -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-	</dependency>
-
-	<dependency>
-	     <groupId>com.fasterxml.jackson.core</groupId>
-	     <artifactId>jackson-databind</artifactId>
-	</dependency>
-
-        <!--Used in Getter/Setter Verifier @NonNull  -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-
-        
-
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- JSON logging-->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        
-		<!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
-		<dependency>
-		    <groupId>org.codehaus.jettison</groupId>
-		    <artifactId>jettison</artifactId>
-		    <version>1.5.4</version>
-		</dependency>
-
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        
-        <dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-quartz</artifactId>
-		</dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Before After Spring Test Runner -->
-        <dependency>
-            <groupId>org.jacoco</groupId>
-            <artifactId>jacoco-maven-plugin</artifactId>
-            <version>${jacoco.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <version>${restassured.version}</version>
-            <scope>test</scope>
-        </dependency>
-        
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		
-		<dependency>
-            <groupId>org.springframework.data</groupId>
-            <artifactId>spring-data-commons</artifactId>          
-        </dependency>
-        
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-test</artifactId>
-		</dependency>
-
-        <!-- Quartz-Java dependency Remediation Upgrade  -->
-        <dependency>
-			<groupId>org.quartz-scheduler</groupId>
-			<artifactId>quartz</artifactId>
-		</dependency>
-		
-		<dependency>
-		    <groupId>com.microsoft.sqlserver</groupId>
-		    <artifactId>mssql-jdbc</artifactId>
-		    <version>13.2.1.jre11</version>
-		</dependency>
-
-		
-		<dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-core</artifactId>
-            <version>6.2.3.Final</version>
-        </dependency>
-        
-        <!-- Snowflake dependency -->
-		<dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
-        </dependency>
-        <dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcprov-ext-jdk15on</artifactId>
-			<version>${bcp.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.bouncycastle</groupId>
-			<artifactId>bcpkix-jdk15on</artifactId>
-			<version>${bcp.version}</version>
-		</dependency> 
-		<dependency>
-			<groupId>com.nimbusds</groupId>
-			<artifactId>nimbus-jose-jwt</artifactId>
-			<version>9.37.4</version>
-		</dependency>
-
-	</dependencies>
-
-    <build>
-        <finalName>${project.artifactId}</finalName>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <annotationProcessorPaths>
-						<path>
-							<groupId>org.mapstruct</groupId>
-							<artifactId>mapstruct-processor</artifactId>
-							<version>${org.mapstruct.version}</version>
-						</path>
-						<path>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
-						</path>
-					</annotationProcessorPaths>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <version>3.0.0-M2</version>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring.boot.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>pl.project13.maven</groupId>
-                <artifactId>git-commit-id-plugin</artifactId>
-                <version>3.0.0</version>
-                <configuration>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <skip>${surefire.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-            </plugin>
-
-        </plugins>
-    </build>
-</project>
-
-
-
-C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn dependency:tree
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.azure:azure-identity
 [INFO] Scanning for projects...
 [WARNING]
 [WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 239, column 34
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 245, column 21
-[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 379, column 21
-[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 387, column 21
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 251, column 34
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 257, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 402, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 410, column 21
 [WARNING]
 [WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
 [WARNING]
@@ -520,204 +20,134 @@ C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn dependency:tree
 [INFO] Building fads-authorization-api 1.0.0
 [INFO]   from pom.xml
 [INFO] --------------------------------[ jar ]---------------------------------
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/lang-tag/maven-metadata.xml
-Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/lang-tag/maven-metadata.xml (695 B at 1.9 kB/s)
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/nimbus-jose-jwt/maven-metadata.xml
-Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/nimbusds/nimbus-jose-jwt/maven-metadata.xml (12 kB at 149 kB/s)
 [INFO]
 [INFO] --- dependency:3.8.1:tree (default-cli) @ fads-authorization-api ---
 [INFO] com.optum.fads:fads-authorization-api:jar:1.0.0
-[INFO] +- org.springframework.boot:spring-boot-starter:jar:3.5.7:compile
-[INFO] |  +- org.springframework.boot:spring-boot:jar:3.5.7:compile
-[INFO] |  |  \- org.springframework:spring-context:jar:6.2.12:compile
-[INFO] |  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.7:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.7:compile
-[INFO] |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile
-[INFO] |  |  |  \- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile
-[INFO] |  |  \- org.slf4j:jul-to-slf4j:jar:2.0.17:compile
-[INFO] |  +- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile
-[INFO] |  +- org.springframework:spring-core:jar:6.2.12:compile
-[INFO] |  |  \- org.springframework:spring-jcl:jar:6.2.12:compile
-[INFO] |  \- org.yaml:snakeyaml:jar:2.4:compile
-[INFO] +- com.azure:azure-core:jar:1.39.0:compile
-[INFO] |  +- com.azure:azure-json:jar:1.0.1:compile
-[INFO] |  +- com.fasterxml.jackson.core:jackson-annotations:jar:2.19.2:compile
-[INFO] |  +- com.fasterxml.jackson.core:jackson-core:jar:2.19.2:compile
-[INFO] |  +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.2:compile
-[INFO] |  +- org.slf4j:slf4j-api:jar:2.0.17:compile
-[INFO] |  \- io.projectreactor:reactor-core:jar:3.7.12:compile
-[INFO] |     \- org.reactivestreams:reactive-streams:jar:1.0.4:compile
 [INFO] +- com.azure.spring:spring-cloud-azure-starter-keyvault-secrets:jar:4.6.0:compile
-[INFO] |  +- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile
-[INFO] |  |  \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile
-[INFO] |  |     \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile
-[INFO] |  |        \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile
-[INFO] |  |           +- com.azure:azure-identity:jar:1.7.3:compile
-[INFO] |  |           |  +- com.microsoft.azure:msal4j:jar:1.13.3:compile
-[INFO] |  |           |  |  \- com.nimbusds:oauth2-oidc-sdk:jar:9.35:compile
-[INFO] |  |           |  |     +- com.nimbusds:content-type:jar:2.2:compile
-[INFO] |  |           |  |     \- com.nimbusds:lang-tag:jar:1.6:compile
-[INFO] |  |           |  +- com.microsoft.azure:msal4j-persistence-extension:jar:1.1.0:compile
-[INFO] |  |           |  |  \- net.java.dev.jna:jna:jar:5.5.0:compile
-[INFO] |  |           |  \- net.java.dev.jna:jna-platform:jar:5.6.0:compile
-[INFO] |  |           +- com.azure:azure-core-amqp:jar:2.8.1:compile
-[INFO] |  |           |  +- com.microsoft.azure:qpid-proton-j-extensions:jar:1.2.4:compile
-[INFO] |  |           |  \- org.apache.qpid:proton-j:jar:0.33.8:compile
-[INFO] |  |           \- com.azure:azure-core-management:jar:1.10.0:compile
-[INFO] |  \- com.azure:azure-security-keyvault-secrets:jar:4.5.3:compile
-[INFO] |     \- com.azure:azure-core-http-netty:jar:1.12.8:compile
-[INFO] |        +- io.netty:netty-handler:jar:4.1.128.Final:compile
-[INFO] |        |  +- io.netty:netty-common:jar:4.1.128.Final:compile
-[INFO] |        |  +- io.netty:netty-resolver:jar:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-transport:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-handler-proxy:jar:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-codec-socks:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-buffer:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-codec:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-codec-http:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-codec-http2:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-transport-native-unix-common:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-transport-classes-epoll:jar:4.1.128.Final:compile
-[INFO] |        +- io.netty:netty-transport-native-kqueue:jar:osx-x86_64:4.1.128.Final:compile
-[INFO] |        |  \- io.netty:netty-transport-classes-kqueue:jar:4.1.128.Final:compile
-[INFO] |        \- io.netty:netty-tcnative-boringssl-static:jar:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-classes:jar:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:linux-x86_64:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:linux-aarch_64:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:osx-x86_64:2.0.74.Final:compile
-[INFO] |           +- io.netty:netty-tcnative-boringssl-static:jar:osx-aarch_64:2.0.74.Final:compile
-[INFO] |           \- io.netty:netty-tcnative-boringssl-static:jar:windows-x86_64:2.0.74.Final:compile
-[INFO] +- ch.qos.logback:logback-classic:jar:1.5.19:compile
-[INFO] +- ch.qos.logback:logback-core:jar:1.5.19:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-validation:jar:3.5.7:compile
-[INFO] |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:10.1.48:compile
-[INFO] |  \- org.hibernate.validator:hibernate-validator:jar:8.0.3.Final:compile
-[INFO] |     +- jakarta.validation:jakarta.validation-api:jar:3.0.2:compile
-[INFO] |     +- org.jboss.logging:jboss-logging:jar:3.6.1.Final:compile
-[INFO] |     \- com.fasterxml:classmate:jar:1.7.1:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-web:jar:3.5.7:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-json:jar:3.5.7:compile
-[INFO] |  |  +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:jar:2.19.2:compile
-[INFO] |  |  \- com.fasterxml.jackson.module:jackson-module-parameter-names:jar:2.19.2:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-tomcat:jar:3.5.7:compile
-[INFO] |  |  +- org.apache.tomcat.embed:tomcat-embed-core:jar:10.1.48:compile
-[INFO] |  |  \- org.apache.tomcat.embed:tomcat-embed-websocket:jar:10.1.48:compile
-[INFO] |  +- org.springframework:spring-web:jar:6.2.12:compile
-[INFO] |  |  \- org.springframework:spring-beans:jar:6.2.12:compile
-[INFO] |  \- org.springframework:spring-webmvc:jar:6.2.12:compile
-[INFO] |     \- org.springframework:spring-expression:jar:6.2.12:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.7:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-reactor-netty:jar:3.5.7:compile
-[INFO] |  |  \- io.projectreactor.netty:reactor-netty-http:jar:1.2.11:compile
-[INFO] |  |     +- io.netty:netty-resolver-dns:jar:4.1.128.Final:compile
-[INFO] |  |     |  \- io.netty:netty-codec-dns:jar:4.1.128.Final:compile
-[INFO] |  |     +- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.128.Final:compile
-[INFO] |  |     |  \- io.netty:netty-resolver-dns-classes-macos:jar:4.1.128.Final:compile
-[INFO] |  |     \- io.projectreactor.netty:reactor-netty-core:jar:1.2.11:compile
-[INFO] |  \- org.springframework:spring-webflux:jar:6.2.12:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-data-jpa:jar:3.5.7:compile
-[INFO] |  +- org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.7:compile
-[INFO] |  |  +- com.zaxxer:HikariCP:jar:6.3.3:compile
-[INFO] |  |  \- org.springframework:spring-jdbc:jar:6.2.12:compile
-[INFO] |  +- org.hibernate.orm:hibernate-core:jar:6.6.33.Final:compile
-[INFO] |  |  +- jakarta.persistence:jakarta.persistence-api:jar:3.1.0:compile
-[INFO] |  |  +- jakarta.transaction:jakarta.transaction-api:jar:2.0.1:compile
-[INFO] |  |  +- org.hibernate.common:hibernate-commons-annotations:jar:7.0.3.Final:runtime
-[INFO] |  |  +- io.smallrye:jandex:jar:3.2.0:runtime
-[INFO] |  |  +- org.glassfish.jaxb:jaxb-runtime:jar:4.0.6:runtime
-[INFO] |  |  |  \- org.glassfish.jaxb:jaxb-core:jar:4.0.6:runtime
-[INFO] |  |  |     +- org.eclipse.angus:angus-activation:jar:2.0.3:runtime
-[INFO] |  |  |     +- org.glassfish.jaxb:txw2:jar:4.0.6:runtime
-[INFO] |  |  |     \- com.sun.istack:istack-commons-runtime:jar:4.1.2:runtime
-[INFO] |  |  +- jakarta.inject:jakarta.inject-api:jar:2.0.1:runtime
-[INFO] |  |  \- org.antlr:antlr4-runtime:jar:4.13.0:compile
-[INFO] |  +- org.springframework.data:spring-data-jpa:jar:3.5.5:compile
-[INFO] |  |  +- org.springframework.data:spring-data-commons:jar:3.5.5:compile
-[INFO] |  |  +- org.springframework:spring-orm:jar:6.2.12:compile
-[INFO] |  |  \- org.springframework:spring-tx:jar:6.2.12:compile
-[INFO] |  \- org.springframework:spring-aspects:jar:6.2.12:compile
-[INFO] |     \- org.aspectj:aspectjweaver:jar:1.9.24:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-security:jar:3.5.7:compile
-[INFO] |  +- org.springframework:spring-aop:jar:6.2.12:compile
-[INFO] |  +- org.springframework.security:spring-security-config:jar:6.5.6:compile
-[INFO] |  \- org.springframework.security:spring-security-web:jar:6.5.6:compile
-[INFO] +- org.springframework.security:spring-security-oauth2-resource-server:jar:6.5.5:compile
-[INFO] |  +- org.springframework.security:spring-security-core:jar:6.5.6:compile
-[INFO] |  |  \- org.springframework.security:spring-security-crypto:jar:6.5.6:compile
-[INFO] |  \- org.springframework.security:spring-security-oauth2-core:jar:6.5.6:compile
-[INFO] +- org.springframework.security:spring-security-oauth2-jose:jar:6.5.5:compile
-[INFO] |  \- com.nimbusds:nimbus-jose-jwt:jar:9.37.4:compile
-[INFO] |     \- com.github.stephenc.jcip:jcip-annotations:jar:1.0-1:compile
-[INFO] +- org.springframework.boot:spring-boot-starter-actuator:jar:3.5.7:compile
-[INFO] |  +- org.springframework.boot:spring-boot-actuator-autoconfigure:jar:3.5.7:compile
-[INFO] |  |  \- org.springframework.boot:spring-boot-actuator:jar:3.5.7:compile
-[INFO] |  +- io.micrometer:micrometer-observation:jar:1.15.5:compile
-[INFO] |  |  \- io.micrometer:micrometer-commons:jar:1.15.5:compile
-[INFO] |  \- io.micrometer:micrometer-jakarta9:jar:1.15.5:compile
-[INFO] |     \- io.micrometer:micrometer-core:jar:1.15.5:compile
-[INFO] |        +- org.hdrhistogram:HdrHistogram:jar:2.2.2:runtime
-[INFO] |        \- org.latencyutils:LatencyUtils:jar:2.0.3:runtime
-[INFO] +- org.apache.commons:commons-lang3:jar:3.18.0:compile
-[INFO] +- org.modelmapper:modelmapper:jar:3.1.1:compile
-[INFO] +- org.projectlombok:lombok:jar:1.18.28:provided
-[INFO] +- net.logstash.logback:logstash-logback-encoder:jar:7.4:runtime
-[INFO] +- org.codehaus.janino:janino:jar:3.1.12:runtime
-[INFO] |  \- org.codehaus.janino:commons-compiler:jar:3.1.12:runtime
-[INFO] +- org.springframework.boot:spring-boot-starter-test:jar:3.5.7:test
-[INFO] |  +- org.springframework.boot:spring-boot-test:jar:3.5.7:test
-[INFO] |  +- org.springframework.boot:spring-boot-test-autoconfigure:jar:3.5.7:test
-[INFO] |  +- com.jayway.jsonpath:json-path:jar:2.9.0:test
-[INFO] |  +- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.4:runtime
-[INFO] |  |  \- jakarta.activation:jakarta.activation-api:jar:2.1.4:runtime
-[INFO] |  +- org.assertj:assertj-core:jar:3.27.6:test
-[INFO] |  +- org.awaitility:awaitility:jar:4.2.2:test
-[INFO] |  +- org.hamcrest:hamcrest:jar:3.0:test
-[INFO] |  +- org.junit.jupiter:junit-jupiter:jar:5.12.2:test
-[INFO] |  |  +- org.junit.jupiter:junit-jupiter-api:jar:5.12.2:test
-[INFO] |  |  |  +- org.opentest4j:opentest4j:jar:1.3.0:test
-[INFO] |  |  |  +- org.junit.platform:junit-platform-commons:jar:1.12.2:test
-[INFO] |  |  |  \- org.apiguardian:apiguardian-api:jar:1.1.2:test
-[INFO] |  |  +- org.junit.jupiter:junit-jupiter-params:jar:5.12.2:test
-[INFO] |  |  \- org.junit.jupiter:junit-jupiter-engine:jar:5.12.2:test
-[INFO] |  |     \- org.junit.platform:junit-platform-engine:jar:1.12.2:test
-[INFO] |  +- org.mockito:mockito-junit-jupiter:jar:5.17.0:test
-[INFO] |  +- org.skyscreamer:jsonassert:jar:1.5.3:test
-[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
-[INFO] |  +- org.springframework:spring-test:jar:6.2.12:test
-[INFO] |  \- org.xmlunit:xmlunit-core:jar:2.10.4:test
-[INFO] +- junit:junit:jar:4.13.2:test
-[INFO] |  \- org.hamcrest:hamcrest-core:jar:3.0:test
-[INFO] +- org.mockito:mockito-core:jar:5.17.0:test
-[INFO] |  +- net.bytebuddy:byte-buddy:jar:1.17.8:runtime
-[INFO] |  +- net.bytebuddy:byte-buddy-agent:jar:1.17.8:test
-[INFO] |  \- org.objenesis:objenesis:jar:3.3:test
-[INFO] +- com.fasterxml.jackson.core:jackson-databind:jar:2.17.2:compile
-[INFO] +- org.codehaus.jackson:jackson-core-asl:jar:1.9.13:compile
-[INFO] +- org.bitbucket.radistao.test:before-after-spring-test-runner:jar:0.1.0:test
-[INFO] +- io.rest-assured:rest-assured:jar:5.5.6:test
-[INFO] |  +- org.apache.groovy:groovy:jar:4.0.29:test
-[INFO] |  +- org.apache.groovy:groovy-xml:jar:4.0.29:test
-[INFO] |  +- org.apache.httpcomponents:httpclient:jar:4.5.13:test
-[INFO] |  |  +- org.apache.httpcomponents:httpcore:jar:4.4.16:test
-[INFO] |  |  +- commons-logging:commons-logging:jar:1.2:test
-[INFO] |  |  \- commons-codec:commons-codec:jar:1.18.0:test
-[INFO] |  +- org.apache.httpcomponents:httpmime:jar:4.5.13:test
-[INFO] |  +- org.ccil.cowan.tagsoup:tagsoup:jar:1.2.1:test
-[INFO] |  +- io.rest-assured:json-path:jar:5.5.6:test
-[INFO] |  |  +- org.apache.groovy:groovy-json:jar:4.0.29:test
-[INFO] |  |  \- io.rest-assured:rest-assured-common:jar:5.5.6:test
-[INFO] |  \- io.rest-assured:xml-path:jar:5.5.6:test
-[INFO] +- org.mapstruct:mapstruct:jar:1.5.5.Final:compile
-[INFO] +- org.mapstruct:mapstruct-jdk8:jar:1.5.5.Final:compile
-[INFO] +- org.mapstruct:mapstruct-processor:jar:1.5.5.Final:compile
-[INFO] +- com.microsoft.sqlserver:mssql-jdbc:jar:13.2.1.jre11:compile
-[INFO] +- net.minidev:json-smart:jar:2.5.2:compile
-[INFO] \- net.minidev:accessors-smart:jar:2.5.2:compile
-[INFO]    \- org.ow2.asm:asm:jar:9.7.1:compile
+[INFO] |  \- com.azure.spring:spring-cloud-azure-starter:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO] |     \- com.azure.spring:spring-cloud-azure-autoconfigure:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO] |        \- com.azure.spring:spring-cloud-azure-service:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO] |           \- com.azure.spring:spring-cloud-azure-core:jar:4.6.0:compile (version managed from 4.6.0)
+[INFO] |              \- (com.azure:azure-identity:jar:1.12.2:compile - version managed from 1.7.3; omitted for duplicate)
+[INFO] \- com.azure:azure-identity:jar:1.12.2:compile
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.939 s
-[INFO] Finished at: 2026-01-15T15:33:08+05:30
+[INFO] Total time:  4.128 s
+[INFO] Finished at: 2026-01-15T15:50:21+05:30
 [INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn -DskipTests dependency:tree -Dverbose -Dincludes=com.microsoft.azure:msal4j
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 251, column 34
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 257, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 402, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 410, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-authorization-api >----------------
+[INFO] Building fads-authorization-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-authorization-api ---
+[INFO] com.optum.fads:fads-authorization-api:jar:1.0.0
+[INFO] +- com.azure:azure-identity:jar:1.12.2:compile
+[INFO] |  +- (com.microsoft.azure:msal4j:jar:1.17.2:compile - version managed from 1.15.1; omitted for duplicate)
+[INFO] |  \- com.microsoft.azure:msal4j-persistence-extension:jar:1.3.0:compile
+[INFO] |     \- (com.microsoft.azure:msal4j:jar:1.17.2:compile - version managed from 1.15.0; omitted for duplicate)
+[INFO] \- com.microsoft.azure:msal4j:jar:1.17.2:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.113 s
+[INFO] Finished at: 2026-01-15T15:50:38+05:30
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>mvn -DskipTests clean package
+[INFO] Scanning for projects...
+[WARNING]
+[WARNING] Some problems were encountered while building the effective model for com.optum.fads:fads-authorization-api:jar:1.0.0
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: com.fasterxml.jackson.core:jackson-databind:jar -> duplicate declaration of version 2.17.2 @ line 251, column 34
+[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.codehaus.jackson:jackson-core-asl:jar -> duplicate declaration of version 1.9.13 @ line 257, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-compiler-plugin @ line 402, column 21
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.apache.maven.plugins:maven-dependency-plugin @ line 410, column 21
+[WARNING]
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING]
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING]
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-authorization-api >----------------
+[INFO] Building fads-authorization-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ fads-authorization-api ---
+[INFO] Deleting C:\Users\sgupt664\BE_Projects\fads-authorization-api\target
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven) @ fads-authorization-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO]
+[INFO] --- jacoco:0.8.10:prepare-agent (jacoco-initialize) @ fads-authorization-api ---
+[INFO] argLine set to -javaagent:C:\\Users\\sgupt664\\.m2\\repo1\\m3-3.9.9\\org\\jacoco\\org.jacoco.agent\\0.8.10\\org.jacoco.agent-0.8.10-runtime.jar=destfile=C:\\Users\\sgupt664\\BE_Projects\\fads-authorization-api\\target\\jacoco.exec
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ fads-authorization-api ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 2 resources from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.14.1:compile (default-compile) @ fads-authorization-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 52 source files with javac [debug parameters release 17] to target\classes
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/PgpRole.java:[24,38] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/CaseTypeModule.java:[22,34] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/CaseRole.java:[29,35] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/CaseRole.java:[30,44] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/controller/AuthorizationController.java:[29,1] Field 'log' already exists.
+[INFO] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/FADSUser.java: C:\Users\sgupt664\BE_Projects\fads-authorization-api\src\main\java\com\optum\fads\authorization\api\dto\FADSUser.java uses unchecked or unsafe operations.
+[INFO] /C:/Users/sgupt664/BE_Projects/fads-authorization-api/src/main/java/com/optum/fads/authorization/api/dto/FADSUser.java: Recompile with -Xlint:unchecked for details.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ fads-authorization-api ---
+[INFO] Copying 1 resource from src\test\resources to target\test-classes
+[INFO]
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ fads-authorization-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters release 17] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.4:test (default-test) @ fads-authorization-api ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ fads-authorization-api ---
+[INFO] Building jar: C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar
+[INFO]
+[INFO] --- spring-boot:3.5.7:repackage (repackage) @ fads-authorization-api ---
+[INFO] Replacing main artifact C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar.original
+[INFO]
+[INFO] --- spring-boot:3.5.7:repackage (default) @ fads-authorization-api ---
+[INFO] Replacing main artifact C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\sgupt664\BE_Projects\fads-authorization-api\target\fads-authorization-api.jar.original
+[INFO]
+[INFO] --- jacoco:0.8.10:report (jacoco-site) @ fads-authorization-api ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  16.434 s
+[INFO] Finished at: 2026-01-15T15:51:07+05:30
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>jar tf target\*.jar | findstr /i "azure-identity"
+BOOT-INF/lib/azure-identity-1.12.2.jar
+
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>jar tf target\*.jar | findstr /i "msal4j"
+BOOT-INF/lib/msal4j-persistence-extension-1.3.0.jar
+BOOT-INF/lib/msal4j-1.17.2.jar
+
+C:\Users\sgupt664\BE_Projects\fads-authorization-api>
