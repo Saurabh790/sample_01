@@ -1,105 +1,72 @@
-package com.optum.fads.pgp.reportsection.api.service;
+git rebase -i HEAD~3
+You will see something like:
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+matlab
+Copy code
+pick d46b0b3 CVE-... fix
+pick d8fba4c vul fix
+pick a84e796 removed the secrets
+2) Change pick to edit for d46b0b3
+Make it:
 
-import java.util.List;
-import java.util.Optional;
+matlab
+Copy code
+edit d46b0b3 CVE-... fix
+pick d8fba4c vul fix
+pick a84e796 removed the secrets
+Save and exit.
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+3) When git stops at commit d46b0b3, fix the file in that commit
+Now replace the secret in that commit’s version of the file.
 
-import com.optum.fads.pgp.reportsection.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
-import com.optum.fads.pgp.reportsection.api.dto.AppUser;
-import com.optum.fads.pgp.reportsection.api.dto.ModuleAccess;
-import com.optum.fads.pgp.reportsection.api.repo.UserRepository;
-import com.optum.fads.pgp.reportsection.api.service.impl.UserDetailsService;
+Open:
+src/main/resources/application.yml
 
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
+Make sure line ~19 has placeholders like you already have now:
 
-    @Mock
-    private UserRepository userRepository;
+yaml
+Copy code
+client-secret: ${AZURE_KV_CLIENT_SECRET}
+Then run:
 
-    @InjectMocks
-    private UserDetailsService service;
+bash
+Copy code
+git add src/main/resources/application.yml
+git commit --amend --no-edit
+4) Continue rebase
+bash
+Copy code
+git rebase --continue
+If it stops again due to conflicts, resolve, then:
 
-    @Test
-    void loadUserByUsername_userNotFound_throws() {
-        when(userRepository.findByUiEMailAddressOrUiUserId(eq("abc"), eq("abc")))
-                .thenReturn(Optional.empty());
+bash
+Copy code
+git add .
+git rebase --continue
+5) Push with force (because history changed)
+bash
+Copy code
+git push -f origin vulFixSG
+Quick “proof” before pushing (optional but helpful)
+To confirm that commit d46b0b3 no longer contains secrets:
 
-        assertThrows(UsernameNotFoundException.class, () -> service.loadUserByUsername("abc"));
+bash
+Copy code
+git show d46b0b3:src/main/resources/application.yml | findstr /i "client-secret"
+It should show ${AZURE_KV_CLIENT_SECRET} (not a real secret string).
 
-        verify(userRepository).findByUiEMailAddressOrUiUserId("abc", "abc");
-        verifyNoMoreInteractions(userRepository);
-    }
+Why this is required (simple explanation)
+GitHub push protection scans all commits you’re pushing, not just the latest file state.
+So as long as d46b0b3 exists in the branch history with the real secret, push will be blocked.
 
-    @Test
-    void loadUserByUsername_userFound_mapsRoleAndAccesses() {
-        // --- Arrange ---
-        UiUserBase uiUserBase = mock(UiUserBase.class, RETURNS_DEEP_STUBS);
+If you want the absolute minimal command set (no explanation), it’s exactly:
 
-        // basic user fields
-        when(uiUserBase.getUiEMailAddress()).thenReturn("u@x.com");
-        when(uiUserBase.getUiUserId()).thenReturn("user1");
-        when(uiUserBase.getUiSystemId()).thenReturn("SYS-1");
-
-        // group / role
-        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()).thenReturn(10); // int in many domains
-        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpName()).thenReturn("Admin");
-
-        // one module access row
-        SeSurGrpModAccess modAccess = mock(SeSurGrpModAccess.class, RETURNS_DEEP_STUBS);
-
-        // IMPORTANT: This string can be anything now because we mock ModuleAccess.getByName(...)
-        when(modAccess.getId().getSurModuleId()).thenReturn("REPORT_ITEMS");
-        when(modAccess.getSeSurModule().getSurModuleName()).thenReturn("Report Items");
-        when(modAccess.getSeSurAccess().getSurAccessId()).thenReturn(2); // usually int/Integer
-
-        when(uiUserBase.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses())
-                .thenReturn(List.of(modAccess));
-
-        when(userRepository.findByUiEMailAddressOrUiUserId(eq("user1"), eq("user1")))
-                .thenReturn(Optional.of(uiUserBase));
-
-        // --- Act + Assert (static mock) ---
-        try (MockedStatic<ModuleAccess> mocked = mockStatic(ModuleAccess.class)) {
-
-            // Make sure getByName never returns null
-            mocked.when(() -> ModuleAccess.getByName(anyString()))
-                  .thenReturn(ModuleAccess.values()[0]);
-
-            UserDetails out = service.loadUserByUsername("user1");
-
-            assertNotNull(out);
-            assertTrue(out instanceof AppUser);
-
-            AppUser user = (AppUser) out;
-            assertEquals("u@x.com", user.getUserEmail());
-            assertEquals("user1", user.getUserId());
-            assertEquals("SYS-1", user.getUserSystemId());
-
-            assertNotNull(user.getRole());
-            assertEquals("10", user.getRole().getId());          // service does Long.valueOf(...).toString()
-            assertEquals("Admin", user.getRole().getRoleName());
-
-            assertNotNull(user.getRole().getAllowedAccesses());
-            assertEquals(1, user.getRole().getAllowedAccesses().size());
-
-            // AccessLevel constructor receives moduleId as the first arg
-            assertEquals("REPORT_ITEMS", user.getRole().getAllowedAccesses().get(0).getModuleId());
-            assertEquals("Report Items", user.getRole().getAllowedAccesses().get(0).getModuleName());
-
-            verify(userRepository).findByUiEMailAddressOrUiUserId("user1", "user1");
-        }
-    }
-}
+bash
+Copy code
+git rebase -i HEAD~3
+# change pick -> edit on d46b0b3, save/exit
+# edit application.yml to remove secret
+git add src/main/resources/application.yml
+git commit --amend --no-edit
+git rebase --continue
+git push -f origin vulFixSG
