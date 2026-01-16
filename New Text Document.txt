@@ -19,9 +19,9 @@ spring:
           client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
           tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
 
-#  jpa:
-#    database-platform: com.optum.fads.pgp.jobs.api.config.SnowflakeDialect
-#    show-sql: true
+  jpa:
+    database-platform: com.optum.fads.pgp.jobs.api.config.SnowflakeDialect
+    show-sql: true
   datasource:
     initialize: false
     hikari:
@@ -32,7 +32,7 @@ spring:
       leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
     sql:
        type: com.zaxxer.hikari.HikariDataSource
-       jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+       jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
        userName: sql-admin-user
        password: sql-admin-password
        driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
@@ -189,113 +189,3 @@ management:
 db:
   snfk-login:
     useCert: ${USE_CERT:false} # Flag to switch between database logins (default or snfk)
-	
-	
-	
-	above one appplication is failing but using below its working both are diff can u figure out what is the diff in these 2 as those belonsg to diff project so that I ccan have above one app also start working 
-	
-	
-	server:
-  port: 8080
-  servlet:
-    contextPath: /caseentrybatch
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
-
-spring: 
-  application:
-   name: caseentrybatch
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net
-        credential:
-          client-id: ce5962ff-06f5-4911-be66-e51b86531710
-          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1 
-  jpa:
-    database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
-    
-  datasource:
-     hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-     sql:
-       type: com.zaxxer.hikari.HikariDataSource
-       jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
-       userName: sql-admin-user
-       password: sql-admin-password
-       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-       jpa:
-           database-platform: org.hibernate.dialect.SQLServer2016Dialect
-           database: SQL_SERVER 
-           format-sql: true
-           globally_quoted_identifiers: true
-           show-sql: true
-           hibernate:
-              use-new-id-generator-mappings: true
-              globally_quoted_identifiers: true
-              hibernate.allow_update_outside_transaction: true
-              naming:
-                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
-     snfk:
-        type: com.zaxxer.hikari.HikariDataSource
-        driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
-        jdbcUrl: jdbc:snowflake://ew98463.east-us-2.azure.snowflakecomputing.com:443/?TIMEZONE=UTC&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true
-        database: PI_DEMO_DB
-        userName: pi-sf-usr-dev
-        password: pi-sf-usr-dev-pw
-        certKey: pi-sf-key-dev
-        passphrase: pi-sf-key-dev-pw
-        schema: FADS
-        warehouse: SGS_PI_DEMO_XSMALL_WH
-        role: 
-        account: 
-        jpa:
-            database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
-            database: default 
-            format-sql: true
-            globally_quoted_identifiers: true
-            show-sql: true
-            hibernate:
-               use-new-id-generator-mappings: true
-               globally_quoted_identifiers: true
-               naming:
-                     implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-                     physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
-  quartz:
-    properties:
-      org:
-        quartz:
-          threadPool:
-            class: org.quartz.simpl.SimpleThreadPool
-            threadCount: 3      
-management:
-  endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
-#  security:
-#    oauth2:
-#      resourceserver:
-#        jwt:
-#          jwk-set-uri: ${JWKS_URL}
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
-db:
-  snfk-login:
-    useCert: ${USE_CERT:false}
