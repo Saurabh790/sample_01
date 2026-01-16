@@ -1,20 +1,79 @@
+Run:
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-engine>git log --oneline -- src/main/resources/application.yml
-eeb28d5 (HEAD -> vulFixSG) removed the secrets
-1ea97e6 vul fix
-d46b0b3 (vulFix48924) CVE-2025-48924, CVE-2025-67735, CVE-2024-35255 fix
-d0bf224 US8702535 Feature for pulling key pair credentials of Snowflake and Sql from Azure Key vault
-7f101b2 Add key-pair authentication with snowflake by using azure key-vault feature
-b742667  Fix the engine issue and revert the  spring boot version and other jar versions
-48901ed Apply more debug statements in pgp-engine
-ded0a5a Apply more debug statements in pgp-engine
-701e628 Fix the API upgrade issues
-13369c3 Apply Jenkins stage and Snowflake database connection setup
-35a474e Update Docker, POM, application yml
-e85873b Add last run date scheduler
-31e4cd3 scheduler Changes for last run date for pgp-study in sql from snowflake
-a557135 PGP Engine source
-b241ffe PGP Engine stages initial source
-5d99333 stage 3 source
-294c6e5 PGP Engine
-4e75fc1 initial code
+git rebase -i HEAD~3
+
+
+Your editor will open with something like:
+
+pick d46b0b3 CVE-2025-48924, CVE-2025-67735, CVE-2024-35255 fix
+pick 1ea97e6 vul fix
+pick eeb28d5 removed the secrets
+
+
+Change only the line with d46b0b3 to edit:
+
+edit d46b0b3 CVE-2025-48924, CVE-2025-67735, CVE-2024-35255 fix
+pick 1ea97e6 vul fix
+pick eeb28d5 removed the secrets
+
+
+Save and exit (:wq!).
+
+Git will stop and say something like:
+
+You are now editing commit d46b0b3…
+
+Now do exactly this:
+
+Open the file GitHub flagged:
+
+notepad src/main/resources/application.yml
+
+
+Go to line 19 and remove the secret.
+Replace it with an environment placeholder:
+
+client-secret: ${AZURE_CLIENT_SECRET}
+
+
+Stage it:
+
+git add src/main/resources/application.yml
+
+
+Amend that commit:
+
+git commit --amend --no-edit
+
+
+Continue:
+
+git rebase --continue
+
+
+If it stops again, just run:
+
+git rebase --continue
+
+
+until it finishes.
+
+Now verify:
+
+git branch --contains d46b0b3
+
+
+It should show only:
+
+vulFix48924
+
+
+and not vulFixSG.
+That means your branch is finally clean.
+
+Then push:
+
+git push --force-with-lease
+
+
+At that point GitHub Push Protection will allow the push, because the secret-containing commit no longer exists in your branch history.
