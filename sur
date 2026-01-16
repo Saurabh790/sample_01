@@ -1,7 +1,1005 @@
-C:\Users\sgupt664\BE_Projects\fads-casetracking-api>mvn -q dependency:tree -Dincludes=com.microsoft.azure:msal4j
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-C:\Users\sgupt664\BE_Projects\fads-casetracking-api>jar tf target/*.jar | findstr /i "msal4j"
-BOOT-INF/lib/msal4j-1.17.2.jar
-BOOT-INF/lib/msal4j-persistence-extension-1.1.0.jar
+    <modelVersion>4.0.0</modelVersion>
 
-C:\Users\sgupt664\BE_Projects\fads-casetracking-api>
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-case-entry-batch</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    
+     <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+         <version>3.5.8</version>
+        <relativePath/>
+    </parent>
+
+    <repositories>
+        <repository>
+            <id>artifactory</id>
+            <name>Artifactory</name>
+            <url>https://repo1.uhc.com/artifactory/repo</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <surefire.skip>${skipTests}</surefire.skip>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+	    <log4j2.version>2.16.0</log4j2.version>
+        <java.version>17</java.version>
+        <spring.boot.version>3.5.8</spring.boot.version>
+        <spring.cloud.version>2025.0.0</spring.cloud.version>
+        <jasypt.version>3.0.5</jasypt.version>
+        <jwt.version>4.4.0</jwt.version>
+        <cloudsdk.version>4.2.0-RELEASE</cloudsdk.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
+        <jacoco.version>0.8.12</jacoco.version>
+        <springrunner.version>0.1.0</springrunner.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>7.4</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <restassured.version>5.5.0</restassured.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+	    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+        <sonar.coverage.exclusions>
+            **/com/optum/fads/caseentrybatch.api/**,
+        </sonar.coverage.exclusions>
+        <bcp.version>1.67</bcp.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.azure.spring</groupId>
+                <artifactId>spring-cloud-azure-dependencies</artifactId>
+                <version>4.6.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+			<dependency>
+				<groupId>org.apache.logging.log4j</groupId>
+				<artifactId>log4j-bom</artifactId>
+				<version>2.24.3</version>
+				<scope>import</scope>
+				<type>pom</type>
+			</dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            
+            <dependency>
+			  <groupId>com.azure</groupId>
+			  <artifactId>azure-identity</artifactId>
+			  <version>1.12.2</version>
+			</dependency>
+			
+			<dependency>
+			  <groupId>com.microsoft.azure</groupId>
+			  <artifactId>msal4j</artifactId>
+			  <version>1.17.2</version>
+			</dependency>
+
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+         <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-classic</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-core</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-email -->
+		<dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-email</artifactId>
+		    <version>1.5</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			 <version>3.18.0</version> 
+		</dependency>
+
+		<dependency>
+			<groupId>org.hibernate.javax.persistence</groupId>
+			<artifactId>hibernate-jpa-2.1-api</artifactId>
+			<version>1.0.2.Final</version>
+		</dependency>
+		
+		<!-- Micrometer Prometheus registry  -->
+		<dependency>
+		    <groupId>io.micrometer</groupId>
+		    <artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
+        <!-- Password Encryption -->
+        <dependency>
+            <groupId>com.github.ulisesbocchio</groupId>
+            <artifactId>jasypt-spring-boot-starter</artifactId>
+            <version>${jasypt.version}</version>
+        </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <version>${jwt.version}</version>
+        </dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt</artifactId>
+			<version>0.12.6</version>
+		</dependency>
+		
+ 		<dependency>
+		    <groupId>org.apache.httpcomponents</groupId>
+		    <artifactId>httpclient</artifactId>
+		    <version>4.5.14</version>
+		</dependency>
+
+        <!-- Model Mapper -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+        
+        <!-- MapStruct -->
+
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct-jdk8</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct-processor</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
+
+        <!-- Jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+	</dependency>
+
+	<dependency>
+	     <groupId>com.fasterxml.jackson.core</groupId>
+	     <artifactId>jackson-databind</artifactId>
+	</dependency>
+
+        <!--Used in Getter/Setter Verifier @NonNull  -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+
+        
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JSON logging-->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        
+		<!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
+		<dependency>
+		    <groupId>org.codehaus.jettison</groupId>
+		    <artifactId>jettison</artifactId>
+		    <version>1.5.4</version>
+		</dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-quartz</artifactId>
+		</dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${restassured.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		
+		<dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>          
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+		</dependency>
+
+        <!-- Quartz-Java dependency Remediation Upgrade  -->
+        <dependency>
+			<groupId>org.quartz-scheduler</groupId>
+			<artifactId>quartz</artifactId>
+		</dependency>
+		
+		<dependency>
+		    <groupId>com.microsoft.sqlserver</groupId>
+		    <artifactId>mssql-jdbc</artifactId>
+		    <version>13.2.1.jre11</version>
+		</dependency>
+
+		
+		<dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>6.2.3.Final</version>
+        </dependency>
+        
+        <!-- Snowflake dependency -->
+		<dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
+        <dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-ext-jdk15on</artifactId>
+			<version>${bcp.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcpkix-jdk15on</artifactId>
+			<version>${bcp.version}</version>
+		</dependency> 
+		<dependency>
+			<groupId>com.nimbusds</groupId>
+			<artifactId>nimbus-jose-jwt</artifactId>
+			<version>9.37.4</version>
+		</dependency>
+
+	</dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <annotationProcessorPaths>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${org.mapstruct.version}</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.0.0-M2</version>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring.boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skip>${surefire.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
+
+
+
+below are the issue which I tried to fix in above 
+
+Subscription name	Resource	Resource group	Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
+93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2025-67735	12/15/2025 23:28	2026-01-08T22:49:55.388395Z	FixAvailable	fads-case-entry-batch	6.5	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-case-entry-batch-images-sha256:9dce055f290c9d169f4d4fdffb7634d6d9a3ad18581c53a4f0fabf01f7d09727
+93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2025-53864	7/10/2025 16:00	2026-01-08T22:49:55.388395Z	FixAvailable	fads-case-entry-batch	5.8	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:N/A:L/E:P/RL:O/RC:C	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-case-entry-batch-images-sha256:9dce055f290c9d169f4d4fdffb7634d6d9a3ad18581c53a4f0fabf01f7d09727
+93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2024-35255	6/10/2024 16:00	2026-01-08T22:49:55.388395Z	FixAvailable	fads-case-entry-batch	5.5	CVSS:3.0/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N/E:U/RL:O/RC:C	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-case-entry-batch-images-sha256:9dce055f290c9d169f4d4fdffb7634d6d9a3ad18581c53a4f0fabf01f7d09727
+
+can u check it got fixed and I am getting the same error as getting in other api while running the app 
+
+
+
+[INFO]
+[INFO] --- enforcer:3.0.0-M2:enforce (enforce-maven) @ fads-case-entry-batch ---
+[INFO]
+[INFO] --- git-commit-id:3.0.0:revision (default) @ fads-case-entry-batch ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ fads-case-entry-batch ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ fads-case-entry-batch ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ fads-case-entry-batch ---
+[INFO] Not copying test resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ fads-case-entry-batch ---
+[INFO] Not compiling test sources
+[INFO]
+[INFO] <<< spring-boot:3.5.8:run (default-cli) < test-compile @ fads-case-entry-batch <<<
+[INFO]
+[WARNING] The artifact org.hibernate:hibernate-core:jar:6.2.3.Final has been relocated to org.hibernate.orm:hibernate-core:jar:6.2.3.Final
+[INFO]
+[INFO] --- spring-boot:3.5.8:run (default-cli) @ fads-case-entry-batch ---
+[INFO] Attaching agents: []
+14:12:42,626 |-WARN in ch.qos.logback.classic.boolex.StubEventEvaluator@600b0b7 - This class is a stub for JaninoEventEvaluator which was removed in logback version 1.5.13
+14:12:42,628 |-WARN in ch.qos.logback.classic.boolex.StubEventEvaluator@600b0b7 - You can migrate existing configurations to Java-only equivalents with the "Janino Expression migrator" tool at:
+14:12:42,628 |-WARN in ch.qos.logback.classic.boolex.StubEventEvaluator@600b0b7 - https://logback.qos.ch/translator/services/janinoExpressionMigrator.html
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.8)
+
+2026-01-16T14:12:43.089+05:30  INFO 17576 --- [           main] c.o.f.c.api.CaseEntryBatchApplication    : Starting CaseEntryBatchApplication using Java 17.0.10 with PID 17576 (C:\Users\sgupt664\BE_Projects\fads-case-entry-batch\target\classes started by sgupt664 in C:\Users\sgupt664\BE_Projects\fads-case-entry-batch)
+2026-01-16T14:12:43.099+05:30  INFO 17576 --- [           main] c.o.f.c.api.CaseEntryBatchApplication    : No active profile set, falling back to 1 default profile: "default"
+2026-01-16T14:12:44.399+05:30  INFO 17576 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-01-16T14:12:44.608+05:30  INFO 17576 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 195 ms. Found 3 JPA repository interfaces.
+2026-01-16T14:12:44.611+05:30  INFO 17576 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-01-16T14:12:44.826+05:30  INFO 17576 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 212 ms. Found 30 JPA repository interfaces.
+2026-01-16T14:12:45.685+05:30  INFO 17576 --- [           main] ptablePropertiesBeanFactoryPostProcessor : Post-processing PropertySource instances
+2026-01-16T14:12:45.686+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Skipping PropertySource configurationProperties [class org.springframework.boot.context.properties.source.ConfigurationPropertySourcesPropertySource
+2026-01-16T14:12:45.688+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Skipping PropertySource servletConfigInitParams [class org.springframework.core.env.PropertySource$StubPropertySource
+2026-01-16T14:12:45.689+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Skipping PropertySource servletContextInitParams [class org.springframework.core.env.PropertySource$StubPropertySource
+2026-01-16T14:12:45.689+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Converting PropertySource systemProperties [org.springframework.core.env.PropertiesPropertySource] to EncryptableMapPropertySourceWrapper
+2026-01-16T14:12:45.691+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Converting PropertySource systemEnvironment [org.springframework.boot.env.SystemEnvironmentPropertySourceEnvironmentPostProcessor$OriginAwareSystemEnvironmentPropertySource] to EncryptableSystemEnvironmentPropertySourceWrapper
+2026-01-16T14:12:45.691+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Converting PropertySource random [org.springframework.boot.env.RandomValuePropertySource] to EncryptablePropertySourceWrapper
+2026-01-16T14:12:45.692+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Converting PropertySource Config resource 'class path resource [application.yml]' via location 'optional:classpath:/' [org.springframework.boot.env.OriginTrackedMapPropertySource] to EncryptableMapPropertySourceWrapper
+2026-01-16T14:12:45.692+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Converting PropertySource applicationInfo [org.springframework.boot.ApplicationInfoPropertySource] to EncryptableMapPropertySourceWrapper
+2026-01-16T14:12:45.692+05:30  INFO 17576 --- [           main] c.u.j.EncryptablePropertySourceConverter : Converting PropertySource defaultProperties [org.springframework.core.env.MapPropertySource] to EncryptableMapPropertySourceWrapper
+2026-01-16T14:12:45.924+05:30  INFO 17576 --- [           main] c.u.j.filter.DefaultLazyPropertyFilter   : Property Filter custom Bean not found with name 'encryptablePropertyFilter'. Initializing Default Property Filter
+2026-01-16T14:12:45.934+05:30  INFO 17576 --- [           main] c.u.j.r.DefaultLazyPropertyResolver      : Property Resolver custom Bean not found with name 'encryptablePropertyResolver'. Initializing Default Property Resolver
+2026-01-16T14:12:45.937+05:30  INFO 17576 --- [           main] c.u.j.d.DefaultLazyPropertyDetector      : Property Detector custom Bean not found with name 'encryptablePropertyDetector'. Initializing Default Property Detector
+2026-01-16T14:12:46.279+05:30  INFO 17576 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-01-16T14:12:46.297+05:30  INFO 17576 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-01-16T14:12:46.297+05:30  INFO 17576 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.49]
+2026-01-16T14:12:46.433+05:30  INFO 17576 --- [           main] o.a.c.c.C.[.[.[/caseentrybatch]          : Initializing Spring embedded WebApplicationContext
+2026-01-16T14:12:46.435+05:30  INFO 17576 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3215 ms
+2026-01-16T14:12:46.751+05:30  INFO 17576 --- [           main] c.a.c.i.jackson.JacksonVersion           : Package versions: jackson-core=2.19.4, jackson-databind=2.19.4, jackson-dataformat-xml=2.19.4, jackson-datatype-jsr310=2.19.4, azure-core=1.35.0, Troubleshooting version conflicts: https://aka.ms/azsdk/java/dependency/troubleshoot
+2026-01-16T14:12:47.827+05:30  WARN 17576 --- [           main] reactor.core.Exceptions                  : throwIfFatal detected a jvm fatal exception, which is thrown and logged below:
+
+java.lang.NoSuchMethodError: 'boolean com.azure.core.credential.TokenRequestContext.isCaeEnabled()'
+        at com.azure.identity.implementation.IdentityClient.getConfidentialClientInstance(IdentityClient.java:538)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:680)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:667)
+        at com.azure.identity.ClientSecretCredential.getToken(ClientSecretCredential.java:117)
+        at com.azure.core.implementation.AccessTokenCache.lambda$retrieveToken$4(AccessTokenCache.java:102)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:45)
+        at reactor.core.publisher.InternalMonoOperator.subscribe(InternalMonoOperator.java:76)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.MonoFromFluxOperator.subscribe(MonoFromFluxOperator.java:83)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.Mono.subscribe(Mono.java:4576)
+        at reactor.core.publisher.Mono.block(Mono.java:1778)
+        at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:74)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:187)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:173)
+        at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestOnChallengeSync(KeyVaultCredentialPolicy.java:314)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.processSync(BearerTokenAuthenticationPolicy.java:139)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:176)
+        at com.azure.core.http.policy.RetryPolicy.processSync(RetryPolicy.java:126)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.HttpPipelineSyncPolicy.processSync(HttpPipelineSyncPolicy.java:42)
+        at com.azure.core.http.policy.UserAgentPolicy.processSync(UserAgentPolicy.java:153)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.HttpPipeline.sendSync(HttpPipeline.java:121)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.send(SyncRestProxy.java:51)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.invoke(SyncRestProxy.java:77)
+        at com.azure.core.implementation.http.rest.RestProxyBase.invoke(RestProxyBase.java:105)
+        at com.azure.core.http.rest.RestProxy.invoke(RestProxy.java:95)
+        at jdk.proxy2/jdk.proxy2.$Proxy99.getSecret(Unknown Source)
+        at com.azure.security.keyvault.secrets.implementation.SecretClientImpl.getSecretWithResponse(SecretClientImpl.java:545)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecretWithResponse(SecretClient.java:229)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecret(SecretClient.java:171)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.customDataSource(ServiceConfig.java:126)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$customDataSource$2(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.resolveBeanReference(ConfigurationClassEnhancer.java:432)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:403)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.snfkEntityManagerFactory(ServiceConfig.java:153)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$snfkEntityManagerFactory$0(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.snfkEntityManagerFactory(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.caseentrybatch.api.CaseEntryBatchApplication.main(CaseEntryBatchApplication.java:29)
+
+2026-01-16T14:12:47.833+05:30  WARN 17576 --- [           main] reactor.core.Exceptions                  : throwIfFatal detected a jvm fatal exception, which is thrown and logged below:
+
+java.lang.NoSuchMethodError: 'boolean com.azure.core.credential.TokenRequestContext.isCaeEnabled()'
+        at com.azure.identity.implementation.IdentityClient.getConfidentialClientInstance(IdentityClient.java:538)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:680)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:667)
+        at com.azure.identity.ClientSecretCredential.getToken(ClientSecretCredential.java:117)
+        at com.azure.core.implementation.AccessTokenCache.lambda$retrieveToken$4(AccessTokenCache.java:102)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:45)
+        at reactor.core.publisher.InternalMonoOperator.subscribe(InternalMonoOperator.java:76)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.MonoFromFluxOperator.subscribe(MonoFromFluxOperator.java:83)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.Mono.subscribe(Mono.java:4576)
+        at reactor.core.publisher.Mono.block(Mono.java:1778)
+        at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:74)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:187)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:173)
+        at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestOnChallengeSync(KeyVaultCredentialPolicy.java:314)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.processSync(BearerTokenAuthenticationPolicy.java:139)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:176)
+        at com.azure.core.http.policy.RetryPolicy.processSync(RetryPolicy.java:126)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.HttpPipelineSyncPolicy.processSync(HttpPipelineSyncPolicy.java:42)
+        at com.azure.core.http.policy.UserAgentPolicy.processSync(UserAgentPolicy.java:153)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.HttpPipeline.sendSync(HttpPipeline.java:121)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.send(SyncRestProxy.java:51)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.invoke(SyncRestProxy.java:77)
+        at com.azure.core.implementation.http.rest.RestProxyBase.invoke(RestProxyBase.java:105)
+        at com.azure.core.http.rest.RestProxy.invoke(RestProxy.java:95)
+        at jdk.proxy2/jdk.proxy2.$Proxy99.getSecret(Unknown Source)
+        at com.azure.security.keyvault.secrets.implementation.SecretClientImpl.getSecretWithResponse(SecretClientImpl.java:545)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecretWithResponse(SecretClient.java:229)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecret(SecretClient.java:171)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.customDataSource(ServiceConfig.java:126)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$customDataSource$2(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.resolveBeanReference(ConfigurationClassEnhancer.java:432)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:403)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.snfkEntityManagerFactory(ServiceConfig.java:153)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$snfkEntityManagerFactory$0(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.snfkEntityManagerFactory(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.caseentrybatch.api.CaseEntryBatchApplication.main(CaseEntryBatchApplication.java:29)
+
+2026-01-16T14:12:47.838+05:30  WARN 17576 --- [           main] reactor.core.Exceptions                  : throwIfFatal detected a jvm fatal exception, which is thrown and logged below:
+
+java.lang.NoSuchMethodError: 'boolean com.azure.core.credential.TokenRequestContext.isCaeEnabled()'
+        at com.azure.identity.implementation.IdentityClient.getConfidentialClientInstance(IdentityClient.java:538)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:680)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:667)
+        at com.azure.identity.ClientSecretCredential.getToken(ClientSecretCredential.java:117)
+        at com.azure.core.implementation.AccessTokenCache.lambda$retrieveToken$4(AccessTokenCache.java:102)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:45)
+        at reactor.core.publisher.InternalMonoOperator.subscribe(InternalMonoOperator.java:76)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.MonoFromFluxOperator.subscribe(MonoFromFluxOperator.java:83)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.Mono.subscribe(Mono.java:4576)
+        at reactor.core.publisher.Mono.block(Mono.java:1778)
+        at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:74)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:187)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:173)
+        at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestOnChallengeSync(KeyVaultCredentialPolicy.java:314)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.processSync(BearerTokenAuthenticationPolicy.java:139)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:176)
+        at com.azure.core.http.policy.RetryPolicy.processSync(RetryPolicy.java:126)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.HttpPipelineSyncPolicy.processSync(HttpPipelineSyncPolicy.java:42)
+        at com.azure.core.http.policy.UserAgentPolicy.processSync(UserAgentPolicy.java:153)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.HttpPipeline.sendSync(HttpPipeline.java:121)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.send(SyncRestProxy.java:51)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.invoke(SyncRestProxy.java:77)
+        at com.azure.core.implementation.http.rest.RestProxyBase.invoke(RestProxyBase.java:105)
+        at com.azure.core.http.rest.RestProxy.invoke(RestProxy.java:95)
+        at jdk.proxy2/jdk.proxy2.$Proxy99.getSecret(Unknown Source)
+        at com.azure.security.keyvault.secrets.implementation.SecretClientImpl.getSecretWithResponse(SecretClientImpl.java:545)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecretWithResponse(SecretClient.java:229)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecret(SecretClient.java:171)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.customDataSource(ServiceConfig.java:126)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$customDataSource$2(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.resolveBeanReference(ConfigurationClassEnhancer.java:432)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:403)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.snfkEntityManagerFactory(ServiceConfig.java:153)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$snfkEntityManagerFactory$0(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.snfkEntityManagerFactory(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.caseentrybatch.api.CaseEntryBatchApplication.main(CaseEntryBatchApplication.java:29)
+
+2026-01-16T14:12:47.842+05:30  WARN 17576 --- [           main] reactor.core.Exceptions                  : throwIfFatal detected a jvm fatal exception, which is thrown and logged below:
+
+java.lang.NoSuchMethodError: 'boolean com.azure.core.credential.TokenRequestContext.isCaeEnabled()'
+        at com.azure.identity.implementation.IdentityClient.getConfidentialClientInstance(IdentityClient.java:538)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:680)
+        at com.azure.identity.implementation.IdentityClient.authenticateWithConfidentialClientCache(IdentityClient.java:667)
+        at com.azure.identity.ClientSecretCredential.getToken(ClientSecretCredential.java:117)
+        at com.azure.core.implementation.AccessTokenCache.lambda$retrieveToken$4(AccessTokenCache.java:102)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:45)
+        at reactor.core.publisher.InternalMonoOperator.subscribe(InternalMonoOperator.java:76)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.MonoFromFluxOperator.subscribe(MonoFromFluxOperator.java:83)
+        at reactor.core.publisher.MonoDefer.subscribe(MonoDefer.java:53)
+        at reactor.core.publisher.Mono.subscribe(Mono.java:4576)
+        at reactor.core.publisher.Mono.block(Mono.java:1778)
+        at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:74)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:187)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:173)
+        at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestOnChallengeSync(KeyVaultCredentialPolicy.java:314)
+        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.processSync(BearerTokenAuthenticationPolicy.java:139)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:176)
+        at com.azure.core.http.policy.RetryPolicy.processSync(RetryPolicy.java:126)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.policy.HttpPipelineSyncPolicy.processSync(HttpPipelineSyncPolicy.java:42)
+        at com.azure.core.http.policy.UserAgentPolicy.processSync(UserAgentPolicy.java:153)
+        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:41)
+        at com.azure.core.http.HttpPipeline.sendSync(HttpPipeline.java:121)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.send(SyncRestProxy.java:51)
+        at com.azure.core.implementation.http.rest.SyncRestProxy.invoke(SyncRestProxy.java:77)
+        at com.azure.core.implementation.http.rest.RestProxyBase.invoke(RestProxyBase.java:105)
+        at com.azure.core.http.rest.RestProxy.invoke(RestProxy.java:95)
+        at jdk.proxy2/jdk.proxy2.$Proxy99.getSecret(Unknown Source)
+        at com.azure.security.keyvault.secrets.implementation.SecretClientImpl.getSecretWithResponse(SecretClientImpl.java:545)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecretWithResponse(SecretClient.java:229)
+        at com.azure.security.keyvault.secrets.SecretClient.getSecret(SecretClient.java:171)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.customDataSource(ServiceConfig.java:126)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$customDataSource$2(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.resolveBeanReference(ConfigurationClassEnhancer.java:432)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:403)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.customDataSource(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig.snfkEntityManagerFactory(ServiceConfig.java:153)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.CGLIB$snfkEntityManagerFactory$0(<generated>)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$FastClass$$1.invoke(<generated>)
+        at org.springframework.cglib.proxy.MethodProxy.invokeSuper(MethodProxy.java:258)
+        at org.springframework.context.annotation.ConfigurationClassEnhancer$BeanMethodInterceptor.intercept(ConfigurationClassEnhancer.java:400)
+        at com.optum.fads.caseentrybatch.api.config.ServiceConfig$$SpringCGLIB$$0.snfkEntityManagerFactory(<generated>)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:489)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.caseentrybatch.api.CaseEntryBatchApplication.main(CaseEntryBatchApplication.java:29)
+
+2026-01-16T14:12:47.848+05:30  WARN 17576 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'snfkEntityManagerFactory' defined in class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'snfkEntityManagerFactory' threw exception with message: Error creating bean with name 'fadsDataSource' defined in class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]: Failed to instantiate [javax.sql.DataSource]: Factory method 'customDataSource' threw exception with message: 'boolean com.azure.core.credential.TokenRequestContext.isCaeEnabled()'
+2026-01-16T14:12:47.857+05:30  INFO 17576 --- [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-01-16T14:12:48.303+05:30  INFO 17576 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-16T14:12:48.330+05:30 ERROR 17576 --- [           main] o.s.b.d.LoggingFailureAnalysisReporter   :
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+An attempt was made to call a method that does not exist. The attempt was made from the following location:
+
+    com.azure.identity.implementation.IdentityClient.getConfidentialClientInstance(IdentityClient.java:538)
+
+The following method did not exist:
+
+    'boolean com.azure.core.credential.TokenRequestContext.isCaeEnabled()'
+
+The calling method's class, com.azure.identity.implementation.IdentityClient, was loaded from the following location:
+
+    jar:file:/C:/Users/sgupt664/.m2/repo1/m3-3.9.9/com/azure/azure-identity/1.12.2/azure-identity-1.12.2.jar!/com/azure/identity/implementation/IdentityClient.class
+
+The called method's class, com.azure.core.credential.TokenRequestContext, is available from the following locations:
+
+    jar:file:/C:/Users/sgupt664/.m2/repo1/m3-3.9.9/com/azure/azure-core/1.35.0/azure-core-1.35.0.jar!/com/azure/core/credential/TokenRequestContext.class
+
+The called method's class hierarchy was loaded from the following locations:
+
+    com.azure.core.credential.TokenRequestContext: file:/C:/Users/sgupt664/.m2/repo1/m3-3.9.9/com/azure/azure-core/1.35.0/azure-core-1.35.0.jar
+
+
+Action:
+
+Correct the classpath of your application so that it contains compatible versions of the classes com.azure.identity.implementation.IdentityClient and com.azure.core.credential.TokenRequestContext
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  18.967 s
+[INFO] Finished at: 2026-01-16T14:12:48+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.8:run (default-cli) on project fads-case-entry-batch: Process terminated with exit code: 1 -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>
