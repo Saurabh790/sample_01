@@ -1,139 +1,23 @@
-org.springframework.beans.factory.parsing.BeanDefinitionParsingException: Configuration problem: @Bean method 'snowflakeJdbcTemplate' must not be declared as autowired; remove the method-level @Autowired annotation.
-Offending resource: class path resource [com/optum/fads/pgp/engine/api/config/DatasourceConfig.class]
-        at org.springframework.beans.factory.parsing.FailFastProblemReporter.error(FailFastProblemReporter.java:72)
-        at org.springframework.context.annotation.BeanMethod.validate(BeanMethod.java:52)
-        at org.springframework.context.annotation.ConfigurationClass.validate(ConfigurationClass.java:243)
-        at org.springframework.context.annotation.ConfigurationClassParser.validate(ConfigurationClassParser.java:228)
-        at org.springframework.context.annotation.ConfigurationClassPostProcessor.processConfigBeanDefinitions(ConfigurationClassPostProcessor.java:419)
-        at org.springframework.context.annotation.ConfigurationClassPostProcessor.postProcessBeanDefinitionRegistry(ConfigurationClassPostProcessor.java:290)
-        at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanDefinitionRegistryPostProcessors(PostProcessorRegistrationDelegate.java:349)
-        at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(PostProcessorRegistrationDelegate.java:118)
-        at org.springframework.context.support.AbstractApplicationContext.invokeBeanFactoryPostProcessors(AbstractApplicationContext.java:791)
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:609)
-        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-        at com.optum.fads.pgp.engine.api.PgpEngineApplication.main(PgpEngineApplication.java:33)
+<properties>
+  <spring-cloud-azure.version>6.1.0</spring-cloud-azure.version>
+</properties>
 
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  9.816 s
-[INFO] Finished at: 2026-01-15T20:36:11+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.7:run (default-cli) on project fads-pgp-engine-service: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>spring-cloud-azure-dependencies</artifactId>
+      <version>${spring-cloud-azure.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
 
-
-
-package com.optum.fads.pgp.engine.api.config;
-
-import jakarta.persistence.EntityManagerFactory;
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-
-
-
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
-						transactionManagerRef = "txManagerSQL",
-						basePackages = { "com.optum.fads.pgp.engine.api.repo"})
-@ComponentScan(basePackages = {"com.optum.fads.pgp.engine"} )
-public class DatasourceConfig{
-	
-	@Value("${spring.datasource.sql.userName}")
-	private String userName;
-
-	@Value("${spring.datasource.sql.password}")
-	private String password;
-
-	@Value("${spring.datasource.sql.jdbcUrl}")
-	private String url;
-
-	@Value("${spring.datasource.sql.driverClassName}")
-	private String driverClassName;
-
-	private final SecretClient secretClient;
-
-	public DatasourceConfig(SecretClient secretClient) {
-		this.secretClient = secretClient;
-	}
-
-	@Primary
-	@Bean(name = "fadsSQLDataSource")
-    public DataSource customDataSource() {
-        String userNameValue = secretClient.getSecret(userName).getValue();
-		String passwordValue = secretClient.getSecret(password).getValue();
-
-		DriverManagerDataSource dataSource = new DriverManagerDataSource();
-		dataSource.setDriverClassName(driverClassName);
-		dataSource.setUsername(userNameValue);
-		dataSource.setPassword(passwordValue);
-		dataSource.setUrl(url);
-
-		return dataSource;
-    }
-
-	@Primary
-	@Bean(name = "sqlEntityManagerFactory")
-	public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
-		{
-			LocalContainerEntityManagerFactoryBean em
-					= new LocalContainerEntityManagerFactoryBean();
-			em.setDataSource(customDataSource());
-			em.setPackagesToScan(
-					new String[] { "com.optum.fads.pgp.engine.api.domain" });
-			HibernateJpaVendorAdapter vendorAdapter
-				= new HibernateJpaVendorAdapter();
-			em.setJpaVendorAdapter(vendorAdapter);
-		return em;
-		}
-
-	@Primary
-	@Bean(name = "txManagerSQL")
-	public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
-		{
-			JpaTransactionManager txManager = new JpaTransactionManager();
-			txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
-			return txManager;
-		}
-	@Bean(name = "jdbcSQLServer")
-	@Autowired
-	public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSQLDataSource") DataSource dsSlave) {
-		return new JdbcTemplate(dsSlave);
-	}
-}
-
-
-pgp engine without my pom changes giving this error 
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-dependencies</artifactId>
+      <version>${spring.cloud.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
