@@ -1,8 +1,30 @@
-<netty.version>4.1.130.Final</netty.version>
-This will bump all Netty modules (including netty-codec-http) together and remove the CVE.
+<dependencyManagement>
+  <dependencies>
 
-Then verify:
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-dependencies</artifactId>
+      <version>${spring.boot.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
 
-bat
-Copy code
-mvn -q dependency:tree -Dincludes=io.netty | findstr /I netty-codec-http
+    <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-dependencies</artifactId>
+      <version>${spring.cloud.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+
+    <!-- ADD THIS (place it AFTER the above imports) -->
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-bom</artifactId>
+      <version>4.1.130.Final</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+
+  </dependencies>
+</dependencyManagement>
