@@ -1,4 +1,12 @@
+mvn -q dependency:tree | findstr /I netty
+If you want to see the full chain (who is pulling Netty in), this is even better:
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>mvn -q dependency:tree | grep -i netty
-'grep' is not recognized as an internal or external command,
-operable program or batch file.
+bat
+Copy code
+mvn dependency:tree -Dincludes=io.netty
+or for Reactor Netty specifically:
+
+bat
+Copy code
+mvn dependency:tree -Dincludes=io.projectreactor.netty
+That will print something like:
