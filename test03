@@ -1,72 +1,7 @@
-git rebase -i HEAD~3
-You will see something like:
-
-matlab
-Copy code
-pick d46b0b3 CVE-... fix
-pick d8fba4c vul fix
-pick a84e796 removed the secrets
-2) Change pick to edit for d46b0b3
-Make it:
-
-matlab
-Copy code
-edit d46b0b3 CVE-... fix
-pick d8fba4c vul fix
-pick a84e796 removed the secrets
-Save and exit.
-
-3) When git stops at commit d46b0b3, fix the file in that commit
-Now replace the secret in that commit’s version of the file.
-
-Open:
-src/main/resources/application.yml
-
-Make sure line ~19 has placeholders like you already have now:
-
-yaml
-Copy code
-client-secret: ${AZURE_KV_CLIENT_SECRET}
-Then run:
-
-bash
-Copy code
-git add src/main/resources/application.yml
-git commit --amend --no-edit
-4) Continue rebase
-bash
-Copy code
-git rebase --continue
-If it stops again due to conflicts, resolve, then:
-
-bash
-Copy code
-git add .
-git rebase --continue
-5) Push with force (because history changed)
-bash
-Copy code
-git push -f origin vulFixSG
-Quick “proof” before pushing (optional but helpful)
-To confirm that commit d46b0b3 no longer contains secrets:
-
-bash
-Copy code
-git show d46b0b3:src/main/resources/application.yml | findstr /i "client-secret"
-It should show ${AZURE_KV_CLIENT_SECRET} (not a real secret string).
-
-Why this is required (simple explanation)
-GitHub push protection scans all commits you’re pushing, not just the latest file state.
-So as long as d46b0b3 exists in the branch history with the real secret, push will be blocked.
-
-If you want the absolute minimal command set (no explanation), it’s exactly:
-
-bash
-Copy code
-git rebase -i HEAD~3
-# change pick -> edit on d46b0b3, save/exit
-# edit application.yml to remove secret
-git add src/main/resources/application.yml
-git commit --amend --no-edit
-git rebase --continue
-git push -f origin vulFixSG
+<dependency>
+  <groupId>io.netty</groupId>
+  <artifactId>netty-bom</artifactId>
+  <version>${netty.version}</version>
+  <type>pom</type>
+  <scope>import</scope>
+</dependency>
