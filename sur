@@ -1,65 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+      <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.9</version>
+        <relativePath/>
+    </parent>
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>mvn -q dependency:tree -Dincludes=io.netty | findstr /I netty-codec-http
+    <repositories>
+        <repository>
+            <id>central</id>
+			<name>centraluhg.jfrog.io-releases</name>
+			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>mvn dependency:tree -Dincludes=io.projectreactor.netty
-[INFO] Scanning for projects...
-[INFO]
-[INFO] ----------------< com.optum.fads:fads-pgp-behavior-api >----------------
-[INFO] Building fads-pgp-behavior-api 1.0.0
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-[INFO]
-[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-pgp-behavior-api ---
-[INFO] com.optum.fads:fads-pgp-behavior-api:jar:1.0.0
-[INFO] \- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.9:compile
-[INFO]    \- org.springframework.boot:spring-boot-starter-reactor-netty:jar:3.5.9:compile
-[INFO]       \- io.projectreactor.netty:reactor-netty-http:jar:1.2.11:compile
-[INFO]          \- io.projectreactor.netty:reactor-netty-core:jar:1.2.11:compile
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  3.303 s
-[INFO] Finished at: 2026-01-17T19:40:28+05:30
-[INFO] ------------------------------------------------------------------------
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-gateway-api</artifactId>
+    <version>1.0.0</version>
+    <name>fads-gateway-api</name>
+    <description>FADS Gateway</description>
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>mvn -q dependency:tree | findstr /I netty
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>mvn dependency:tree -Dincludes=io.netty
-[INFO] Scanning for projects...
-[INFO]
-[INFO] ----------------< com.optum.fads:fads-pgp-behavior-api >----------------
-[INFO] Building fads-pgp-behavior-api 1.0.0
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-[INFO]
-[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-pgp-behavior-api ---
-[INFO] com.optum.fads:fads-pgp-behavior-api:jar:1.0.0
-[INFO] \- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.9:compile
-[INFO]    \- org.springframework.boot:spring-boot-starter-reactor-netty:jar:3.5.9:compile
-[INFO]       \- io.projectreactor.netty:reactor-netty-http:jar:1.2.11:compile
-[INFO]          +- io.netty:netty-codec-http:jar:4.1.128.Final:compile
-[INFO]          |  +- io.netty:netty-common:jar:4.1.128.Final:compile
-[INFO]          |  +- io.netty:netty-buffer:jar:4.1.128.Final:compile
-[INFO]          |  +- io.netty:netty-transport:jar:4.1.128.Final:compile
-[INFO]          |  +- io.netty:netty-codec:jar:4.1.128.Final:compile
-[INFO]          |  \- io.netty:netty-handler:jar:4.1.128.Final:compile
-[INFO]          +- io.netty:netty-codec-http2:jar:4.1.128.Final:compile
-[INFO]          +- io.netty:netty-resolver-dns:jar:4.1.128.Final:compile
-[INFO]          |  +- io.netty:netty-resolver:jar:4.1.128.Final:compile
-[INFO]          |  \- io.netty:netty-codec-dns:jar:4.1.128.Final:compile
-[INFO]          +- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.128.Final:compile
-[INFO]          |  \- io.netty:netty-resolver-dns-classes-macos:jar:4.1.128.Final:compile
-[INFO]          +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.128.Final:compile
-[INFO]          |  +- io.netty:netty-transport-native-unix-common:jar:4.1.128.Final:compile
-[INFO]          |  \- io.netty:netty-transport-classes-epoll:jar:4.1.128.Final:compile
-[INFO]          \- io.projectreactor.netty:reactor-netty-core:jar:1.2.11:compile
-[INFO]             \- io.netty:netty-handler-proxy:jar:4.1.128.Final:compile
-[INFO]                \- io.netty:netty-codec-socks:jar:4.1.128.Final:compile
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  3.147 s
-[INFO] Finished at: 2026-01-17T19:41:21+05:30
-[INFO] ------------------------------------------------------------------------
+    <properties>
+        <java.version>17</java.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <log4j.version>2.24.3</log4j.version>
+        <netty.version>4.1.130.Final</netty.version>
+		<reactor-netty.version>1.2.8</reactor-netty.version>
+    </properties>
+    
+    
+    
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+      
+        <dependency>    
+             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-reactor-netty</artifactId>
+				</exclusion>
+			</exclusions>
+        </dependency>
+        <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-classic</artifactId>
+		</dependency>
+        <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-core</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+		<dependency>
+		    <groupId>com.nimbusds</groupId>
+		    <artifactId>nimbus-jose-jwt</artifactId>
+		    <version>9.37.4</version> <!-- Use latest stable version -->
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+        
+        <dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>json-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>accessors-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-http</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-core</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http2</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler-proxy</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-socks</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-buffer</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-unix-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-classes-epoll</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<!-- Native classifiers that Reactor Netty pulls in -->
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-epoll</artifactId>
+			<version>${netty.version}</version>
+			<classifier>linux-x86_64</classifier>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-classes-macos</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-native-macos</artifactId>
+			<version>${netty.version}</version>
+			<classifier>osx-x86_64</classifier>
+		</dependency>
+
+    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+	            
+	            <dependency>
+	  <groupId>io.netty</groupId>
+	  <artifactId>netty-bom</artifactId>
+	  <version>${netty.version}</version>
+	  <type>pom</type>
+	  <scope>import</scope>
+	</dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
