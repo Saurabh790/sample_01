@@ -1,332 +1,148 @@
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-starter-gateway-server-webflux/4.3.0/spring-cloud-starter-gateway-server-webflux-4.3.0.pom
-Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-starter-gateway-server-webflux/4.3.0/spring-cloud-starter-gateway-server-webflux-4.3.0.pom (2.7 kB at 7.2 kB/s)
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-gateway-server-webflux/4.3.0/spring-cloud-gateway-server-webflux-4.3.0.pom
-Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-gateway-server-webflux/4.3.0/spring-cloud-gateway-server-webflux-4.3.0.pom (2.0 kB at 31 kB/s)
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-starter-gateway-server-webflux/4.3.0/spring-cloud-starter-gateway-server-webflux-4.3.0.jar
-Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-starter-gateway-server-webflux/4.3.0/spring-cloud-starter-gateway-server-webflux-4.3.0.jar (2.2 kB at 2.4 kB/s)
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/cloud/spring-cloud-gateway-server-webflux/4.3.0/spring-cloud-gateway-server-webflux-4.3.0.jar
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.598 s
-[INFO] Finished at: 2026-01-21T11:26:55+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal on project fads-gateway-api: Could not resolve dependencies for project com.optum.fads:fads-gateway-api:jar:1.0.0
-[ERROR] dependency: org.springframework.cloud:spring-cloud-gateway-server-webflux:jar:4.3.0 (compile)
-[ERROR]         Could not transfer artifact org.springframework.cloud:spring-cloud-gateway-server-webflux:jar:4.3.0 from/to artifactory (https://repo1.uhc.com/artifactory/repo): status code: 403, reason phrase:  (403)
-[ERROR]
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
+server:
+  port: 8080
 
-C:\Users\sgupt664\BE_Projects\fads-gateway-api>
+management:
+  endpoint:
+    gateway:
+      access: read-only   # or: unrestricted
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+        exclude: caches, scheduledtasks, mappings, beans, heapdump, env, metrics, threaddump, loggers, configprops, conditions
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
 
+logging:
+  level:
+    org.springframework: INFO
+    org.springframework.web.HttpLogging: INFO
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO
+    org.springframework.cloud.gateway: DEBUG
 
+spring:
+  application:
+    name: fads-api-gateway
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
 
+  cloud:
+    gateway:
+      server:
+        webflux:
+          x-forwarded:
+            enabled: true
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+          routes:
+            - id: authorization
+              uri: https://as-pi-dev-authorization.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/authorization/**
+              filters:
+                - RewritePath=/api/v1.0/authorization/(?<segment>/?.*), /authorization/${segment}
 
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-      <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.9</version>
-        <relativePath/>
-    </parent>
+            - id: datarules
+              uri: https://as-pi-dev-datarules.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/datarules/**
+              filters:
+                - RewritePath=/api/v1.0/datarules/(?<segment>/?.*), /datarules/${segment}
 
-    <repositories>
-        <repository>
-            <id>central</id>
-			<name>centraluhg.jfrog.io-releases</name>
-			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
-        </repository>
-        <repository>
-            <id>snapshots</id>
-            <name>snapshots-repo</name>
-            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
-        </repository>
-    </repositories>
+            - id: behavior
+              uri: https://as-pi-dev-behavior.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/behavior/**
+              filters:
+                - RewritePath=/api/v1.0/behavior/(?<segment>/?.*), /behavior/${segment}
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-gateway-api</artifactId>
-    <version>1.0.0</version>
-    <name>fads-gateway-api</name>
-    <description>FADS Gateway</description>
+            - id: reportgroup
+              uri: https://as-pi-dev-reportgroup.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/reportgroup/**
+              filters:
+                - RewritePath=/api/v1.0/reportgroup/(?<segment>/?.*), /reportgroup/${segment}
 
+            - id: study
+              uri: https://as-pi-dev-study.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/study/**
+              filters:
+                - RewritePath=/api/v1.0/study/(?<segment>/?.*), /study/${segment}
 
-    <properties>
-        <java.version>17</java.version>
-        <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <snakeyaml.version>2.2</snakeyaml.version>
-        <log4j.version>2.24.3</log4j.version>
-        <spring.boot.version>3.5.8</spring.boot.version>
-         <netty.version>4.1.130.Final</netty.version>
-		<reactor-netty.version>1.2.8</reactor-netty.version>
-    </properties>
+            - id: jobmonitor
+              uri: https://as-pi-dev-jobmonitor.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/jobmonitor/**
+              filters:
+                - RewritePath=/api/v1.0/jobmonitor/(?<segment>/?.*), /jobmonitor/${segment}
 
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.nimbusds</groupId>
-                    <artifactId>nimbus-jose-jwt</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.nimbusds</groupId>
-                    <artifactId>nimbus-jose-jwt</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
- 			 <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-thymeleaf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
-        </dependency>
-      
-        <dependency>    
-             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-            <exclusions>
-				<exclusion>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-reactor-netty</artifactId>
-				</exclusion>
-			</exclusions>
-        </dependency>
-        <dependency>
-		    <groupId>ch.qos.logback</groupId>
-		    <artifactId>logback-classic</artifactId>
-		</dependency>
-        <dependency>
-		    <groupId>ch.qos.logback</groupId>
-		    <artifactId>logback-core</artifactId>
-		</dependency>
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+            - id: peergroup
+              uri: https://as-pi-dev-peergroup.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/peergroup/**
+              filters:
+                - RewritePath=/api/v1.0/peergroup/(?<segment>/?.*), /peergroup/${segment}
 
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
-		<dependency>
-		    <groupId>com.nimbusds</groupId>
-		    <artifactId>nimbus-jose-jwt</artifactId>
-		    <version>9.37.4</version> <!-- Use latest stable version -->
-		</dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.vintage</groupId>
-                    <artifactId>junit-vintage-engine</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-        </dependency>
-        
-        <dependency>
-			<groupId>net.minidev</groupId>
-			<artifactId>json-smart</artifactId>
-			<version>2.5.2</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>net.minidev</groupId>
-			<artifactId>accessors-smart</artifactId>
-			<version>2.5.2</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.projectreactor.netty</groupId>
-			<artifactId>reactor-netty-http</artifactId>
-			<version>${reactor-netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.projectreactor.netty</groupId>
-			<artifactId>reactor-netty-core</artifactId>
-			<version>${reactor-netty.version}</version>
-		</dependency>
+            - id: casetracking
+              uri: https://as-pi-dev-casetracking.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/casetracking/**
+              filters:
+                - RewritePath=/api/v1.0/casetracking/(?<segment>/?.*), /casetracking/${segment}
 
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-codec-http2</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-codec-http</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-handler</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-handler-proxy</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-codec-socks</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver-dns</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
+            - id: caseentry
+              uri: https://as-pi-dev-caseentry.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/caseentry/**
+              filters:
+                - RewritePath=/api/v1.0/caseentry/(?<segment>/?.*), /caseentry/${segment}
 
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-common</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-buffer</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-transport</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-codec</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-codec-dns</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-transport-native-unix-common</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-transport-classes-epoll</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
+            - id: caseClaimCorrections
+              uri: https://as-pi-dev-casecorrection.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/case-claim-corrections/**
+              filters:
+                - RewritePath=/api/v1.0/case-claim-corrections/(?<segment>/?.*), /case-claim-corrections/${segment}
 
-		<!-- Native classifiers that Reactor Netty pulls in -->
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-transport-native-epoll</artifactId>
-			<version>${netty.version}</version>
-			<classifier>linux-x86_64</classifier>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver-dns-classes-macos</artifactId>
-			<version>${netty.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver-dns-native-macos</artifactId>
-			<version>${netty.version}</version>
-			<classifier>osx-x86_64</classifier>
-		</dependency>
+            - id: userroles
+              uri: https://as-pi-dev-userroles.azurewebsites.net
+              predicates:
+                - Path=/api/v1.0/userroles/**
+              filters:
+                - RewritePath=/api/v1.0/userroles/(?<segment>/?.*), /userroles/${segment}
 
-    </dependencies>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-            
-             <dependency>
-		      <groupId>com.nimbusds</groupId>
-		      <artifactId>nimbus-jose-jwt</artifactId>
-		      <version>9.37.4</version>
-		    </dependency>
-        </dependencies>
-    </dependencyManagement>
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              "[/**]":
+                allowedOrigins: "*"
+                allowedMethods: "*"
+                allowedHeaders: "*"
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
+resilience4j.circuitbreaker:
+  instances:
+    gatewayCircuitBreaker:
+      registerHealthIndicator: true
+      slidingWindowType: COUNT_BASED
+      slidingWindowSize: 5
+      minimumNumberOfCalls: 5
+      permittedNumberOfCallsInHalfOpenState: 3
+      waitDurationInOpenState: 30s
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 5
+      automaticTransitionFromOpenToHalfOpenEnabled: true
 
-</project>
+resilience4j.timelimiter:
+  instances:
+    gatewayCircuitBreaker:
+      timeoutDuration: 30s
+      cancelRunningFuture: true
