@@ -1,13 +1,34 @@
-mvn -q dependency:tree -Dincludes=com.azure:azure-identity
-mvn help:effective-pom | findstr /i "azure-identity"
-mvn -q dependency:tree | findstr /i "azure-identity"
-jar tf target/*.jar | findstr /i "azure-identity"
-dir target\lib | findstr /i azure-identity
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-bom</artifactId>
+      <version>2.25.3</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+<properties>
+  <netty.version>4.1.129.Final</netty.version> <!-- or newer -->
+</properties>
 
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-bom</artifactId>
+      <version>${netty.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
 
-
-mvn dependency:tree -Dverbose -Dincludes=org.apache.commons:commons-lang3
-mvn dependency:tree -Dverbose -Dincludes=commons-lang:commons-lang
-jar tf target\*.jar | findstr /i "commons-lang3"
-jar tf target\*.jar | findstr /i "commons-lang"
-jar tf target\*.jar | findstr /i "commons-lang"
+    <dependency>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>spring-cloud-azure-dependencies</artifactId>
+      <version>${spring-cloud-azure.version}</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
