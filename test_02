@@ -1,34 +1,7 @@
-<dependencyManagement>
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-bom</artifactId>
-      <version>2.25.3</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-  </dependencies>
-</dependencyManagement>
-<properties>
-  <netty.version>4.1.129.Final</netty.version> <!-- or newer -->
-</properties>
-
-<dependencyManagement>
-  <dependencies>
-    <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-bom</artifactId>
-      <version>${netty.version}</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>com.azure.spring</groupId>
-      <artifactId>spring-cloud-azure-dependencies</artifactId>
-      <version>${spring-cloud-azure.version}</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-  </dependencies>
-</dependencyManagement>
+mvn -q dependency:tree -Dverbose -Dincludes=com.azure:azure-core,com.azure:azure-identity
+mvn -q clean package -DskipTests
+jar tf target\*.jar | findstr /i "azure-core"
+jar tf target\*.jar | findstr /i "azure-identity"
+jar tf target\*.jar | findstr /i "keyvault"
+mvn -q spring-boot:run -Dspring-boot.run.arguments="--debug"
+mvn -q dependency:tree -Dincludes=io.netty: -Dverbose
