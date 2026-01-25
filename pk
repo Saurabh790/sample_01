@@ -1,159 +1,33 @@
+private void createSessionTempTable(Connection conn) throws SQLException {
+  // H2: LOCAL TEMPORARY TABLE is session-scoped by default.
+  // Do NOT use "ON COMMIT PRESERVE ROWS" (H2 2.x rejects it).
+  String ddl =
+      "CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (" +
+          "job_run_id VARCHAR(50) NOT NULL," +
+          "txn_id BIGINT NOT NULL," +
+          "customer_id VARCHAR(20)," +
+          "product_id VARCHAR(20)," +
+          "invoice_date DATE NOT NULL," +
+          "base_amount DECIMAL(18,2)," +
+          "discount_rate DECIMAL(5,2)," +
+          "tax_rate DECIMAL(5,2)," +
+          "discount DECIMAL(18,2)," +
+          "tax DECIMAL(18,2)," +
+          "commission DECIMAL(18,2)," +
+          "net_amount DECIMAL(18,2)" +
+      ")";
 
-13:35:12.212 INFO  c.o.f.c.poc.InvoiceBatchApplication - Starting InvoiceBatchApplication using Java 17.0.10 on vetsodi10019581 with PID 25252 (C:\Users\sgupt664\BE_Projects\CaseEntryBatchPOC\target\classes started by sgupt664 in C:\Users\sgupt664\BE_Projects\CaseEntryBatchPOC)
-13:35:12.215 INFO  c.o.f.c.poc.InvoiceBatchApplication - No active profile set, falling back to 1 default profile: "default"
-13:35:12.902 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
-13:35:13.112 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
-13:35:13.313 INFO  o.s.b.c.r.s.JobRepositoryFactoryBean - No database type set, using meta data indicating: H2
-13:35:13.478 INFO  o.s.b.c.l.support.SimpleJobLauncher - No TaskExecutor has been set, defaulting to synchronous executor.
-13:35:13.569 INFO  c.o.f.c.poc.InvoiceBatchApplication - Started InvoiceBatchApplication in 1.85 seconds (JVM running for 2.211)
-13:35:13.571 INFO  o.s.b.a.b.JobLauncherApplicationRunner - Running default command line with: []
-13:35:13.633 INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [SimpleJob: [name=invoiceJob]] launched with the following parameters: [{run.id=1}]
-13:35:13.675 INFO  o.s.batch.core.job.SimpleStepHandler - Executing step: [invoiceStep]
-13:35:13.690 INFO  c.o.f.c.poc.batch.InvoiceTasklet - === JOB START === jobRunId=RUN_2026-01-24_1769328313684 invoiceDate=2026-01-24 pageSize=10
-13:35:13.699 ERROR c.o.f.c.poc.batch.InvoiceTasklet - JOB FAILED. Rolling back. jobRunId=RUN_2026-01-24_1769328313684
-org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (job_run_id VARCHAR(50) NOT NULL,txn_id BIGINT NOT NULL,customer_id VARCHAR(20),product_id VARCHAR(20),invoice_date DATE NOT NULL,base_amount DECIMAL(18,2),discount_rate DECIMAL(5,2),tax_rate DECIMAL(5,2),discount DECIMAL(18,2),tax DECIMAL(18,2),commission DECIMAL(18,2),net_amount DECIMAL(18,2)) ON COMMIT [*]PRESERVE ROWS"; SQL statement:
-CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (job_run_id VARCHAR(50) NOT NULL,txn_id BIGINT NOT NULL,customer_id VARCHAR(20),product_id VARCHAR(20),invoice_date DATE NOT NULL,base_amount DECIMAL(18,2),discount_rate DECIMAL(5,2),tax_rate DECIMAL(5,2),discount DECIMAL(18,2),tax DECIMAL(18,2),commission DECIMAL(18,2),net_amount DECIMAL(18,2)) ON COMMIT PRESERVE ROWS [42000-214]
-        at org.h2.message.DbException.getJdbcSQLException(DbException.java:502)
-        at org.h2.message.DbException.getJdbcSQLException(DbException.java:477)
-        at org.h2.message.DbException.get(DbException.java:223)
-        at org.h2.message.DbException.get(DbException.java:199)
-        at org.h2.message.DbException.getSyntaxError(DbException.java:247)
-        at org.h2.command.Parser.getSyntaxError(Parser.java:898)
-        at org.h2.command.Parser.prepareCommand(Parser.java:572)
-        at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:631)
-        at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:554)
-        at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1116)
-        at org.h2.jdbc.JdbcStatement.executeInternal(JdbcStatement.java:237)
-        at org.h2.jdbc.JdbcStatement.execute(JdbcStatement.java:223)
-        at com.zaxxer.hikari.pool.ProxyStatement.execute(ProxyStatement.java:94)
-        at com.zaxxer.hikari.pool.HikariProxyStatement.execute(HikariProxyStatement.java)
-        at com.optum.fads.caseentrybatch.poc.batch.InvoiceTasklet.createSessionTempTable(InvoiceTasklet.java:127)
-        at com.optum.fads.caseentrybatch.poc.batch.InvoiceTasklet.execute(InvoiceTasklet.java:47)
-        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:407)
-        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:331)
-        at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:140)
-        at org.springframework.batch.core.step.tasklet.TaskletStep$2.doInChunkContext(TaskletStep.java:273)
-        at org.springframework.batch.core.scope.context.StepContextRepeatCallback.doInIteration(StepContextRepeatCallback.java:82)
-        at org.springframework.batch.repeat.support.RepeatTemplate.getNextResult(RepeatTemplate.java:382)
-        at org.springframework.batch.repeat.support.RepeatTemplate.executeInternal(RepeatTemplate.java:215)
-        at org.springframework.batch.repeat.support.RepeatTemplate.iterate(RepeatTemplate.java:145)
-        at org.springframework.batch.core.step.tasklet.TaskletStep.doExecute(TaskletStep.java:258)
-        at org.springframework.batch.core.step.AbstractStep.execute(AbstractStep.java:208)
-        at org.springframework.batch.core.job.SimpleStepHandler.handleStep(SimpleStepHandler.java:152)
-        at org.springframework.batch.core.job.AbstractJob.handleStep(AbstractJob.java:413)
-        at org.springframework.batch.core.job.SimpleJob.doExecute(SimpleJob.java:136)
-        at org.springframework.batch.core.job.AbstractJob.execute(AbstractJob.java:320)
-        at org.springframework.batch.core.launch.support.SimpleJobLauncher$1.run(SimpleJobLauncher.java:149)
-        at org.springframework.core.task.SyncTaskExecutor.execute(SyncTaskExecutor.java:50)
-        at org.springframework.batch.core.launch.support.SimpleJobLauncher.run(SimpleJobLauncher.java:140)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:344)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:198)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
-        at org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration$PassthruAdvice.invoke(SimpleBatchConfiguration.java:128)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
-        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241)
-        at jdk.proxy2/jdk.proxy2.$Proxy51.run(Unknown Source)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.execute(JobLauncherApplicationRunner.java:213)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.executeLocalJobs(JobLauncherApplicationRunner.java:193)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.launchJobFromProperties(JobLauncherApplicationRunner.java:172)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:167)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:162)
-        at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:756)
-        at org.springframework.boot.SpringApplication.lambda$callRunners$2(SpringApplication.java:746)
-        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-        at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-        at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-        at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-        at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:744)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:315)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1300)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1289)
-        at com.optum.fads.caseentrybatch.poc.InvoiceBatchApplication.main(InvoiceBatchApplication.java:9)
-13:35:13.706 ERROR o.s.batch.core.step.AbstractStep - Encountered an error executing step invoiceStep in job invoiceJob
-org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (job_run_id VARCHAR(50) NOT NULL,txn_id BIGINT NOT NULL,customer_id VARCHAR(20),product_id VARCHAR(20),invoice_date DATE NOT NULL,base_amount DECIMAL(18,2),discount_rate DECIMAL(5,2),tax_rate DECIMAL(5,2),discount DECIMAL(18,2),tax DECIMAL(18,2),commission DECIMAL(18,2),net_amount DECIMAL(18,2)) ON COMMIT [*]PRESERVE ROWS"; SQL statement:
-CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (job_run_id VARCHAR(50) NOT NULL,txn_id BIGINT NOT NULL,customer_id VARCHAR(20),product_id VARCHAR(20),invoice_date DATE NOT NULL,base_amount DECIMAL(18,2),discount_rate DECIMAL(5,2),tax_rate DECIMAL(5,2),discount DECIMAL(18,2),tax DECIMAL(18,2),commission DECIMAL(18,2),net_amount DECIMAL(18,2)) ON COMMIT PRESERVE ROWS [42000-214]
-        at org.h2.message.DbException.getJdbcSQLException(DbException.java:502)
-        at org.h2.message.DbException.getJdbcSQLException(DbException.java:477)
-        at org.h2.message.DbException.get(DbException.java:223)
-        at org.h2.message.DbException.get(DbException.java:199)
-        at org.h2.message.DbException.getSyntaxError(DbException.java:247)
-        at org.h2.command.Parser.getSyntaxError(Parser.java:898)
-        at org.h2.command.Parser.prepareCommand(Parser.java:572)
-        at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:631)
-        at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:554)
-        at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1116)
-        at org.h2.jdbc.JdbcStatement.executeInternal(JdbcStatement.java:237)
-        at org.h2.jdbc.JdbcStatement.execute(JdbcStatement.java:223)
-        at com.zaxxer.hikari.pool.ProxyStatement.execute(ProxyStatement.java:94)
-        at com.zaxxer.hikari.pool.HikariProxyStatement.execute(HikariProxyStatement.java)
-        at com.optum.fads.caseentrybatch.poc.batch.InvoiceTasklet.createSessionTempTable(InvoiceTasklet.java:127)
-        at com.optum.fads.caseentrybatch.poc.batch.InvoiceTasklet.execute(InvoiceTasklet.java:47)
-        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:407)
-        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:331)
-        at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:140)
-        at org.springframework.batch.core.step.tasklet.TaskletStep$2.doInChunkContext(TaskletStep.java:273)
-        at org.springframework.batch.core.scope.context.StepContextRepeatCallback.doInIteration(StepContextRepeatCallback.java:82)
-        at org.springframework.batch.repeat.support.RepeatTemplate.getNextResult(RepeatTemplate.java:382)
-        at org.springframework.batch.repeat.support.RepeatTemplate.executeInternal(RepeatTemplate.java:215)
-        at org.springframework.batch.repeat.support.RepeatTemplate.iterate(RepeatTemplate.java:145)
-        at org.springframework.batch.core.step.tasklet.TaskletStep.doExecute(TaskletStep.java:258)
-        at org.springframework.batch.core.step.AbstractStep.execute(AbstractStep.java:208)
-        at org.springframework.batch.core.job.SimpleStepHandler.handleStep(SimpleStepHandler.java:152)
-        at org.springframework.batch.core.job.AbstractJob.handleStep(AbstractJob.java:413)
-        at org.springframework.batch.core.job.SimpleJob.doExecute(SimpleJob.java:136)
-        at org.springframework.batch.core.job.AbstractJob.execute(AbstractJob.java:320)
-        at org.springframework.batch.core.launch.support.SimpleJobLauncher$1.run(SimpleJobLauncher.java:149)
-        at org.springframework.core.task.SyncTaskExecutor.execute(SyncTaskExecutor.java:50)
-        at org.springframework.batch.core.launch.support.SimpleJobLauncher.run(SimpleJobLauncher.java:140)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:344)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:198)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163)
-        at org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration$PassthruAdvice.invoke(SimpleBatchConfiguration.java:128)
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
-        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241)
-        at jdk.proxy2/jdk.proxy2.$Proxy51.run(Unknown Source)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.execute(JobLauncherApplicationRunner.java:213)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.executeLocalJobs(JobLauncherApplicationRunner.java:193)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.launchJobFromProperties(JobLauncherApplicationRunner.java:172)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:167)
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:162)
-        at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:756)
-        at org.springframework.boot.SpringApplication.lambda$callRunners$2(SpringApplication.java:746)
-        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183)
-        at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357)
-        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510)
-        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499)
-        at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150)
-        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173)
-        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
-        at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596)
-        at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:744)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:315)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1300)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1289)
-        at com.optum.fads.caseentrybatch.poc.InvoiceBatchApplication.main(InvoiceBatchApplication.java:9)
-13:35:13.712 INFO  o.s.batch.core.step.AbstractStep - Step: [invoiceStep] executed in 37ms
-13:35:13.721 INFO  o.s.b.c.l.support.SimpleJobLauncher - Job: [SimpleJob: [name=invoiceJob]] completed with the following parameters: [{run.id=1}] and the following status: [FAILED] in 65ms
-13:35:13.791 INFO  c.o.f.c.poc.data.DataSeeder - DataSeeder: Inserted 100 TXN_SOURCE rows for invoice_date=2026-01-24
-13:35:13.803 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
-13:35:13.806 INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.315 s
-[INFO] Finished at: 2026-01-25T13:35:14+05:30
-[INFO] ------------------------------------------------------------------------
+  try (Statement st = conn.createStatement()) {
+    st.execute(ddl);
+  }
+  log.debug("Created/ensured TEMP_STAGE temp table exists.");
+}
+import org.springframework.core.annotation.Order;
 
-C:\Users\sgupt664\BE_Projects\CaseEntryBatchPOC>
+import org.springframework.core.annotation.Order;
+
+@Component
+@Order(Integer.MIN_VALUE)
+public class DataSeeder implements ApplicationRunner {
+   ...
+}
