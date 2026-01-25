@@ -1,30 +1,4 @@
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@EnableBatchProcessing
-public class InvoiceJobConfig {
-
-    @Bean
-    public Job invoiceJob(JobBuilderFactory jobs, Step invoiceStep) {
-        return jobs.get("invoiceJob")
-                .incrementer(new RunIdIncrementer())
-                .start(invoiceStep)
-                .build();
-    }
-
-    @Bean
-    public Step invoiceStep(StepBuilderFactory steps, InvoiceTasklet tasklet) {
-        return steps.get("invoiceStep")
-                .tasklet(tasklet)
-                .build();
-    }
-}
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
