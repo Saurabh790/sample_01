@@ -1,33 +1,5 @@
-private void createSessionTempTable(Connection conn) throws SQLException {
-  // H2: LOCAL TEMPORARY TABLE is session-scoped by default.
-  // Do NOT use "ON COMMIT PRESERVE ROWS" (H2 2.x rejects it).
-  String ddl =
-      "CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (" +
-          "job_run_id VARCHAR(50) NOT NULL," +
-          "txn_id BIGINT NOT NULL," +
-          "customer_id VARCHAR(20)," +
-          "product_id VARCHAR(20)," +
-          "invoice_date DATE NOT NULL," +
-          "base_amount DECIMAL(18,2)," +
-          "discount_rate DECIMAL(5,2)," +
-          "tax_rate DECIMAL(5,2)," +
-          "discount DECIMAL(18,2)," +
-          "tax DECIMAL(18,2)," +
-          "commission DECIMAL(18,2)," +
-          "net_amount DECIMAL(18,2)" +
-      ")";
-
-  try (Statement st = conn.createStatement()) {
-    st.execute(ddl);
-  }
-  log.debug("Created/ensured TEMP_STAGE temp table exists.");
-}
-import org.springframework.core.annotation.Order;
-
-import org.springframework.core.annotation.Order;
-
-@Component
-@Order(Integer.MIN_VALUE)
-public class DataSeeder implements ApplicationRunner {
-   ...
-}
+mvn -q dependency:tree -Dincludes=ch.qos.logback
+mvn dependency:tree -Dincludes=ch.qos.logback -Dverbose
+mvn help:effective-pom > effective-pom.xml
+mvn -q dependency:list | findstr /i logback
+mvn dependency:tree -Dincludes=ch.qos.logback -Dverbose
