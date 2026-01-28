@@ -1,290 +1,695 @@
+package com.optum.fads.caseentrybatch.poc;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class InvoiceBatchApplication {
+  public static void main(String[] args) {
+    SpringApplication.run(InvoiceBatchApplication.class, args);
+  }
+}
+
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableBatchProcessing
+public class InvoiceJobConfig {
+
+    @Bean
+    public Job invoiceJob(JobBuilderFactory jobs, Step invoiceStep) {
+        return jobs.get("invoiceJob")
+                .incrementer(new RunIdIncrementer())
+                .start(invoiceStep)
+                .build();
+    }
+
+    @Bean
+    public Step invoiceStep(StepBuilderFactory steps, InvoiceTasklet tasklet) {
+        return steps.get("invoiceStep")
+                .tasklet(tasklet)
+                .build();
+    }
+}
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.StepContribution;
+import org.springframework.batch.core.scope.context.ChunkContext;
+import org.springframework.batch.core.step.tasklet.Tasklet;
+import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.math.BigDecimal;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Component
+public class InvoiceTasklet implements Tasklet {
+  private static final Logger log = LoggerFactory.getLogger(InvoiceTasklet.class);
+
+  private final DataSource dataSource;
+
+  public InvoiceTasklet(DataSource dataSource) {
+    this.dataSource = dataSource;
+  }
+
+  @Override
+  public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+    String invoiceDateStr = (String) chunkContext.getStepContext().getJobParameters().get("invoiceDate");
+    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
+        ? LocalDate.of(2026, 1, 24) // demo default (matches seeder)
+        : LocalDate.parse(invoiceDateStr);
+
+    String jobRunId = "RUN_" + invoiceDate + "_" + System.currentTimeMillis();
+
+    int pageSize = 10;
+    int cycle = 0;
+
+    log.info("=== JOB START === jobRunId={} invoiceDate={} pageSize={}", jobRunId, invoiceDate, pageSize);
+
+    try (Connection conn = dataSource.getConnection()) {
+      conn.setAutoCommit(false);
+
+      try {
+        createSessionTempTable(conn);
+
+        // Loop until no more N rows for that date
+        while (true) {
+          cycle++;
+          List<Long> picked = pickNextBatch(conn, invoiceDate, pageSize);
+
+          if (picked.isEmpty()) {
+            log.info("No more rows to process. Exiting cycle loop. cycles={}", (cycle - 1));
+            break;
+          }
+
+          log.info("---- CYCLE {} START (picked {} txn_ids) ---- {}", cycle, picked.size(), picked);
+
+          clearTempStage(conn);
+
+          // Load picked rows into temp with enrichment rates (may be null if customer/product not found)
+          int loaded = loadPickedToTemp(conn, jobRunId, invoiceDate, picked);
+          log.info("CYCLE {}: Loaded into TEMP_STAGE rows={}", cycle, loaded);
+
+          // Validate rows inside TEMP_STAGE and split into GOOD vs ERROR
+          List<Long> goodTxnIds = new ArrayList<>();
+          validateAndRouteErrors(conn, jobRunId, invoiceDate, picked, goodTxnIds);
+
+          log.info("CYCLE {}: goodTxnIds={}, errorTxnIds={}", cycle, goodTxnIds.size(), (picked.size() - goodTxnIds.size()));
+
+          // Calculate + insert final txn lines for good ids
+          if (!goodTxnIds.isEmpty()) {
+            int insertedLines = insertFinalTxnLines(conn, jobRunId, invoiceDate, goodTxnIds);
+            log.info("CYCLE {}: Inserted FINAL_TXN_LINE rows={}", cycle, insertedLines);
+
+            int markedDone = updateSourceStatus(conn, goodTxnIds, 'D');
+            log.info("CYCLE {}: Marked TXN_SOURCE D rows={}", cycle, markedDone);
+          }
+
+          conn.commit();
+          log.info("---- CYCLE {} COMMIT ----", cycle);
+        }
+
+        // Final aggregation for this run/date
+        log.info("=== AGGREGATION START === jobRunId={} invoiceDate={}", jobRunId, invoiceDate);
+        int invoiceInserted = insertInvoices(conn, jobRunId, invoiceDate);
+        conn.commit();
+        log.info("=== AGGREGATION DONE === invoicesInserted={}", invoiceInserted);
+
+        int doneCount = count(conn, "SELECT COUNT(*) FROM TXN_SOURCE WHERE invoice_date=? AND status='D'", Date.valueOf(invoiceDate));
+        int errCount  = count(conn, "SELECT COUNT(*) FROM TXN_SOURCE WHERE invoice_date=? AND status='E'", Date.valueOf(invoiceDate));
+        log.info("=== JOB SUCCESS === jobRunId={} done={} errors={} (see TXN_ERROR table) logFile=logs/invoice-batch.log",
+            jobRunId, doneCount, errCount);
+
+      } catch (Exception e) {
+        log.error("JOB FAILED. Rolling back. jobRunId={}", jobRunId, e);
+        conn.rollback();
+        throw e;
+      }
+    }
+
+    return RepeatStatus.FINISHED;
+  }
+
+  // ---------------- session temp table helpers ----------------
+
+  private void createSessionTempTable(Connection conn) throws SQLException {
+	  // H2: LOCAL TEMPORARY TABLE is session-scoped by default.
+	  // Do NOT use "ON COMMIT PRESERVE ROWS" (H2 2.x rejects it).
+	  String ddl =
+	      "CREATE LOCAL TEMPORARY TABLE IF NOT EXISTS TEMP_STAGE (" +
+	          "job_run_id VARCHAR(50) NOT NULL," +
+	          "txn_id BIGINT NOT NULL," +
+	          "customer_id VARCHAR(20)," +
+	          "product_id VARCHAR(20)," +
+	          "invoice_date DATE NOT NULL," +
+	          "base_amount DECIMAL(18,2)," +
+	          "discount_rate DECIMAL(5,2)," +
+	          "tax_rate DECIMAL(5,2)," +
+	          "discount DECIMAL(18,2)," +
+	          "tax DECIMAL(18,2)," +
+	          "commission DECIMAL(18,2)," +
+	          "net_amount DECIMAL(18,2)" +
+	      ")";
+
+	  try (Statement st = conn.createStatement()) {
+	    st.execute(ddl);
+	  }
+	  log.debug("Created/ensured TEMP_STAGE temp table exists.");
+	}
+
+  private void clearTempStage(Connection conn) throws SQLException {
+    try (Statement st = conn.createStatement()) {
+      st.execute("DELETE FROM TEMP_STAGE");
+    }
+    log.debug("Cleared TEMP_STAGE for next cycle.");
+  }
+
+  // ---------------- cycle logic ----------------
+
+  /**
+   * Pick next batch:
+   * 1) Select top N txn_id with status='N'
+   * 2) Mark them 'P' (picked)
+   */
+  private List<Long> pickNextBatch(Connection conn, LocalDate invoiceDate, int pageSize) throws SQLException {
+    List<Long> ids = new ArrayList<>();
+
+    String select =
+        "SELECT txn_id FROM TXN_SOURCE " +
+        "WHERE invoice_date=? AND status='N' " +
+        "ORDER BY txn_id " +
+        "LIMIT ?";
+    try (PreparedStatement ps = conn.prepareStatement(select)) {
+      ps.setDate(1, Date.valueOf(invoiceDate));
+      ps.setInt(2, pageSize);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) ids.add(rs.getLong(1));
+      }
+    }
+
+    if (ids.isEmpty()) return ids;
+
+    String update = "UPDATE TXN_SOURCE SET status='P' WHERE txn_id=?";
+    try (PreparedStatement ps = conn.prepareStatement(update)) {
+      for (Long id : ids) {
+        ps.setLong(1, id);
+        ps.addBatch();
+      }
+      ps.executeBatch();
+    }
+
+    log.debug("Picked {} rows (N->P): {}", ids.size(), ids);
+    return ids;
+  }
+
+  /**
+   * Load picked rows into TEMP_STAGE with enrichment.
+   * Left join to allow invalid customer/product to become NULL rates (so we can route to error table).
+   */
+  private int loadPickedToTemp(Connection conn, String jobRunId, LocalDate invoiceDate, List<Long> picked) throws SQLException {
+    String inClause = makeInClause(picked.size());
+    String sql =
+        "INSERT INTO TEMP_STAGE(job_run_id, txn_id, customer_id, product_id, invoice_date, base_amount, discount_rate, tax_rate) " +
+        "SELECT ?, s.txn_id, s.customer_id, s.product_id, s.invoice_date, s.txn_amount, c.discount_rate, p.tax_rate " +
+        "FROM TXN_SOURCE s " +
+        "LEFT JOIN CUSTOMER c ON c.customer_id = s.customer_id " +
+        "LEFT JOIN PRODUCT  p ON p.product_id  = s.product_id " +
+        "WHERE s.invoice_date=? AND s.status='P' AND s.txn_id IN " + inClause;
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      int idx = 1;
+      ps.setString(idx++, jobRunId);
+      ps.setDate(idx++, Date.valueOf(invoiceDate));
+      for (Long id : picked) ps.setLong(idx++, id);
+      return ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Validate each picked txn:
+   * - base_amount must be not null and >= 0
+   * - discount_rate not null (customer exists)
+   * - tax_rate not null (product exists)
+   * Errors -> TXN_ERROR + mark source E
+   * Good -> collect txn_id in goodTxnIds
+   */
+  private void validateAndRouteErrors(Connection conn,
+                                      String jobRunId,
+                                      LocalDate invoiceDate,
+                                      List<Long> picked,
+                                      List<Long> goodTxnIds) throws SQLException {
+
+    String inClause = makeInClause(picked.size());
+    String sql =
+        "SELECT txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate " +
+        "FROM TEMP_STAGE WHERE txn_id IN " + inClause +
+        " ORDER BY txn_id";
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      int idx = 1;
+      for (Long id : picked) ps.setLong(idx++, id);
+
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          long txnId = rs.getLong("txn_id");
+          String customerId = rs.getString("customer_id");
+          String productId = rs.getString("product_id");
+          BigDecimal base = rs.getBigDecimal("base_amount");
+          BigDecimal discRate = rs.getBigDecimal("discount_rate");
+          BigDecimal taxRate = rs.getBigDecimal("tax_rate");
+
+          String reason = null;
+          if (base == null) reason = "AMOUNT_NULL";
+          else if (base.compareTo(BigDecimal.ZERO) < 0) reason = "AMOUNT_NEGATIVE";
+          else if (discRate == null) reason = "CUSTOMER_NOT_FOUND";
+          else if (taxRate == null) reason = "PRODUCT_NOT_FOUND";
+
+          if (reason != null) {
+            log.debug("TXN {} INVALID -> {}", txnId, reason);
+            insertError(conn, jobRunId, invoiceDate, txnId, customerId, productId, base, reason);
+            updateSourceStatus(conn, List.of(txnId), 'E');
+          } else {
+            log.debug("TXN {} OK (customer={}, product={}, amount={})", txnId, customerId, productId, base);
+            goodTxnIds.add(txnId);
+          }
+        }
+      }
+    }
+  }
+
+  private void insertError(Connection conn,
+                           String jobRunId,
+                           LocalDate invoiceDate,
+                           long txnId,
+                           String customerId,
+                           String productId,
+                           BigDecimal amount,
+                           String reason) throws SQLException {
+    String sql =
+        "INSERT INTO TXN_ERROR(job_run_id, invoice_date, txn_id, customer_id, product_id, txn_amount, error_reason, created_at) " +
+        "VALUES (?,?,?,?,?,?,?,?)";
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, jobRunId);
+      ps.setDate(2, Date.valueOf(invoiceDate));
+      ps.setLong(3, txnId);
+      ps.setString(4, customerId);
+      ps.setString(5, productId);
+      if (amount == null) ps.setNull(6, Types.DECIMAL); else ps.setBigDecimal(6, amount);
+      ps.setString(7, reason);
+      ps.setTimestamp(8, Timestamp.valueOf(LocalDateTime.now()));
+      ps.executeUpdate();
+    }
+  }
+
+  /**
+   * Compute discount/tax/commission/net for good txn_ids and insert into FINAL_TXN_LINE.
+   * Rules:
+   * discount = base * discount_rate
+   * tax = (base-discount)*tax_rate
+   * commission = base*0.02
+   * net = (base-discount)+tax+commission
+   */
+  private int insertFinalTxnLines(Connection conn, String jobRunId, LocalDate invoiceDate, List<Long> goodTxnIds) throws SQLException {
+    String inClause = makeInClause(goodTxnIds.size());
+    String sql =
+        "INSERT INTO FINAL_TXN_LINE(txn_id, job_run_id, invoice_date, customer_id, base_amount, discount, tax, commission, net_amount, created_at) " +
+        "SELECT " +
+        "  t.txn_id, " +
+        "  ?, " +
+        "  t.invoice_date, " +
+        "  t.customer_id, " +
+        "  t.base_amount, " +
+        "  ROUND(t.base_amount * t.discount_rate, 2) AS discount, " +
+        "  ROUND((t.base_amount - ROUND(t.base_amount * t.discount_rate, 2)) * t.tax_rate, 2) AS tax, " +
+        "  ROUND(t.base_amount * 0.02, 2) AS commission, " +
+        "  ROUND((t.base_amount - ROUND(t.base_amount * t.discount_rate, 2)) " +
+        "     + ROUND((t.base_amount - ROUND(t.base_amount * t.discount_rate, 2)) * t.tax_rate, 2) " +
+        "     + ROUND(t.base_amount * 0.02, 2), 2) AS net_amount, " +
+        "  ? AS created_at " +
+        "FROM TEMP_STAGE t " +
+        "WHERE t.invoice_date=? AND t.txn_id IN " + inClause;
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      int idx = 1;
+      ps.setString(idx++, jobRunId);
+      ps.setTimestamp(idx++, Timestamp.valueOf(LocalDateTime.now()));
+      ps.setDate(idx++, Date.valueOf(invoiceDate));
+      for (Long id : goodTxnIds) ps.setLong(idx++, id);
+      return ps.executeUpdate();
+    }
+  }
+
+  private int updateSourceStatus(Connection conn, List<Long> txnIds, char status) throws SQLException {
+    String sql = "UPDATE TXN_SOURCE SET status=? WHERE txn_id=?";
+    int total = 0;
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      for (Long id : txnIds) {
+        ps.setString(1, String.valueOf(status));
+        ps.setLong(2, id);
+        ps.addBatch();
+      }
+      int[] res = ps.executeBatch();
+      for (int v : res) total += (v < 0 ? 0 : v);
+    }
+    return total;
+  }
+
+  // ---------------- aggregation ----------------
+
+  private int insertInvoices(Connection conn, String jobRunId, LocalDate invoiceDate) throws SQLException {
+    // Remove any invoice rows for this run/date (optional safety)
+    try (PreparedStatement ps = conn.prepareStatement("DELETE FROM INVOICE_FINAL WHERE job_run_id=? AND invoice_date=?")) {
+      ps.setString(1, jobRunId);
+      ps.setDate(2, Date.valueOf(invoiceDate));
+      ps.executeUpdate();
+    }
+
+    String sql =
+        "INSERT INTO INVOICE_FINAL(job_run_id, customer_id, invoice_date, total_gross, total_discount, total_tax, total_commission, total_net, created_at) " +
+        "SELECT ?, customer_id, invoice_date, " +
+        "       ROUND(SUM(base_amount),2), " +
+        "       ROUND(SUM(discount),2), " +
+        "       ROUND(SUM(tax),2), " +
+        "       ROUND(SUM(commission),2), " +
+        "       ROUND(SUM(net_amount),2), " +
+        "       ? " +
+        "FROM FINAL_TXN_LINE " +
+        "WHERE job_run_id=? AND invoice_date=? " +
+        "GROUP BY customer_id, invoice_date";
+
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setString(1, jobRunId);
+      ps.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+      ps.setString(3, jobRunId);
+      ps.setDate(4, Date.valueOf(invoiceDate));
+      return ps.executeUpdate();
+    }
+  }
+
+  // ---------------- misc helpers ----------------
+
+  private int count(Connection conn, String sql, Date param) throws SQLException {
+    try (PreparedStatement ps = conn.prepareStatement(sql)) {
+      ps.setDate(1, param);
+      try (ResultSet rs = ps.executeQuery()) {
+        rs.next();
+        return rs.getInt(1);
+      }
+    }
+  }
+
+  private String makeInClause(int n) {
+    // e.g. (?,?,?)
+    StringBuilder sb = new StringBuilder("(");
+    for (int i = 0; i < n; i++) {
+      if (i > 0) sb.append(",");
+      sb.append("?");
+    }
+    sb.append(")");
+    return sb.toString();
+  }
+}
+
+
+package com.optum.fads.caseentrybatch.poc.data;
+
+import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Random;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
+@Component
+@Order(Integer.MIN_VALUE)
+public class DataSeeder implements ApplicationRunner {
+  private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
+  private final JdbcTemplate jdbc;
+
+  public DataSeeder(JdbcTemplate jdbc) {
+    this.jdbc = jdbc;
+  }
+
+  @Override
+  public void run(ApplicationArguments args) {
+    // Avoid re-seeding if already present
+    Integer existing = jdbc.queryForObject("SELECT COUNT(*) FROM TXN_SOURCE", Integer.class);
+    if (existing != null && existing > 0) {
+      log.info("DataSeeder: TXN_SOURCE already has {} rows, skipping seed.", existing);
+      return;
+    }
+
+    LocalDate invoiceDate = LocalDate.of(2026, 1, 24);
+
+    // customers
+    for (int i = 1; i <= 10; i++) {
+      String c = String.format("C%02d", i);
+      BigDecimal discount = (i <= 3) ? new BigDecimal("0.10") : new BigDecimal("0.00");
+      jdbc.update("INSERT INTO CUSTOMER(customer_id, discount_rate) VALUES (?,?)", c, discount);
+    }
+
+    // products
+    for (int i = 1; i <= 5; i++) {
+      String p = String.format("P%02d", i);
+      jdbc.update("INSERT INTO PRODUCT(product_id, tax_rate) VALUES (?,?)", p, new BigDecimal("0.18"));
+    }
+
+    Random r = new Random(42);
+    LocalDateTime baseTime = invoiceDate.atTime(9, 0);
+
+    // 100 txns
+    for (int i = 1; i <= 100; i++) {
+      long txnId = 1000L + i;
+
+      String customer = String.format("C%02d", 1 + r.nextInt(10));
+      String product  = String.format("P%02d", 1 + r.nextInt(5));
+
+      BigDecimal amount = new BigDecimal(50 + r.nextInt(500)).setScale(2);
+      LocalDateTime t = baseTime.plusMinutes(i);
+
+      jdbc.update(
+          "INSERT INTO TXN_SOURCE(txn_id, customer_id, product_id, txn_amount, txn_time, currency, channel, invoice_date, status) " +
+              "VALUES (?,?,?,?,?,?,?,?, 'N')",
+          txnId, customer, product, amount,
+          Timestamp.valueOf(t), "INR", (i % 2 == 0 ? "APP" : "WEB"), Date.valueOf(invoiceDate)
+      );
+    }
+
+    // Introduce 4 error records (overwrite some existing txn rows)
+    jdbc.update("UPDATE TXN_SOURCE SET customer_id='C99' WHERE txn_id=1005");           // bad customer
+    jdbc.update("UPDATE TXN_SOURCE SET product_id='PX' WHERE txn_id=1010");            // bad product
+    jdbc.update("UPDATE TXN_SOURCE SET txn_amount=-10.00 WHERE txn_id=1020");          // negative amount
+    jdbc.update("UPDATE TXN_SOURCE SET txn_amount=NULL WHERE txn_id=1030");            // null amount
+
+    Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM TXN_SOURCE", Integer.class);
+    log.info("DataSeeder: Inserted {} TXN_SOURCE rows for invoice_date={}", count, invoiceDate);
+  }
+}
+
+
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:batchdb;DB_CLOSE_DELAY=-1
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: true
+
+logging:
+  file:
+    name: logs/invoice-batch.log
+  level:
+    root: INFO
+    com.example.invoicebatch: DEBUG
+    org.springframework.batch: INFO
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"
+    console: "%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"
+
+
+DROP TABLE IF EXISTS TXN_SOURCE;
+DROP TABLE IF EXISTS CUSTOMER;
+DROP TABLE IF EXISTS PRODUCT;
+DROP TABLE IF EXISTS FINAL_TXN_LINE;
+DROP TABLE IF EXISTS INVOICE_FINAL;
+DROP TABLE IF EXISTS TXN_ERROR;
+
+CREATE TABLE CUSTOMER (
+  customer_id VARCHAR(20) PRIMARY KEY,
+  discount_rate DECIMAL(5,2) NOT NULL   -- 0.10 means 10%
+);
+
+CREATE TABLE PRODUCT (
+  product_id VARCHAR(20) PRIMARY KEY,
+  tax_rate DECIMAL(5,2) NOT NULL        -- 0.18 means 18%
+);
+
+-- status:
+-- N = new/ready
+-- P = picked (in-progress)
+-- D = done
+-- E = error
+CREATE TABLE TXN_SOURCE (
+  txn_id BIGINT PRIMARY KEY,
+  customer_id VARCHAR(20),
+  product_id VARCHAR(20),
+  txn_amount DECIMAL(18,2),
+  txn_time TIMESTAMP NOT NULL,
+  currency VARCHAR(10) NOT NULL,
+  channel VARCHAR(10) NOT NULL,
+  invoice_date DATE NOT NULL,
+  status CHAR(1) DEFAULT 'N' NOT NULL
+);
+
+CREATE TABLE TXN_ERROR (
+  error_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  job_run_id VARCHAR(50) NOT NULL,
+  invoice_date DATE NOT NULL,
+  txn_id BIGINT NOT NULL,
+  customer_id VARCHAR(20),
+  product_id VARCHAR(20),
+  txn_amount DECIMAL(18,2),
+  error_reason VARCHAR(300) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+-- one row per txn (final calculated line)
+CREATE TABLE FINAL_TXN_LINE (
+  txn_id BIGINT PRIMARY KEY,
+  job_run_id VARCHAR(50) NOT NULL,
+  invoice_date DATE NOT NULL,
+  customer_id VARCHAR(20) NOT NULL,
+  base_amount DECIMAL(18,2) NOT NULL,
+  discount DECIMAL(18,2) NOT NULL,
+  tax DECIMAL(18,2) NOT NULL,
+  commission DECIMAL(18,2) NOT NULL,
+  net_amount DECIMAL(18,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+-- one row per customer/day (final invoice summary)
+CREATE TABLE INVOICE_FINAL (
+  invoice_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  job_run_id VARCHAR(50) NOT NULL,
+  customer_id VARCHAR(20) NOT NULL,
+  invoice_date DATE NOT NULL,
+  total_gross DECIMAL(18,2) NOT NULL,
+  total_discount DECIMAL(18,2) NOT NULL,
+  total_tax DECIMAL(18,2) NOT NULL,
+  total_commission DECIMAL(18,2) NOT NULL,
+  total_net DECIMAL(18,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-
-  <modelVersion>4.0.0</modelVersion>
-
-  <parent>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.8</version>
-    <relativePath/>
-  </parent>
-
-  <groupId>com.optum.fads</groupId>
-  <artifactId>fads-user-roles-api</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
-  <name>User-Roles-API</name>
-  <description>User Roles API FOR FADS</description>
-
-  <properties>
-    <java.version>17</java.version>
-    <spring-cloud-azure.version>5.23.0</spring-cloud-azure.version>
-    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-    <mssql.jdbc.version>12.6.5.jre11</mssql.jdbc.version>
-    <netty.version>4.1.130.Final</netty.version> 
-  </properties>
-
-  <dependencies>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-oauth2-client</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-security</artifactId>
-    </dependency>
-
-	<dependency>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
 		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-webflux</artifactId>
-	</dependency>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.7.18</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+	<groupId>com.optum.fads</groupId>
+	<artifactId>case-entrybatch-poc</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+	<name>case-entrybatch-poc</name>
+	<description>POC project for Case Entry Batch</description>
+	<url />
+	<licenses>
+		<license />
+	</licenses>
+	<developers>
+		<developer />
+	</developers>
+	<scm>
+		<connection />
+		<developerConnection />
+		<tag />
+		<url />
+	</scm>
+	<properties>
+		<java.version>17</java.version>
+	</properties>
+	<dependencies>
 
-	<dependency>
-		<groupId>org.springframework.security</groupId>
-		<artifactId>spring-security-oauth2-resource-server</artifactId>
-	</dependency>
-	<dependency>
-		<groupId>org.springframework.security</groupId>
-		<artifactId>spring-security-oauth2-jose</artifactId>
-	</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-batch</artifactId>
+		</dependency>
 
-    <dependency>
-      <groupId>com.azure.spring</groupId>
-      <artifactId>spring-cloud-azure-starter-keyvault</artifactId>
-    </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jdbc</artifactId>
+		</dependency>
 
-    <dependency>
-      <groupId>org.modelmapper</groupId>
-      <artifactId>modelmapper</artifactId>
-      <version>3.2.0</version>
-    </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
 
-    <dependency>
-      <groupId>com.microsoft.sqlserver</groupId>
-      <artifactId>mssql-jdbc</artifactId>
-      <version>${mssql.jdbc.version}</version>
-    </dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.18.0</version>
-    </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 
-		<!-- Lombok -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <scope>provided</scope>
-    </dependency>
-
-		<!-- MapStruct -->
-    <dependency>
-      <groupId>org.mapstruct</groupId>
-      <artifactId>mapstruct</artifactId>
-      <version>${org.mapstruct.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.mapstruct</groupId>
-      <artifactId>mapstruct-processor</artifactId>
-      <version>${org.mapstruct.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-collections4</artifactId>
-      <version>4.5.0-M1</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    
-	
-	<dependency>
-	  <groupId>org.springframework.boot</groupId>
-	  <artifactId>spring-boot-starter-validation</artifactId>
-	</dependency>
-		
-	<dependency>
-	    <groupId>org.springframework.boot</groupId>
-	    <artifactId>spring-boot-starter-actuator</artifactId>
-	</dependency>
-
-      <dependency>
-          <groupId>com.optum.osgp</groupId>
-          <artifactId>osgp-logging-api</artifactId>
-          <version>1.8-SNAPSHOT</version>
-      </dependency>
-	
-	<dependency>
-   		<groupId>org.mockito</groupId>
-   		<artifactId>mockito-core</artifactId>
-   	<scope>test</scope>
-  </dependency>
-  </dependencies>
-
-  <dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>${spring-cloud-azure.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-
-			<dependency>
-				<groupId>org.apache.logging.log4j</groupId>
-				<artifactId>log4j-bom</artifactId>
-				<version>2.25.3</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-bom</artifactId>
-				<version>${netty.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-
-			<dependency>
-				<groupId>ch.qos.logback</groupId>
-				<artifactId>logback-core</artifactId>
-				<version>1.5.25</version>
-			</dependency>
-			<dependency>
-				<groupId>ch.qos.logback</groupId>
-				<artifactId>logback-classic</artifactId>
-				<version>1.5.25</version>
-			</dependency>
-      
-    </dependencies>
-  </dependencyManagement>
-
-  <build>
-    <finalName>fads-userroles-api</finalName>
-
-    <plugins>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-            </path>
-            <path>
-              <groupId>org.mapstruct</groupId>
-              <artifactId>mapstruct-processor</artifactId>
-              <version>${org.mapstruct.version}</version>
-            </path>
-          </annotationProcessorPaths>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-        <executions>
-          <execution>
-            <goals>
-              <goal>repackage</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
-        <version>3.1.0</version>
-        <executions>
-          <execution>
-            <id>prepare-docker-context</id>
-            <phase>validate</phase>
-            <configuration>
-              <target>
-                
-              </target>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
-
-    </plugins>
-  </build>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
 
 </project>
 
-C:\Users\sgupt664\BE_Projects\fads-user-roles-api>mvn -q dependency:tree -Dincludes=ch.qos.logback
-
-C:\Users\sgupt664\BE_Projects\fads-user-roles-api>mvn dependency:tree -Dincludes=ch.qos.logback -Dverbose
-[INFO] Scanning for projects...
-[INFO]
-[INFO] -----------------< com.optum.fads:fads-user-roles-api >-----------------
-[INFO] Building User-Roles-API 0.0.1-SNAPSHOT
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/optum/osgp/osgp-logging-api/1.8-SNAPSHOT/maven-metadata.xml
-Downloaded from artifactory: https://repo1.uhc.com/artifactory/repo/com/optum/osgp/osgp-logging-api/1.8-SNAPSHOT/maven-metadata.xml (774 B at 1.8 kB/s)
-[INFO]
-[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-user-roles-api ---
-[INFO] com.optum.fads:fads-user-roles-api:jar:0.0.1-SNAPSHOT
-[INFO] +- org.springframework.boot:spring-boot-starter-data-jpa:jar:3.5.8:compile
-[INFO] |  \- org.springframework.boot:spring-boot-starter:jar:3.5.8:compile (version managed from 3.5.8; scope not updated to compile)
-[INFO] |     \- org.springframework.boot:spring-boot-starter-logging:jar:3.5.8:compile (version managed from 3.5.8)
-[INFO] |        \- (ch.qos.logback:logback-classic:jar:1.5.25:compile - version managed from 1.5.21; omitted for duplicate)
-[INFO] \- com.optum.osgp:osgp-logging-api:jar:1.8-SNAPSHOT:compile
-[INFO]    +- ch.qos.logback:logback-classic:jar:1.5.25:compile (version managed from 1.5.16)
-[INFO]    |  \- (ch.qos.logback:logback-core:jar:1.5.25:compile - version managed from 1.5.25; omitted for duplicate)
-[INFO]    \- ch.qos.logback:logback-core:jar:1.5.25:compile (version managed from 1.5.16)
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.439 s
-[INFO] Finished at: 2026-01-27T14:15:26+05:30
-[INFO] ------------------------------------------------------------------------
-
-C:\Users\sgupt664\BE_Projects\fads-user-roles-api>mvn help:effective-pom > effective-pom.xml
-
-C:\Users\sgupt664\BE_Projects\fads-user-roles-api>mvn -q dependency:list | findstr /i logback
-
-C:\Users\sgupt664\BE_Projects\fads-user-roles-api>mvn -q dependency:list | findstr /i logback
-
-C:\Users\sgupt664\BE_Projects\fads-user-roles-api>
 
 
+
+now the requirement is we are not talking about the temp table which is session oriented we will be talking the real database table in terms of temp which we will be doing calc things so suggest new arc I guess and according plans 
