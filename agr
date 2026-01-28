@@ -1,510 +1,113 @@
-package com.optum.fads.caseentrybatch.poc.batch;
 
-import java.math.BigDecimal;
-import java.sql.Date;
-
-public class TxnSource {
-  private Long txnId;
-  private String customerId;
-  private String productId;
-  private BigDecimal txnAmount;
-  private Date invoiceDate;
-
-  // from joins
-  private BigDecimal discountRate;
-  private BigDecimal taxRate;
-
-  public Long getTxnId() { return txnId; }
-  public void setTxnId(Long txnId) { this.txnId = txnId; }
-
-  public String getCustomerId() { return customerId; }
-  public void setCustomerId(String customerId) { this.customerId = customerId; }
-
-  public String getProductId() { return productId; }
-  public void setProductId(String productId) { this.productId = productId; }
-
-  public BigDecimal getTxnAmount() { return txnAmount; }
-  public void setTxnAmount(BigDecimal txnAmount) { this.txnAmount = txnAmount; }
-
-  public Date getInvoiceDate() { return invoiceDate; }
-  public void setInvoiceDate(Date invoiceDate) { this.invoiceDate = invoiceDate; }
-
-  public BigDecimal getDiscountRate() { return discountRate; }
-  public void setDiscountRate(BigDecimal discountRate) { this.discountRate = discountRate; }
-
-  public BigDecimal getTaxRate() { return taxRate; }
-  public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.sql.Date;
-
-public class ProcessedTxn {
-
-  public enum Kind { GOOD, ERROR }
-
-  private Kind kind;
-
-  private Long txnId;
-  private String runId;
-  private Date invoiceDate;
-
-  private String customerId;
-  private String productId;
-
-  private BigDecimal baseAmount;
-  private BigDecimal discountRate;
-  private BigDecimal taxRate;
-
-  private BigDecimal discount;
-  private BigDecimal tax;
-  private BigDecimal commission;
-  private BigDecimal netAmount;
-
-  private String errorReason;
-
-  public static ProcessedTxn good(String runId, TxnSource s,
-                                  BigDecimal discount, BigDecimal tax,
-                                  BigDecimal commission, BigDecimal net) {
-    ProcessedTxn p = new ProcessedTxn();
-    p.kind = Kind.GOOD;
-    p.runId = runId;
-    p.invoiceDate = s.getInvoiceDate();
-    p.txnId = s.getTxnId();
-    p.customerId = s.getCustomerId();
-    p.productId = s.getProductId();
-    p.baseAmount = s.getTxnAmount();
-    p.discountRate = s.getDiscountRate();
-    p.taxRate = s.getTaxRate();
-    p.discount = discount;
-    p.tax = tax;
-    p.commission = commission;
-    p.netAmount = net;
-    return p;
-  }
-
-  public static ProcessedTxn error(String runId, TxnSource s, String reason) {
-    ProcessedTxn p = new ProcessedTxn();
-    p.kind = Kind.ERROR;
-    p.runId = runId;
-    p.invoiceDate = s.getInvoiceDate();
-    p.txnId = s.getTxnId();
-    p.customerId = s.getCustomerId();
-    p.productId = s.getProductId();
-    p.baseAmount = s.getTxnAmount();
-    p.errorReason = reason;
-    return p;
-  }
-
-  public Kind getKind() { return kind; }
-
-  public Long getTxnId() { return txnId; }
-  public void setTxnId(Long txnId) { this.txnId = txnId; }
-
-  public String getRunId() { return runId; }
-  public void setRunId(String runId) { this.runId = runId; }
-
-  public Date getInvoiceDate() { return invoiceDate; }
-  public void setInvoiceDate(Date invoiceDate) { this.invoiceDate = invoiceDate; }
-
-  public String getCustomerId() { return customerId; }
-  public void setCustomerId(String customerId) { this.customerId = customerId; }
-
-  public String getProductId() { return productId; }
-  public void setProductId(String productId) { this.productId = productId; }
-
-  public BigDecimal getBaseAmount() { return baseAmount; }
-  public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
-
-  public BigDecimal getDiscountRate() { return discountRate; }
-  public void setDiscountRate(BigDecimal discountRate) { this.discountRate = discountRate; }
-
-  public BigDecimal getTaxRate() { return taxRate; }
-  public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
-
-  public BigDecimal getDiscount() { return discount; }
-  public void setDiscount(BigDecimal discount) { this.discount = discount; }
-
-  public BigDecimal getTax() { return tax; }
-  public void setTax(BigDecimal tax) { this.tax = tax; }
-
-  public BigDecimal getCommission() { return commission; }
-  public void setCommission(BigDecimal commission) { this.commission = commission; }
-
-  public BigDecimal getNetAmount() { return netAmount; }
-  public void setNetAmount(BigDecimal netAmount) { this.netAmount = netAmount; }
-
-  public String getErrorReason() { return errorReason; }
-  public void setErrorReason(String errorReason) { this.errorReason = errorReason; }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Date;
-import java.time.LocalDate;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.batch.item.support.CompositeItemWriter;
-import org.springframework.batch.item.support.builder.CompositeItemWriterBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-
-@Configuration
-@EnableBatchProcessing
-public class InvoiceJobConfig {
-
-  private static final int CHUNK_SIZE = 10;
-
-  @Bean
-  public Job invoiceJob(JobBuilderFactory jobs,
-                        Step processTxnStep,
-                        Step invoiceAggregationStep,
-                        RunIdIncrementerWithRunId runIdIncrementerWithRunId) {
-    return jobs.get("invoiceJob")
-        .incrementer(runIdIncrementerWithRunId)
-        .start(processTxnStep)
-        .next(invoiceAggregationStep)
-        .build();
-  }
-
-  @Bean
-  public Step processTxnStep(
-      StepBuilderFactory steps,
-      JdbcCursorItemReader<TxnSource> txnReader,
-      ItemProcessor<TxnSource, ProcessedTxn> txnProcessor,
-      CompositeItemWriter<ProcessedTxn> routingWriter
-  ) {
-    return steps.get("processTxnStep")
-        .<TxnSource, ProcessedTxn>chunk(CHUNK_SIZE)
-        .reader(txnReader)
-        .processor(txnProcessor)
-        .writer(routingWriter)
-        .build();
-  }
-
-  // ---------------- Reader (joins for enrichment) ----------------
-
-  @Bean
-  @StepScope
-  public JdbcCursorItemReader<TxnSource> txnReader(
-      DataSource dataSource,
-      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
-  ) {
-    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
-        ? LocalDate.of(2026, 1, 24)
-        : LocalDate.parse(invoiceDateStr);
-
-    String sql =
-        "SELECT s.txn_id      AS txnId, " +
-        "       s.customer_id AS customerId, " +
-        "       s.product_id  AS productId, " +
-        "       s.txn_amount  AS txnAmount, " +
-        "       s.invoice_date AS invoiceDate, " +
-        "       c.discount_rate AS discountRate, " +
-        "       p.tax_rate AS taxRate " +
-        "FROM TXN_SOURCE s " +
-        "LEFT JOIN CUSTOMER c ON c.customer_id = s.customer_id " +
-        "LEFT JOIN PRODUCT  p ON p.product_id  = s.product_id " +
-        "WHERE s.invoice_date = ? AND s.status = 'N' " +
-        "ORDER BY s.txn_id";
-
-    return new JdbcCursorItemReaderBuilder<TxnSource>()
-        .name("txnReader")
-        .dataSource(dataSource)
-        .sql(sql)
-        .preparedStatementSetter(ps -> ps.setDate(1, Date.valueOf(invoiceDate)))
-        .rowMapper(new BeanPropertyRowMapper<>(TxnSource.class))
-        .build();
-  }
-
-  // ---------------- Processor ----------------
-
-  @Bean
-  @StepScope
-  public ItemProcessor<TxnSource, ProcessedTxn> txnProcessor(
-      @Value("#{jobParameters['runId']}") String runId
-  ) {
-    final String effectiveRunId = (runId == null || runId.isBlank())
-        ? "RUN_" + System.currentTimeMillis()
-        : runId;
-
-    return s -> {
-      BigDecimal base = s.getTxnAmount();
-      if (base == null) return ProcessedTxn.error(effectiveRunId, s, "AMOUNT_NULL");
-      if (base.compareTo(BigDecimal.ZERO) < 0) return ProcessedTxn.error(effectiveRunId, s, "AMOUNT_NEGATIVE");
-      if (s.getDiscountRate() == null) return ProcessedTxn.error(effectiveRunId, s, "CUSTOMER_NOT_FOUND");
-      if (s.getTaxRate() == null) return ProcessedTxn.error(effectiveRunId, s, "PRODUCT_NOT_FOUND");
-
-      // rules:
-      // discount = base * discount_rate
-      // tax = (base-discount) * tax_rate
-      // commission = base * 0.02
-      // net = (base-discount) + tax + commission
-
-      BigDecimal discount = base.multiply(s.getDiscountRate()).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal taxable = base.subtract(discount);
-      BigDecimal tax = taxable.multiply(s.getTaxRate()).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal commission = base.multiply(new BigDecimal("0.02")).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal net = taxable.add(tax).add(commission).setScale(2, RoundingMode.HALF_UP);
-
-      return ProcessedTxn.good(effectiveRunId, s, discount, tax, commission, net);
-    };
-  }
-
-  // ---------------- Writers ----------------
-
-  @Bean
-  public CompositeItemWriter<ProcessedTxn> routingWriter(
-      JdbcBatchItemWriter<ProcessedTxn> stageWriter,
-      JdbcBatchItemWriter<ProcessedTxn> finalLineWriter,
-      JdbcBatchItemWriter<ProcessedTxn> errorWriter,
-      TxnStatusUpdateWriter statusWriter
-  ) {
-    return new CompositeItemWriterBuilder<ProcessedTxn>()
-        .delegates(stageWriter, finalLineWriter, errorWriter, statusWriter)
-        .build();
-  }
-
-  // GOOD -> TXN_STAGE
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> stageWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, " +
-            "discount, tax, commission, net_amount, created_at) " +
-            "VALUES (:runId, :invoiceDate, :txnId, :customerId, :productId, :baseAmount, :discountRate, :taxRate, " +
-            ":discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // GOOD -> FINAL_TXN_LINE
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> finalLineWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO FINAL_TXN_LINE(txn_id, run_id, invoice_date, customer_id, base_amount, discount, tax, commission, net_amount, created_at) " +
-            "VALUES (:txnId, :runId, :invoiceDate, :customerId, :baseAmount, :discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // ERROR -> TXN_ERROR (only when kind=ERROR; writer will skip others)
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> errorWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO TXN_ERROR(run_id, invoice_date, txn_id, customer_id, product_id, txn_amount, error_reason, created_at) " +
-            "VALUES (:runId, :invoiceDate, :txnId, :customerId, :productId, :baseAmount, :errorReason, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // ---------------- Aggregation step wire-up ----------------
-
-  @Bean
-  public Step invoiceAggregationStep(
-      StepBuilderFactory steps,
-      JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader,
-      JdbcBatchItemWriter<InvoiceSummary> invoiceFinalWriter
-  ) {
-    return steps.get("invoiceAggregationStep")
-        .<InvoiceSummary, InvoiceSummary>chunk(50)
-        .reader(invoiceSummaryReader)
-        .writer(invoiceFinalWriter)
-        .build();
-  }
-
-  @Bean
-  public RunIdIncrementerWithRunId runIdIncrementerWithRunId() {
-    return new RunIdIncrementerWithRunId();
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.sql.Date;
-import java.time.LocalDate;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-
-@Configuration
-public class InvoiceAggregationConfig {
-
-  @Bean
-  @StepScope
-  public JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader(
-      DataSource dataSource,
-      @Value("#{jobParameters['runId']}") String runId,
-      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
-  ) {
-    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
-        ? LocalDate.of(2026, 1, 24)
-        : LocalDate.parse(invoiceDateStr);
-
-    String sql =
-        "SELECT run_id AS runId, customer_id AS customerId, invoice_date AS invoiceDate, " +
-        "       ROUND(SUM(base_amount),2) AS totalGross, " +
-        "       ROUND(SUM(discount),2) AS totalDiscount, " +
-        "       ROUND(SUM(tax),2) AS totalTax, " +
-        "       ROUND(SUM(commission),2) AS totalCommission, " +
-        "       ROUND(SUM(net_amount),2) AS totalNet " +
-        "FROM FINAL_TXN_LINE " +
-        "WHERE run_id = ? AND invoice_date = ? " +
-        "GROUP BY run_id, customer_id, invoice_date " +
-        "ORDER BY customer_id";
-
-    return new JdbcCursorItemReaderBuilder<InvoiceSummary>()
-        .name("invoiceSummaryReader")
-        .dataSource(dataSource)
-        .sql(sql)
-        .preparedStatementSetter(ps -> {
-          ps.setString(1, runId);
-          ps.setDate(2, Date.valueOf(invoiceDate));
-        })
-        .rowMapper(new BeanPropertyRowMapper<>(InvoiceSummary.class))
-        .build();
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.sql.Date;
-
-public class InvoiceSummary {
-  private String runId;
-  private String customerId;
-  private Date invoiceDate;
-
-  private BigDecimal totalGross;
-  private BigDecimal totalDiscount;
-  private BigDecimal totalTax;
-  private BigDecimal totalCommission;
-  private BigDecimal totalNet;
-
-  public String getRunId() { return runId; }
-  public void setRunId(String runId) { this.runId = runId; }
-
-  public String getCustomerId() { return customerId; }
-  public void setCustomerId(String customerId) { this.customerId = customerId; }
-
-  public Date getInvoiceDate() { return invoiceDate; }
-  public void setInvoiceDate(Date invoiceDate) { this.invoiceDate = invoiceDate; }
-
-  public BigDecimal getTotalGross() { return totalGross; }
-  public void setTotalGross(BigDecimal totalGross) { this.totalGross = totalGross; }
-
-  public BigDecimal getTotalDiscount() { return totalDiscount; }
-  public void setTotalDiscount(BigDecimal totalDiscount) { this.totalDiscount = totalDiscount; }
-
-  public BigDecimal getTotalTax() { return totalTax; }
-  public void setTotalTax(BigDecimal totalTax) { this.totalTax = totalTax; }
-
-  public BigDecimal getTotalCommission() { return totalCommission; }
-  public void setTotalCommission(BigDecimal totalCommission) { this.totalCommission = totalCommission; }
-
-  public BigDecimal getTotalNet() { return totalNet; }
-  public void setTotalNet(BigDecimal totalNet) { this.totalNet = totalNet; }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-public class InvoiceAggregationWriterConfig {
-
-  @Bean
-  public JdbcBatchItemWriter<InvoiceSummary> invoiceFinalWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<InvoiceSummary>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO INVOICE_FINAL(run_id, customer_id, invoice_date, total_gross, total_discount, total_tax, total_commission, total_net, created_at) " +
-            "VALUES (:runId, :customerId, :invoiceDate, :totalGross, :totalDiscount, :totalTax, :totalCommission, :totalNet, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.item.ItemWriter;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
-
-@Component
-public class TxnStatusUpdateWriter implements ItemWriter<ProcessedTxn> {
-
-  private final JdbcTemplate jdbc;
-
-  public TxnStatusUpdateWriter(DataSource dataSource) {
-    this.jdbc = new JdbcTemplate(dataSource);
-  }
-
-  @Override
-  public void write(List<? extends ProcessedTxn> items) {
-    // Update GOOD
-    List<ProcessedTxn> good = items.stream()
-        .filter(i -> i.getKind() == ProcessedTxn.Kind.GOOD)
-        .collect(Collectors.toList());
-
-    for (ProcessedTxn p : good) {
-      jdbc.update("UPDATE TXN_SOURCE SET status='D', run_id=? WHERE txn_id=?",
-          p.getRunId(), p.getTxnId());
-    }
-
-    // Update ERROR
-    List<ProcessedTxn> err = items.stream()
-        .filter(i -> i.getKind() == ProcessedTxn.Kind.ERROR)
-        .collect(Collectors.toList());
-
-    for (ProcessedTxn p : err) {
-      jdbc.update("UPDATE TXN_SOURCE SET status='E', run_id=? WHERE txn_id=?",
-          p.getRunId(), p.getTxnId());
-    }
-  }
-}
+2026-01-28 13:24:22.954  INFO 27752 --- [           main] c.o.f.c.poc.InvoiceBatchApplication      : No active profile set, falling back to 1 default profile: "default"
+2026-01-28 13:24:23.749  INFO 27752 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-01-28 13:24:23.975  INFO 27752 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-01-28 13:24:24.253  WARN 27752 --- [           main] o.s.b.c.l.AbstractListenerFactoryBean    : org.springframework.batch.item.ItemProcessor is an interface. The implementing class will not be queried for annotation based listener configurations. If using @StepScope on a @Bean method, be sure to return the implementing class so listener annotations can be used.
+2026-01-28 13:24:24.316  INFO 27752 --- [           main] o.s.b.c.r.s.JobRepositoryFactoryBean     : No database type set, using meta data indicating: H2
+2026-01-28 13:24:24.478  INFO 27752 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : No TaskExecutor has been set, defaulting to synchronous executor.
+2026-01-28 13:24:24.566  INFO 27752 --- [           main] c.o.f.c.poc.InvoiceBatchApplication      : Started InvoiceBatchApplication in 2.113 seconds (JVM running for 2.533)
+2026-01-28 13:24:24.702  INFO 27752 --- [           main] c.o.f.c.poc.data.DataSeeder              : DataSeeder: Inserted 100 TXN_SOURCE rows for invoice_date=2026-01-24
+2026-01-28 13:24:24.702  INFO 27752 --- [           main] o.s.b.a.b.JobLauncherApplicationRunner   : Running default command line with: []
+2026-01-28 13:24:24.754  INFO 27752 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=invoiceJob]] launched with the following parameters: [{runId=RUN_2026-01-24_2026-01-28T13:24:24.717754, invoiceDate=2026-01-24, run.id=1}]
+2026-01-28 13:24:24.808  INFO 27752 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [processTxnStep]
+2026-01-28 13:24:25.035 ERROR 27752 --- [           main] o.s.batch.core.step.AbstractStep         : Encountered an error executing step processTxnStep in job invoiceJob
+
+org.springframework.dao.DataIntegrityViolationException: PreparedStatementCallback; SQL [INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)]; NULL not allowed for column "DISCOUNT_RATE"; SQL statement:
+INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) [23502-214]; nested exception is org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: NULL not allowed for column "DISCOUNT_RATE"; SQL statement:
+INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) [23502-214]
+        at org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator.doTranslate(SQLErrorCodeSQLExceptionTranslator.java:248) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:73) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.core.JdbcTemplate.translateException(JdbcTemplate.java:1577) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:669) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:693) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.core.JdbcTemplate.batchUpdate(JdbcTemplate.java:1036) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate.batchUpdate(NamedParameterJdbcTemplate.java:371) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.batch.item.database.JdbcBatchItemWriter.write(JdbcBatchItemWriter.java:182) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
+        at org.springframework.batch.item.support.CompositeItemWriter.write(CompositeItemWriter.java:59) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.item.SimpleChunkProcessor.writeItems(SimpleChunkProcessor.java:193) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.item.SimpleChunkProcessor.doWrite(SimpleChunkProcessor.java:159) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.item.SimpleChunkProcessor.write(SimpleChunkProcessor.java:294) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.item.SimpleChunkProcessor.process(SimpleChunkProcessor.java:217) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.item.ChunkOrientedTasklet.execute(ChunkOrientedTasklet.java:77) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:407) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:331) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:140) ~[spring-tx-5.3.31.jar:5.3.31]
+        at org.springframework.batch.core.step.tasklet.TaskletStep$2.doInChunkContext(TaskletStep.java:273) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.scope.context.StepContextRepeatCallback.doInIteration(StepContextRepeatCallback.java:82) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.repeat.support.RepeatTemplate.getNextResult(RepeatTemplate.java:382) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
+        at org.springframework.batch.repeat.support.RepeatTemplate.executeInternal(RepeatTemplate.java:215) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
+        at org.springframework.batch.repeat.support.RepeatTemplate.iterate(RepeatTemplate.java:145) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.tasklet.TaskletStep.doExecute(TaskletStep.java:258) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.step.AbstractStep.execute(AbstractStep.java:208) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.job.SimpleStepHandler.handleStep(SimpleStepHandler.java:152) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.job.AbstractJob.handleStep(AbstractJob.java:413) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.job.SimpleJob.doExecute(SimpleJob.java:136) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.job.AbstractJob.execute(AbstractJob.java:320) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.batch.core.launch.support.SimpleJobLauncher$1.run(SimpleJobLauncher.java:149) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.core.task.SyncTaskExecutor.execute(SyncTaskExecutor.java:50) ~[spring-core-5.3.31.jar:5.3.31]
+        at org.springframework.batch.core.launch.support.SimpleJobLauncher.run(SimpleJobLauncher.java:140) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
+        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:344) ~[spring-aop-5.3.31.jar:5.3.31]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:198) ~[spring-aop-5.3.31.jar:5.3.31]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163) ~[spring-aop-5.3.31.jar:5.3.31]
+        at org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration$PassthruAdvice.invoke(SimpleBatchConfiguration.java:128) ~[spring-batch-core-4.3.10.jar:4.3.10]
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186) ~[spring-aop-5.3.31.jar:5.3.31]
+        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241) ~[spring-aop-5.3.31.jar:5.3.31]
+        at jdk.proxy2/jdk.proxy2.$Proxy52.run(Unknown Source) ~[na:na]
+        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.execute(JobLauncherApplicationRunner.java:213) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
+        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.executeLocalJobs(JobLauncherApplicationRunner.java:193) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
+        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.launchJobFromProperties(JobLauncherApplicationRunner.java:172) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
+        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:167) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
+        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:162) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
+        at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:756) ~[spring-boot-2.7.18.jar:2.7.18]
+        at org.springframework.boot.SpringApplication.lambda$callRunners$2(SpringApplication.java:746) ~[spring-boot-2.7.18.jar:2.7.18]
+        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183) ~[na:na]
+        at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357) ~[na:na]
+        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510) ~[na:na]
+        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499) ~[na:na]
+        at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150) ~[na:na]
+        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173) ~[na:na]
+        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234) ~[na:na]
+        at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596) ~[na:na]
+        at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:744) ~[spring-boot-2.7.18.jar:2.7.18]
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:315) ~[spring-boot-2.7.18.jar:2.7.18]
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1300) ~[spring-boot-2.7.18.jar:2.7.18]
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1289) ~[spring-boot-2.7.18.jar:2.7.18]
+        at com.optum.fads.caseentrybatch.poc.InvoiceBatchApplication.main(InvoiceBatchApplication.java:9) ~[classes/:na]
+Caused by: org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: NULL not allowed for column "DISCOUNT_RATE"; SQL statement:
+INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) [23502-214]
+        at org.h2.message.DbException.getJdbcSQLException(DbException.java:508) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.message.DbException.getJdbcSQLException(DbException.java:477) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.message.DbException.get(DbException.java:223) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.message.DbException.get(DbException.java:199) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.table.Column.validateConvertUpdateSequence(Column.java:365) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.table.Table.convertInsertRow(Table.java:926) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.command.dml.Insert.insertRows(Insert.java:167) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.command.dml.Insert.update(Insert.java:135) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.command.dml.DataChangeStatement.update(DataChangeStatement.java:74) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.command.CommandContainer.update(CommandContainer.java:169) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.command.Command.executeUpdate(Command.java:252) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:209) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.jdbc.JdbcPreparedStatement.executeBatchElement(JdbcPreparedStatement.java:1317) ~[h2-2.1.214.jar:2.1.214]
+        at org.h2.jdbc.JdbcPreparedStatement.executeBatch(JdbcPreparedStatement.java:1263) ~[h2-2.1.214.jar:2.1.214]
+        at com.zaxxer.hikari.pool.ProxyStatement.executeBatch(ProxyStatement.java:127) ~[HikariCP-4.0.3.jar:na]
+        at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeBatch(HikariProxyPreparedStatement.java) ~[HikariCP-4.0.3.jar:na]
+        at org.springframework.jdbc.core.JdbcTemplate.lambda$batchUpdate$4(JdbcTemplate.java:1050) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:650) ~[spring-jdbc-5.3.31.jar:5.3.31]
+        ... 58 common frames omitted
+
+2026-01-28 13:24:25.039  INFO 27752 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [processTxnStep] executed in 231ms
+2026-01-28 13:24:25.044  INFO 27752 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=invoiceJob]] completed with the following parameters: [{runId=RUN_2026-01-24_2026-01-28T13:24:24.717754, invoiceDate=2026-01-24, run.id=1}] and the following status: [FAILED] in 261ms
+2026-01-28 13:24:25.053  INFO 27752 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-01-28 13:24:25.056  INFO 27752 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.544 s
+[INFO] Finished at: 2026-01-28T13:24:25+05:30
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\CaseEntryBatchPOC>
