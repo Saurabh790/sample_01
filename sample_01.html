@@ -1,29 +1,71 @@
-C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>mvn -q dependency:tree -Dincludes=ch.qos.logback
+package com.optum.fads.caseentrybatch.poc.batch;
 
-C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>mvn dependency:tree -Dincludes=ch.qos.logback -Dverbose
-[INFO] Scanning for projects...
-[INFO]
-[INFO] ----------------< com.optum.fads:fads-case-entry-batch >----------------
-[INFO] Building fads-case-entry-batch 1.0.0
-[INFO]   from pom.xml
-[INFO] --------------------------------[ jar ]---------------------------------
-[WARNING] The artifact org.hibernate:hibernate-core:jar:6.2.3.Final has been relocated to org.hibernate.orm:hibernate-core:jar:6.2.3.Final
-[INFO]
-[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-case-entry-batch ---
-[INFO] com.optum.fads:fads-case-entry-batch:jar:1.0.0
-[INFO] +- org.springframework.boot:spring-boot-starter:jar:3.5.8:compile
-[INFO] |  \- org.springframework.boot:spring-boot-starter-logging:jar:3.5.8:compile (version managed from 3.5.8)
-[INFO] |     \- (ch.qos.logback:logback-classic:jar:1.5.25:compile - version managed from 1.5.21; omitted for duplicate)
-[INFO] +- ch.qos.logback:logback-classic:jar:1.5.25:compile
-[INFO] |  \- (ch.qos.logback:logback-core:jar:1.5.25:compile - version managed from 1.5.25; omitted for duplicate)
-[INFO] \- ch.qos.logback:logback-core:jar:1.5.25:compile
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  4.823 s
-[INFO] Finished at: 2026-01-27T14:37:20+05:30
-[INFO] ------------------------------------------------------------------------
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
 
-C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>mvn help:effective-pom > effective-pom.xml
+import javax.sql.DataSource;
 
-C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>
+@Configuration
+public class InvoiceAggregationConfig {
+
+  @Bean
+  @StepScope
+  public JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader(
+      DataSource dataSource,
+      @Value("#{jobParameters['runId']}") String runId,
+      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
+  ) {
+
+    final String invoiceDateFinal =
+        (invoiceDateStr == null || invoiceDateStr.isBlank()) ? "2026-01-24" : invoiceDateStr;
+
+    String sql =
+        "SELECT run_id AS runId, customer_id AS customerId, invoice_date AS invoiceDate, " +
+        "       ROUND(SUM(base_amount),2) AS totalGross, " +
+        "       ROUND(SUM(discount),2) AS totalDiscount, " +
+        "       ROUND(SUM(tax),2) AS totalTax, " +
+        "       ROUND(SUM(commission),2) AS totalCommission, " +
+        "       ROUND(SUM(net_amount),2) AS totalNet " +
+        "FROM FINAL_TXN_LINE " +
+        "WHERE run_id = ? AND invoice_date = ? " +
+        "GROUP BY run_id, customer_id, invoice_date " +
+        "ORDER BY customer_id";
+
+    return new JdbcCursorItemReaderBuilder<InvoiceSummary>()
+        .name("invoiceSummaryReader")
+        .dataSource(dataSource)
+        .sql(sql)
+        .preparedStatementSetter(ps -> {
+          ps.setString(1, runId);
+          ps.setDate(2, java.sql.Date.valueOf(invoiceDateFinal)); // ✅ uses final variable
+        })
+        .rowMapper(new BeanPropertyRowMapper<>(InvoiceSummary.class))
+        .build();
+  }
+
+  @Bean
+  public JdbcBatchItemWriter<InvoiceSummary> invoiceWriter(DataSource dataSource) {
+    return new JdbcBatchItemWriterBuilder<InvoiceSummary>()
+        .dataSource(dataSource)
+        .sql("INSERT INTO INVOICE_FINAL(run_id, customer_id, invoice_date, total_gross, total_discount, total_tax, total_commission, total_net, created_at) " +
+             "VALUES (?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)")
+        .itemPreparedStatementSetter((ps, i) -> {
+          ps.setString(1, i.runId);
+          ps.setString(2, i.customerId);
+          ps.setDate(3, java.sql.Date.valueOf(i.invoiceDate)); // LocalDate -> java.sql.Date ✅
+          ps.setBigDecimal(4, i.totalGross);
+          ps.setBigDecimal(5, i.totalDiscount);
+          ps.setBigDecimal(6, i.totalTax);
+          ps.setBigDecimal(7, i.totalCommission);
+          ps.setBigDecimal(8, i.totalNet);
+        })
+        .build();
+  }
+}
