@@ -1,717 +1,557 @@
-package com.optum.fads.caseentrybatch.poc;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class InvoiceBatchApplication {
-  public static void main(String[] args) {
-    SpringApplication.run(InvoiceBatchApplication.class, args);
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-
-
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-import org.springframework.jdbc.core.PreparedStatementSetter;
-
-/**
- * Reads aggregated invoice data from FINAL_TXN_LINE and produces
- * one row per (run_id, customer_id, invoice_date).
- *
- * IMPORTANT:
- * 1. We use COALESCE around SUM() so NULL values never propagate.
- * 2. This guarantees inserts into INVOICE_FINAL never fail due to NULL totals.
- * 3. This is the final stabilization layer of your batch pipeline.
- */
-@Configuration
-public class InvoiceAggregationConfig {
-
-    @Bean
-    @StepScope
-    public JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader(
-            DataSource dataSource,
-            @Value("#{jobParameters['runId']}") String runId,
-            @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
-    ) {
-
-        final String effectiveRunId = runId;
-        final String effectiveInvoiceDate =
-                (invoiceDateStr == null || invoiceDateStr.isBlank())
-                        ? "2026-01-24"
-                        : invoiceDateStr;
-
-        String sql =
-            "SELECT run_id AS runId, " +
-            "       customer_id AS customerId, " +
-            "       invoice_date AS invoiceDate, " +
-
-            // ---- Use COALESCE to prevent NULL totals ----
-            "       ROUND(COALESCE(SUM(base_amount),0),2)      AS totalGross, " +
-            "       ROUND(COALESCE(SUM(discount),0),2)         AS totalDiscount, " +
-            "       ROUND(COALESCE(SUM(tax),0),2)              AS totalTax, " +
-            "       ROUND(COALESCE(SUM(commission),0),2)       AS totalCommission, " +
-            "       ROUND(COALESCE(SUM(net_amount),0),2)       AS totalNet " +
-
-            "FROM FINAL_TXN_LINE " +
-            "WHERE run_id = ? AND invoice_date = ? " +
-            "GROUP BY run_id, customer_id, invoice_date " +
-            "ORDER BY customer_id";
-
-        PreparedStatementSetter pss = new PreparedStatementSetter() {
-            @Override
-            public void setValues(PreparedStatement ps) throws SQLException {
-                ps.setString(1, effectiveRunId);
-                ps.setDate(2, Date.valueOf(effectiveInvoiceDate));
-            }
-        };
-
-        return new JdbcCursorItemReaderBuilder<InvoiceSummary>()
-                .name("invoiceSummaryReader")
-                .dataSource(dataSource)
-                .sql(sql)
-                .preparedStatementSetter(pss)
-                .rowMapper(new BeanPropertyRowMapper<>(InvoiceSummary.class))
-                .build();
-    }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-public class InvoiceAggregationWriterConfig {
-
-  @Bean
-  public JdbcBatchItemWriter<InvoiceSummary> invoiceFinalWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<InvoiceSummary>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO INVOICE_FINAL(run_id, customer_id, invoice_date, total_gross, total_discount, total_tax, total_commission, total_net, created_at) " +
-            "VALUES (:runId, :customerId, :invoiceDate, :totalGross, :totalDiscount, :totalTax, :totalCommission, :totalNet, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .build();
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Date;
-import java.time.LocalDate;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.batch.item.support.CompositeItemWriter;
-import org.springframework.batch.item.support.builder.CompositeItemWriterBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
-
-@Configuration
-@EnableBatchProcessing
-public class InvoiceJobConfig {
-
-  private static final int CHUNK_SIZE = 10;
-
-  @Bean
-  public Job invoiceJob(JobBuilderFactory jobs,
-                        Step processTxnStep,
-                        Step invoiceAggregationStep,
-                        RunIdIncrementerWithRunId runIdIncrementerWithRunId) {
-    return jobs.get("invoiceJob")
-        .incrementer(runIdIncrementerWithRunId)
-        .start(processTxnStep)
-        .next(invoiceAggregationStep)
-        .build();
-  }
-
-  @Bean
-  public Step processTxnStep(
-      StepBuilderFactory steps,
-      JdbcCursorItemReader<TxnSource> txnReader,
-      ItemProcessor<TxnSource, ProcessedTxn> txnProcessor,
-      CompositeItemWriter<ProcessedTxn> routingWriter
-  ) {
-    return steps.get("processTxnStep")
-        .<TxnSource, ProcessedTxn>chunk(CHUNK_SIZE)
-        .reader(txnReader)
-        .processor(txnProcessor)
-        .writer(routingWriter)
-        .build();
-  }
-
-  // ---------------- Reader (joins for enrichment) ----------------
-
-  @Bean
-  @StepScope
-  public JdbcCursorItemReader<TxnSource> txnReader(
-      DataSource dataSource,
-      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
-  ) {
-    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
-        ? LocalDate.of(2026, 1, 24)
-        : LocalDate.parse(invoiceDateStr);
-
-    String sql =
-        "SELECT s.txn_id      AS txnId, " +
-        "       s.customer_id AS customerId, " +
-        "       s.product_id  AS productId, " +
-        "       s.txn_amount  AS txnAmount, " +
-        "       s.invoice_date AS invoiceDate, " +
-        "       c.discount_rate AS discountRate, " +
-        "       p.tax_rate AS taxRate " +
-        "FROM TXN_SOURCE s " +
-        "LEFT JOIN CUSTOMER c ON c.customer_id = s.customer_id " +
-        "LEFT JOIN PRODUCT  p ON p.product_id  = s.product_id " +
-        "WHERE s.invoice_date = ? AND s.status = 'N' " +
-        "ORDER BY s.txn_id";
-
-    return new JdbcCursorItemReaderBuilder<TxnSource>()
-        .name("txnReader")
-        .dataSource(dataSource)
-        .sql(sql)
-        .preparedStatementSetter(ps -> ps.setDate(1, Date.valueOf(invoiceDate)))
-        .rowMapper(new BeanPropertyRowMapper<>(TxnSource.class))
-        .build();
-  }
-
-  // ---------------- Processor ----------------
-
-  @Bean
-  @StepScope
-  public ItemProcessor<TxnSource, ProcessedTxn> txnProcessor(
-      @Value("#{jobParameters['runId']}") String runId
-  ) {
-    final String effectiveRunId = (runId == null || runId.isBlank())
-        ? "RUN_" + System.currentTimeMillis()
-        : runId;
-
-    return s -> {
-      BigDecimal base = s.getTxnAmount();
-      if (base == null) return ProcessedTxn.error(effectiveRunId, s, "AMOUNT_NULL");
-      if (base.compareTo(BigDecimal.ZERO) < 0) return ProcessedTxn.error(effectiveRunId, s, "AMOUNT_NEGATIVE");
-      if (s.getDiscountRate() == null) return ProcessedTxn.error(effectiveRunId, s, "CUSTOMER_NOT_FOUND");
-      if (s.getTaxRate() == null) return ProcessedTxn.error(effectiveRunId, s, "PRODUCT_NOT_FOUND");
-
-      // rules:
-      // discount = base * discount_rate
-      // tax = (base-discount) * tax_rate
-      // commission = base * 0.02
-      // net = (base-discount) + tax + commission
-
-      BigDecimal discount = base.multiply(s.getDiscountRate()).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal taxable = base.subtract(discount);
-      BigDecimal tax = taxable.multiply(s.getTaxRate()).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal commission = base.multiply(new BigDecimal("0.02")).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal net = taxable.add(tax).add(commission).setScale(2, RoundingMode.HALF_UP);
-
-      return ProcessedTxn.good(effectiveRunId, s, discount, tax, commission, net);
-    };
-  }
-
-  // ---------------- Writers ----------------
-
-  @Bean
-  public CompositeItemWriter<ProcessedTxn> routingWriter(
-      JdbcBatchItemWriter<ProcessedTxn> stageWriter,
-      JdbcBatchItemWriter<ProcessedTxn> finalLineWriter,
-      JdbcBatchItemWriter<ProcessedTxn> errorWriter,
-      TxnStatusUpdateWriter statusWriter
-  ) {
-    return new CompositeItemWriterBuilder<ProcessedTxn>()
-        .delegates(stageWriter, finalLineWriter, errorWriter, statusWriter)
-        .build();
-  }
-
-  // GOOD -> TXN_STAGE
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> stageWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, " +
-            "discount, tax, commission, net_amount, created_at) " +
-            "VALUES (:runId, :invoiceDate, :txnId, :customerId, :productId, :baseAmount, :discountRate, :taxRate, " +
-            ":discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // GOOD -> FINAL_TXN_LINE
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> finalLineWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO FINAL_TXN_LINE(txn_id, run_id, invoice_date, customer_id, base_amount, discount, tax, commission, net_amount, created_at) " +
-            "VALUES (:txnId, :runId, :invoiceDate, :customerId, :baseAmount, :discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // ERROR -> TXN_ERROR (only when kind=ERROR; writer will skip others)
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> errorWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO TXN_ERROR(run_id, invoice_date, txn_id, customer_id, product_id, txn_amount, error_reason, created_at) " +
-            "VALUES (:runId, :invoiceDate, :txnId, :customerId, :productId, :baseAmount, :errorReason, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // ---------------- Aggregation step wire-up ----------------
-
-  @Bean
-  public Step invoiceAggregationStep(
-      StepBuilderFactory steps,
-      JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader,
-      JdbcBatchItemWriter<InvoiceSummary> invoiceFinalWriter
-  ) {
-    return steps.get("invoiceAggregationStep")
-        .<InvoiceSummary, InvoiceSummary>chunk(50)
-        .reader(invoiceSummaryReader)
-        .writer(invoiceFinalWriter)
-        .build();
-  }
-
-  @Bean
-  public RunIdIncrementerWithRunId runIdIncrementerWithRunId() {
-    return new RunIdIncrementerWithRunId();
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.sql.Date;
-
-public class InvoiceSummary {
-  private String runId;
-  private String customerId;
-  private Date invoiceDate;
-
-  private BigDecimal totalGross;
-  private BigDecimal totalDiscount;
-  private BigDecimal totalTax;
-  private BigDecimal totalCommission;
-  private BigDecimal totalNet;
-
-  public String getRunId() { return runId; }
-  public void setRunId(String runId) { this.runId = runId; }
-
-  public String getCustomerId() { return customerId; }
-  public void setCustomerId(String customerId) { this.customerId = customerId; }
-
-  public Date getInvoiceDate() { return invoiceDate; }
-  public void setInvoiceDate(Date invoiceDate) { this.invoiceDate = invoiceDate; }
-
-  public BigDecimal getTotalGross() { return totalGross; }
-  public void setTotalGross(BigDecimal totalGross) { this.totalGross = totalGross; }
-
-  public BigDecimal getTotalDiscount() { return totalDiscount; }
-  public void setTotalDiscount(BigDecimal totalDiscount) { this.totalDiscount = totalDiscount; }
-
-  public BigDecimal getTotalTax() { return totalTax; }
-  public void setTotalTax(BigDecimal totalTax) { this.totalTax = totalTax; }
-
-  public BigDecimal getTotalCommission() { return totalCommission; }
-  public void setTotalCommission(BigDecimal totalCommission) { this.totalCommission = totalCommission; }
-
-  public BigDecimal getTotalNet() { return totalNet; }
-  public void setTotalNet(BigDecimal totalNet) { this.totalNet = totalNet; }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.sql.Date;
-
-public class ProcessedTxn {
-
-  public enum Kind { GOOD, ERROR }
-
-  private Kind kind;
-
-  private Long txnId;
-  private String runId;
-  private Date invoiceDate;
-
-  private String customerId;
-  private String productId;
-
-  private BigDecimal baseAmount;
-  private BigDecimal discountRate;
-  private BigDecimal taxRate;
-
-  private BigDecimal discount;
-  private BigDecimal tax;
-  private BigDecimal commission;
-  private BigDecimal netAmount;
-
-  private String errorReason;
-
-  public static ProcessedTxn good(String runId, TxnSource s,
-                                  BigDecimal discount, BigDecimal tax,
-                                  BigDecimal commission, BigDecimal net) {
-    ProcessedTxn p = new ProcessedTxn();
-    p.kind = Kind.GOOD;
-    p.runId = runId;
-    p.invoiceDate = s.getInvoiceDate();
-    p.txnId = s.getTxnId();
-    p.customerId = s.getCustomerId();
-    p.productId = s.getProductId();
-    p.baseAmount = s.getTxnAmount();
-    p.discountRate = s.getDiscountRate();
-    p.taxRate = s.getTaxRate();
-    p.discount = discount;
-    p.tax = tax;
-    p.commission = commission;
-    p.netAmount = net;
-    return p;
-  }
-
-  public static ProcessedTxn error(String runId, TxnSource s, String reason) {
-    ProcessedTxn p = new ProcessedTxn();
-    p.kind = Kind.ERROR;
-    p.runId = runId;
-    p.invoiceDate = s.getInvoiceDate();
-    p.txnId = s.getTxnId();
-    p.customerId = s.getCustomerId();
-    p.productId = s.getProductId();
-    p.baseAmount = s.getTxnAmount();
-    p.errorReason = reason;
-    return p;
-  }
-
-  public Kind getKind() { return kind; }
-
-  public Long getTxnId() { return txnId; }
-  public void setTxnId(Long txnId) { this.txnId = txnId; }
-
-  public String getRunId() { return runId; }
-  public void setRunId(String runId) { this.runId = runId; }
-
-  public Date getInvoiceDate() { return invoiceDate; }
-  public void setInvoiceDate(Date invoiceDate) { this.invoiceDate = invoiceDate; }
-
-  public String getCustomerId() { return customerId; }
-  public void setCustomerId(String customerId) { this.customerId = customerId; }
-
-  public String getProductId() { return productId; }
-  public void setProductId(String productId) { this.productId = productId; }
-
-  public BigDecimal getBaseAmount() { return baseAmount; }
-  public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
-
-  public BigDecimal getDiscountRate() { return discountRate; }
-  public void setDiscountRate(BigDecimal discountRate) { this.discountRate = discountRate; }
-
-  public BigDecimal getTaxRate() { return taxRate; }
-  public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
-
-  public BigDecimal getDiscount() { return discount; }
-  public void setDiscount(BigDecimal discount) { this.discount = discount; }
-
-  public BigDecimal getTax() { return tax; }
-  public void setTax(BigDecimal tax) { this.tax = tax; }
-
-  public BigDecimal getCommission() { return commission; }
-  public void setCommission(BigDecimal commission) { this.commission = commission; }
-
-  public BigDecimal getNetAmount() { return netAmount; }
-  public void setNetAmount(BigDecimal netAmount) { this.netAmount = netAmount; }
-
-  public String getErrorReason() { return errorReason; }
-  public void setErrorReason(String errorReason) { this.errorReason = errorReason; }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.JobParametersIncrementer;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
-
-import java.time.LocalDateTime;
-
-public class RunIdIncrementerWithRunId implements JobParametersIncrementer {
-  private final RunIdIncrementer delegate = new RunIdIncrementer();
-
-  @Override
-  public JobParameters getNext(JobParameters parameters) {
-    JobParameters next = delegate.getNext(parameters);
-
-    String invoiceDate = (parameters == null) ? null : parameters.getString("invoiceDate");
-    if (invoiceDate == null || invoiceDate.isBlank()) {
-      invoiceDate = "2026-01-24"; // default for demo
-    }
-
-    String runId = "RUN_" + invoiceDate + "_" + LocalDateTime.now().toString();
-
-    return new JobParametersBuilder(next)
-        .addString("invoiceDate", invoiceDate, true)
-        .addString("runId", runId, true)
-        .toJobParameters();
-  }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.math.BigDecimal;
-import java.sql.Date;
-
-public class TxnSource {
-  private Long txnId;
-  private String customerId;
-  private String productId;
-  private BigDecimal txnAmount;
-  private Date invoiceDate;
-
-  // from joins
-  private BigDecimal discountRate;
-  private BigDecimal taxRate;
-
-  public Long getTxnId() { return txnId; }
-  public void setTxnId(Long txnId) { this.txnId = txnId; }
-
-  public String getCustomerId() { return customerId; }
-  public void setCustomerId(String customerId) { this.customerId = customerId; }
-
-  public String getProductId() { return productId; }
-  public void setProductId(String productId) { this.productId = productId; }
-
-  public BigDecimal getTxnAmount() { return txnAmount; }
-  public void setTxnAmount(BigDecimal txnAmount) { this.txnAmount = txnAmount; }
-
-  public Date getInvoiceDate() { return invoiceDate; }
-  public void setInvoiceDate(Date invoiceDate) { this.invoiceDate = invoiceDate; }
-
-  public BigDecimal getDiscountRate() { return discountRate; }
-  public void setDiscountRate(BigDecimal discountRate) { this.discountRate = discountRate; }
-
-  public BigDecimal getTaxRate() { return taxRate; }
-  public void setTaxRate(BigDecimal taxRate) { this.taxRate = taxRate; }
-}
-package com.optum.fads.caseentrybatch.poc.batch;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
-import javax.sql.DataSource;
-
-import org.springframework.batch.item.ItemWriter;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
-
-@Component
-public class TxnStatusUpdateWriter implements ItemWriter<ProcessedTxn> {
-
-  private final JdbcTemplate jdbc;
-
-  public TxnStatusUpdateWriter(DataSource dataSource) {
-    this.jdbc = new JdbcTemplate(dataSource);
-  }
-
-  @Override
-  public void write(List<? extends ProcessedTxn> items) {
-    List<ProcessedTxn> good = items.stream()
-        .filter(i -> i.getKind() == ProcessedTxn.Kind.GOOD)
-        .collect(Collectors.toList());
-
-    for (ProcessedTxn p : good) {
-      jdbc.update("UPDATE TXN_SOURCE SET status='D', run_id=? WHERE txn_id=?",
-          p.getRunId(), p.getTxnId());
-    }
-
-    List<ProcessedTxn> err = items.stream()
-        .filter(i -> i.getKind() == ProcessedTxn.Kind.ERROR)
-        .collect(Collectors.toList());
-
-    for (ProcessedTxn p : err) {
-      jdbc.update("UPDATE TXN_SOURCE SET status='E', run_id=? WHERE txn_id=?",
-          p.getRunId(), p.getTxnId());
-    }
-  }
-}
-
-spring:
-  datasource:
-    url: jdbc:h2:mem:batchdb;DB_CLOSE_DELAY=-1
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
-
-  sql:
-    init:
-      mode: always
-
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  batch:
-    jdbc:
-      initialize-schema: always
-    job:
-      enabled: true
-
-logging:
-  file:
-    name: logs/invoice-batch.log
-  level:
-    root: INFO
-    com.optum.fads: DEBUG
-    org.springframework.batch: INFO
-
-
-DROP TABLE IF EXISTS TXN_SOURCE;
-DROP TABLE IF EXISTS CUSTOMER;
-DROP TABLE IF EXISTS PRODUCT;
-DROP TABLE IF EXISTS TXN_STAGE;
-DROP TABLE IF EXISTS FINAL_TXN_LINE;
-DROP TABLE IF EXISTS INVOICE_FINAL;
-DROP TABLE IF EXISTS TXN_ERROR;
-
-CREATE TABLE CUSTOMER (
-  customer_id VARCHAR(20) PRIMARY KEY,
-  discount_rate DECIMAL(5,2) NOT NULL
-);
-
-CREATE TABLE PRODUCT (
-  product_id VARCHAR(20) PRIMARY KEY,
-  tax_rate DECIMAL(5,2) NOT NULL
-);
-
--- status: N=new, D=done, E=error
-CREATE TABLE TXN_SOURCE (
-  txn_id BIGINT PRIMARY KEY,
-  customer_id VARCHAR(20),
-  product_id VARCHAR(20),
-  txn_amount DECIMAL(18,2),
-  txn_time TIMESTAMP NOT NULL,
-  currency VARCHAR(10) NOT NULL,
-  channel VARCHAR(10) NOT NULL,
-  invoice_date DATE NOT NULL,
-  status CHAR(1) DEFAULT 'N' NOT NULL,
-  run_id VARCHAR(80)
-);
-
-CREATE INDEX IDX_TXN_SOURCE_DATE_STATUS ON TXN_SOURCE(invoice_date, status);
-
--- persistent staging (audit of GOOD rows)
-
-CREATE TABLE TXN_STAGE (
-  stage_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-  run_id VARCHAR(80) NOT NULL,
-  invoice_date DATE NOT NULL,
-  txn_id BIGINT NOT NULL,
-  customer_id VARCHAR(20),
-  product_id VARCHAR(20),
-  base_amount DECIMAL(18,2),
-
-  -- allow NULLs for POC
-  discount_rate DECIMAL(5,2),
-  tax_rate DECIMAL(5,2),
-
-  discount DECIMAL(18,2),
-  tax DECIMAL(18,2),
-  commission DECIMAL(18,2),
-  net_amount DECIMAL(18,2),
-  created_at TIMESTAMP NOT NULL
-);
-
-
-CREATE UNIQUE INDEX UX_STAGE_RUN_TXN ON TXN_STAGE(run_id, txn_id);
-
-CREATE TABLE TXN_ERROR (
-  error_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-  run_id VARCHAR(80),
-  invoice_date DATE,
-  txn_id BIGINT,
-  customer_id VARCHAR(20),
-  product_id VARCHAR(20),
-  txn_amount DECIMAL(18,2),
-  error_reason VARCHAR(300),
-
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- final per-transaction computed output
-
-CREATE TABLE FINAL_TXN_LINE (
-  txn_id BIGINT PRIMARY KEY,
-  run_id VARCHAR(80) NOT NULL,
-  invoice_date DATE NOT NULL,
-  customer_id VARCHAR(20),
-  base_amount DECIMAL(18,2),
-
-  discount DECIMAL(18,2) DEFAULT 0.00,
-  tax DECIMAL(18,2) DEFAULT 0.00,
-  commission DECIMAL(18,2) DEFAULT 0.00,
-  net_amount DECIMAL(18,2) DEFAULT 0.00,
-
-  created_at TIMESTAMP NOT NULL
-);
-
-
-CREATE INDEX IDX_FINAL_RUN ON FINAL_TXN_LINE(run_id);
-
--- aggregated invoice per customer/day
-CREATE TABLE INVOICE_FINAL (
-  invoice_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-
-  run_id VARCHAR(80),
-  customer_id VARCHAR(20),
-  invoice_date DATE,
-
-  total_gross DECIMAL(18,2) DEFAULT 0,
-  total_discount DECIMAL(18,2) DEFAULT 0,
-  total_tax DECIMAL(18,2) DEFAULT 0,
-  total_commission DECIMAL(18,2) DEFAULT 0,
-  total_net DECIMAL(18,2) DEFAULT 0,
-
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IDX_INVOICE_RUN ON INVOICE_FINAL(run_id);
-
+[INFO] Scanning for projects...
+[INFO]
+[INFO] -------------< com.optum.fads:fads-pgp-reportsection-api >--------------
+[INFO] Building fads-pgp-reportsection-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-pgp-reportsection-api ---
+[INFO] com.optum.fads:fads-pgp-reportsection-api:jar:1.0.0
+[INFO] +- org.springframework.boot:spring-boot-starter:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot:jar:3.5.9:compile
+[INFO] |  |  \- org.springframework:spring-context:jar:6.2.15:compile
+[INFO] |  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.9:compile
+[INFO] |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile
+[INFO] |  |  |  \- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile
+[INFO] |  |  \- org.slf4j:jul-to-slf4j:jar:2.0.17:compile
+[INFO] |  +- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile
+[INFO] |  \- org.springframework:spring-core:jar:6.2.15:compile
+[INFO] |     \- org.springframework:spring-jcl:jar:6.2.15:compile
+[INFO] +- ch.qos.logback:logback-classic:jar:1.5.25:compile
+[INFO] |  \- org.slf4j:slf4j-api:jar:2.0.17:compile
+[INFO] +- ch.qos.logback:logback-core:jar:1.5.25:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-validation:jar:3.5.9:compile
+[INFO] |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:10.1.50:compile
+[INFO] |  \- org.hibernate.validator:hibernate-validator:jar:8.0.3.Final:compile
+[INFO] |     +- jakarta.validation:jakarta.validation-api:jar:3.0.2:compile
+[INFO] |     +- org.jboss.logging:jboss-logging:jar:3.6.1.Final:compile
+[INFO] |     \- com.fasterxml:classmate:jar:1.7.1:compile
+[INFO] +- org.apache.tomcat.embed:tomcat-embed-core:jar:10.1.47:compile
+[INFO] |  \- org.apache.tomcat:tomcat-annotations-api:jar:10.1.50:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-web:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-json:jar:3.5.9:compile
+[INFO] |  |  +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:jar:2.19.4:compile
+[INFO] |  |  +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.4:compile
+[INFO] |  |  \- com.fasterxml.jackson.module:jackson-module-parameter-names:jar:2.19.4:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-tomcat:jar:3.5.9:compile
+[INFO] |  |  \- org.apache.tomcat.embed:tomcat-embed-websocket:jar:10.1.50:compile
+[INFO] |  +- org.springframework:spring-web:jar:6.2.15:compile
+[INFO] |  |  \- org.springframework:spring-beans:jar:6.2.15:compile
+[INFO] |  \- org.springframework:spring-webmvc:jar:6.2.15:compile
+[INFO] |     \- org.springframework:spring-expression:jar:6.2.15:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-reactor-netty:jar:3.5.9:compile
+[INFO] |  |  \- io.projectreactor.netty:reactor-netty-http:jar:1.2.13:compile
+[INFO] |  |     +- io.netty:netty-codec-http:jar:4.1.130.Final:compile
+[INFO] |  |     |  +- io.netty:netty-common:jar:4.1.130.Final:compile
+[INFO] |  |     |  +- io.netty:netty-buffer:jar:4.1.130.Final:compile
+[INFO] |  |     |  +- io.netty:netty-transport:jar:4.1.130.Final:compile
+[INFO] |  |     |  +- io.netty:netty-codec:jar:4.1.130.Final:compile
+[INFO] |  |     |  \- io.netty:netty-handler:jar:4.1.130.Final:compile
+[INFO] |  |     +- io.netty:netty-codec-http2:jar:4.1.130.Final:compile
+[INFO] |  |     +- io.netty:netty-resolver-dns:jar:4.1.130.Final:compile
+[INFO] |  |     |  +- io.netty:netty-resolver:jar:4.1.130.Final:compile
+[INFO] |  |     |  \- io.netty:netty-codec-dns:jar:4.1.130.Final:compile
+[INFO] |  |     +- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.130.Final:compile
+[INFO] |  |     |  \- io.netty:netty-resolver-dns-classes-macos:jar:4.1.130.Final:compile
+[INFO] |  |     +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.130.Final:compile
+[INFO] |  |     |  +- io.netty:netty-transport-native-unix-common:jar:4.1.130.Final:compile
+[INFO] |  |     |  \- io.netty:netty-transport-classes-epoll:jar:4.1.130.Final:compile
+[INFO] |  |     \- io.projectreactor.netty:reactor-netty-core:jar:1.2.13:compile
+[INFO] |  |        \- io.netty:netty-handler-proxy:jar:4.1.130.Final:compile
+[INFO] |  |           \- io.netty:netty-codec-socks:jar:4.1.130.Final:compile
+[INFO] |  \- org.springframework:spring-webflux:jar:6.2.15:compile
+[INFO] |     \- io.projectreactor:reactor-core:jar:3.7.14:compile
+[INFO] |        \- org.reactivestreams:reactive-streams:jar:1.0.4:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-data-jpa:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.9:compile
+[INFO] |  |  +- com.zaxxer:HikariCP:jar:6.3.3:compile
+[INFO] |  |  \- org.springframework:spring-jdbc:jar:6.2.15:compile
+[INFO] |  +- org.hibernate.orm:hibernate-core:jar:6.6.39.Final:compile
+[INFO] |  |  +- jakarta.persistence:jakarta.persistence-api:jar:3.1.0:compile
+[INFO] |  |  +- jakarta.transaction:jakarta.transaction-api:jar:2.0.1:compile
+[INFO] |  |  +- org.hibernate.common:hibernate-commons-annotations:jar:7.0.3.Final:runtime
+[INFO] |  |  +- io.smallrye:jandex:jar:3.2.0:runtime
+[INFO] |  |  +- org.glassfish.jaxb:jaxb-runtime:jar:4.0.6:runtime
+[INFO] |  |  |  \- org.glassfish.jaxb:jaxb-core:jar:4.0.6:runtime
+[INFO] |  |  |     +- org.eclipse.angus:angus-activation:jar:2.0.3:runtime
+[INFO] |  |  |     +- org.glassfish.jaxb:txw2:jar:4.0.6:runtime
+[INFO] |  |  |     \- com.sun.istack:istack-commons-runtime:jar:4.1.2:runtime
+[INFO] |  |  +- jakarta.inject:jakarta.inject-api:jar:2.0.1:runtime
+[INFO] |  |  \- org.antlr:antlr4-runtime:jar:4.13.0:compile
+[INFO] |  +- org.springframework.data:spring-data-jpa:jar:3.5.7:compile
+[INFO] |  |  +- org.springframework.data:spring-data-commons:jar:3.5.7:compile
+[INFO] |  |  +- org.springframework:spring-orm:jar:6.2.15:compile
+[INFO] |  |  \- org.springframework:spring-tx:jar:6.2.15:compile
+[INFO] |  \- org.springframework:spring-aspects:jar:6.2.15:compile
+[INFO] |     \- org.aspectj:aspectjweaver:jar:1.9.25.1:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-security:jar:3.5.9:compile
+[INFO] |  +- org.springframework:spring-aop:jar:6.2.15:compile
+[INFO] |  +- org.springframework.security:spring-security-config:jar:6.5.7:compile
+[INFO] |  \- org.springframework.security:spring-security-web:jar:6.5.7:compile
+[INFO] +- org.springframework.security:spring-security-oauth2-resource-server:jar:6.5.7:compile
+[INFO] |  +- org.springframework.security:spring-security-core:jar:6.5.7:compile
+[INFO] |  |  \- org.springframework.security:spring-security-crypto:jar:6.5.7:compile
+[INFO] |  \- org.springframework.security:spring-security-oauth2-core:jar:6.5.7:compile
+[INFO] +- org.springframework.security:spring-security-oauth2-jose:jar:6.5.7:compile
+[INFO] |  \- com.nimbusds:nimbus-jose-jwt:jar:9.37.4:compile
+[INFO] |     \- com.github.stephenc.jcip:jcip-annotations:jar:1.0-1:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-actuator:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-actuator-autoconfigure:jar:3.5.9:compile
+[INFO] |  |  \- org.springframework.boot:spring-boot-actuator:jar:3.5.9:compile
+[INFO] |  +- io.micrometer:micrometer-observation:jar:1.15.7:compile
+[INFO] |  |  \- io.micrometer:micrometer-commons:jar:1.15.7:compile
+[INFO] |  \- io.micrometer:micrometer-jakarta9:jar:1.15.7:compile
+[INFO] |     \- io.micrometer:micrometer-core:jar:1.15.7:compile
+[INFO] |        +- org.hdrhistogram:HdrHistogram:jar:2.2.2:runtime
+[INFO] |        \- org.latencyutils:LatencyUtils:jar:2.0.3:runtime
+[INFO] +- org.apache.commons:commons-lang3:jar:3.18.0:compile
+[INFO] +- org.modelmapper:modelmapper:jar:3.2.2:compile
+[INFO] +- org.projectlombok:lombok:jar:1.18.28:provided
+[INFO] +- net.logstash.logback:logstash-logback-encoder:jar:7.4:runtime
+[INFO] |  \- com.fasterxml.jackson.core:jackson-databind:jar:2.19.4:compile
+[INFO] |     +- com.fasterxml.jackson.core:jackson-annotations:jar:2.19.4:compile
+[INFO] |     \- com.fasterxml.jackson.core:jackson-core:jar:2.19.4:compile
+[INFO] +- org.codehaus.janino:janino:jar:3.1.12:runtime
+[INFO] |  \- org.codehaus.janino:commons-compiler:jar:3.1.12:runtime
+[INFO] +- org.springframework.boot:spring-boot-starter-test:jar:3.5.9:test
+[INFO] |  +- org.springframework.boot:spring-boot-test:jar:3.5.9:test
+[INFO] |  +- org.springframework.boot:spring-boot-test-autoconfigure:jar:3.5.9:test
+[INFO] |  +- com.jayway.jsonpath:json-path:jar:2.9.0:test
+[INFO] |  +- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.4:runtime
+[INFO] |  |  \- jakarta.activation:jakarta.activation-api:jar:2.1.4:runtime
+[INFO] |  +- net.minidev:json-smart:jar:2.5.2:test
+[INFO] |  |  \- net.minidev:accessors-smart:jar:2.5.2:test
+[INFO] |  |     \- org.ow2.asm:asm:jar:9.7.1:test
+[INFO] |  +- org.assertj:assertj-core:jar:3.27.6:test
+[INFO] |  +- org.awaitility:awaitility:jar:4.2.2:test
+[INFO] |  +- org.hamcrest:hamcrest:jar:3.0:test
+[INFO] |  +- org.junit.jupiter:junit-jupiter:jar:5.12.2:test
+[INFO] |  |  +- org.junit.jupiter:junit-jupiter-api:jar:5.12.2:test
+[INFO] |  |  |  +- org.opentest4j:opentest4j:jar:1.3.0:test
+[INFO] |  |  |  +- org.junit.platform:junit-platform-commons:jar:1.12.2:test
+[INFO] |  |  |  \- org.apiguardian:apiguardian-api:jar:1.1.2:test
+[INFO] |  |  +- org.junit.jupiter:junit-jupiter-params:jar:5.12.2:test
+[INFO] |  |  \- org.junit.jupiter:junit-jupiter-engine:jar:5.12.2:test
+[INFO] |  |     \- org.junit.platform:junit-platform-engine:jar:1.12.2:test
+[INFO] |  +- org.mockito:mockito-junit-jupiter:jar:5.3.1:test
+[INFO] |  +- org.skyscreamer:jsonassert:jar:1.5.3:test
+[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
+[INFO] |  +- org.springframework:spring-test:jar:6.2.15:test
+[INFO] |  \- org.xmlunit:xmlunit-core:jar:2.10.4:test
+[INFO] +- junit:junit:jar:4.13.2:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:3.0:test
+[INFO] +- org.mockito:mockito-core:jar:5.3.1:test
+[INFO] |  +- net.bytebuddy:byte-buddy:jar:1.17.8:runtime
+[INFO] |  +- net.bytebuddy:byte-buddy-agent:jar:1.17.8:test
+[INFO] |  \- org.objenesis:objenesis:jar:3.3:test
+[INFO] +- org.bitbucket.radistao.test:before-after-spring-test-runner:jar:0.1.0:test
+[INFO] +- io.rest-assured:rest-assured:jar:5.5.6:test
+[INFO] |  +- org.apache.groovy:groovy:jar:4.0.29:test
+[INFO] |  +- org.apache.groovy:groovy-xml:jar:4.0.29:test
+[INFO] |  +- org.apache.httpcomponents:httpclient:jar:4.5.13:test
+[INFO] |  |  +- org.apache.httpcomponents:httpcore:jar:4.4.16:test
+[INFO] |  |  +- commons-logging:commons-logging:jar:1.2:test
+[INFO] |  |  \- commons-codec:commons-codec:jar:1.18.0:test
+[INFO] |  +- org.apache.httpcomponents:httpmime:jar:4.5.13:test
+[INFO] |  +- org.ccil.cowan.tagsoup:tagsoup:jar:1.2.1:test
+[INFO] |  +- io.rest-assured:json-path:jar:5.5.6:test
+[INFO] |  |  +- org.apache.groovy:groovy-json:jar:4.0.29:test
+[INFO] |  |  \- io.rest-assured:rest-assured-common:jar:5.5.6:test
+[INFO] |  \- io.rest-assured:xml-path:jar:5.5.6:test
+[INFO] +- org.mapstruct:mapstruct:jar:1.5.5.Final:compile
+[INFO] +- org.mapstruct:mapstruct-jdk8:jar:1.5.5.Final:compile
+[INFO] +- org.mapstruct:mapstruct-processor:jar:1.5.5.Final:compile
+[INFO] +- com.microsoft.sqlserver:mssql-jdbc:jar:13.2.1.jre11:compile
+[INFO] \- org.yaml:snakeyaml:jar:2.2:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.686 s
+[INFO] Finished at: 2026-01-28T14:20:40+05:30
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-reportsection-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.9</version>
+        <relativePath/>
+    </parent>
+
+    <repositories>
+        <repository>
+            <id>artifactory</id>
+            <name>Artifactory</name>
+            <url>https://repo1.uhc.com/artifactory/repo</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <!-- >surefire.skip>${skipTests}</surefire.skip -->
+        <failsafe.skip>${skipTests}</failsafe.skip>
+		 <logback.version>1.5.25</logback.version>
+        <java.version>17</java.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <springrunner.version>0.1.0</springrunner.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>7.4</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <restassured.version>3.3.0</restassured.version>
+        <mockito.version>5.3.1</mockito.version>
+        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
+        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
+        <log4j.version>2.24.3</log4j.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <jaxb.version>2.3.1</jaxb.version>
+        <sonar.version>3.9.1.2184</sonar.version>
+
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            
+
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            
+            <dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-bom</artifactId>
+				<version>4.1.130.Final</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.tomcat.embed</groupId>
+            <artifactId>tomcat-embed-core</artifactId>
+            <version>10.1.47</version>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version> 
+        </dependency>
+
+        <!-- Model Mapper -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+
+        <!-- Jackson -->
+
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JSON logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.bitbucket.radistao.test</groupId>
+            <artifactId>before-after-spring-test-runner</artifactId>
+            <version>${springrunner.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-jdk8</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+            <version>${org.mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version> 
+        </dependency>
+      
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+  
+    </dependencies>
+
+    <build>
+<!--        <finalName>${project.artifactId}</finalName>-->
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+            </plugin>
+            <!-- Below plugin ensures the execution of test cases during maven build-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <destFile>target/jacoco.exec</destFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-site</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
