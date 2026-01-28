@@ -1,208 +1,64 @@
-package com.optum.fads.caseentrybatch.poc.batch;
+SELECT txn_id,
+       customer_id,
+       product_id,
+       txn_amount,
+       invoice_date,
+       status,
+       run_id
+FROM TXN_SOURCE
+ORDER BY txn_id;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.sql.Date;
-import java.time.LocalDate;
 
-import javax.sql.DataSource;
+SELECT stage_id,
+       run_id,
+       txn_id,
+       customer_id,
+       product_id,
+       base_amount,
+       discount,
+       tax,
+       commission,
+       net_amount,
+       created_at
+FROM TXN_STAGE
+ORDER BY stage_id;
 
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
-import org.springframework.batch.item.database.JdbcBatchItemWriter;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
-import org.springframework.batch.item.support.CompositeItemWriter;
-import org.springframework.batch.item.support.builder.CompositeItemWriterBuilder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 
-@Configuration
-@EnableBatchProcessing
-public class InvoiceJobConfig {
+SELECT txn_id,
+       run_id,
+       customer_id,
+       invoice_date,
+       base_amount,
+       discount,
+       tax,
+       commission,
+       net_amount,
+       created_at
+FROM FINAL_TXN_LINE
+ORDER BY txn_id;
 
-  private static final int CHUNK_SIZE = 10;
 
-  @Bean
-  public Job invoiceJob(JobBuilderFactory jobs,
-                        Step processTxnStep,
-                        Step invoiceAggregationStep,
-                        RunIdIncrementerWithRunId runIdIncrementerWithRunId) {
-    return jobs.get("invoiceJob")
-        .incrementer(runIdIncrementerWithRunId)
-        .start(processTxnStep)
-        .next(invoiceAggregationStep)
-        .build();
-  }
-
-  @Bean
-  public Step processTxnStep(
-      StepBuilderFactory steps,
-      JdbcCursorItemReader<TxnSource> txnReader,
-      ItemProcessor<TxnSource, ProcessedTxn> txnProcessor,
-      CompositeItemWriter<ProcessedTxn> routingWriter
-  ) {
-    return steps.get("processTxnStep")
-        .<TxnSource, ProcessedTxn>chunk(CHUNK_SIZE)
-        .reader(txnReader)
-        .processor(txnProcessor)
-        .writer(routingWriter)
-        .build();
-  }
-
-  // ---------------- Reader (joins for enrichment) ----------------
-
-  @Bean
-  @StepScope
-  public JdbcCursorItemReader<TxnSource> txnReader(
-      DataSource dataSource,
-      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
-  ) {
-    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
-        ? LocalDate.of(2026, 1, 24)
-        : LocalDate.parse(invoiceDateStr);
-
-    String sql =
-        "SELECT s.txn_id      AS txnId, " +
-        "       s.customer_id AS customerId, " +
-        "       s.product_id  AS productId, " +
-        "       s.txn_amount  AS txnAmount, " +
-        "       s.invoice_date AS invoiceDate, " +
-        "       c.discount_rate AS discountRate, " +
-        "       p.tax_rate AS taxRate " +
-        "FROM TXN_SOURCE s " +
-        "LEFT JOIN CUSTOMER c ON c.customer_id = s.customer_id " +
-        "LEFT JOIN PRODUCT  p ON p.product_id  = s.product_id " +
-        "WHERE s.invoice_date = ? AND s.status = 'N' " +
-        "ORDER BY s.txn_id";
-
-    return new JdbcCursorItemReaderBuilder<TxnSource>()
-        .name("txnReader")
-        .dataSource(dataSource)
-        .sql(sql)
-        .preparedStatementSetter(ps -> ps.setDate(1, Date.valueOf(invoiceDate)))
-        .rowMapper(new BeanPropertyRowMapper<>(TxnSource.class))
-        .build();
-  }
-
-  // ---------------- Processor ----------------
-
-  @Bean
-  @StepScope
-  public ItemProcessor<TxnSource, ProcessedTxn> txnProcessor(
-      @Value("#{jobParameters['runId']}") String runId
-  ) {
-    final String effectiveRunId = (runId == null || runId.isBlank())
-        ? "RUN_" + System.currentTimeMillis()
-        : runId;
-
-    return s -> {
-      BigDecimal base = s.getTxnAmount();
-      if (base == null) return ProcessedTxn.error(effectiveRunId, s, "AMOUNT_NULL");
-      if (base.compareTo(BigDecimal.ZERO) < 0) return ProcessedTxn.error(effectiveRunId, s, "AMOUNT_NEGATIVE");
-      if (s.getDiscountRate() == null) return ProcessedTxn.error(effectiveRunId, s, "CUSTOMER_NOT_FOUND");
-      if (s.getTaxRate() == null) return ProcessedTxn.error(effectiveRunId, s, "PRODUCT_NOT_FOUND");
-
-      // rules:
-      // discount = base * discount_rate
-      // tax = (base-discount) * tax_rate
-      // commission = base * 0.02
-      // net = (base-discount) + tax + commission
-
-      BigDecimal discount = base.multiply(s.getDiscountRate()).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal taxable = base.subtract(discount);
-      BigDecimal tax = taxable.multiply(s.getTaxRate()).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal commission = base.multiply(new BigDecimal("0.02")).setScale(2, RoundingMode.HALF_UP);
-      BigDecimal net = taxable.add(tax).add(commission).setScale(2, RoundingMode.HALF_UP);
-
-      return ProcessedTxn.good(effectiveRunId, s, discount, tax, commission, net);
-    };
-  }
-
-  // ---------------- Writers ----------------
-
-  @Bean
-  public CompositeItemWriter<ProcessedTxn> routingWriter(
-      JdbcBatchItemWriter<ProcessedTxn> stageWriter,
-      JdbcBatchItemWriter<ProcessedTxn> finalLineWriter,
-      JdbcBatchItemWriter<ProcessedTxn> errorWriter,
-      TxnStatusUpdateWriter statusWriter
-  ) {
-    return new CompositeItemWriterBuilder<ProcessedTxn>()
-        .delegates(stageWriter, finalLineWriter, errorWriter, statusWriter)
-        .build();
-  }
-
-  // GOOD -> TXN_STAGE
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> stageWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, " +
-            "discount, tax, commission, net_amount, created_at) " +
-            "VALUES (:runId, :invoiceDate, :txnId, :customerId, :productId, :baseAmount, :discountRate, :taxRate, " +
-            ":discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // GOOD -> FINAL_TXN_LINE
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> finalLineWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO FINAL_TXN_LINE(txn_id, run_id, invoice_date, customer_id, base_amount, discount, tax, commission, net_amount, created_at) " +
-            "VALUES (:txnId, :runId, :invoiceDate, :customerId, :baseAmount, :discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // ERROR -> TXN_ERROR (only when kind=ERROR; writer will skip others)
-  @Bean
-  public JdbcBatchItemWriter<ProcessedTxn> errorWriter(DataSource dataSource) {
-    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
-        .dataSource(dataSource)
-        .sql(
-            "INSERT INTO TXN_ERROR(run_id, invoice_date, txn_id, customer_id, product_id, txn_amount, error_reason, created_at) " +
-            "VALUES (:runId, :invoiceDate, :txnId, :customerId, :productId, :baseAmount, :errorReason, CURRENT_TIMESTAMP)"
-        )
-        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
-        .assertUpdates(false)
-        .build();
-  }
-
-  // ---------------- Aggregation step wire-up ----------------
-
-  @Bean
-  public Step invoiceAggregationStep(
-      StepBuilderFactory steps,
-      JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader,
-      JdbcBatchItemWriter<InvoiceSummary> invoiceFinalWriter
-  ) {
-    return steps.get("invoiceAggregationStep")
-        .<InvoiceSummary, InvoiceSummary>chunk(50)
-        .reader(invoiceSummaryReader)
-        .writer(invoiceFinalWriter)
-        .build();
-  }
-
-  @Bean
-  public RunIdIncrementerWithRunId runIdIncrementerWithRunId() {
-    return new RunIdIncrementerWithRunId();
-  }
-}
+SELECT error_id,
+       run_id,
+       txn_id,
+       customer_id,
+       product_id,
+       txn_amount,
+       error_reason,
+       created_at
+FROM TXN_ERROR
+ORDER BY error_id;
+	
+	
+	SELECT invoice_id,
+       run_id,
+       customer_id,
+       invoice_date,
+       total_gross,
+       total_discount,
+       total_tax,
+       total_commission,
+       total_net,
+       created_at
+FROM INVOICE_FINAL
+ORDER BY invoice_id;
