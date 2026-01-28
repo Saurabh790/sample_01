@@ -1,17 +1,257 @@
-mvn -q dependency:tree -Dincludes=ch.qos.logback
-mvn dependency:tree -Dincludes=ch.qos.logback -Dverbose
-mvn help:effective-pom > effective-pom.xml
-mvn -q dependency:list | findstr /i logback
-mvn dependency:tree -Dincludes=ch.qos.logback -Dverbose
+package com.optum.fads.caseentrybatch.poc;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class InvoiceBatchApplication {
+  public static void main(String[] args) {
+    SpringApplication.run(InvoiceBatchApplication.class, args);
+  }
+}
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import com.optum.fads.caseentrybatch.poc.batch.model.ProcessedTxn;
+import com.optum.fads.caseentrybatch.poc.batch.model.TxnSource;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.support.BeanPropertyItemSqlParameterSourceProvider;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import javax.sql.DataSource;
+import java.sql.Date;
+import java.time.LocalDate;
+
+@Configuration
+@EnableBatchProcessing
+public class InvoiceJobConfig {
+
+  // ---------------- JOB ----------------
+
+  @Bean
+  public Job invoiceJob(JobRepository jobRepository, Step processTxnStep) {
+    return new JobBuilder("invoiceJob", jobRepository)
+        .incrementer(new RunIdIncrementer())
+        .start(processTxnStep)
+        .build();
+  }
+
+  // ---------------- STEP ----------------
+
+  @Bean
+  public Step processTxnStep(
+      JobRepository jobRepository,
+      PlatformTransactionManager transactionManager,
+      JdbcCursorItemReader<TxnSource> txnReader,
+      ItemProcessor<TxnSource, ProcessedTxn> txnProcessor,
+      JdbcBatchItemWriter<ProcessedTxn> finalLineWriter
+  ) {
+    return new StepBuilder("processTxnStep", jobRepository)
+        .<TxnSource, ProcessedTxn>chunk(10, transactionManager)
+        .reader(txnReader)
+        .processor(txnProcessor)
+        .writer(finalLineWriter)
+        .build();
+  }
+
+  // ---------------- READER (StepScope because it uses invoiceDate job parameter) ----------------
+
+  @Bean
+  @StepScope
+  public JdbcCursorItemReader<TxnSource> txnReader(
+      DataSource dataSource,
+      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
+  ) {
+    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
+        ? LocalDate.of(2026, 1, 24)
+        : LocalDate.parse(invoiceDateStr);
+
+    JdbcCursorItemReader<TxnSource> reader = new JdbcCursorItemReader<>();
+    reader.setDataSource(dataSource);
+    reader.setSql(
+        "SELECT txn_id, customer_id, product_id, txn_amount, txn_time, currency, channel, invoice_date, status " +
+            "FROM TXN_SOURCE " +
+            "WHERE invoice_date = ? AND status = 'N' " +
+            "ORDER BY txn_id"
+    );
+    reader.setPreparedStatementSetter(ps -> ps.setDate(1, Date.valueOf(invoiceDate)));
+    reader.setRowMapper(new BeanPropertyRowMapper<>(TxnSource.class));
+    return reader;
+  }
+
+  // ---------------- PROCESSOR (StepScope because it uses runId + invoiceDate) ----------------
+
+  @Bean
+  @StepScope
+  public ItemProcessor<TxnSource, ProcessedTxn> txnProcessor(
+      @Value("#{jobParameters['runId']}") String runId,
+      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
+  ) {
+    return item -> {
+      String effectiveRunId = (runId == null || runId.isBlank())
+          ? "RUN_" + System.currentTimeMillis()
+          : runId;
+
+      LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
+          ? LocalDate.of(2026, 1, 24)
+          : LocalDate.parse(invoiceDateStr);
+
+      // Simple calc example (replace with your logic)
+      ProcessedTxn out = new ProcessedTxn();
+      out.setTxnId(item.getTxnId());
+      out.setJobRunId(effectiveRunId);
+      out.setInvoiceDate(invoiceDate);
+      out.setCustomerId(item.getCustomerId());
+
+      // Example: gross = txn_amount, commission = 2%, net = gross + commission
+      if (item.getTxnAmount() != null) {
+        out.setBaseAmount(item.getTxnAmount());
+        out.setDiscount(item.getTxnAmount().multiply(new java.math.BigDecimal("0.00")));
+        out.setTax(item.getTxnAmount().multiply(new java.math.BigDecimal("0.18")));
+        out.setCommission(item.getTxnAmount().multiply(new java.math.BigDecimal("0.02")));
+        out.setNetAmount(out.getBaseAmount().subtract(out.getDiscount()).add(out.getTax()).add(out.getCommission()));
+      }
+
+      return out;
+    };
+  }
+
+  // ---------------- WRITER (writes to FINAL_TXN_LINE) ----------------
+
+  @Bean
+  public JdbcBatchItemWriter<ProcessedTxn> finalLineWriter(DataSource dataSource) {
+    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
+        .dataSource(dataSource)
+        .sql(
+            "INSERT INTO FINAL_TXN_LINE " +
+                "(txn_id, job_run_id, invoice_date, customer_id, base_amount, discount, tax, commission, net_amount, created_at) " +
+                "VALUES (:txnId, :jobRunId, :invoiceDate, :customerId, :baseAmount, :discount, :tax, :commission, :netAmount, CURRENT_TIMESTAMP)"
+        )
+        .itemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider<>())
+        .build();
+  }
+}
+package com.optum.fads.caseentrybatch.poc.batch.model;
+
+import java.math.BigDecimal;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+
+public class TxnSource {
+  private Long txnId;
+  private String customerId;
+  private String productId;
+  private BigDecimal txnAmount;
+  private Timestamp txnTime;
+  private String currency;
+  private String channel;
+  private LocalDate invoiceDate;
+  private String status;
+
+  public Long getTxnId() { return txnId; }
+  public void setTxnId(Long txnId) { this.txnId = txnId; }
+
+  public String getCustomerId() { return customerId; }
+  public void setCustomerId(String customerId) { this.customerId = customerId; }
+
+  public String getProductId() { return productId; }
+  public void setProductId(String productId) { this.productId = productId; }
+
+  public BigDecimal getTxnAmount() { return txnAmount; }
+  public void setTxnAmount(BigDecimal txnAmount) { this.txnAmount = txnAmount; }
+
+  public Timestamp getTxnTime() { return txnTime; }
+  public void setTxnTime(Timestamp txnTime) { this.txnTime = txnTime; }
+
+  public String getCurrency() { return currency; }
+  public void setCurrency(String currency) { this.currency = currency; }
+
+  public String getChannel() { return channel; }
+  public void setChannel(String channel) { this.channel = channel; }
+
+  public LocalDate getInvoiceDate() { return invoiceDate; }
+  public void setInvoiceDate(LocalDate invoiceDate) { this.invoiceDate = invoiceDate; }
+
+  public String getStatus() { return status; }
+  public void setStatus(String status) { this.status = status; }
+}
+package com.optum.fads.caseentrybatch.poc.batch.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public class ProcessedTxn {
+  private Long txnId;
+  private String jobRunId;
+  private LocalDate invoiceDate;
+  private String customerId;
+
+  private BigDecimal baseAmount;
+  private BigDecimal discount;
+  private BigDecimal tax;
+  private BigDecimal commission;
+  private BigDecimal netAmount;
+
+  public Long getTxnId() { return txnId; }
+  public void setTxnId(Long txnId) { this.txnId = txnId; }
+
+  public String getJobRunId() { return jobRunId; }
+  public void setJobRunId(String jobRunId) { this.jobRunId = jobRunId; }
+
+  public LocalDate getInvoiceDate() { return invoiceDate; }
+  public void setInvoiceDate(LocalDate invoiceDate) { this.invoiceDate = invoiceDate; }
+
+  public String getCustomerId() { return customerId; }
+  public void setCustomerId(String customerId) { this.customerId = customerId; }
+
+  public BigDecimal getBaseAmount() { return baseAmount; }
+  public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
+
+  public BigDecimal getDiscount() { return discount; }
+  public void setDiscount(BigDecimal discount) { this.discount = discount; }
+
+  public BigDecimal getTax() { return tax; }
+  public void setTax(BigDecimal tax) { this.tax = tax; }
+
+  public BigDecimal getCommission() { return commission; }
+  public void setCommission(BigDecimal commission) { this.commission = commission; }
+
+  public BigDecimal getNetAmount() { return netAmount; }
+  public void setNetAmount(BigDecimal netAmount) { this.netAmount = netAmount; }
+}
+
+) src/test/resources/application-test.yml
+spring:
+  batch:
+    job:
+      enabled: false
 
 
-<dependency>
-  <groupId>ch.qos.logback</groupId>
-  <artifactId>logback-core</artifactId>
-  <version>1.5.25</version>
-</dependency>
-<dependency>
-  <groupId>ch.qos.logback</groupId>
-  <artifactId>logback-classic</artifactId>
-  <version>1.5.25</version>
-</dependency>
+
+src/test/java/com/optum/fads/caseentrybatch/poc/DemoApplicationTests.java
+package com.optum.fads.caseentrybatch.poc;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class DemoApplicationTests {
+  @Test
+  void contextLoads() { }
+}
