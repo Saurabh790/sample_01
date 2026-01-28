@@ -1,55 +1,471 @@
+package com.optum.fads.caseentrybatch.poc;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class InvoiceBatchApplication {
+  public static void main(String[] args) {
+    SpringApplication.run(InvoiceBatchApplication.class, args);
+  }
+}
+package com.optum.fads.caseentrybatch.poc.batch;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.PreparedStatementSetter;
+import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import javax.sql.DataSource;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+@Configuration
+public class InvoiceAggregationConfig {
+
+  @Bean
+  @StepScope
+  public JdbcCursorItemReader<InvoiceSummary> invoiceSummaryReader(
+      DataSource dataSource,
+      @Value("#{jobParameters['runId']}") String runId,
+      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
+  ) {
+
+    final String runIdFinal = runId;
+    final String invoiceDateFinal =
+        (invoiceDateStr == null || invoiceDateStr.isBlank()) ? "2026-01-24" : invoiceDateStr;
+
+    String sql =
+        "SELECT run_id AS runId, customer_id AS customerId, invoice_date AS invoiceDate, " +
+        "       ROUND(SUM(base_amount),2) AS totalGross, " +
+        "       ROUND(SUM(discount),2) AS totalDiscount, " +
+        "       ROUND(SUM(tax),2) AS totalTax, " +
+        "       ROUND(SUM(commission),2) AS totalCommission, " +
+        "       ROUND(SUM(net_amount),2) AS totalNet " +
+        "FROM FINAL_TXN_LINE " +
+        "WHERE run_id = ? AND invoice_date = ? " +
+        "GROUP BY run_id, customer_id, invoice_date " +
+        "ORDER BY customer_id";
+
+    PreparedStatementSetter pss = new PreparedStatementSetter() {
+      @Override
+      public void setValues(PreparedStatement ps) throws SQLException {
+        ps.setString(1, runIdFinal);
+        ps.setDate(2, Date.valueOf(invoiceDateFinal));
+      }
+    };
+
+    return new JdbcCursorItemReaderBuilder<InvoiceSummary>()
+        .name("invoiceSummaryReader")
+        .dataSource(dataSource)
+        .sql(sql)
+        .preparedStatementSetter(pss)
+        .rowMapper(new BeanPropertyRowMapper<>(InvoiceSummary.class))
+        .build();
+  }
+}
 package com.optum.fads.caseentrybatch.poc.batch;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.LocalDate;
 
 import javax.sql.DataSource;
 
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
+import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.item.database.JdbcPagingItemReader;
-import org.springframework.batch.item.database.Order;
-import org.springframework.batch.item.database.support.H2PagingQueryProvider;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.item.database.BeanPropertyItemPreparedStatementSetter;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
+import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 
 @Configuration
-public class TxnSourceReaderConfig {
+@EnableBatchProcessing
+public class InvoiceJobConfig {
 
   @Bean
+  public Job invoiceJob(JobBuilderFactory jobs, Step invoiceStep) {
+    return jobs.get("invoiceJob")
+        .incrementer(new RunIdIncrementer())
+        .start(invoiceStep)
+        .build();
+  }
+
+  @Bean
+  public Step invoiceStep(
+      StepBuilderFactory steps,
+      JdbcCursorItemReader<TxnSource> txnReader,
+      ItemProcessor<TxnSource, ProcessedTxn> txnProcessor,
+      JdbcBatchItemWriter<ProcessedTxn> finalLineWriter
+  ) {
+    return steps.get("invoiceStep")
+        .<TxnSource, ProcessedTxn>chunk(10)
+        .reader(txnReader)
+        .processor(txnProcessor)
+        .writer(finalLineWriter)
+        .build();
+  }
+
+  // -------- Reader (StepScope because it uses jobParameters) --------
+  @Bean
   @StepScope
-  public JdbcPagingItemReader<TxnSourceRow> txnSourceReader(
+  public JdbcCursorItemReader<TxnSource> txnReader(
       DataSource dataSource,
       @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
   ) {
-    if (invoiceDateStr == null || invoiceDateStr.isBlank()) {
-      invoiceDateStr = "2026-01-24";
-    }
+    LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
+        ? LocalDate.of(2026, 1, 24)
+        : LocalDate.parse(invoiceDateStr);
 
-    Map<String, Object> params = new HashMap<>();
-    params.put("invoiceDate", java.sql.Date.valueOf(invoiceDateStr));
+    return new JdbcCursorItemReaderBuilder<TxnSource>()
+        .name("txnReader")
+        .dataSource(dataSource)
+        .sql("SELECT txn_id, customer_id, product_id, txn_amount, txn_time, currency, channel, invoice_date, status " +
+             "FROM TXN_SOURCE WHERE invoice_date = ? AND status = 'N' ORDER BY txn_id")
+        .preparedStatementSetter(ps -> ps.setDate(1, java.sql.Date.valueOf(invoiceDate)))
+        .rowMapper(new BeanPropertyRowMapper<>(TxnSource.class))
+        .build();
+  }
 
-    H2PagingQueryProvider queryProvider = new H2PagingQueryProvider();
-    queryProvider.setSelectClause(
-        "SELECT s.txn_id AS txnId, s.customer_id AS customerId, s.product_id AS productId, " +
-        "       s.txn_amount AS txnAmount, s.invoice_date AS invoiceDate, " +
-        "       c.discount_rate AS discountRate, p.tax_rate AS taxRate"
-    );
-    queryProvider.setFromClause(
-        "FROM TXN_SOURCE s " +
-        "LEFT JOIN CUSTOMER c ON c.customer_id = s.customer_id " +
-        "LEFT JOIN PRODUCT  p ON p.product_id  = s.product_id"
-    );
-    queryProvider.setWhereClause("WHERE s.invoice_date = :invoiceDate AND s.status = 'N'");
-    queryProvider.setSortKeys(Map.of("s.txn_id", Order.ASCENDING));
+  // -------- Processor (StepScope because it uses jobParameters) --------
+  @Bean
+  @StepScope
+  public ItemProcessor<TxnSource, ProcessedTxn> txnProcessor(
+      @Value("#{jobParameters['runId']}") String runId,
+      @Value("#{jobParameters['invoiceDate']}") String invoiceDateStr
+  ) {
+    return item -> {
+      String effectiveRunId = (runId == null || runId.isBlank())
+          ? "RUN_" + System.currentTimeMillis()
+          : runId;
 
-    JdbcPagingItemReader<TxnSourceRow> reader = new JdbcPagingItemReader<>();
-    reader.setDataSource(dataSource);
-    reader.setQueryProvider(queryProvider);
-    reader.setParameterValues(params);
-    reader.setPageSize(10);
-    reader.setRowMapper(new BeanPropertyRowMapper<>(TxnSourceRow.class));
-    return reader;
+      LocalDate invoiceDate = (invoiceDateStr == null || invoiceDateStr.isBlank())
+          ? LocalDate.of(2026, 1, 24)
+          : LocalDate.parse(invoiceDateStr);
+
+      ProcessedTxn out = new ProcessedTxn();
+      out.setTxnId(item.getTxnId());
+      out.setJobRunId(effectiveRunId);
+      out.setInvoiceDate(invoiceDate);
+      out.setCustomerId(item.getCustomerId());
+
+      if (item.getTxnAmount() != null) {
+        java.math.BigDecimal base = item.getTxnAmount();
+        java.math.BigDecimal discount = base.multiply(new java.math.BigDecimal("0.00"));
+        java.math.BigDecimal tax = base.multiply(new java.math.BigDecimal("0.18"));
+        java.math.BigDecimal commission = base.multiply(new java.math.BigDecimal("0.02"));
+        java.math.BigDecimal net = base.subtract(discount).add(tax).add(commission);
+
+        out.setBaseAmount(base);
+        out.setDiscount(discount);
+        out.setTax(tax);
+        out.setCommission(commission);
+        out.setNetAmount(net);
+      }
+
+      return out;
+    };
+  }
+
+  // -------- Writer (writes FINAL_TXN_LINE) --------
+  @Bean
+  public JdbcBatchItemWriter<ProcessedTxn> finalLineWriter(DataSource dataSource) {
+    return new JdbcBatchItemWriterBuilder<ProcessedTxn>()
+        .dataSource(dataSource)
+        .sql("INSERT INTO FINAL_TXN_LINE " +
+             "(txn_id, job_run_id, invoice_date, customer_id, base_amount, discount, tax, commission, net_amount, created_at) " +
+             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)")
+        .itemPreparedStatementSetter(new BeanPropertyItemPreparedStatementSetter<ProcessedTxn>() {
+          @Override
+          public void setValues(ProcessedTxn item, java.sql.PreparedStatement ps) throws java.sql.SQLException {
+            ps.setLong(1, item.getTxnId());
+            ps.setString(2, item.getJobRunId());
+            ps.setDate(3, java.sql.Date.valueOf(item.getInvoiceDate()));
+            ps.setString(4, item.getCustomerId());
+            ps.setBigDecimal(5, item.getBaseAmount());
+            ps.setBigDecimal(6, item.getDiscount());
+            ps.setBigDecimal(7, item.getTax());
+            ps.setBigDecimal(8, item.getCommission());
+            ps.setBigDecimal(9, item.getNetAmount());
+          }
+        })
+        .build();
   }
 }
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public class InvoiceSummary {
+  public String runId;
+  public String customerId;
+  public LocalDate invoiceDate;
+
+  public BigDecimal totalGross;
+  public BigDecimal totalDiscount;
+  public BigDecimal totalTax;
+  public BigDecimal totalCommission;
+  public BigDecimal totalNet;
+}
+
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.JobParametersIncrementer;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+
+import java.time.LocalDateTime;
+
+public class RunIdIncrementerWithRunId implements JobParametersIncrementer {
+  private final RunIdIncrementer delegate = new RunIdIncrementer();
+
+  @Override
+  public JobParameters getNext(JobParameters parameters) {
+    JobParameters next = delegate.getNext(parameters);
+
+    String invoiceDate = (parameters == null) ? null : parameters.getString("invoiceDate");
+    if (invoiceDate == null || invoiceDate.isBlank()) {
+      invoiceDate = "2026-01-24"; // default for demo
+    }
+
+    String runId = "RUN_" + invoiceDate + "_" + LocalDateTime.now().toString();
+
+    return new JobParametersBuilder(next)
+        .addString("invoiceDate", invoiceDate, true)
+        .addString("runId", runId, true)
+        .toJobParameters();
+  }
+}
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public class ProcessedTxn {
+  private Long txnId;
+  private String jobRunId;
+  private LocalDate invoiceDate;
+  private String customerId;
+
+  private BigDecimal baseAmount;
+  private BigDecimal discount;
+  private BigDecimal tax;
+  private BigDecimal commission;
+  private BigDecimal netAmount;
+
+  public Long getTxnId() { return txnId; }
+  public void setTxnId(Long txnId) { this.txnId = txnId; }
+
+  public String getJobRunId() { return jobRunId; }
+  public void setJobRunId(String jobRunId) { this.jobRunId = jobRunId; }
+
+  public LocalDate getInvoiceDate() { return invoiceDate; }
+  public void setInvoiceDate(LocalDate invoiceDate) { this.invoiceDate = invoiceDate; }
+
+  public String getCustomerId() { return customerId; }
+  public void setCustomerId(String customerId) { this.customerId = customerId; }
+
+  public BigDecimal getBaseAmount() { return baseAmount; }
+  public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
+
+  public BigDecimal getDiscount() { return discount; }
+  public void setDiscount(BigDecimal discount) { this.discount = discount; }
+
+  public BigDecimal getTax() { return tax; }
+  public void setTax(BigDecimal tax) { this.tax = tax; }
+
+  public BigDecimal getCommission() { return commission; }
+  public void setCommission(BigDecimal commission) { this.commission = commission; }
+
+  public BigDecimal getNetAmount() { return netAmount; }
+  public void setNetAmount(BigDecimal netAmount) { this.netAmount = netAmount; }
+}
+package com.optum.fads.caseentrybatch.poc.batch;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+public class ProcessedTxn {
+  private Long txnId;
+  private String jobRunId;
+  private LocalDate invoiceDate;
+  private String customerId;
+
+  private BigDecimal baseAmount;
+  private BigDecimal discount;
+  private BigDecimal tax;
+  private BigDecimal commission;
+  private BigDecimal netAmount;
+
+  public Long getTxnId() { return txnId; }
+  public void setTxnId(Long txnId) { this.txnId = txnId; }
+
+  public String getJobRunId() { return jobRunId; }
+  public void setJobRunId(String jobRunId) { this.jobRunId = jobRunId; }
+
+  public LocalDate getInvoiceDate() { return invoiceDate; }
+  public void setInvoiceDate(LocalDate invoiceDate) { this.invoiceDate = invoiceDate; }
+
+  public String getCustomerId() { return customerId; }
+  public void setCustomerId(String customerId) { this.customerId = customerId; }
+
+  public BigDecimal getBaseAmount() { return baseAmount; }
+  public void setBaseAmount(BigDecimal baseAmount) { this.baseAmount = baseAmount; }
+
+  public BigDecimal getDiscount() { return discount; }
+  public void setDiscount(BigDecimal discount) { this.discount = discount; }
+
+  public BigDecimal getTax() { return tax; }
+  public void setTax(BigDecimal tax) { this.tax = tax; }
+
+  public BigDecimal getCommission() { return commission; }
+  public void setCommission(BigDecimal commission) { this.commission = commission; }
+
+  public BigDecimal getNetAmount() { return netAmount; }
+  public void setNetAmount(BigDecimal netAmount) { this.netAmount = netAmount; }
+}
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:batchdb;DB_CLOSE_DELAY=-1
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+
+  sql:
+    init:
+      mode: always
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  batch:
+    jdbc:
+      initialize-schema: always
+    job:
+      enabled: true
+
+logging:
+  file:
+    name: logs/invoice-batch.log
+  level:
+    root: INFO
+    com.optum.fads: DEBUG
+    org.springframework.batch: INFO
+
+
+DROP TABLE IF EXISTS TXN_SOURCE;
+DROP TABLE IF EXISTS CUSTOMER;
+DROP TABLE IF EXISTS PRODUCT;
+DROP TABLE IF EXISTS TXN_STAGE;
+DROP TABLE IF EXISTS FINAL_TXN_LINE;
+DROP TABLE IF EXISTS INVOICE_FINAL;
+DROP TABLE IF EXISTS TXN_ERROR;
+
+CREATE TABLE CUSTOMER (
+  customer_id VARCHAR(20) PRIMARY KEY,
+  discount_rate DECIMAL(5,2) NOT NULL
+);
+
+CREATE TABLE PRODUCT (
+  product_id VARCHAR(20) PRIMARY KEY,
+  tax_rate DECIMAL(5,2) NOT NULL
+);
+
+-- status: N=new, D=done, E=error
+CREATE TABLE TXN_SOURCE (
+  txn_id BIGINT PRIMARY KEY,
+  customer_id VARCHAR(20),
+  product_id VARCHAR(20),
+  txn_amount DECIMAL(18,2),
+  txn_time TIMESTAMP NOT NULL,
+  currency VARCHAR(10) NOT NULL,
+  channel VARCHAR(10) NOT NULL,
+  invoice_date DATE NOT NULL,
+  status CHAR(1) DEFAULT 'N' NOT NULL,
+  run_id VARCHAR(80)
+);
+
+CREATE INDEX IDX_TXN_SOURCE_DATE_STATUS ON TXN_SOURCE(invoice_date, status);
+
+-- persistent staging (audit of GOOD rows)
+CREATE TABLE TXN_STAGE (
+  stage_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  run_id VARCHAR(80) NOT NULL,
+  invoice_date DATE NOT NULL,
+  txn_id BIGINT NOT NULL,
+  customer_id VARCHAR(20) NOT NULL,
+  product_id VARCHAR(20) NOT NULL,
+  base_amount DECIMAL(18,2) NOT NULL,
+  discount_rate DECIMAL(5,2) NOT NULL,
+  tax_rate DECIMAL(5,2) NOT NULL,
+  discount DECIMAL(18,2) NOT NULL,
+  tax DECIMAL(18,2) NOT NULL,
+  commission DECIMAL(18,2) NOT NULL,
+  net_amount DECIMAL(18,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+CREATE UNIQUE INDEX UX_STAGE_RUN_TXN ON TXN_STAGE(run_id, txn_id);
+
+CREATE TABLE TXN_ERROR (
+  error_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  run_id VARCHAR(80) NOT NULL,
+  invoice_date DATE NOT NULL,
+  txn_id BIGINT NOT NULL,
+  customer_id VARCHAR(20),
+  product_id VARCHAR(20),
+  txn_amount DECIMAL(18,2),
+  error_reason VARCHAR(300) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+-- final per-transaction computed output
+CREATE TABLE FINAL_TXN_LINE (
+  txn_id BIGINT PRIMARY KEY,
+  run_id VARCHAR(80) NOT NULL,
+  invoice_date DATE NOT NULL,
+  customer_id VARCHAR(20) NOT NULL,
+  base_amount DECIMAL(18,2) NOT NULL,
+  discount DECIMAL(18,2) NOT NULL,
+  tax DECIMAL(18,2) NOT NULL,
+  commission DECIMAL(18,2) NOT NULL,
+  net_amount DECIMAL(18,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IDX_FINAL_RUN ON FINAL_TXN_LINE(run_id);
+
+-- aggregated invoice per customer/day
+CREATE TABLE INVOICE_FINAL (
+  invoice_id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+  run_id VARCHAR(80) NOT NULL,
+  customer_id VARCHAR(20) NOT NULL,
+  invoice_date DATE NOT NULL,
+  total_gross DECIMAL(18,2) NOT NULL,
+  total_discount DECIMAL(18,2) NOT NULL,
+  total_tax DECIMAL(18,2) NOT NULL,
+  total_commission DECIMAL(18,2) NOT NULL,
+  total_net DECIMAL(18,2) NOT NULL,
+  created_at TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IDX_INVOICE_RUN ON INVOICE_FINAL(run_id);
+
