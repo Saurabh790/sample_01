@@ -1,113 +1,14 @@
+CREATE TABLE FINAL_TXN_LINE (
+  txn_id BIGINT PRIMARY KEY,
+  run_id VARCHAR(80) NOT NULL,
+  invoice_date DATE NOT NULL,
+  customer_id VARCHAR(20),
+  base_amount DECIMAL(18,2),
 
-2026-01-28 13:24:22.954  INFO 27752 --- [           main] c.o.f.c.poc.InvoiceBatchApplication      : No active profile set, falling back to 1 default profile: "default"
-2026-01-28 13:24:23.749  INFO 27752 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-01-28 13:24:23.975  INFO 27752 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
-2026-01-28 13:24:24.253  WARN 27752 --- [           main] o.s.b.c.l.AbstractListenerFactoryBean    : org.springframework.batch.item.ItemProcessor is an interface. The implementing class will not be queried for annotation based listener configurations. If using @StepScope on a @Bean method, be sure to return the implementing class so listener annotations can be used.
-2026-01-28 13:24:24.316  INFO 27752 --- [           main] o.s.b.c.r.s.JobRepositoryFactoryBean     : No database type set, using meta data indicating: H2
-2026-01-28 13:24:24.478  INFO 27752 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : No TaskExecutor has been set, defaulting to synchronous executor.
-2026-01-28 13:24:24.566  INFO 27752 --- [           main] c.o.f.c.poc.InvoiceBatchApplication      : Started InvoiceBatchApplication in 2.113 seconds (JVM running for 2.533)
-2026-01-28 13:24:24.702  INFO 27752 --- [           main] c.o.f.c.poc.data.DataSeeder              : DataSeeder: Inserted 100 TXN_SOURCE rows for invoice_date=2026-01-24
-2026-01-28 13:24:24.702  INFO 27752 --- [           main] o.s.b.a.b.JobLauncherApplicationRunner   : Running default command line with: []
-2026-01-28 13:24:24.754  INFO 27752 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=invoiceJob]] launched with the following parameters: [{runId=RUN_2026-01-24_2026-01-28T13:24:24.717754, invoiceDate=2026-01-24, run.id=1}]
-2026-01-28 13:24:24.808  INFO 27752 --- [           main] o.s.batch.core.job.SimpleStepHandler     : Executing step: [processTxnStep]
-2026-01-28 13:24:25.035 ERROR 27752 --- [           main] o.s.batch.core.step.AbstractStep         : Encountered an error executing step processTxnStep in job invoiceJob
+  discount DECIMAL(18,2) DEFAULT 0.00,
+  tax DECIMAL(18,2) DEFAULT 0.00,
+  commission DECIMAL(18,2) DEFAULT 0.00,
+  net_amount DECIMAL(18,2) DEFAULT 0.00,
 
-org.springframework.dao.DataIntegrityViolationException: PreparedStatementCallback; SQL [INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)]; NULL not allowed for column "DISCOUNT_RATE"; SQL statement:
-INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) [23502-214]; nested exception is org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: NULL not allowed for column "DISCOUNT_RATE"; SQL statement:
-INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) [23502-214]
-        at org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator.doTranslate(SQLErrorCodeSQLExceptionTranslator.java:248) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.support.AbstractFallbackSQLExceptionTranslator.translate(AbstractFallbackSQLExceptionTranslator.java:73) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.core.JdbcTemplate.translateException(JdbcTemplate.java:1577) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:669) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:693) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.core.JdbcTemplate.batchUpdate(JdbcTemplate.java:1036) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate.batchUpdate(NamedParameterJdbcTemplate.java:371) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.batch.item.database.JdbcBatchItemWriter.write(JdbcBatchItemWriter.java:182) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
-        at org.springframework.batch.item.support.CompositeItemWriter.write(CompositeItemWriter.java:59) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.item.SimpleChunkProcessor.writeItems(SimpleChunkProcessor.java:193) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.item.SimpleChunkProcessor.doWrite(SimpleChunkProcessor.java:159) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.item.SimpleChunkProcessor.write(SimpleChunkProcessor.java:294) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.item.SimpleChunkProcessor.process(SimpleChunkProcessor.java:217) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.item.ChunkOrientedTasklet.execute(ChunkOrientedTasklet.java:77) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:407) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.tasklet.TaskletStep$ChunkTransactionCallback.doInTransaction(TaskletStep.java:331) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.transaction.support.TransactionTemplate.execute(TransactionTemplate.java:140) ~[spring-tx-5.3.31.jar:5.3.31]
-        at org.springframework.batch.core.step.tasklet.TaskletStep$2.doInChunkContext(TaskletStep.java:273) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.scope.context.StepContextRepeatCallback.doInIteration(StepContextRepeatCallback.java:82) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.repeat.support.RepeatTemplate.getNextResult(RepeatTemplate.java:382) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
-        at org.springframework.batch.repeat.support.RepeatTemplate.executeInternal(RepeatTemplate.java:215) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
-        at org.springframework.batch.repeat.support.RepeatTemplate.iterate(RepeatTemplate.java:145) ~[spring-batch-infrastructure-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.tasklet.TaskletStep.doExecute(TaskletStep.java:258) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.step.AbstractStep.execute(AbstractStep.java:208) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.job.SimpleStepHandler.handleStep(SimpleStepHandler.java:152) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.job.AbstractJob.handleStep(AbstractJob.java:413) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.job.SimpleJob.doExecute(SimpleJob.java:136) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.job.AbstractJob.execute(AbstractJob.java:320) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.batch.core.launch.support.SimpleJobLauncher$1.run(SimpleJobLauncher.java:149) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.core.task.SyncTaskExecutor.execute(SyncTaskExecutor.java:50) ~[spring-core-5.3.31.jar:5.3.31]
-        at org.springframework.batch.core.launch.support.SimpleJobLauncher.run(SimpleJobLauncher.java:140) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method) ~[na:na]
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77) ~[na:na]
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43) ~[na:na]
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568) ~[na:na]
-        at org.springframework.aop.support.AopUtils.invokeJoinpointUsingReflection(AopUtils.java:344) ~[spring-aop-5.3.31.jar:5.3.31]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.invokeJoinpoint(ReflectiveMethodInvocation.java:198) ~[spring-aop-5.3.31.jar:5.3.31]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:163) ~[spring-aop-5.3.31.jar:5.3.31]
-        at org.springframework.batch.core.configuration.annotation.SimpleBatchConfiguration$PassthruAdvice.invoke(SimpleBatchConfiguration.java:128) ~[spring-batch-core-4.3.10.jar:4.3.10]
-        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186) ~[spring-aop-5.3.31.jar:5.3.31]
-        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:241) ~[spring-aop-5.3.31.jar:5.3.31]
-        at jdk.proxy2/jdk.proxy2.$Proxy52.run(Unknown Source) ~[na:na]
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.execute(JobLauncherApplicationRunner.java:213) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.executeLocalJobs(JobLauncherApplicationRunner.java:193) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.launchJobFromProperties(JobLauncherApplicationRunner.java:172) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:167) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
-        at org.springframework.boot.autoconfigure.batch.JobLauncherApplicationRunner.run(JobLauncherApplicationRunner.java:162) ~[spring-boot-autoconfigure-2.7.18.jar:2.7.18]
-        at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:756) ~[spring-boot-2.7.18.jar:2.7.18]
-        at org.springframework.boot.SpringApplication.lambda$callRunners$2(SpringApplication.java:746) ~[spring-boot-2.7.18.jar:2.7.18]
-        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:183) ~[na:na]
-        at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357) ~[na:na]
-        at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510) ~[na:na]
-        at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499) ~[na:na]
-        at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:150) ~[na:na]
-        at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:173) ~[na:na]
-        at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234) ~[na:na]
-        at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596) ~[na:na]
-        at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:744) ~[spring-boot-2.7.18.jar:2.7.18]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:315) ~[spring-boot-2.7.18.jar:2.7.18]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1300) ~[spring-boot-2.7.18.jar:2.7.18]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1289) ~[spring-boot-2.7.18.jar:2.7.18]
-        at com.optum.fads.caseentrybatch.poc.InvoiceBatchApplication.main(InvoiceBatchApplication.java:9) ~[classes/:na]
-Caused by: org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: NULL not allowed for column "DISCOUNT_RATE"; SQL statement:
-INSERT INTO TXN_STAGE(run_id, invoice_date, txn_id, customer_id, product_id, base_amount, discount_rate, tax_rate, discount, tax, commission, net_amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP) [23502-214]
-        at org.h2.message.DbException.getJdbcSQLException(DbException.java:508) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.message.DbException.getJdbcSQLException(DbException.java:477) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.message.DbException.get(DbException.java:223) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.message.DbException.get(DbException.java:199) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.table.Column.validateConvertUpdateSequence(Column.java:365) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.table.Table.convertInsertRow(Table.java:926) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.command.dml.Insert.insertRows(Insert.java:167) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.command.dml.Insert.update(Insert.java:135) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.command.dml.DataChangeStatement.update(DataChangeStatement.java:74) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.command.CommandContainer.update(CommandContainer.java:169) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.command.Command.executeUpdate(Command.java:252) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.jdbc.JdbcPreparedStatement.executeUpdateInternal(JdbcPreparedStatement.java:209) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.jdbc.JdbcPreparedStatement.executeBatchElement(JdbcPreparedStatement.java:1317) ~[h2-2.1.214.jar:2.1.214]
-        at org.h2.jdbc.JdbcPreparedStatement.executeBatch(JdbcPreparedStatement.java:1263) ~[h2-2.1.214.jar:2.1.214]
-        at com.zaxxer.hikari.pool.ProxyStatement.executeBatch(ProxyStatement.java:127) ~[HikariCP-4.0.3.jar:na]
-        at com.zaxxer.hikari.pool.HikariProxyPreparedStatement.executeBatch(HikariProxyPreparedStatement.java) ~[HikariCP-4.0.3.jar:na]
-        at org.springframework.jdbc.core.JdbcTemplate.lambda$batchUpdate$4(JdbcTemplate.java:1050) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        at org.springframework.jdbc.core.JdbcTemplate.execute(JdbcTemplate.java:650) ~[spring-jdbc-5.3.31.jar:5.3.31]
-        ... 58 common frames omitted
-
-2026-01-28 13:24:25.039  INFO 27752 --- [           main] o.s.batch.core.step.AbstractStep         : Step: [processTxnStep] executed in 231ms
-2026-01-28 13:24:25.044  INFO 27752 --- [           main] o.s.b.c.l.support.SimpleJobLauncher      : Job: [SimpleJob: [name=invoiceJob]] completed with the following parameters: [{runId=RUN_2026-01-24_2026-01-28T13:24:24.717754, invoiceDate=2026-01-24, run.id=1}] and the following status: [FAILED] in 261ms
-2026-01-28 13:24:25.053  INFO 27752 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
-2026-01-28 13:24:25.056  INFO 27752 --- [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  8.544 s
-[INFO] Finished at: 2026-01-28T13:24:25+05:30
-[INFO] ------------------------------------------------------------------------
-
-C:\Users\sgupt664\BE_Projects\CaseEntryBatchPOC>
+  created_at TIMESTAMP NOT NULL
+);
