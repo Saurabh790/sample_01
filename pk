@@ -1,8 +1,326 @@
-mvn -U -e clean package
-mvn -q dependency:tree -Dincludes=ch.qos.logback:logback-core,ch.qos.logback:logback-classic
-jar tf target/*.jar | findstr /i logback-core
-jar tf target\fads-pgp-reportsection-api-1.0.0.jar | findstr /i logback-core
-dir target\lib | findstr /i logback
-Get-ChildItem target\*.jar | % { jar tf $_.FullName } | Select-String -Pattern "logback-core" -CaseSensitive:$false
-jar tf target\fads-pgp-reportsection-api-1.0.0.jar | findstr /i "BOOT-INF/lib/logback-core"
+package com.optum.fads.pgp.behavior.api.config;
 
+import javax.sql.DataSource;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
+public class ServiceConfig 
+{
+	@Bean(name = "fadsDataSource")
+	@ConfigurationProperties("spring.datasource")
+	public DataSource customDataSource() {
+		return DataSourceBuilder.create().build();
+	}
+
+}
+
+
+
+above one change to below 
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import javax.sql.DataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
+public class ServiceConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
+
+    @Value("${spring.datasource.userName}")
+    private String userName;
+
+    @Value("${spring.datasource.password}")
+    private String password;
+
+    @Value("${spring.datasource.url}")
+    private String url;
+
+    @Value("${spring.datasource.driver-class-name}")
+    private String driverClassName;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfig(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsDataSource")
+    @Primary
+    public DataSource customDataSource() {
+
+        logger.info("Initializing custom DataSource bean");
+
+        try{
+            String userNameValue = secretClient.getSecret(userName).getValue();
+            logger.info("UserName **** : " + userNameValue);
+            String passwordValue = secretClient.getSecret(password).getValue();
+
+            logger.debug("Building DriverManagerDataSource with provided configuration");
+            DriverManagerDataSource dataSource = new DriverManagerDataSource();
+            dataSource.setDriverClassName(driverClassName);
+            dataSource.setUsername(userNameValue);
+            dataSource.setPassword(passwordValue);
+            dataSource.setUrl(url);
+
+            logger.info("DataSource bean created successfully");
+            return dataSource;
+
+        } catch (Exception e) {
+            logger.error("Failed to create DataSource bean", e);
+            throw new RuntimeException("Error initializing DataSource", e);
+        }
+
+    }
+}
+
+
+
+
+
+
+and this one
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import java.util.TimeZone;
+
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.web.client.RestTemplate;
+
+import jakarta.annotation.PostConstruct;
+
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
+
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+    @Bean
+	public RestTemplate restTemplate() {
+	    return new RestTemplate();
+	}
+    
+    @PostConstruct
+    void started() {
+      TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
+    }
+
+}
+
+
+
+
+to below 
+
+
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import java.util.TimeZone;
+
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.web.client.RestTemplate;
+
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+
+import jakarta.annotation.PostConstruct;
+
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
+	
+	@Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
+    private String azureKeyVaultUrl;
+    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
+    private String azureKeyVaultTenant;
+    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
+    private String azureKeyVaultSecret;
+    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
+    private String azureKeyVaultClientId;
+
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+    
+    @Bean
+    public SecretClient secretClient() {
+        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                .clientId(azureKeyVaultClientId)
+                .clientSecret(azureKeyVaultSecret)
+                .tenantId(azureKeyVaultTenant)
+                .build();
+
+        return new SecretClientBuilder()
+                .vaultUrl(azureKeyVaultUrl)
+                .credential(clientSecretCredential)
+                .buildClient();
+    }
+    
+    @Bean
+	public RestTemplate restTemplate() {
+	    return new RestTemplate();
+	}
+    
+    @PostConstruct
+    void started() {
+      TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
+    }
+
+}
+
+
+
+
+and [pom chganges we discussed
+
+
+and prop file below
+server:
+  port: 8080
+  servlet:
+    contextPath: /behavior
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring: 
+  application:
+   name: behavior
+   cloud:
+     azure:
+       keyvault:
+         secrets:
+           endpoint: ${AZURE_KV_URL}
+         credential:
+           client-id: ${AZURE_KV_CLIENT_ID}
+           client-secret: ${AZURE_KV_CLIENT_SECRET}
+           tenant-id: ${AZURE_TENANT_ID}
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER 
+    show-sql: false
+    hibernate:
+       naming:
+            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+    userName: fads_dev
+    password: qAut9fM.S!g3?385
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}    
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms: RS256
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+
+
+check the syntax n everything let me know if all ok?
