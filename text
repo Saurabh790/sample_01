@@ -1,6 +1,72 @@
+server:
+  port: 8080
+  servlet:
+    contextPath: /behavior
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-engine>ssh -T git@github.com
-kex_exchange_identification: read: Connection reset
-Connection reset by 140.82.112.35 port 443
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-engine>
+spring:
+  application:
+    name: behavior
+
+  cloud:
+    azure:
+      credential:
+        client-id: ce5962ff-06f5-4911-be66-e51b86531710
+        client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
+      profile:
+        tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+
+      keyvault:
+        secret:
+          property-sources:
+            - name: kv
+              endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net
+
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
+    username: sql-admin-user
+    password: sql-admin-password
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms: RS256
+
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
