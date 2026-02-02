@@ -1,23 +1,87 @@
-ects\fads-pgp-behavior-api)
-2026-02-02T20:31:46.418+05:30  INFO 13100 --- [           main] .o.f.p.b.a.BehaviorPatternApiApplication : No active profile set, falling back to 1 default profile: "default"
-2026-02-02T20:31:47.277+05:30  INFO 13100 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
-2026-02-02T20:31:47.417+05:30  INFO 13100 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 128 ms. Found 7 JPA repository interfaces.
-2026-02-02T20:31:48.534+05:30  INFO 13100 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
-2026-02-02T20:31:48.547+05:30  INFO 13100 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
-2026-02-02T20:31:48.549+05:30  INFO 13100 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.50]
-2026-02-02T20:31:48.650+05:30  INFO 13100 --- [           main] o.a.c.c.C.[.[localhost].[/behavior]      : Initializing Spring embedded WebApplicationContext
-2026-02-02T20:31:48.652+05:30  INFO 13100 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2188 ms
-2026-02-02T20:31:48.939+05:30  INFO 13100 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-02-02T20:31:50.283+05:30  INFO 13100 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
-2026-02-02T20:31:50.364+05:30  INFO 13100 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.39.Final
-2026-02-02T20:31:50.414+05:30  INFO 13100 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
-2026-02-02T20:31:50.835+05:30  INFO 13100 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
-2026-02-02T20:31:50.914+05:30  INFO 13100 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-02-02T20:31:52.131+05:30  WARN 13100 --- [           main] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 18456, SQLState: S0001
-2026-02-02T20:31:52.133+05:30 ERROR 13100 --- [           main] o.h.engine.jdbc.spi.SqlExceptionHelper   : Login failed for user 'sql-admin-user'. ClientConnectionId:6c882926-faec-47c6-af05-fa66028bf57b
-2026-02-02T20:31:52.134+05:30  WARN 13100 --- [           main] o.h.e.j.e.i.JdbcEnvironmentInitiator     : HHH000342: Could not obtain connection to query metadata
+server:
+  port: 8080
+  servlet:
+    contextPath: /behavior
 
-org.hibernate.exception.SQLGrammarException: unable to obtain isolated JDBC connection [Login failed for user 'sql-admin-user'. ClientConnectionId:6c882926-faec-47c6-af05-fa66028bf57b] [n/a]
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring:
+  application:
+    name: behavior
+
+  cloud:
+    azure:
+      credential:
+        client-id: ce5962ff-06f5-4911-be66-e51b86531710
+        client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
+
+      profile:
+        tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+
+      keyvault:
+        secret:
+          property-sources:
+            - name: kv
+              endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net
+
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+
+    # especially when you create DataSource using DataSourceBuilder / @ConfigurationProperties)
+    jdbc-url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
+
+    username: sql-admin-user
+    password: sql-admin-password
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+          jws-algorithms: RS256
+
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+
+
+
+lientConnectionId:5eb67455-777c-4176-b5dd-b479fc34cab0
+2026-02-02T20:33:59.823+05:30  WARN 24512 --- [           main] o.h.e.j.e.i.JdbcEnvironmentInitiator     : HHH000342: Could not obtain connection to query metadata
+
+org.hibernate.exception.SQLGrammarException: unable to obtain isolated JDBC connection [Login failed for user 'sql-admin-user'. ClientConnectionId:5eb67455-777c-4176-b5dd-b479fc34cab0] [n/a]
         at org.hibernate.exception.internal.SQLStateConversionDelegate.convert(SQLStateConversionDelegate.java:91)
         at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:58)
         at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108)
@@ -58,7 +122,7 @@ org.hibernate.exception.SQLGrammarException: unable to obtain isolated JDBC conn
         at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
         at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
         at com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication.main(BehaviorPatternApiApplication.java:15)
-Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for user 'sql-admin-user'. ClientConnectionId:6c882926-faec-47c6-af05-fa66028bf57b
+Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for user 'sql-admin-user'. ClientConnectionId:5eb67455-777c-4176-b5dd-b479fc34cab0
         at com.microsoft.sqlserver.jdbc.SQLServerException.makeFromDatabaseError(SQLServerException.java:278)
         at com.microsoft.sqlserver.jdbc.TDSTokenHandler.onEOF(tdsparser.java:329)
         at com.microsoft.sqlserver.jdbc.TDSParser.parse(tdsparser.java:137)
@@ -85,9 +149,9 @@ Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for use
         at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcIsolationDelegate.delegateWork(JdbcIsolationDelegate.java:61)
         ... 35 common frames omitted
 
-2026-02-02T20:31:52.168+05:30  WARN 13100 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: SQLServer2016Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
-2026-02-02T20:31:52.171+05:30  WARN 13100 --- [           main] org.hibernate.orm.deprecation            : HHH90000026: SQLServer2016Dialect has been deprecated; use org.hibernate.dialect.SQLServerDialect instead
-2026-02-02T20:31:52.193+05:30  INFO 13100 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+2026-02-02T20:33:59.853+05:30  WARN 24512 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: SQLServer2016Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-02-02T20:33:59.855+05:30  WARN 24512 --- [           main] org.hibernate.orm.deprecation            : HHH90000026: SQLServer2016Dialect has been deprecated; use org.hibernate.dialect.SQLServerDialect instead
+2026-02-02T20:33:59.871+05:30  INFO 24512 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
         Database JDBC URL [Connecting through datasource 'HikariDataSource (null)']
         Database driver: undefined/unknown
         Database version: 13.0
@@ -95,20 +159,20 @@ Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for use
         Isolation level: undefined/unknown
         Minimum pool size: undefined/unknown
         Maximum pool size: undefined/unknown
-2026-02-02T20:31:54.141+05:30  INFO 13100 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
-2026-02-02T20:31:54.389+05:30  INFO 13100 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-02-02T20:31:54.844+05:30  INFO 13100 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
-2026-02-02T20:31:55.856+05:30  WARN 13100 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-02-02T20:31:56.304+05:30  INFO 13100 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
-2026-02-02T20:31:56.388+05:30  INFO 13100 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsService
-2026-02-02T20:31:56.630+05:30  INFO 13100 --- [           main] c.o.f.p.b.api.config.SecurityConfig      : CORS configuration registered for all paths
-2026-02-02T20:31:57.236+05:30  INFO 13100 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/behavior'
-2026-02-02T20:31:57.267+05:30  INFO 13100 --- [           main] .o.f.p.b.a.BehaviorPatternApiApplication : Started BehaviorPatternApiApplication in 13.954 seconds (process running for 14.525)
-2026-02-02T20:32:06.357+05:30  INFO 13100 --- [nio-8080-exec-1] o.a.c.c.C.[.[localhost].[/behavior]      : Initializing Spring DispatcherServlet 'dispatcherServlet'
-2026-02-02T20:32:06.358+05:30  INFO 13100 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
-2026-02-02T20:32:06.360+05:30  INFO 13100 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
-2026-02-02T20:32:06.456+05:30  INFO 13100 --- [nio-8080-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
-2026-02-02T20:32:07.650+05:30  WARN 13100 --- [nio-8080-exec-1] o.s.b.a.jdbc.DataSourceHealthIndicator   : DataSource health check failed
+2026-02-02T20:34:01.299+05:30  INFO 24512 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-02T20:34:01.534+05:30  INFO 24512 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-02T20:34:01.925+05:30  INFO 24512 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-02-02T20:34:02.929+05:30  WARN 24512 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-02-02T20:34:03.373+05:30  INFO 24512 --- [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-02-02T20:34:03.449+05:30  INFO 24512 --- [           main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name userDetailsService
+2026-02-02T20:34:03.633+05:30  INFO 24512 --- [           main] c.o.f.p.b.api.config.SecurityConfig      : CORS configuration registered for all paths
+2026-02-02T20:34:04.094+05:30  INFO 24512 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/behavior'
+2026-02-02T20:34:04.115+05:30  INFO 24512 --- [           main] .o.f.p.b.a.BehaviorPatternApiApplication : Started BehaviorPatternApiApplication in 13.503 seconds (process running for 14.174)
+2026-02-02T20:34:30.768+05:30  INFO 24512 --- [nio-8080-exec-1] o.a.c.c.C.[.[localhost].[/behavior]      : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-02T20:34:30.768+05:30  INFO 24512 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-02-02T20:34:30.772+05:30  INFO 24512 --- [nio-8080-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 3 ms
+2026-02-02T20:34:30.907+05:30  INFO 24512 --- [nio-8080-exec-1] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-02-02T20:34:32.008+05:30  WARN 24512 --- [nio-8080-exec-1] o.s.b.a.jdbc.DataSourceHealthIndicator   : DataSource health check failed
 
 org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection
         at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:84)
@@ -282,7 +346,7 @@ org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC
         at org.apache.tomcat.util.threads.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:491)
         at org.apache.tomcat.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:63)
         at java.base/java.lang.Thread.run(Thread.java:840)
-Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for user 'sql-admin-user'. ClientConnectionId:bf7ce0c2-9643-4906-ab07-0552cbed6248
+Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for user 'sql-admin-user'. ClientConnectionId:555d14d2-4cd3-4464-96b7-d359656351f0
         at com.microsoft.sqlserver.jdbc.SQLServerException.makeFromDatabaseError(SQLServerException.java:278)
         at com.microsoft.sqlserver.jdbc.TDSTokenHandler.onEOF(tdsparser.java:329)
         at com.microsoft.sqlserver.jdbc.TDSParser.parse(tdsparser.java:137)
@@ -308,3 +372,4 @@ Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: Login failed for use
         at org.springframework.jdbc.datasource.DataSourceUtils.doGetConnection(DataSourceUtils.java:118)
         at org.springframework.jdbc.datasource.DataSourceUtils.getConnection(DataSourceUtils.java:81)
         ... 170 common frames omitted
+
