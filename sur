@@ -13,11 +13,16 @@ spring:
 
   cloud:
     azure:
+      # Service principal auth (recommended for non-Azure-hosted local run)
       credential:
-        client-id: ${AZURE_KV_CLIENT_ID}
-        client-secret: ${AZURE_KV_CLIENT_SECRET}
+        client-id: ${AZURE_CLIENT_ID}
+        client-secret: ${AZURE_CLIENT_SECRET}
+
+      # IMPORTANT: tenant-id belongs here (not under credential in 6.x)
+      profile:
         tenant-id: ${AZURE_TENANT_ID}
 
+      # Key Vault as property source
       keyvault:
         secret:
           property-sources:
@@ -36,10 +41,12 @@ spring:
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
 
-    # These can be overridden by Key Vault secrets
-    url: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
+    # IMPORTANT: use jdbc-url (Hikari requires jdbcUrl when driver-class-name is set,
+    # especially when you create DataSource using DataSourceBuilder / @ConfigurationProperties)
+    jdbc-url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
+
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
     hikari:
