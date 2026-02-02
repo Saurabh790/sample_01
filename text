@@ -1,1 +1,157 @@
-username: sql-admin-user@sql-pi-dev-cus-001
+package com.optum.fads.pgp.behavior.api.config;
+
+import javax.sql.DataSource;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api.repo")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
+public class ServiceConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
+
+    // these are secret NAMES stored in KeyVault
+    @Value("${spring.datasource.userName}")
+    private String userNameSecretName;
+
+    @Value("${spring.datasource.password}")
+    private String passwordSecretName;
+
+    @Value("${spring.datasource.jdbcUrl}")
+    private String jdbcUrl;
+
+    @Value("${spring.datasource.driverClassName}")
+    private String driverClassName;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfig(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsDataSource")
+    @Primary
+    public DataSource customDataSource() {
+        logger.info("Initializing custom DataSource bean...");
+
+        String username = secretClient.getSecret(userNameSecretName).getValue();
+        String password = secretClient.getSecret(passwordSecretName).getValue();
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName(driverClassName);
+        dataSource.setUrl(jdbcUrl);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+
+        return dataSource;
+    }
+}
+server:
+  port: 8080
+  servlet:
+    contextPath: /behavior
+
+spring:
+  application:
+    name: behavior
+
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
+        credential:
+          client-id: ce5962ff-06f5-4911-be66-e51b86531710
+          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
+          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+
+  datasource:
+    initialize: false
+    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    # these are KeyVault secret names
+    userName: sql-admin-user
+    password: sql-admin-password
+
+  jpa:
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+
+@Configuration
+public class CommonConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
+
+    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
+    private String azureKeyVaultUrl;
+
+    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
+    private String azureKeyVaultTenant;
+
+    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
+    private String azureKeyVaultSecret;
+
+    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
+    private String azureKeyVaultClientId;
+
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+
+    @Bean
+    public SecretClient secretClient() {
+        logger.info("Initializing Azure Key Vault SecretClient...");
+        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                .clientId(azureKeyVaultClientId)
+                .clientSecret(azureKeyVaultSecret)
+                .tenantId(azureKeyVaultTenant)
+                .build();
+
+        return new SecretClientBuilder()
+                .vaultUrl(azureKeyVaultUrl)
+                .credential(clientSecretCredential)
+                .buildClient();
+    }
+}
