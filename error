@@ -1,10 +1,163 @@
-[INFO] Total time:  5.740 s
-[INFO] Finished at: 2026-02-05T13:44:28+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project fads-base: Compilation failure
-[ERROR] error: exporting a package from system module java.desktop is not allowed with --release
-[ERROR]
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- Corporate parent -->
+  <parent>
+    <groupId>com.optum</groupId>
+    <artifactId>ParentPom</artifactId>
+    <version>1.0.4</version>
+  </parent>
+
+  <groupId>com.optum.fads</groupId>
+  <artifactId>fads</artifactId>
+  <version>8.1.2-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <name>fads</name>
+  <url>http://maven.apache.org</url>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+    <!-- Java 17 -->
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+
+    <!-- Your existing properties (keep/adjust as needed) -->
+    <spring.boot.version>2.6.11</spring.boot.version>
+    <uitk.version>3.14.1</uitk.version>
+    <spring-cloud.version>2021.0.3</spring-cloud.version>
+
+    <spring-security-oauth2.version>2.5.2.RELEASE</spring-security-oauth2.version>
+    <spring-security-jwt.version>1.0.9.RELEASE</spring-security-jwt.version>
+    <spring.version>5.1.0.RELEASE</spring.version>
+
+    <hibernate.validator>5.4.1.Final</hibernate.validator>
+    <c3p0.version>0.9.5.2</c3p0.version>
+
+    <jackson.version>2.9.4</jackson.version>
+    <hibernate.version>5.2.17.Final</hibernate.version>
+    <servlet-api.version>3.1.0</servlet-api.version>
+
+    <sonar.exlusions>
+      **/src/main/webapp/**,**/js/angular/**,**/js/angular-translate/**,**/js/google-code-prettify/**,
+      **/js/jquery/**,**/js/lodash/**,**/src/main/webapp/webHelp/Content/*.*,
+      **/src/main/webapp/webHelp/Content/Resources/**,**/src/main/webapp/uitk-core/js/ckeditor/**/*.js,
+      **/src/main/webapp/uitk-core/js/ckeditor/**/*.css,**/src/main/webapp/uitk-core/js/ckeditor/**/*.html,
+      **/src/main/webapp/uitk-core/js/polyfills/**,**/src/main/webapp/uitk-core/lib/**,
+      src/main/webapp/app/**/*.js,**/src/main/webapp/app/**/*.js,**/src/main/webapp/uitk-core/lib/**/*,
+      **/src/main/webapp/uitk/choropleth/**/*,**/bower_components/**
+    </sonar.exlusions>
+  </properties>
+
+  <modules>
+    <module>fads-base</module>
+    <module>fads-casetracking</module>
+    <module>fads-web</module>
+  </modules>
+
+  <distributionManagement>
+    <repository>
+      <id>UHG-Releases</id>
+      <name>Local Repository for UHG Application Releases</name>
+      <url>https://repo1.uhc.com/artifactory/UHG-Releases</url>
+    </repository>
+    <snapshotRepository>
+      <id>UHG-Snapshots</id>
+      <name>Local Repository for UHG Application Snapshots</name>
+      <url>https://repo1.uhc.com/artifactory/UHG-Snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.17.2</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring.boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <!-- PluginManagement so modules inherit settings -->
+    <pluginManagement>
+      <plugins>
+
+        <!-- ✅ Java 17 compiler + module export workaround -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.11.0</version>
+          <configuration>
+            <fork>true</fork>
+            <source>${maven.compiler.source}</source>
+            <target>${maven.compiler.target}</target>
+
+            <compilerArgs>
+              <arg>--add-exports</arg>
+              <arg>java.desktop/com.sun.beans.introspect=ALL-UNNAMED</arg>
+
+              <!-- If you still hit IllegalAccess at runtime, you can also add:
+              <arg>--add-opens</arg>
+              <arg>java.desktop/com.sun.beans.introspect=ALL-UNNAMED</arg>
+              -->
+            </compilerArgs>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.2.5</version>
+        </plugin>
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-war-plugin</artifactId>
+          <version>3.3.1</version>
+          <configuration>
+            <failOnMissingWebXml>false</failOnMissingWebXml>
+          </configuration>
+        </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>sonar-maven-plugin</artifactId>
+          <version>2.5</version>
+        </plugin>
+
+        <plugin>
+          <groupId>org.codehaus.sonar</groupId>
+          <artifactId>sonar-maven3-plugin</artifactId>
+          <version>4.5.2</version>
+        </plugin>
+
+      </plugins>
+    </pluginManagement>
+  </build>
+
+</project>
