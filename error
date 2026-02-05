@@ -1,47 +1,60 @@
+@Override
 protected void configure(final HttpSecurity http) throws Exception {
-		// String authType = env.getProperty("security.authentication.type").trim();
-		if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
-			// System.out.println("****authType::"+authType);
-			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
-			http.headers().frameOptions().disable();
-			http.addFilterBefore(ssoTokenFilter(), BasicAuthenticationFilter.class);
+    if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
 
-			http.authorizeRequests().antMatchers("/**").permitAll().anyRequest().authenticated();
-			http.authorizeRequests()
-					.antMatchers("/login/**", "/signup", "/sessionexpired", "/logout", "/logout/**", "/signout/**",
-							"/signout", "/sessionout", "/styles/**", "/images/**", "/bower_components/**",
-							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/fonts/**")
-					.permitAll().anyRequest().authenticated();
+        http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
+        http.headers().frameOptions().disable();
+        http.addFilterBefore(ssoTokenFilter(), BasicAuthenticationFilter.class);
 
-			http.logout().logoutRequestMatcher(new AntPathRequestMatcher("/signout")).logoutSuccessUrl("/signout")
-					.deleteCookies("JSESSIONID").invalidateHttpSession(true);
+        // REMOVE this line (it can override your permitAll)
+        // http.authorizeRequests().anyRequest().authenticated();
 
-			http.exceptionHandling().authenticationEntryPoint(authEntryPoint).accessDeniedHandler(accessDeniedHandler);
-		} else {
+        http.authorizeRequests()
+            .antMatchers("/login/**", "/signup", "/sessionexpired", "/logout", "/logout/**", "/signout/**",
+                    "/signout", "/sessionout", "/styles/**", "/images/**", "/bower_components/**",
+                    "/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/fonts/**")
+            .permitAll()
+            .anyRequest().authenticated();
 
-			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
-			http.headers().frameOptions().disable();
-			http// .authenticationProvider(new FadsAuthenticationProvider(authentService))
-					.formLogin().loginPage("/login").defaultSuccessUrl("/", true)
-					.failureUrl(FORM_LOGIN_DEFAULT_FAILURE_URL).usernameParameter(FORM_LOGIN_USERNAME_PARAM)
-					.passwordParameter("password").successHandler(new AuthenticationSuccessHandlerImpl())
-					.failureHandler(new AuthenticationFailureHandlerImpl(FORM_LOGIN_USERNAME_PARAM,
-							FORM_LOGIN_DEFAULT_FAILURE_URL))
-					.permitAll();
+        http.logout().logoutRequestMatcher(new AntPathRequestMatcher("/signout"))
+            .logoutSuccessUrl("/signout")
+            .deleteCookies("JSESSIONID")
+            .invalidateHttpSession(true);
 
-			configureSessionManagement(http);
+        http.exceptionHandling()
+            .authenticationEntryPoint(authEntryPoint)
+            .accessDeniedHandler(accessDeniedHandler);
 
-			http.logout().logoutUrl("/signout").invalidateHttpSession(true)
-					.logoutSuccessHandler(new LogoutSuccessHandlerImpl());
+    } else {
 
-			http.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class);
-			// Http URL Filters
+        http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
+        http.headers().frameOptions().disable();
 
-			http.authorizeRequests()
-					.antMatchers("/license", "/termsofuse", "/privacypolicy", "/contactus", "/sessionexpired",
-							"/sessionout", "/signup", "/login/**", "/styles/**", "/images/**", "/bower_components/**",
-							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/webHelp/**")
-					.permitAll().anyRequest().authenticated();
+        http.formLogin()
+            .loginPage("/login")
+            .defaultSuccessUrl("/", true)
+            .failureUrl(FORM_LOGIN_DEFAULT_FAILURE_URL)
+            .usernameParameter(FORM_LOGIN_USERNAME_PARAM)
+            .passwordParameter("password")
+            .successHandler(new AuthenticationSuccessHandlerImpl())
+            .failureHandler(new AuthenticationFailureHandlerImpl(
+                    FORM_LOGIN_USERNAME_PARAM, FORM_LOGIN_DEFAULT_FAILURE_URL))
+            .permitAll();
 
-		}
-	}
+        configureSessionManagement(http);
+
+        http.logout()
+            .logoutUrl("/signout")
+            .invalidateHttpSession(true)
+            .logoutSuccessHandler(new LogoutSuccessHandlerImpl());
+
+        http.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class);
+
+        http.authorizeRequests()
+            .antMatchers("/license", "/termsofuse", "/privacypolicy", "/contactus", "/sessionexpired",
+                    "/sessionout", "/signup", "/login/**", "/styles/**", "/images/**", "/bower_components/**",
+                    "/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/webHelp/**")
+            .permitAll()
+            .anyRequest().authenticated();
+    }
+}
