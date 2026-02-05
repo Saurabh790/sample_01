@@ -23,3 +23,40 @@
     // ============================
     // CODEQL FIX END (helpers)
     // ============================
+
+
+   public int findAllCaseAssociationsTotalCount(Map<String,String> filterConditions, String[] nodes) {
+        StringBuilder sb = new StringBuilder();
+        getFindTotalCountQuerySelectFrom(sb);
+        sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
+
+        if (ArrayUtils.isNotEmpty(nodes)) {
+            sb.append(" and c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd IN (:nodeList) ");
+        }
+
+        // CODEQL FIX START
+        Map<String, String> safeParams = buildSafeParamMap(filterConditions);
+        getFindAllQueryFilters(sb, filterConditions, safeParams);
+        // CODEQL FIX END
+
+        final String queryString = sb.toString();
+        int resultListSize = 0;
+        try {
+            Query query = getCurrentSession().createQuery(queryString);
+
+            if (ArrayUtils.isNotEmpty(nodes)) {
+                query.setParameterList("nodeList", nodes);
+            }
+
+            // CODEQL FIX START
+            setFindAllQueryFilters(query, filterConditions, safeParams);
+            // CODEQL FIX END
+
+            resultListSize = query.list().size();
+        } catch (Exception e) {
+            log.error("Exception in findAllCaseAssociationsTotalCount: ", e);
+            throw e;
+        }
+
+        return resultListSize;
+    }
