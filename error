@@ -1,5 +1,123 @@
-getCasesForAssocQueryFilters(...)
+// for new Detail - Associations page
+	private void getCasesForAssocQueryFilters(StringBuilder sb, Map<String,String> filterConditions) {
+		if(filterConditions != null && !filterConditions.isEmpty()) {
+			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
+				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
+					if (col.getColumnId().equals(entry.getKey())) {
+						if ("intelligentKey".equals(entry.getKey())) {
+							sb.append(" and lower(c.caLuPrmNodeT.nodeCd ").append("||'-'|| ");
+							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
+								sb.append(" c.caLuScndNodeT.nodeCd ");
+								sb.append(" ||'-'|| ");
+							}
+							sb.append(" c.caYearId ");
+							sb.append(" ||'-'|| ");
+							//sb.append(" to_char(c.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
+							sb.append(" to_char(c.caSequenceId,'FM00000')) like :").append(entry.getKey());
+						} else if ("associatedIntelligentKey".equals(entry.getKey())) {
+							sb.append(" and lower(assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ")
+									.append("||'-'|| ");
+							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
+								sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
+								sb.append(" ||'-'|| ");
+							}
+							sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
+							sb.append(" ||'-'|| ");
+							//sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
+							sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :").append(entry.getKey());
+						} else {
+							/*
+							if (StringUtils.containsIgnoreCase(col.getColumnId(), "name")){
+								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
+										.append(escapeSingleQuote(getLowerSearchString(entry.getValue()))).append("' ");
+							} else {
+								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
+										.append(getLowerSearchString(entry.getValue())).append("' ");
+							}
+							*/
+							sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like :").append(entry.getKey());
+						}
+					}
+				}
+			}
+		}
+	}
 
-getCasesForAssocQueryOrderBy(...)
+private void getCasesForAssocQueryOrderBy(StringBuilder sb, Map<String,String> sortConditions) {
+		if (sortConditions != null && !sortConditions.isEmpty()) {
+			sb.append(" order by");
 
-setCasesForAssocQueryFilters(...)
+			for (Map.Entry<String, String> entry : sortConditions.entrySet()) {
+				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
+					if (col.getColumnId().equals(entry.getKey())) {
+						if (col.isColumnStringTypeForOrderBy()){
+							sb.append(" lower(").append(col.getColumnStringSearchOrderBy()).append(")");
+						} else {
+							sb.append(" ").append(col.getColumnQueryOrder());
+						}
+						break;
+					}
+				}
+
+				if ("-1".equals(entry.getValue())) {
+					sb.append(" DESC,");    // NULLS LAST
+				} else if ("1".equals(entry.getValue())) {
+					sb.append(" ASC,");		// NULLS FIRST
+				}
+
+                if (! "intelligentKey".equals(entry.getKey())){
+                    sb.append(" ").append(CasesForAssociationsColumnsEnum.CASE_ID.getColumnQueryOrder());
+                } else {
+                    sb.delete(sb.length()-1, sb.length());
+                }
+			}
+		}
+	}
+	
+	private void setCasesForAssocQueryFilters(Query query, Map<String,String> filterConditions) {
+		if(filterConditions != null && !filterConditions.isEmpty()) {
+			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
+				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
+					if (col.getColumnId().equals(entry.getKey())) {
+						if ("intelligentKey".equals(entry.getKey())) {
+							/*
+							sb.append(" and lower(c.caLuPrmNodeT.nodeCd ").append("||'-'|| ");
+							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
+								sb.append(" c.caLuScndNodeT.nodeCd ");
+								sb.append(" ||'-'|| ");
+							}
+							sb.append(" c.caYearId ");
+							sb.append(" ||'-'|| ");
+							sb.append(" to_char(c.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
+							*/
+							query.setString(entry.getKey(), getLowerSearchString(entry.getValue()));
+						} else if ("associatedIntelligentKey".equals(entry.getKey())) {
+							/*
+							sb.append(" and lower(assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ")
+									.append("||'-'|| ");
+							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
+								sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
+								sb.append(" ||'-'|| ");
+							}
+							sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
+							sb.append(" ||'-'|| ");
+							sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
+							*/
+							query.setString(entry.getKey(), getLowerSearchString(entry.getValue()));
+						} else {
+							/*
+							if (StringUtils.containsIgnoreCase(col.getColumnId(), "name")){
+								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
+										.append(escapeSingleQuote(getLowerSearchString(entry.getValue()))).append("' ");
+							} else {
+								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
+										.append(getLowerSearchString(entry.getValue())).append("' ");
+							}
+							*/
+							query.setString(entry.getKey(), getLowerSearchString(entry.getValue()));//escapeSingleQuote()
+						}
+					}
+				}
+			}
+		}
+	}
