@@ -39,3 +39,61 @@ You expected the batch to run immediately.
 You expected output (records) but nothing appears in DB.
 You expected emails and didn’t get them.
 Once you tell me which one, I’ll give exact fixes with SQL + config.
+
+
+
+
+
+If CA_UNIVERSE_BATCH_T has rows where REC_MATCH_IND is null, then
+
+1. Data Flow (what gets created)
+The job reads from CA_UNIVERSE_BATCH_T, validates those records against Snowflake DM_CLAIM_DRUG_T, then creates case data in your SQL Server tables.
+
+to below
+
+CA_INTELLIGENT_KEY_T
+CA_GENERAL_T
+CA_PROVIDER_T or CA_RECIPIENT_T
+CA_INVST_PRELIMINARY_T or CA_INVST_FULLSCALE_T
+Claim tracking tables:
+CA_CLAIM_LIST_T
+CA_CLAIM_CORRECTIONS_T
+CA_CLAIM_CORRECTIONS_HIST_T
+And it also populates:
+
+CA_UNIVERSE_T (validated and enriched entries)
+So the output is new database rows, not files.
+
+2. Emails
+will explicitly sends emails after:
+
+Successful batch completion (BATCH_SUCCESS_NOTIFICATION)
+Assignment (BATCH_ASSIGNMENT_NOTIFICATION)
+Failures (BATCH_FAIL_NOTIFICATION_USER/ADMIN)
+Invalid claims (BATCH_INVALID_NOTIFICATION_USER)
+These are sent via:
+
+Azure Logic App or
+SMTP server
+So expected output includes emails (if config is set).
+
+3. Invalid/Duplicate behavior
+If any record:
+
+Doesn’t exist in Snowflake
+Has wrong participant mapping
+Is a duplicate TCN+Line
+Then:
+
+It flags that row in CA_UNIVERSE_BATCH_T
+Sends an invalid claims email
+Does NOT create case records
+
+
+
+
+CA_UNIVERSE_T → new rows
+CA_INTELLIGENT_KEY_T → new case ids
+CA_GENERAL_T, CA_PROVIDER_T, CA_RECIPIENT_T
+CA_CLAIM_LIST_T, CA_CLAIM_CORRECTIONS_T, CA_CLAIM_CORRECTIONS_HIST_T
+If those tables have new data → batch ran successfully.
