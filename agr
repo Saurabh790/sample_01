@@ -1,965 +1,254 @@
-package com.optum.fads.security.dao.impl;
-
-import static org.hibernate.criterion.Example.create;
-
-import java.security.SecureRandom;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.LinkedHashMap;
-
-import com.optum.fads.common.dto.PaginationResult;
-import com.optum.fads.common.util.GlobalConstants;
-import com.optum.fads.security.dto.*;
-import org.apache.commons.lang3.StringUtils;
-import org.hibernate.Criteria;
-import org.hibernate.HibernateException;
-import org.hibernate.LockOptions;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.criterion.Criterion;
-import org.hibernate.criterion.LogicalExpression;
-import org.hibernate.criterion.Restrictions;
-import org.hibernate.query.Query;
-import org.hibernate.transform.AliasToBeanResultTransformer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Repository;
-
-import com.optum.fads.security.common.SecurityUsersColumnEnum;
-import com.optum.fads.security.dao.UiUserBaseDAO;
-import com.optum.fads.security.domain.FadsModElemConfig;
-import com.optum.fads.security.domain.SeCaseGrp;
-import com.optum.fads.security.domain.SeCaseGrpModAccess;
-import com.optum.fads.security.domain.SeCaseGrpNodeAccess;
-import com.optum.fads.security.domain.SeFadsGrp;
-import com.optum.fads.security.domain.SeFadsGrpCompAccess;
-import com.optum.fads.security.domain.SeFadsGrpModAccess;
-import com.optum.fads.security.domain.SeFadsGrpElemNoAccess;
-import com.optum.fads.security.domain.SeSurGrp;
-import com.optum.fads.security.domain.SeSurGrpModAccess;
-import com.optum.fads.security.domain.SeUsrGrp;
-import com.optum.fads.security.domain.UiUserBase;
-
-
 /**
- * A data access object (DAO) providing persistence and search support for
- * UiUserBase entities. Transaction control of the save(), update() and delete()
- * operations can directly support Spring container-managed transactions or they
- * can be augmented to handle user-managed Spring transactions. Each of these
- * methods provides additional information for how to configure it for the
- * desired type of transaction control.
- *
- * @see com.optum.fads.security.dao.impl.UiUserBase
- *  @author Shyam Biry
+ * Copyright (c) Optum 2015 - All Rights Reserved.
  */
-@Repository
-public class UiUserBaseDAOImpl implements UiUserBaseDAO {
-	private static final Logger log = LoggerFactory.getLogger(UiUserBaseDAOImpl.class);
-	// property constants
-	public static final String UI_USER_ID = "uiUserId";
-	public static final String UI_TITLE = "uiTitle";
-	public static final String UI_LAST_NAME = "uiLastName";
-	public static final String UI_FIRST_NAME = "uiFirstName";
-	public static final String UI_PHONE = "uiPhone";
-	public static final String UI_DEPT_NAME = "uiDeptName";
-	public static final String UI_LOCATION = "uiLocation";
-	//public static final String UI_PWD = "uiPwd";
-	public static final String UI_LOCKED = "uiLocked";
-	public static final String UI_EMAIL_ADDRESS = "uiEMailAddress";
+package com.optum.fads.web.config;
 
-	 @Autowired
-	 private SessionFactory sessionFactory;
+import javax.inject.Inject;
 
-	public void setSessionFactory(SessionFactory sessionFactory) {
-		this.sessionFactory = sessionFactory;
-	}
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.env.Environment;
+import org.springframework.ldap.core.support.LdapContextSource;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.event.LoggerListener;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.ldap.DefaultSpringSecurityContextSource;
+import org.springframework.security.ldap.authentication.BindAuthenticator;
+import org.springframework.security.ldap.authentication.LdapAuthenticationProvider;
+import org.springframework.security.ldap.authentication.LdapAuthenticator;
+import org.springframework.security.ldap.authentication.ad.ActiveDirectoryLdapAuthenticationProvider;
+import org.springframework.security.ldap.search.FilterBasedLdapUserSearch;
+import org.springframework.security.ldap.userdetails.DefaultLdapAuthoritiesPopulator;
+import org.springframework.security.ldap.userdetails.LdapAuthoritiesPopulator;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.util.StringUtils;
 
-	private Session getCurrentSession() {
-		return sessionFactory.getCurrentSession();
-	}
+import com.optum.fads.security.service.AuthenticationService;
+import com.optum.fads.web.security.authentication.FADSADLdapAuthenticationProvider;
+import com.optum.fads.web.security.authentication.FadsAuthenticationProvider;
+import com.optum.fads.web.security.authentication.OpenTokenAuthenticProvider;
+import com.optum.fads.web.security.filter.CsrfTokenGeneratorFilter;
+import com.optum.fads.web.security.filter.FadsSessionManagementFilter;
+import com.optum.fads.web.security.filter.TokenAuthenticationFilter;
+import com.optum.fads.web.security.filter.TokenSessionManagementFilter;
+import com.optum.fads.web.security.handlers.AgentAuthenticationEntryPoint;
+import com.optum.fads.web.security.handlers.AuthenticationFailureHandlerImpl;
+import com.optum.fads.web.security.handlers.AuthenticationSuccessHandlerImpl;
+import com.optum.fads.web.security.handlers.FadsAccessDeniedHandler;
+import com.optum.fads.web.security.handlers.LogoutSuccessHandlerImpl;
+import com.optum.fads.web.security.matcher.CsrfSecurityRequestMatcher;
 
-	protected void initDao() {
-		// do nothing
-	}
+@Configuration
+@EnableWebSecurity
+@PropertySource("classpath:application.properties")
+public class SecurityConfig extends WebSecurityConfigurerAdapter {
+	private static final Logger LOGGER = Logger.getLogger(SecurityConfig.class);
+	private static final String FORM_LOGIN_DEFAULT_FAILURE_URL = "/login?error=1";
+	private static final String FORM_LOGIN_USERNAME_PARAM = "username";
+	private static final String SECURITY_AUTH_TYPE_LDAP = "ldap";
+	private static final String SECURITY_AUTH_TYPE_AD = "activedirectory";
+	private static final String SECURITY_AUTH_TYPE_OPENTOKEN = "opentoken";
 
-	private Map<String, String> buildSafeParamMap(Map<String, String> filterConditions) {
-	    Map<String, String> safe = new LinkedHashMap<>();
-	    if (filterConditions == null || filterConditions.isEmpty()) {
-	        return safe;
-	    }
-	    int i = 0;
-	    for (String key : filterConditions.keySet()) {
-	        safe.put(key, "p" + i++);
-	    }
-	    return safe;
-	}
+	@Inject
+	private Environment env;
 
-	/* (non-Javadoc)
-	 * @see com.optum.fads.security.dao.impl.UiUserBaseDAO#save(com.optum.fads.security.domain.UiUserBase)
-	 */
+	@Autowired
+	private AuthenticationService authentService;
+
+	@Autowired
+	private AgentAuthenticationEntryPoint authEntryPoint;
+
+	@Autowired
+	private FadsAccessDeniedHandler accessDeniedHandler;
+
+//	@Value("${security.authentication.type}")
+	@Value("#{'${security.authentication.type}'.trim()}")
+	private String authType;
+
 	@Override
-	public void save(UiUserBase transientInstance) {
-		log.debug("saving UiUserBase instance");
-		try {
-			getCurrentSession().save(transientInstance);
-			log.debug("save successful");
-		} catch (RuntimeException re) {
-			log.error("save failed", re);
-			throw re;
+	protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+		// String authType = env.getProperty("security.authentication.type").trim();
+		if (SECURITY_AUTH_TYPE_LDAP.equalsIgnoreCase(authType)) {
+			auth.authenticationProvider(new FadsAuthenticationProvider(ldapAuthenticationProvider(), authentService));
+		} else if (SECURITY_AUTH_TYPE_AD.equalsIgnoreCase(authType)) {
+			auth.authenticationProvider(
+					new FadsAuthenticationProvider(activeDirectoryLdapAuthenticationProvider(), authentService));
+		} else if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
+			// auth.authenticationProvider(new OpenTokenAuthenticProvider(authentService));
 		}
 	}
 
-/*	public void delete(UiUserBase persistentInstance) {
-		log.debug("deleting UiUserBase instance");
-		try {
-			getCurrentSession().delete(persistentInstance);
-			log.debug("delete successful");
-		} catch (RuntimeException re) {
-			log.error("delete failed", re);
-			throw re;
-		}
-	}*/
-/*
-	public UiUserBase findById(java.lang.String id) {
-		log.debug("getting UiUserBase instance with id: " + id);
-		try {
-			UiUserBase instance = (UiUserBase) getCurrentSession().get(
-					"com.optum.fads.security.dao.impl.UiUserBase", id);
-			return instance;
-		} catch (RuntimeException re) {
-			log.error("get failed", re);
-			throw re;
-		}
-	}
-*/
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_OPENTOKEN)
+	public TokenAuthenticationFilter ssoTokenFilter() {
+		OpenTokenAuthenticProvider tokenProvider = new OpenTokenAuthenticProvider(authentService);
+		TokenAuthenticationFilter tokenFilter = new TokenAuthenticationFilter(tokenProvider);
 
-	/* (non-Javadoc)
-	 * @see com.optum.fads.security.dao.impl.UiUserBaseDAO#findBySystemId(java.lang.String)
-	 */
+		return tokenFilter;
+	}
+
+	@Bean
+	public AuthenticationSuccessHandler successHandler() throws Exception {
+		return new AuthenticationSuccessHandlerImpl();
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_AD)
+	public AuthenticationProvider activeDirectoryLdapAuthenticationProvider() throws Exception {
+
+		String ldapDomain = env.getProperty("ad.domain").trim();
+		String ldapUrl = env.getProperty("ad.url").trim();
+
+		// ActiveDirectoryLdapAuthenticationProvider provider = new
+		// ActiveDirectoryLdapAuthenticationProvider(ldapDomain, ldapUrl);
+		FADSADLdapAuthenticationProvider provider = new FADSADLdapAuthenticationProvider(ldapDomain, ldapUrl);
+		provider.setConvertSubErrorCodesToExceptions(true);
+		provider.setUseAuthenticationRequestCredentials(true);
+
+		return provider;
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_LDAP)
+	public LdapAuthenticator ldapAuthenticator() throws Exception {
+		BindAuthenticator authenticator = new BindAuthenticator(ldapContextSource());
+		authenticator.setUserSearch(userSearch());
+
+		return authenticator;
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_LDAP)
+	public FilterBasedLdapUserSearch userSearch() throws Exception {
+		FilterBasedLdapUserSearch filterUserSearch = new FilterBasedLdapUserSearch(env.getProperty("ldap.base"),
+				env.getProperty("ldap.searchFilter"), ldapContextSource());
+		filterUserSearch.setSearchSubtree(true);
+
+		return filterUserSearch;
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_LDAP)
+	public LdapAuthoritiesPopulator ldapAuthoritiesPopulator() throws Exception {
+
+		return new DefaultLdapAuthoritiesPopulator(ldapContextSource(), null);
+
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_LDAP)
+	public LdapAuthenticationProvider ldapAuthenticationProvider() throws Exception {
+
+		return new LdapAuthenticationProvider(ldapAuthenticator());
+
+	}
+
+	@Bean
+	public LoggerListener loggerListener() {
+		return new LoggerListener();
+	}
+
+	@Bean
+	@ConditionalOnProperty(name = "security.authentication.type", havingValue = SECURITY_AUTH_TYPE_LDAP)
+	public LdapContextSource ldapContextSource() throws Exception {
+		LdapContextSource ldapContextSource = new DefaultSpringSecurityContextSource(env.getProperty("ldap.url"));
+		ldapContextSource.setUserDn(env.getProperty("ldap.userDn"));
+		ldapContextSource.setPassword(env.getProperty("ldap.password").trim());
+
+		ldapContextSource.afterPropertiesSet();
+
+		return ldapContextSource;
+	}
+
 	@Override
-	public User findBySystemId(String id) {
+	protected void configure(final HttpSecurity http) throws Exception {
+		// String authType = env.getProperty("security.authentication.type").trim();
+		if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
+			// System.out.println("****authType::"+authType);
+			http.csrf().disable();
+			http.headers().frameOptions().disable();
+			http.addFilterBefore(ssoTokenFilter(), BasicAuthenticationFilter.class);
 
-		try {
-		 StringBuilder sb = new StringBuilder();
-		 sb.append(" select a.uiSystemId as systemId, a.uiUserId as userId, ");
-		 sb.append(" a.uiFirstName as firstName, " );
-		 sb.append(" a.uiLastName as lastName, " );
-		 sb.append(" a.uiEMailAddress as email " );
-		 //sb.append(" a.uiDeptName as department, " );
-		 //sb.append(" a.seUsrGrp.seSurGrp.grpId as surGroup, " );
-		 //sb.append(" a.seUsrGrp.seCaseGrp.grpId as caseGroup " );
-		 sb.append(" from UiUserBase a " );
-		 sb.append(" where lower(a.uiSystemId) = :systemId " );
+			http.authorizeRequests().antMatchers("/**").permitAll().anyRequest().authenticated();
+			http.authorizeRequests()
+					.antMatchers("/login/**", "/signup", "/sessionexpired", "/logout", "/logout/**", "/signout/**",
+							"/signout", "/sessionout", "/styles/**", "/images/**", "/bower_components/**",
+							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/fonts/**")
+					.permitAll().anyRequest().authenticated();
 
+			http.logout().logoutRequestMatcher(new AntPathRequestMatcher("/signout")).logoutSuccessUrl("/signout")
+					.deleteCookies("JSESSIONID").invalidateHttpSession(true);
 
-		 final String queryString =  sb.toString();
+			http.exceptionHandling().authenticationEntryPoint(authEntryPoint).accessDeniedHandler(accessDeniedHandler);
+		} else {
 
-				Query query =getCurrentSession().createQuery(queryString);
-				query.setParameter("systemId",id.toLowerCase());
-				query.setResultTransformer(new AliasToBeanResultTransformer(User.class));
-				User aliasToValueMapList=(User) query.uniqueResult();
-				return aliasToValueMapList;
-		} catch (RuntimeException re) {
-			log.error("get failed", re);
-			throw re;
+			http.csrf().disable();
+			http.headers().frameOptions().disable();
+			http// .authenticationProvider(new FadsAuthenticationProvider(authentService))
+					.formLogin().loginPage("/login").defaultSuccessUrl("/", true)
+					.failureUrl(FORM_LOGIN_DEFAULT_FAILURE_URL).usernameParameter(FORM_LOGIN_USERNAME_PARAM)
+					.passwordParameter("password").successHandler(new AuthenticationSuccessHandlerImpl())
+					.failureHandler(new AuthenticationFailureHandlerImpl(FORM_LOGIN_USERNAME_PARAM,
+							FORM_LOGIN_DEFAULT_FAILURE_URL))
+					.permitAll();
+
+			configureSessionManagement(http);
+
+			http.logout().logoutUrl("/signout").invalidateHttpSession(true)
+					.logoutSuccessHandler(new LogoutSuccessHandlerImpl());
+
+			http.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class);
+			// Http URL Filters
+
+			http.authorizeRequests()
+					.antMatchers("/license", "/termsofuse", "/privacypolicy", "/contactus", "/sessionexpired",
+							"/sessionout", "/signup", "/login/**", "/styles/**", "/images/**", "/bower_components/**",
+							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/webHelp/**")
+					.permitAll().anyRequest().authenticated();
+
+			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
 		}
-
 	}
-	@Override
-	public void delete(String userId) {
-		log.debug("deleting UiUserBase instance");
-		try {
-			Session session= getCurrentSession();
 
-		//	Transaction tx = null;
+	private void configureSessionManagement(HttpSecurity http) throws Exception {
+		int timeout = 30 * 60; // Default timeout for 30min
+		String timeoutStr = env.getProperty("security.sessionTimeoutInMinutes");
+		String authType = env.getProperty("security.authentication.type").trim();
+
+		if (!StringUtils.isEmpty(timeoutStr)) {
 			try {
-	//		    tx = session.beginTransaction();
-			    if(userId!=null){
-			    //	UiUserBase uiUserBase =  (UiUserBase) session.createCriteria(UiUserBase.class).add(Restrictions.ilike("uiUserId",userId)).uniqueResult();
-			   	session.createQuery("delete from SeUsrGrp where uiSystemId = :uiSystemId").setParameter("uiSystemId",userId).executeUpdate();
-
-			 	session.createQuery("delete from UiUserBase where uiSystemId = :uiSystemId").setParameter("uiSystemId",userId).executeUpdate();
-			    
-			 /*	session.delete(uiUserBase.getSeUsrGrp());
-			    	session.delete(uiUserBase);*/
-
-			    //	tx.commit();
-			    	//System.out.println("saveCaseDetail()");
-			    	}
-			   }catch(HibernateException he) {
-				//System.out.println(he);
-				log.error("Exception in UiUserBaseDAO :: delete()",he);
-			/*	if (tx != null) tx.rollback();
-				throw new RuntimeException(he);*/
-			}
-			catch (RuntimeException e) {
-			   /* if (tx != null) tx.rollback();*/
-			    throw e; // or display error message
-			}
-			finally {
-			//	session.close();
-			}
-			log.debug("attach successful");
-		} catch (RuntimeException re) {
-			log.error("attach failed", re);
-			throw re;
-		}
-
-	}
-
-	@Override
-	public  synchronized void saveNewUser(UserForAdmin user ){
-		log.debug("saving UiUserBase instance");
-		try {
-			UiUserBase uiUserBase= new UiUserBase();
-			Session session=getCurrentSession();
-			String userId=user.getUserId();
-			if(userId!=null&&userId.length()>0){
-				uiUserBase.setUiUserId(user.getUserId());
-				uiUserBase.setUiFirstName(user.getFirstName());
-				uiUserBase.setUiLastName(user.getLastName());
-				uiUserBase.setUiEMailAddress(user.getEmail());
-
-
-				StringBuffer strBuffer= new StringBuffer();
-				strBuffer.append(user.getLastName().charAt(0));
-				strBuffer.append(user.getFirstName().charAt(0));
-				strBuffer.append(new SecureRandom().nextInt(99999999));
-				String systemID=strBuffer.toString();
-				User anyExistUserId=findBySystemId(systemID);
-
-				if (anyExistUserId == null) {
-					uiUserBase.setUiSystemId(systemID);
-
-					SeUsrGrp sug = new SeUsrGrp();
-					sug.setUiSystemId(systemID);
-					uiUserBase.setSeUsrGrp(sug);
-
-					session.save(uiUserBase);
-					session.flush();
-					session.clear();
-					SeFadsGrp seFadsGrp = new SeFadsGrp(user.getFadsGroup());
-					//SeSurGrp seSurGrp = new SeSurGrp(user.getRole().getSurRole().getGroupId());
-					SeSurGrp seSurGrp = null;
-					if(user.getSurGroup()!=null) {
-						seSurGrp = new SeSurGrp(user.getSurGroup());
-					}
-					SeCaseGrp seCaseGrp = null;
-//					if(user.getRole().getCaseRole()!=null){
-//						seCaseGrp= new SeCaseGrp(user.getRole().getCaseRole().getGroupId());
-//					}
-					if(user.getCaseGroup()!=null){
-						seCaseGrp= new SeCaseGrp(user.getCaseGroup());
-					}
-					SeUsrGrp seUsrGrp=new SeUsrGrp();
-					seUsrGrp.setUiSystemId(systemID);
-					seUsrGrp.setSeFadsGrp(seFadsGrp);
-					if(seSurGrp!=null) {
-						seUsrGrp.setSeSurGrp(seSurGrp);
-					}
-					if(seCaseGrp!=null){
-						seUsrGrp.setSeCaseGrp(seCaseGrp);
-					}
-					uiUserBase.setSeUsrGrp(seUsrGrp);
-
-					session.save(seUsrGrp);
-				}
-			}
-			log.debug("save successful");
-		} catch (RuntimeException re) {
-			log.error("save failed", re);
-			throw re;
-		}
-	}
-
-	public List<UiUserBase> findByExample(UiUserBase instance) {
-		log.debug("finding UiUserBase instance by example");
-		try {
-			List<UiUserBase> results = (List<UiUserBase>) getCurrentSession()
-					.createCriteria(
-							"com.optum.fads.security.domain.UiUserBase")
-					.add(create(instance)).list();
-			log.debug("find by example successful, result size: "
-					+ results.size());
-			return results;
-		} catch (RuntimeException re) {
-			log.error("find by example failed", re);
-			throw re;
-		}
-	}
-
-	public List findByProperty(String propertyName, Object value) {
-		log.debug("finding UiUserBase instance with property: " + propertyName
-				+ ", value: " + value);
-		try {
-			/*String queryString = "from UiUserBase as model where model."
-					+ propertyName + "= ?";*/
-			StringBuilder queryStr = new StringBuilder();
-			queryStr.append("from UiUserBase as model where model.");
-			queryStr.append(propertyName);
-			queryStr.append("=?");
-			
-			Query queryObject = getCurrentSession().createQuery(queryStr.toString());
-			queryObject.setParameter(0, value);
-			return queryObject.list();
-		} catch (RuntimeException re) {
-			log.error("find by property name failed", re);
-			throw re;
-		}
-	}
-
-
-	/* (non-Javadoc)
-	 * @see com.optum.fads.security.dao.impl.UiUserBaseDAO#findAll()
-	 */
-	@Override
-	public List findAll() {
-		log.debug("finding all UiUserBase instances");
-		try {
-			String queryString = "from UiUserBase";
-			Query queryObject = getCurrentSession().createQuery(queryString);
-			return queryObject.list();
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-	}
-
-	@Override
-	public UiUserBase merge(UiUserBase detachedInstance) {
-		log.debug("merging UiUserBase instance");
-		try {
-
-			UiUserBase result = (UiUserBase) getCurrentSession().merge(
-					detachedInstance);
-			log.debug("merge successful");
-			return result;
-		} catch (RuntimeException re) {
-			log.error("merge failed", re);
-			throw re;
-		}
-	}
-
-	public void attachDirty(UiUserBase instance) {
-		log.debug("attaching dirty UiUserBase instance");
-		try {
-			getCurrentSession().saveOrUpdate(instance);
-			log.debug("attach successful");
-		} catch (RuntimeException re) {
-			log.error("attach failed", re);
-			throw re;
-		}
-	}
-
-	public void attachClean(UiUserBase instance) {
-		log.debug("attaching clean UiUserBase instance");
-		try {
-			getCurrentSession().buildLockRequest(LockOptions.NONE).lock(
-					instance);
-			log.debug("attach successful");
-		} catch (RuntimeException re) {
-			log.error("attach failed", re);
-			throw re;
-		}
-	}
-
-
-	/* (non-Javadoc)
-	 * @see com.optum.fads.security.dao.impl.UiUserBaseDAO#findById(java.lang.String)
-	 */
-/*	@Override
-	public User findById(final String id) {
-		try {
-			
-			 StringBuilder sb = new StringBuilder();
-			 sb.append(" select a.uiSystemId as systemId, a.uiUserId as userId, ");
-			 sb.append(" a.uiFirstName as firstName, " );
-			 sb.append(" a.uiLastName as lastName, " );
-			 sb.append(" a.uiDeptName as department, " );
-			 sb.append(" a.uiEMailAddress as email, " );
-			 sb.append(" a.uiPwd as password, " );
-				 
-			 sb.append(" a.seUsrGrp.seSurGrp.grpId as surGroup, " );
-			 sb.append(" a.seUsrGrp.seCaseGrp.grpId as caseGroup " );
-			 sb.append(" from UiUserBase a " );
-			 sb.append(" where lower(a.uiUserId) = :userId " );
-			 
-
-		final String queryString =  sb.toString(); 
-		
-					Query query =getCurrentSession().createQuery(queryString);
-					query.setParameter("userId",id.toLowerCase());
-					query.setResultTransformer(new AliasToBeanResultTransformer(User.class)); 
-					User userDto=(User) query.uniqueResult(); 		
-				
-					return userDto;
-			
-			
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-	}
-*/
-	/* (non-Javadoc)
-	 * @see com.optum.fads.security.dao.impl.UiUserBaseDAO#findById(java.lang.String)
-	 */
-	@Override
-	public User findById(final String id) {
-		User user=null;
-		try {
-			 Criteria criteria = getCurrentSession().createCriteria(UiUserBase.class);
-			//   criteria.add(Restrictions.eq("uiUserId", id).ignoreCase());
-
-				Criterion userId = Restrictions.eq("uiUserId", id).ignoreCase();
-				Criterion emailId = Restrictions.eq("uiEMailAddress", id).ignoreCase();
-				
-				// To get records matching with OR conditions
-				LogicalExpression criteriaExp = Restrictions.or(userId, emailId);
-				criteria.add(criteriaExp);
-			   
-			   
-			   UiUserBase uiUserBase=(UiUserBase)criteria.uniqueResult();
-			   if(uiUserBase!=null){
-				   user=new User();
-				   user.setUserId(id);
-				   user.setSystemId(uiUserBase.getUiSystemId());
-				   user.setFirstName(uiUserBase.getUiFirstName());
-				   user.setLastName(uiUserBase.getUiLastName());
-				   user.setEmail(uiUserBase.getUiEMailAddress());
-				   user.setPhone(uiUserBase.getUiPhone());
-				   Role role= new Role();
-
-                   //FADS
-                   SeFadsGrp seFadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
-                   if (seFadsGrp != null) {
-                       FadsRole fadsRole = new FadsRole();
-                       fadsRole.setGroupId(seFadsGrp.getFadsGrpId());
-                       fadsRole.setGroupName(seFadsGrp.getFadsGrpName());
-                       Set<SeFadsGrpCompAccess> fadsGrpCompnts = seFadsGrp.getSeFadsGrpCompAccesses();
-                       for (SeFadsGrpCompAccess seFadsGrpCompnt : fadsGrpCompnts) {
-                           if (!seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId().equals(GlobalConstants.HIDDEN)) {
-                               FadsComponent fadsComponent = new FadsComponent();
-                               fadsComponent.setComponentId(seFadsGrpCompnt.getId().getFadsCompId());
-                               fadsComponent.setComponentCd(seFadsGrpCompnt.getSeFadsComponent().getComponentCd());
-                               fadsComponent.setComponentName(seFadsGrpCompnt.getSeFadsComponent().getComponentName());
-							   fadsComponent.setComponentSeq(seFadsGrpCompnt.getSeFadsComponent().getComponentSeq());
-                               fadsComponent.setComponentAccess(seFadsGrpCompnt.getSeFadsAccess().getFadsAccessId());
-
-                               Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
-                               List<SeFadsGrpModAccess> fadsFilterGrpMods = fadsGrpMods.stream().filter(
-                                       p -> seFadsGrpCompnt.getId().getFadsCompId().equals(p.getSeFadsComponent().getComponentId()))
-                                       .collect(Collectors.toList());
-                               for (SeFadsGrpModAccess fadsGrop : fadsFilterGrpMods) {
-                                   if (!fadsGrop.getSeFadsAccess().getFadsAccessId().equals(GlobalConstants.HIDDEN)) {
-                                       FadsModule fadsModule = new FadsModule();
-                                       fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
-                                       fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
-                                       fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
-									   fadsModule.setModuleSeq(fadsGrop.getSeFadsModule().getModuleSeq());
-                                       fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
-
-                                       List<FadsModElemConfig> elements = fadsGrop.getSeFadsModule().getFadsModElemConfigs().stream().filter(
-                                               ele -> ele.getSeFadsModule().getFadsModuleId().equals(fadsGrop.getId().getFadsModuleId()))
-                                               .collect(Collectors.toList());
-                                       for (FadsModElemConfig fadsModConfig : elements) {
-                                           boolean existElem = fadsModConfig.getSeFadsGrpElemNoAccesses().stream().anyMatch(
-												   s -> (s.getSeFadsGrp().getFadsGrpId().equals(seFadsGrp.getFadsGrpId())));
-										   		   //no need, get by it already: && (s.getId().getElementId().equals(modElement.getElementId()))
-										   if (!existElem) {
-											   FadsModuleElement modElement = new FadsModuleElement();
-											   modElement.setElementId(fadsModConfig.getElementId());
-											   modElement.setElementCd(fadsModConfig.getElementCd());
-											   modElement.setElementName(fadsModConfig.getElementName());
-											   modElement.setElementSeq(fadsModConfig.getElementSeq());
-											   fadsModule.getElements().add(modElement);
-                                           }
-                                       }
-                                       Collections.sort((ArrayList<FadsModuleElement>) fadsModule.getElements(), (o1, o2) -> o1.getElementSeq() - o2.getElementSeq());
-                                       fadsComponent.getModules().add(fadsModule);
-
-                                       //TODO Delete after
-                                       //fadsRole.getModulePermissions().add(fadsModule);
-                                   }
-                               }
-                               Collections.sort((ArrayList<FadsModule>) fadsComponent.getModules(), (o1, o2) -> o1.getModuleSeq() - o2.getModuleSeq());
-                               fadsRole.getComponentPermissions().add(fadsComponent);
-                           }
-                       }
-                       Collections.sort((ArrayList<FadsComponent>) fadsRole.getComponentPermissions(), (o1, o2) -> o1.getComponentSeq() - o2.getComponentSeq());
-
-
-/*
-                       Set<SeFadsGrpModAccess> fadsGrpMods = seFadsGrp.getSeFadsGrpModAccesses();
-                       for (SeFadsGrpModAccess fadsGrop : fadsGrpMods) {
-                           FadsModule fadsModule = new FadsModule();
-                           fadsModule.setModuleId(fadsGrop.getId().getFadsModuleId());
-                           fadsModule.setModuleCd(fadsGrop.getSeFadsModule().getFadsModuleCd());
-                           fadsModule.setModuleName(fadsGrop.getSeFadsModule().getFadsModuleName());
-                           fadsModule.setModuleAccess(fadsGrop.getSeFadsAccess().getFadsAccessId());
-                           List<FadsModuleElement> moduleElements = new ArrayList<FadsModuleElement>();
-                           if (fadsGrop.getSeFadsModule() != null && fadsGrop.getSeFadsAccess().getFadsAccessId() != null) {
-                               Set<FadsModElemConfig> fadsModElements = fadsGrop.getSeFadsModule().getFadsModElemConfigs();
-                               for (FadsModElemConfig fadsModConfig : fadsModElements) {
-                                   FadsModuleElement modElement = new FadsModuleElement();
-                                   modElement.setElementId(fadsModConfig.getElementId());
-                                   modElement.setElementCd(fadsModConfig.getElementCd());
-                                   modElement.setElementName(fadsModConfig.getElementName());
-*/
-                        /*
-								 for(SeFadsGroupElemAccess fadsModElemAccess:fadsModConfig..getSeFadsModElemAccesses()) {
-									 if(fadsModElemAccess.getId().getFadsGrpId()==seFadsGrp.getFadsGrpId()) {
-										 modElement.setElementAccess(fadsModElemAccess.getSeFadsAccess().getFadsAccessId());
-									 }
-									 
-								 }*/
-/*
-                                   moduleElements.add(modElement);
-                               }
-                           }
-                           fadsModule.setElements(moduleElements);
-                           fadsRole.getModulePermissions().add(fadsModule);
-                       }
-*/
-
-                       role.setFadsRole(fadsRole);
-                   }
-
-			   //SUR
-			   SeSurGrp seSurGrp= uiUserBase.getSeUsrGrp().getSeSurGrp();
-
-				   if(seSurGrp!=null){
-					   SurRole surRole=   new SurRole();
-					   surRole.setGroupId(seSurGrp.getSurGrpId());
-					   surRole.setGroupName(seSurGrp.getSurGrpName());
-					   Set<SeSurGrpModAccess> surGrops=  seSurGrp.getSeSurGrpModAccesses();
-
-					  for(SeSurGrpModAccess surGrop:surGrops){
-						  SurModule surModuleDto= new SurModule();
-						  surModuleDto.setModuleId(surGrop.getId().getSurModuleId().toString());
-						  surModuleDto.setModuleAccess(surGrop.getSeSurAccess().getSurAccessId());
-						  surRole.getModulePermissions().add(surModuleDto);
-					  }
-					  role.setSurRole(surRole);
-			         }
-
-				  //CaseTracking
-				  SeCaseGrp seCaseGrp= uiUserBase.getSeUsrGrp().getSeCaseGrp();
-				  if(seCaseGrp!=null){
-					  CaseRole caseRole=new CaseRole();
-					  caseRole.setGroupId(seCaseGrp.getCaseGrpId());
-					  caseRole.setGroupName(seCaseGrp.getCaseGrpName());
-					  Set<SeCaseGrpModAccess>seCaseGrpModAccesses= seCaseGrp.getSeCaseGrpModAccesses();
-					  List<CaseTypeModule> caseTypeModules= new ArrayList<CaseTypeModule>();
-					  Map<String,String> caseTypes = new HashMap<>();
-					  Map<String,List<CaseModule>> modulePermissions = new HashMap<>();
-					  for(SeCaseGrpModAccess caseGrop:seCaseGrpModAccesses){
-						  CaseModule caseModule = new  CaseModule();
-						  CaseTypeModule caseTypeModule = new CaseTypeModule();
-						  caseModule.setModuleId(caseGrop.getSeCaseModule().getCaseModuleId());
-						  caseModule.setModuleCd(caseGrop.getSeCaseModule().getCaseModuleCd());
-						  caseModule.setModuleName(caseGrop.getSeCaseModule().getCaseModuleName());
-						  caseModule.setModuleAccess(caseGrop.getSeCaseAccess().getAccessId());
-						  if(!modulePermissions.containsKey(caseGrop.getCaLuCaseTypeT().getTypeCd())){
-							  modulePermissions.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), new ArrayList<>());
-				            }
-						  modulePermissions.get(caseGrop.getCaLuCaseTypeT().getTypeCd()).add(caseModule);
-						  caseTypes.put(caseGrop.getCaLuCaseTypeT().getTypeCd(), caseGrop.getCaLuCaseTypeT().getTypeDesc());
-
-					  }
-					  for (Map.Entry<String, String> entry : caseTypes.entrySet()) {
-						   //System.out.println(entry.getKey() + " = " + entry.getValue());
-						  CaseTypeModule caseTypeModule=new CaseTypeModule();
-						  caseTypeModule.setCaseTypeId(entry.getKey());
-						  caseTypeModule.setCaseTypeName(entry.getValue());
-						  caseTypeModule.setModulePermissions(modulePermissions.get(entry.getKey()));
-						  caseTypeModules.add(caseTypeModule);
-
-						}
-					  caseRole.setCaseTypeModules(caseTypeModules);
-
-					   Set<SeCaseGrpNodeAccess> seCaseGrpNodeAccesses=  seCaseGrp.getSeCaseGrpNodeAccesses();
-					   Collection<CaseNode> nodePermissions= new ArrayList<CaseNode>();
-					  for(SeCaseGrpNodeAccess seCaseGrpNode:seCaseGrpNodeAccesses){
-							  CaseNode caseNodeDto = new CaseNode();
-							  caseNodeDto.setNodeId(seCaseGrpNode.getId().getCaseNodeId());
-							  caseNodeDto.setNodeAccess(seCaseGrpNode.getSeCaseAccess().getAccessId());
-							  caseNodeDto.setRestrictAccess(seCaseGrpNode.getAnyRestrictApply());
-							  caseNodeDto.setDeleteAccess(seCaseGrpNode.getCanDeleteCases());
-							  nodePermissions.add(caseNodeDto);
-
-
-					  }
-					  caseRole.setNodePermissions(new HashSet<CaseNode>(nodePermissions));
-
-					  role.setCaseRole(caseRole);
-			   }
-
-
-				//userDto.setNodes(nodes);
-			 user.setRole(role);
-			//   user.setRoles(roles);
-		}
-
-
-					return user;
-
-
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-	}
-
-
-	@Override
-	public List<User> findAllUsersWithGroups() {
-		log.debug("finding all findAllUsersWithGroups() instances");
-
-			try {
-
-				 StringBuilder sb = new StringBuilder();
-				 sb.append(" select a.uiSystemId as systemId,a.uiUserId as userId, ");
-				 sb.append(" a.uiFirstName as firstName, " );
-				 sb.append(" a.uiLastName as lastName, " );
-				 sb.append(" a.uiDeptName as department, " );
-				 sb.append(" a.uiEMailAddress as email, " );
-				 sb.append(" a.seUsrGrp.seSurGrp.grpId as surGroup, " );
-				 sb.append(" a.seUsrGrp.seCaseGrp.grpId as caseGroup " );
-				 sb.append(" from UiUserBase a " );
-
-
-
-			final String queryString =  sb.toString();
-						Query query =getCurrentSession().createQuery(queryString);
-						query.setResultTransformer(new AliasToBeanResultTransformer(User.class));
-						List<User> aliasToValueMapList=query.list();
-						return aliasToValueMapList;
-
-
-			} catch (RuntimeException re) {
-				log.error("find all failed", re);
-				throw re;
+				timeout = Integer.parseInt(timeoutStr);
+				timeout *= 60;
+			} catch (NumberFormatException e) {
+				LOGGER.error("Exception while parsing the timeout from properites", e);
 			}
 		}
 
-	@Override
-	public synchronized void updateUser(User user){
-		try {
-			//getCurrentSession().saveOrUpdate(user);
+		LOGGER.debug("Session timeout set for " + timeout + " seconds");
 
-			UiUserBase userBase = (UiUserBase)getCurrentSession().get(UiUserBase.class, user.getSystemId());
-			SeSurGrp seSurGrp = (SeSurGrp)getCurrentSession().get(SeSurGrp.class, user.getRole().getSurRole().getGroupId());
-			SeCaseGrp seCaseGrp = (SeCaseGrp)getCurrentSession().get(SeCaseGrp.class, user.getRole().getCaseRole().getGroupId());
-			SeUsrGrp seUsrGrp = (SeUsrGrp)getCurrentSession().get(SeUsrGrp.class, user.getSystemId());
-			userBase.setUiUserId(user.getUserId());
-			userBase.setUiFirstName(user.getFirstName());
-			userBase.setUiLastName(user.getLastName());
+		if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
+			http.addFilterBefore(new TokenSessionManagementFilter(new HttpSessionSecurityContextRepository(), timeout),
+					UsernamePasswordAuthenticationFilter.class);
 
-			userBase.setUiEMailAddress(user.getEmail());
-
-			seUsrGrp.setSeSurGrp(seSurGrp);
-			seUsrGrp.setSeCaseGrp(seCaseGrp);
-			userBase.setSeUsrGrp(seUsrGrp);
-
-			getCurrentSession().update(seUsrGrp);
-			getCurrentSession().update(userBase);
-			log.debug("attach successful");
-		} catch (RuntimeException re) {
-			log.error("attach failed", re);
-			throw re;
-		}
-	}
-
-	@Override
-	public PaginationResult<UserForAdmin> findAllUsers(Map<String,String> filterConditions,
-            Map<String,String> sortConditions,
-            final int firstRecord, final int maxRecords, String userSysId) {
-		//List result = new ArrayList();
-		PaginationResult<UserForAdmin> paginationResult = new PaginationResult<>();
-		List<UserForAdmin> resultList = new ArrayList<>();
-		StringBuilder sb = new StringBuilder();
-		try {
-/*
-			 sb.append(" select a.uiSystemId as systemId,a.uiUserId as userId, ");
-			 sb.append(" a.uiFirstName as firstName, " );
-			 sb.append(" a.uiLastName as lastName, " );
-			 //sb.append(" a.uiDeptName as department, " );
-			 //sb.append(" a.uiEMailAddress as email, " );
-			 sb.append(" a.uiEMailAddress as email " );
-			 //sb.append(" a.seUsrGrp.seSurGrp.grpId as surGroup, " );
-			 //sb.append(" a.seUsrGrp.seCaseGrp.grpId as caseGroup " );
-			 sb.append(" from UiUserBase a " );
-			 sb.append(" where 1=1 ");
-			 getFindAllQueryFilters(sb, filterConditions);
-			 */
-			/*getFindAllQueryGroupBy(sb.toString());*//*
-
-			getFindAllQueryOrderBy(sb, sortConditions);
-*/
-
-			sb.append("from UiUserBase as a");	// ToDo: order by ct missing the ones with the field empty/null
-			sb.append(" left join fetch a.seUsrGrp ");
-			sb.append(" left join fetch a.seUsrGrp.seFadsGrp ");
-			sb.append(" left join fetch a.seUsrGrp.seSurGrp ");
-			sb.append(" left join fetch a.seUsrGrp.seCaseGrp ");
-			sb.append(" where 1=1 ");
-			Map<String, String> safeParams = buildSafeParamMap(filterConditions);
-			getFindAllQueryFilters(sb, filterConditions, safeParams);
-			getFindAllQueryOrderBy(sb, sortConditions);
-
-			final String queryString = sb.toString();
-			try {
-				Query query = getCurrentSession().createQuery(queryString);
-				setFindAllQueryFilters(query, filterConditions, safeParams);
-				int totalCount = query.list().size();
-
-				//log.debug("totalCount: " + totalCount);
-				//result.add(totalCount);
-				paginationResult.setTotalRecordsCount(totalCount);
-
-				//query.setResultTransformer(new AliasToBeanResultTransformer(User.class));
-				query.setFirstResult(firstRecord);
-				query.setMaxResults(maxRecords);
-				//resultList = query.list();
-				List<UiUserBase> results = query.list();
-				//log.debug("results.size(): " + results.size());
-
-				//User user;
-				UserForAdmin user;
-				for (UiUserBase uiUserBase : results) {
-					user = new UserForAdmin();
-					user.setSystemId(uiUserBase.getUiSystemId());
-					user.setUserId(uiUserBase.getUiUserId());
-					user.setFirstName(uiUserBase.getUiFirstName());
-					user.setLastName(uiUserBase.getUiLastName());
-					user.setEmail(uiUserBase.getUiEMailAddress());
-
-					//Role role = new Role();
-					if (uiUserBase.getSeUsrGrp() != null) {
-						//FADS
-						SeFadsGrp seFadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
-						if (seFadsGrp != null) {
-							//FadsRole fadsRole = new FadsRole();
-							//fadsRole.setGroupId(seFadsGrp.getFadsGrpId());
-							//fadsRole.setGroupName(seFadsGrp.getFadsGrpName());
-							user.setFadsGroup(seFadsGrp.getFadsGrpId());
-							//role.setFadsRole(fadsRole);
-						}
-
-						//SUR
-						SeSurGrp seSurGrp = uiUserBase.getSeUsrGrp().getSeSurGrp();
-						if (seSurGrp != null) {
-							//SurRole surRole = new SurRole();
-							//surRole.setGroupId(seSurGrp.getSurGrpId());
-							//surRole.setGroupName(seSurGrp.getSurGrpName());
-							user.setSurGroup(seSurGrp.getSurGrpId());
-							//role.setSurRole(surRole);
-						}
-
-						//CaseTracking
-						SeCaseGrp seCaseGrp = uiUserBase.getSeUsrGrp().getSeCaseGrp();
-						if (seCaseGrp != null) {
-							//CaseRole caseRole = new CaseRole();
-							//caseRole.setGroupId(seCaseGrp.getCaseGrpId());
-							//caseRole.setGroupName(seCaseGrp.getCaseGrpName());
-							user.setCaseGroup(seCaseGrp.getCaseGrpId());
-							//role.setCaseRole(caseRole);
-						}
-					}
-					//user.setRole(role);
-					resultList.add(user);
-				}
-	            //result.add(resultList);
-				paginationResult.setData(resultList);
-			} catch (Exception e) {
-	            log.error("Exception in findAllCases: ", e);
-	            e.printStackTrace();
-	            throw e;
-	        }
-		} catch (RuntimeException re) {
-			log.error("find all users error: ", re);
-			throw re;
-		}
-		//return result;
-		return paginationResult;
-	}
-
-	private void getFindAllQueryOrderBy(StringBuilder sb, Map<String,String> sortConditions) {
-	        if (sortConditions != null && !sortConditions.isEmpty()) {
-	            sb.append(" order by");
-
-	            for (Map.Entry<String, String> entry : sortConditions.entrySet()) {
-	                for (SecurityUsersColumnEnum col : SecurityUsersColumnEnum.values()) {
-	                    if (col.getColumnId().equals(entry.getKey())) {
-	                        //if (col.isColumnStringTypeForOrderBy()){
-	                            sb.append(" lower(").append(col.getColumnStringOrderFilterBy()).append(")");
-	                        //} else {
-	                            //sb.append(" ").append(col.getColumnQueryOrder());
-	                        //}
-	                    }
-	                }
-	                if ("-1".equals(entry.getValue())) {
-/*
-	                    if ("prelimPriorityDesc".equals(entry.getKey()) || "fullscalePriorityDesc".equals(entry.getKey())){
-	                        sb.append(" DESC NULLS FIRST,");
-	                    } else {
-*/
-	                        sb.append(" DESC NULLS LAST,");
-//	                    }
-	                } else if ("1".equals(entry.getValue())) {
-/*
-	                    if ("prelimPriorityDesc".equals(entry.getKey()) || "fullscalePriorityDesc".equals(entry.getKey())){
-	                        sb.append(" ASC NULLS LAST,");
-	                    } else {
-*/
-	                        sb.append(" ASC NULLS FIRST,");
-//	                    }
-	                }
-	            }
-	            sb.delete(sb.length()-1, sb.length());
-	        }
-	    }
-
-		private void getFindAllQueryFilters(StringBuilder sb, Map<String, String> filterConditions,
-				Map<String, String> safeParams) {
-
-			if (filterConditions != null && !filterConditions.isEmpty()) {
-				for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-					for (SecurityUsersColumnEnum col : SecurityUsersColumnEnum.values()) {
-						if (col.getColumnId().equals(entry.getKey())) {
-
-							String paramName = safeParams.get(entry.getKey());
-
-							sb.append(" and lower(").append(col.getColumnStringOrderFilterBy()).append(") like :")
-									.append(paramName);
-						}
-					}
-				}
-			}
+		} else {
+			http.addFilterBefore(new FadsSessionManagementFilter(new HttpSessionSecurityContextRepository(), timeout),
+					UsernamePasswordAuthenticationFilter.class);
 		}
 
-		private void setFindAllQueryFilters(Query query, Map<String, String> filterConditions,
-				Map<String, String> safeParams) {
-
-			if (filterConditions != null && !filterConditions.isEmpty()) {
-				for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-					for (SecurityUsersColumnEnum col : SecurityUsersColumnEnum.values()) {
-						if (col.getColumnId().equals(entry.getKey())) {
-
-							String paramName = safeParams.get(entry.getKey());
-
-							query.setString(paramName, getLowerSearchString(entry.getValue()));
-						}
-					}
-				}
-			}
-		}
-
-	private String getLowerSearchString(String searchInput){
-		return "%" + StringUtils.lowerCase(searchInput) + "%";
 	}
 
-	public static UiUserBaseDAO getFromApplicationContext(ApplicationContext ctx) {
-		return (UiUserBaseDAO) ctx.getBean("UiUserBaseDAO");
-	}
-
-	@Override
-	public PaginationResult<UserForAdmin> findStateUsers(Map<String, String> filterConditions, Map<String, String> sortConditions,
-									 int firstRecord, int maxRecords, String userSysId) {
-		//log.info("enter findStateUsers");
-		//List result = new ArrayList();
-		PaginationResult<UserForAdmin> paginationResult = new PaginationResult<>();
-		try {
-			StringBuilder sb = new StringBuilder();
-/*
-			sb.append(" select a.uiSystemId as systemId,a.uiUserId as userId, ");
-			sb.append(" a.uiFirstName as firstName, ");
-			sb.append(" a.uiLastName as lastName, ");
-			sb.append(" a.uiDeptName as department, ");
-			sb.append(" a.uiEMailAddress as email, ");
-			sb.append(" a.seUsrGrp.seSurGrp.grpId as surGroup, ");
-			sb.append(" a.seUsrGrp.seCaseGrp.grpId as caseGroup ");
-			sb.append(" from UiUserBase a ");
-			sb.append(" where 1=1 ");
-			sb.append(" and coalesce(a.seUsrGrp.seCaseGrp.grpId, -1) not in (0,1) and coalesce(a.seUsrGrp.seSurGrp.grpId, -1) not in (0,1)"
-					+ " and coalesce(a.uiDeptName,'-1') != 'ADMIN'");
-			getFindAllQueryFilters(sb, filterConditions);
-			getFindAllQueryOrderBy(sb, sortConditions);
-*/
-
-			sb.append("from UiUserBase as a");
-			sb.append(" left join fetch a.seUsrGrp ");
-			sb.append(" left join fetch a.seUsrGrp.seFadsGrp ");
-			sb.append(" left join fetch a.seUsrGrp.seSurGrp ");
-			sb.append(" left join fetch a.seUsrGrp.seCaseGrp ");
-			sb.append(" where a.seUsrGrp.seFadsGrp.fadsGrpId not in (0,1) ");
-			
-			Map<String, String> safeParams = buildSafeParamMap(filterConditions);
-			getFindAllQueryFilters(sb, filterConditions, safeParams);
-			
-			getFindAllQueryOrderBy(sb, sortConditions);
-
-			final String queryString = sb.toString();
-			//List<User> resultList = new ArrayList<User>();
-			List<UserForAdmin> resultList = new ArrayList<>();
-			try {
-				Query query = getCurrentSession().createQuery(queryString);
-				
-				setFindAllQueryFilters(query, filterConditions, safeParams);
-				int totalCount = query.list().size();
-				//result.add(totalCount);
-				paginationResult.setTotalRecordsCount(totalCount);
-
-				//query.setResultTransformer(new AliasToBeanResultTransformer(User.class));
-				query.setFirstResult(firstRecord);
-				query.setMaxResults(maxRecords);
-
-				//resultList = query.list();
-				List<UiUserBase> results = query.list();
-
-				//User user;
-				UserForAdmin user;
-				for (UiUserBase uiUserBase : results) {
-					user = new UserForAdmin();
-					user.setSystemId(uiUserBase.getUiSystemId());
-					user.setUserId(uiUserBase.getUiUserId());
-					user.setFirstName(uiUserBase.getUiFirstName());
-					user.setLastName(uiUserBase.getUiLastName());
-					user.setEmail(uiUserBase.getUiEMailAddress());
-
-					if (uiUserBase.getSeUsrGrp() != null) {
-						SeFadsGrp seFadsGrp = uiUserBase.getSeUsrGrp().getSeFadsGrp();
-						if (seFadsGrp != null) {
-							user.setFadsGroup(seFadsGrp.getFadsGrpId());
-						}
-
-						SeSurGrp seSurGrp = uiUserBase.getSeUsrGrp().getSeSurGrp();
-						if (seSurGrp != null) {
-							user.setSurGroup(seSurGrp.getSurGrpId());
-						}
-
-						SeCaseGrp seCaseGrp = uiUserBase.getSeUsrGrp().getSeCaseGrp();
-						if (seCaseGrp != null) {
-							user.setCaseGroup(seCaseGrp.getCaseGrpId());
-						}
-					}
-					resultList.add(user);
-				}
-				//result.add(resultList);
-				paginationResult.setData(resultList);
-			} catch (Exception e) {
-				log.error("Exception in findStateUsers: ", e);
-				e.printStackTrace();
-				throw e;
-			}
-			//return result;
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-		return paginationResult;
-	}
-}  
+}
