@@ -1,157 +1,4117 @@
-package com.optum.fads.pgp.behavior.api.config;
+package com.optum.fads.caseentrybatch.api.domain;
 
-import javax.sql.DataSource;
+import java.io.Serializable;
+import jakarta.persistence.*;
 
-import com.azure.security.keyvault.secrets.SecretClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-@Configuration
-@EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api.repo")
-@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
-public class ServiceConfig {
+/**
+ * The primary key class for the #CT# CA_CLAIM_CORRECTIONS_T database table.
+ * 
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Embeddable
+public class CaClaimCorrectionsHistTPK implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
-
-    // these are secret NAMES stored in KeyVault
-    @Value("${spring.datasource.userName}")
-    private String userNameSecretName;
-
-    @Value("${spring.datasource.password}")
-    private String passwordSecretName;
-
-    @Value("${spring.datasource.jdbcUrl}")
-    private String jdbcUrl;
-
-    @Value("${spring.datasource.driverClassName}")
-    private String driverClassName;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfig(SecretClient secretClient) {
-        this.secretClient = secretClient;
-    }
-
-    @Bean(name = "fadsDataSource")
-    @Primary
-    public DataSource customDataSource() {
-        logger.info("Initializing custom DataSource bean...");
-
-        String username = secretClient.getSecret(userNameSecretName).getValue();
-        String password = secretClient.getSecret(passwordSecretName).getValue();
-
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName(driverClassName);
-        dataSource.setUrl(jdbcUrl);
-        dataSource.setUsername(username);
-        dataSource.setPassword(password);
-
-        return dataSource;
-    }
+	@Column(name="CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "HIST_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	private Integer histSeqNum;
+	
+	@Column(name = "CLM_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	private Integer clmSeqNum;
+	
 }
-server:
-  port: 8080
-  servlet:
-    contextPath: /behavior
+package com.optum.fads.caseentrybatch.api.domain;
 
-spring:
-  application:
-    name: behavior
+import java.util.Date;
 
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
-        credential:
-          client-id: ce5962ff-06f5-4911-be66-e51b86531710
-          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+import jakarta.persistence.*;
+import lombok.EqualsAndHashCode;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-  datasource:
-    initialize: false
-    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+/**
+ * CaClaimCorrectionsT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_CLAIM_CORRECTIONS_HIST_T")
+public class CaClaimCorrectionsHistT {
+	
+	@EmbeddedId
+	private CaClaimCorrectionsHistTPK id;
+	
+	@MapsId("caseId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
 
-    # these are KeyVault secret names
-    userName: sql-admin-user
-    password: sql-admin-password
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", nullable = false, length = 7)
+	private Date changeDt;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CHANGE_USR", nullable = false)
+	private UiUserBase uiUserBaseChangeUsr;
+	
+	@Column(name="HDR_CLM_TCN", length = 17)
+	private String hdrClmTcn;
+	
+	@Column(name="LI_NUM", length = 4)
+	private String liNum;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="HDR_CLM_PD_DT", length = 7)
+	private Date hdrClmPdDt;
+	
+	@Column(name="LI_DRUG_NDC", length = 11)
+	private String liDrugNdc;
+	
+	@Column(name="LI_PD_UOS_QTY", precision = 15, scale = 3)
+	private Double liPdUosQty;
+	
+	@Column(name="CT_INGREDIENT_COST", precision = 13, scale = 2)
+	private Double ctIngredientCost;
+	
+	@Column(name="LI_COPAY_AMT", precision = 13, scale = 2)
+	private Double liCopayAmt;
+	
+	@Column(name="LI_DRUG_DAYS_SUPPLY", precision = 13, scale = 0)
+	private Integer liDrugDaysSupply;
+	
+	@Column(name="LI_DRUG_DISP_FEE_AMT", precision = 13, scale = 2)
+	private Double liDrugDispFeeAmt;
+	
+	@Column(name="LI_DRUG_ROUTE_CD", length = 1)
+	private String liDrugRouteCd;
+	
+	@Column(name="LI_PD_AMT", precision = 11, scale = 2)
+	private Double liPdAmt;
+	
+	@Column(name="CT_FINDINGS_CD", length = 3)
+	private String ctFindingsCd;
 
-  jpa:
-    database: SQL_SERVER
-    show-sql: false
-    hibernate:
-      ddl-auto: none
+	@Column(name="HDR_PD_AMT")
+	private Double hdrPdAmt;
+	
+	@Column(name="HDR_COPAY_AMT")
+	private Double hdrCopayAmt;
+	
+	@Column(name="HDR_DRUG_DISPENSING_FEE")
+	private Double hdrDrugDispensingFee;
+	
+ 	@Size(max = 10)
+	@Column(name="LI_DRUG_DOSAGE_FORM_DESC", length = 10)
+	private String liDrugDosageFormDesc;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-package com.optum.fads.pgp.behavior.api.config;
+import java.io.Serializable;
+import java.time.LocalDateTime;
 
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
+import org.hibernate.annotations.Formula;
 
-@Configuration
-public class CommonConfig {
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
+/**
+ * The persistent class for the UI_USER_BASE database table.
+ * 
+ */
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
+@Getter
+@Builder
+@Entity
+@Table(name = "UI_USER_BASE")
+public class UiUserBase implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
-    private String azureKeyVaultUrl;
+	@Id
+	// @GeneratedValue(strategy = GenerationType.AUTO)
+	@Column(name = "UI_SYSTEM_ID", unique = true, nullable = false, length = 25)
+	private String uiSystemId;
 
-    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
-    private String azureKeyVaultTenant;
+	@Column(name = "UI_CREATED_BY", length = 25)
+	private String uiCreatedBy;
 
-    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
-    private String azureKeyVaultSecret;
+	// @Temporal(TemporalType.DATE)
+	@Column(name = "UI_CREATED_DT")
+	private LocalDateTime uiCreatedDt;
 
-    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
-    private String azureKeyVaultClientId;
+	@Column(name = "UI_E_MAIL_ADDRESS", nullable = false, length = 50)
+	private String uiEMailAddress;
 
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
-    }
+	@Column(name = "UI_FIRST_NAME", length = 20)
+	private String uiFirstName;
 
-    @Bean
-    public SecretClient secretClient() {
-        logger.info("Initializing Azure Key Vault SecretClient...");
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(azureKeyVaultClientId)
-                .clientSecret(azureKeyVaultSecret)
-                .tenantId(azureKeyVaultTenant)
-                .build();
+	@Column(name = "UI_LAST_NAME", length = 40)
+	private String uiLastName;
 
-        return new SecretClientBuilder()
-                .vaultUrl(azureKeyVaultUrl)
-                .credential(clientSecretCredential)
-                .buildClient();
-    }
+	@Column(name = "UI_TITLE", length = 15)
+	private String uiTitle;
+
+	@Column(name = "UI_USER_ID", nullable = false, length = 25)
+	private String uiUserId;
+
+	@Column(name = "UI_USER_INACTIVE", length = 1)
+	private String uiUserInactive;
+
+	@Formula(value = "CONCAT(UI_FIRST_NAME, ' ', UI_LAST_NAME)")
+	private String userFullName;
+	
+	// bi-directional one-to-one association to SeUsrGrp
+	@OneToOne(mappedBy = "uiUserBase")
+	private SeUsrGrp seUsrGrp;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+
+/**
+ * The persistent class for the SE_USR_GRP database table.
+ * 
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Table(name="SE_USR_GRP")
+public class SeUsrGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="UI_SYSTEM_ID")
+	private String uiSystemId;
+
+	//bi-directional many-to-one association to SeSurGrp
+	@ManyToOne
+	@JoinColumn(name="FADS_SUR_GRP_ID")
+	private SeSurGrp seSurGrp;
+	
+	//bi-directional many-to-one association to SeSurGrp
+	@ManyToOne
+	@JoinColumn(name="FADS_CASE_GRP_ID")
+	private SeCaseGrp seCaseGrp;
+
+	//bi-directional one-to-one association to UiUserBase
+	@OneToOne
+	@JoinColumn(name="UI_SYSTEM_ID")
+	private UiUserBase uiUserBase;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+
+/**
+ * The persistent class for the SE_SUR_MODULE database table.
+ * 
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Table(name="SE_SUR_MODULE")
+public class SeSurModule implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_MODULE_ID")
+	private String surModuleId;
+
+	@Column(name="SUR_MODULE_NAME")
+	private String surModuleName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurModule")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The primary key class for the SE_SUR_GRP_MOD_ACCESS database table.
+ * 
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class SeSurGrpModAccessPK implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name="SUR_GRP_ID", insertable=false, updatable=false)
+	private long surGrpId;
+
+	@Column(name="SUR_MODULE_ID", insertable=false, updatable=false)
+	private String surModuleId;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the SE_SUR_GRP_MOD_ACCESS database table.
+ * 
+ */
+@Entity
+@Data
+@Table(name="SE_SUR_GRP_MOD_ACCESS")
+public class SeSurGrpModAccess implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private SeSurGrpModAccessPK id;
+
+	//bi-directional many-to-one association to SeSurAccess
+	@ManyToOne
+	@JoinColumn(name="SUR_GRP_MOD_ACCESS")
+	private SeSurAccess seSurAccess;
+
+	//bi-directional many-to-one association to SeSurGrp
+	@ManyToOne()
+	@JoinColumn(name="SUR_GRP_ID", insertable = false , updatable = false)
+	private SeSurGrp seSurGrp;
+
+	//bi-directional many-to-one association to SeSurModule
+	@ManyToOne
+	@JoinColumn(name="SUR_MODULE_ID", insertable = false , updatable = false)
+	private SeSurModule seSurModule;
+
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the SE_SUR_GRP database table.
+ * 
+ */
+@Entity
+@Data
+@Table(name="SE_SUR_GRP")
+public class SeSurGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_GRP_ID")
+	private long surGrpId;
+
+	@Column(name="SUR_GRP_NAME")
+	private String surGrpName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	//bi-directional many-to-one association to SeUsrGrp
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeUsrGrp> seUsrGrps;
+
+	public long getSurGrpId() {
+		return this.surGrpId;
+	}
+
+	public void setSurGrpId(long surGrpId) {
+		this.surGrpId = surGrpId;
+	}
+
+	public String getSurGrpName() {
+		return this.surGrpName;
+	}
+
+	public void setSurGrpName(String surGrpName) {
+		this.surGrpName = surGrpName;
+	}
+
+	public List<SeSurGrpModAccess> getSeSurGrpModAccesses() {
+		return this.seSurGrpModAccesses;
+	}
+
+	public void setSeSurGrpModAccesses(List<SeSurGrpModAccess> seSurGrpModAccesses) {
+		this.seSurGrpModAccesses = seSurGrpModAccesses;
+	}
+
+	public SeSurGrpModAccess addSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().add(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurGrp(this);
+
+		return seSurGrpModAccess;
+	}
+
+	public SeSurGrpModAccess removeSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().remove(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurGrp(null);
+
+		return seSurGrpModAccess;
+	}
+
+	public List<SeUsrGrp> getSeUsrGrps() {
+		return this.seUsrGrps;
+	}
+
+	public void setSeUsrGrps(List<SeUsrGrp> seUsrGrps) {
+		this.seUsrGrps = seUsrGrps;
+	}
+
+	public SeUsrGrp addSeUsrGrp(SeUsrGrp seUsrGrp) {
+		getSeUsrGrps().add(seUsrGrp);
+		seUsrGrp.setSeSurGrp(this);
+
+		return seUsrGrp;
+	}
+
+	public SeUsrGrp removeSeUsrGrp(SeUsrGrp seUsrGrp) {
+		getSeUsrGrps().remove(seUsrGrp);
+		seUsrGrp.setSeSurGrp(null);
+
+		return seUsrGrp;
+	}
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the SE_SUR_GRP database table.
+ * 
+ */
+@Entity
+@Data
+@Table(name="SE_SUR_GRP")
+public class SeSurGrp implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_GRP_ID")
+	private long surGrpId;
+
+	@Column(name="SUR_GRP_NAME")
+	private String surGrpName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	//bi-directional many-to-one association to SeUsrGrp
+	@OneToMany(mappedBy="seSurGrp")
+	private List<SeUsrGrp> seUsrGrps;
+
+	public long getSurGrpId() {
+		return this.surGrpId;
+	}
+
+	public void setSurGrpId(long surGrpId) {
+		this.surGrpId = surGrpId;
+	}
+
+	public String getSurGrpName() {
+		return this.surGrpName;
+	}
+
+	public void setSurGrpName(String surGrpName) {
+		this.surGrpName = surGrpName;
+	}
+
+	public List<SeSurGrpModAccess> getSeSurGrpModAccesses() {
+		return this.seSurGrpModAccesses;
+	}
+
+	public void setSeSurGrpModAccesses(List<SeSurGrpModAccess> seSurGrpModAccesses) {
+		this.seSurGrpModAccesses = seSurGrpModAccesses;
+	}
+
+	public SeSurGrpModAccess addSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().add(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurGrp(this);
+
+		return seSurGrpModAccess;
+	}
+
+	public SeSurGrpModAccess removeSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().remove(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurGrp(null);
+
+		return seSurGrpModAccess;
+	}
+
+	public List<SeUsrGrp> getSeUsrGrps() {
+		return this.seUsrGrps;
+	}
+
+	public void setSeUsrGrps(List<SeUsrGrp> seUsrGrps) {
+		this.seUsrGrps = seUsrGrps;
+	}
+
+	public SeUsrGrp addSeUsrGrp(SeUsrGrp seUsrGrp) {
+		getSeUsrGrps().add(seUsrGrp);
+		seUsrGrp.setSeSurGrp(this);
+
+		return seUsrGrp;
+	}
+
+	public SeUsrGrp removeSeUsrGrp(SeUsrGrp seUsrGrp) {
+		getSeUsrGrps().remove(seUsrGrp);
+		seUsrGrp.setSeSurGrp(null);
+
+		return seUsrGrp;
+	}
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.List;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+
+
+/**
+ * The persistent class for the SE_SUR_ACCESS database table.
+ * 
+ */
+@Entity
+@Data
+@Table(name="SE_SUR_ACCESS")
+public class SeSurAccess implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name="SUR_ACCESS_ID")
+	private String surAccessId;
+
+	@Column(name="SUR_ACCESS_NAME")
+	private String surAccessName;
+
+	//bi-directional many-to-one association to SeSurGrpModAccess
+	@OneToMany(mappedBy="seSurAccess")
+	private List<SeSurGrpModAccess> seSurGrpModAccesses;
+
+	public String getSurAccessId() {
+		return this.surAccessId;
+	}
+
+	public void setSurAccessId(String surAccessId) {
+		this.surAccessId = surAccessId;
+	}
+
+	public String getSurAccessName() {
+		return this.surAccessName;
+	}
+
+	public void setSurAccessName(String surAccessName) {
+		this.surAccessName = surAccessName;
+	}
+
+	public List<SeSurGrpModAccess> getSeSurGrpModAccesses() {
+		return this.seSurGrpModAccesses;
+	}
+
+	public void setSeSurGrpModAccesses(List<SeSurGrpModAccess> seSurGrpModAccesses) {
+		this.seSurGrpModAccesses = seSurGrpModAccesses;
+	}
+
+	public SeSurGrpModAccess addSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().add(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurAccess(this);
+
+		return seSurGrpModAccess;
+	}
+
+	public SeSurGrpModAccess removeSeSurGrpModAccess(SeSurGrpModAccess seSurGrpModAccess) {
+		getSeSurGrpModAccesses().remove(seSurGrpModAccess);
+		seSurGrpModAccess.setSeSurAccess(null);
+
+		return seSurGrpModAccess;
+	}
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Entity provides the base persistence definition of the
+ * SeCaseGrp entity.  @author Anil Wagh
+ */
+@Getter
+@Setter
+@Entity
+@Table(name="SE_CASE_GRP")
+public class SeCaseGrp implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "CASE_GRP_ID", unique = true, nullable = false, precision = 5, scale = 0)
+	private Integer caseGrpId;
+	
+	@Column(name = "CASE_GRP_NAME", length = 40)
+	private String caseGrpName;
+
+}
+/**
+ * 
+ */
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * @author awagh
+ *
+ */
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "FADS_CONFIG_T")
+public class FadsConfigT implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "OPTION_CODE", unique = true, nullable = false, precision = 7)
+	private Long optionCode;
+	@Column(name = "OPTION_VALUE", length = 50)
+	private String optionValue;
+	@Column(name = "DESCRIPTION", length = 4000)
+	private String description;
+}
+
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+/*import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.SequenceGenerator;*/
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * FadsLuValuesTId entity. @author awagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaUniverseTPK  implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CT_BATCH_ID", unique = true, nullable = false, precision = 14)
+	private Integer ctBatchId;
+	
+	//@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CT_BATCH_DATE")
+	private LocalDateTime ctBatchDate;
+	
+	@Column(name = "HDR_CLM_TCN", unique = true, nullable = false, length = 17)
+	private String hdrClmTcn;
+	
+	@Column(name = "LI_NUM", unique = true, nullable = false, length = 4)
+	private String liNum;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "HDR_CLM_PD_DT")
+	private Date hdrClmPdDt;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.math.BigDecimal;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * The persistent class for the CA_UNIVERSE_BATCH_T database table. 
+ * 
+ */
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_UNIVERSE_T")
+public class CaUniverseT implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private CaUniverseTPK id;
+	
+	@Column(name = "CT_LOAD_STATUS_CD", length = 3)
+	@Builder.Default
+	private String ctLoadStatusCd = CaseEntryConstants.BATCH_COMPLETED;
+	
+	@Column(name = "CT_PROCESS_CD", length = 3)
+	@Builder.Default
+	private String ctProcessCd = CaseEntryConstants.BATCH_IMPORTED;
+	
+	@Column(name = "HDR_CLM_TYPE_CD", length = 2)
+	private String hdrClmTypeCd;
+	
+	@Column(name = "CASE_ID", unique = true, nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+		
+	//bi-directional one-to-one association to UiUserBase
+	@OneToOne
+	@JoinColumn(name="UI_SYSTEM_ID")
+	private UiUserBase uiUserBase;
+	
+	@Column(name = "CASE_TYPE_CD", length = 3)
+	private String caseTypeCd;
+	
+	@Column(name = "PROV_ROLE", length = 30)
+	private String provRole;
+			
+	@Column(name = "CA_PRM_NODE_CD")
+	private String caPrmNodeCd;
+	
+	@Column(name = "CA_YEAR_ID", precision = 4)
+	private Integer caYearId;
+	
+	@Column(name = "CA_SEQUENCE_ID", precision = 7)
+	private Integer caSequenceId;
+	
+	@Column(name = "PROTECT_STATUS", length = 1)
+	private String projectStatus;
+	
+	@Column(name = "INVST_TYPE_CD", length = 3)
+	private String invstTypeCd;
+	
+	@Column(name = "CASE_SOURCE_CD", length = 3)
+	private String caseSourceCd;
+	
+	@Column(name = "CASE_STATUS_CD", length = 3)
+	private String caseStatusCd;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CASE_STATUS_DT")
+	private Date caseStatusDt;
+	
+	@Column(name = "ISSUE_CD", length = 3)
+	private String issueCd;
+	
+	@Column(name = "ASSIGN_USR", length = 25)
+	private String assignUsr;
+	
+	@Column(name = "ASSIGN_SECTION_CD", length = 3)
+	private String assignSectionCd;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ASSIGN_DATE")
+	private Date assignDate;
+	
+	@Column(name = "PARTICIPANT_ID", length = 25)
+	private String participantId;
+	
+	@Column(name = "CLM_SEQ_NUM", precision = 7)
+	private Integer clmSeqNum;
+	
+	@Column(name="LI_DRUG_VALID_CLM_IND", length = 1)
+	private String liDrugValidClmInd;
+	
+// -------------------------------------------------------------------
+	@Column(name="HDR_CLM_ADJ_STS_CD", length = 1) // length not known
+	private String hdrClmAdjStsCd;
+	
+	@Column(name="CLAIM_STATUS_DESC", length = 40)	// length not known
+	private String ClaimjStatusDesc;
+	
+	@Column(name="HDR_PAY_TO_PROV_ID", length = 12)
+	private String hdrPayToProvId;
+	
+	@Column(name="HDR_PAY_TO_PROV_NM", length = 60)
+	private String hdrPayToProvNm;
+	
+	@Column(name="HDR_PRESCR_PROV_ID", length = 12)
+	private String hdrPrescrProvId;
+	
+	@Column(name="HDR_PRESCR_PROV_NPI", length = 12)
+	private String hdrPrescrProvNpi;
+	
+	@Column(name="HDR_COS_CD", length = 2)
+	private String hdrCosCd;
+	
+	@Column(name="COS_DESC", length = 42)
+	private String cosDesc;
+
+	@Column(name="HDR_RECIP_ORIG_ID", length = 22)
+	private String hdrRecipOrigId;
+	
+	@Column(name="HDR_RECIP_FULL_NM", length = 85)
+	private String hdrRecipFullNm;
+	
+//	HDR_CLM_TCN	- Key column
+	
+	@Column(name="HDR_CLM_TCN_OLD", length = 17)
+	private String hdrClmTcnOld;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="LI_SRV_FROM_DT", length = 7)
+	private Date liSrvFromDt;
+	
+	@Column(name="LI_DRUG_PRESCR_NUM", length = 12)
+	private String liDrugPrescrNum;
+	
+	@Column(name="LI_DRUG_REFILL_NUM", precision = 2, scale = 0)
+	private Integer LiDrugRefillNum;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="LI_DRUG_PRESCR_DT", length = 7)
+	private Date liDrugPrescrDt;
+	
+	@Column(name="LI_DRUG_NDC", length = 11)
+	private String liDrugNdc;
+	
+	@Column(name="NDC_DESC", length = 40)
+	private String ndcDesc;
+	
+	@Column(name="LI_DRUG_SPEC_THERA_CLS_CD", length = 10)
+	private String liDrugSpecTheraClsCd;
+	
+	@Column(name="THERA_CLASS_SPEC_DESC", length = 40)
+	private String theraClassSpecDesc;
+	
+	@Column(name="LI_DRUG_DAYS_SUPPLY", precision = 4, scale = 0)
+	private Integer liDrugDaysSupply;
+	
+	@Column(name="LI_BILL_UOS_QTY", precision = 15, scale = 5)
+	private BigDecimal liBillUosQty;
+	
+	@Column(name="LI_PD_UOS_QTY", precision = 15, scale = 5)
+	private BigDecimal liPdUosQty;
+
+	@Column(name="HDR_BILL_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrBillAmt;
+
+	@Column(name="LI_BILL_AMT", precision = 13, scale = 2)
+	private BigDecimal liBillAmt;
+	
+	@Column(name="LI_PD_AMT", precision = 13, scale = 2)
+	private BigDecimal liPdAmt;
+	
+	@Column(name="HDR_PD_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrPdAmt;
+
+//	HDR_CLM_PD_DT - Key column
+	
+	@Column(name="HDR_CLEAN_CLM_IND", length = 1)
+	private String hdrCleanClmInd;
+	
+	@Column(name="LI_CLEAN_CLM_IND", length = 1)
+	private String liCleanClmInd;
+	
+//	LI_NUM - Key column
+	
+//	@Column(name="HDR_CLM_TYPE_CD", length = 1)
+//	private String hdrClmTypeCd;
+	
+	@Column(name="HDR_CLM_TYPE_DESC", length = 40)
+	private String hdrClmTypeDesc;
+	
+	@Column(name="HDR_PAY_TO_PROV_NPI_ID", length = 12)
+	private String hdrPayToProvNpiId;
+	
+	@Column(name="GCN_DESC", length = 100)
+	private String gcnDesc;
+	
+	@Column(name="HDR_RECIP_CURR_ID", length = 22)
+	private String hdrRecipCurrId;
+	
+	@Column(name="HDR_ENCOUNTER_CD", length = 1)
+	private String hdrEncounterCd;
+	
+	@Column(name="LI_MCO_SHADOW_PRICE", precision = 11, scale = 2)
+	private BigDecimal liMcoShadowPrice;
+	
+	@Column(name="HDR_MCO_TCN", length = 40)
+	private String hdrMcoTcn;
+	
+	@Column(name="HDR_MCO_ID", length = 15)
+	private String hdrMcoId;
+	
+	@Column(name="HDR_MCO_NM", length = 50)
+	private String hdrMcoNm;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="HDR_MCO_PD_DT", length = 7)
+	private Date hdrMcoPdDt;
+	
+	@Column(name="HDR_MCO_SHADOW_PRICE", precision = 11, scale = 2)
+	private BigDecimal hdrMcoShadowPrice;
+	
+	@Column(name="HDR_PAY_TO_PROV_TY_CD", length = 3)
+	private String hdrPayToProvTyCd;
+	
+	@Column(name="HDR_PAY_TO_PROV_TY_DESC", length = 40)
+	private String hdrPayToProvTyDesc;
+	
+	@Column(name="HDR_PAY_TO_PROV_SPEC_CD", length = 3)
+	private String hdrPayToProvSpecCd;
+	
+	@Column(name = "HDR_PAY_TO_PROV_SPEC_DESC", length = 40)
+	private String hdrPayToProvSpecDesc;
+	
+	@Column(name = "PROV_FEIN", length = 9)
+	private String provFein;
+	
+	@Column(name = "PROV_PRAC_ADDR_LINE_1", length = 30)
+	private String provPracAddrLine1;
+	
+	@Column(name = "PROV_PRAC_ADDR_LINE_2", length = 30)
+	private String provPracAddrLine2;
+	
+	@Column(name = "HDR_PRESCR_PROV_NM", length = 60)
+	private String hdrPrescrProvNm;
+	
+	@Column(name="HDR_PRESCR_PROV_TY_CD", length = 3)
+	private String hdrPrescrProvTyCd;
+	
+	@Column(name = "HDR_PRESCR_PROV_TY_DESC", length = 40)
+	private String hdrPrescrProvTyDesc;
+	
+	@Column(name="HDR_PRESCR_PROV_SPEC_CD", length = 3)
+	private String hdrPrescrProvSpecCd;
+	
+	@Column(name = "HDR_PRESCR_PROV_SPEC_DESC", length = 40)
+	private String hdrPrescrProvSpecDesc;
+	
+	@Column(name="HDR_RECIP_AGE_MTHS_QTY", precision = 6, scale = 0)
+	private Integer hdrRecipAgeMthsQty;
+	
+	@Column(name="HDR_RECIP_AGE_YRS_QTY", precision = 5, scale = 0)
+	private Integer hdrRecipAgeYrsQty;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_BIRTH_DT", length = 7)
+	private Date recipBirthDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_DEATH_DT", length = 7)
+	private Date recipDeathDt;
+	
+	@Column(name = "RECIP_CNTY_CD", length = 5)
+	private String recipCntyCd;
+	
+	@Column(name = "RECIP_CNTY_DESC", length = 40)
+	private String recipCntyDesc;
+	
+	@Column(name = "RECIP_CITY_NM", length = 40)
+	private String recipCityNm;
+	
+	@Column(name = "RECIP_STATE_CD", length = 2)
+	private String recipStateCd;
+	
+	@Column(name = "RECIP_ZIP_CD", length = 5)
+	private String recipZipCd;
+	
+	@Column(name = "RECIP_GENDER_CD", length = 1)
+	private String recipGenderCd;
+	
+	@Column(name = "RECIP_GENDER_DESC", length = 40)
+	private String recipGenderDesc;
+	
+	@Column(name = "RECIP_ADDR_LINE_1", length = 55)
+	private String recipAddrLine1;
+	
+	@Column(name = "RECIP_ADDR_LINE_2", length = 55)
+	private String recipAddrLine2;
+	
+	@Column(name="HDR_RECIP_MCARE_ID", length = 22)
+	private String hdrRecipMcareId;
+	
+	@Column(name = "RECIP_TEFRA_IND", length = 1)
+	private String recipTefraInd;
+			
+	@Column(name="RECIP_BNFT_PLAN_CD", length = 5)
+	private String recipBnftPlanCd;
+	
+	@Column(name = "RECIP_BNFT_PLAN_DESC", length = 50)
+	private String recipBnftPlanDesc;
+	
+	@Column(name="HDR_DRUG_NH_IND", length = 1)
+	private String hdrDrugNhInd;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="HDR_SRV_FROM_DT", length = 7)
+	private Date hdrSrvFromDt;
+	
+	@Column(name="HDR_COPAY_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrCopayAmt;
+	
+	@Column(name="HDR_TPL_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrTplAmt;
+	
+	@Column(name="HDR_DRUG_DISPENSING_FEE", precision = 13, scale = 2)
+	private BigDecimal hdrDrugDispensingFee;
+	
+	@Column(name="LI_TPL_AMT", precision = 13, scale = 2)
+	private BigDecimal liTplAmt;
+	
+	@Column(name="LI_DRUG_COMPOUND_IND", length = 1)
+	private String liDrugCompoundInd;
+	
+	@Column(name="LI_DRUG_GCN", length = 5)
+	private String liDrugGcn;
+	
+	@Column(name="LI_DRUG_DOSAGE_FORM_DESC", length = 10)
+	private String liDrugDosageFormDesc;
+	
+	@Column(name="R_PACKAGE_SIZE", precision = 11, scale = 3)
+	private BigDecimal rPackageSize;
+	
+	@Column(name="R_STRENGTH_DESC", length = 10)
+	private String rStrengthDesc;
+	
+	@Column(name="R_CLASS_CD", length = 1)
+	private String rClassCd;
+	
+//	R_DRUG_CAT
+	@Column(name="R_DRUG_CAT", length = 1)
+	private String rDrugCat;
+	
+	@Column(name="R_DRUG_DEA", length = 1)
+	private String rDrugDea;
+
+	@Column(name="R_ROUTE_DESC", length = 10)
+	private String rRouteDesc;
+	
+	@Column(name="LI_HEADER_PAY_IND", length = 1)
+	private String liHeaderPayInd;
+	
+/*	Duplicate
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="LI_SRV_FROM_DT", length = 7)
+	private Date liSrvFromDt;
+
+	@Column(name="LI_CLEAN_CLM_IND", length = 1)
+	private String liCleanClmInd;
+*/	
+	
+	@Column(name="LI_CLM_ADJ_STS_CD", length = 3)
+	private String liClmAdjStsCd;
+	
+	@Column(name="LI_COE_CD", length = 4)
+	private String liCoeCd;
+	
+	@Column(name="LI_COPAY_AMT_1", precision = 13, scale = 2)
+	private BigDecimal liCopayAmt1;
+	
+	@Column(name="HDR_FUND_CD", length = 4)
+	private String hdrFundCd;
+	
+	@Column(name = "FUND_DESC", length = 40)
+	private String fundDesc;
+	
+	@Column(name="FIN_FUND_CD", length = 4)
+	private String finFundCd;
+	
+	@Column(name="COMP_DRUG_INGRED_COUNT", precision = 38, scale = 18)
+	private BigDecimal compDrugIngredCount;
+	
+	@Column(name="COMP_DRUG_PRODUCT_ID_QLFR", length = 2)
+	private String compDrugProductIdQlfr;
+	
+	@Column(name="COMP_DRUG_INGRED_QTY", precision = 14, scale = 3)
+	private BigDecimal compDrugIngredQty;
+	
+	@Column(name = "COMP_DRUG_INGRED_DRG_COST", precision = 8, scale = 2)
+    private BigDecimal compDrugIngredCost;
+/*	
+	@Column(name="FIN_ACTION_REASON_CD", length = 4)
+	private String finActionReasonCd;
+	
+	@Column(name = "ACTION_REASON_DESC", length = 40)
+	private String actionReasonDesc;
+ */
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.SequenceGenerator;
+/*import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.SequenceGenerator;*/
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * FadsLuValuesTId entity. @author awagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaUniverseBatchTPK  implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
+//	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "CA_BATCH_ROWSEQ")
+//	@SequenceGenerator(sequenceName = "CA_BATCH_ROWSEQ", allocationSize = 10, name = "CA_BATCH_ROWSEQ")
+	@Column(name = "CA_BATCH_ROWSEQ", unique = true, nullable = false, precision = 14)
+	private Integer caBatchRowseq;
+	
+	@Column(name = "CT_BATCH_ID", unique = true, nullable = false, precision = 14)
+	private Integer ctBatchId;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CT_BATCH_DATE")
+	private Date ctBatchDate;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The persistent class for the CA_UNIVERSE_BATCH_T database table. 
+ * 
+ */
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_UNIVERSE_BATCH_T")
+public class CaUniverseBatchT implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private CaUniverseBatchTPK id;
+	
+	//bi-directional one-to-one association to UiUserBase
+	@OneToOne
+	@JoinColumn(name="UI_SYSTEM_ID")
+	private UiUserBase uiUserBase;
+	
+	@Column(name = "CASE_TYPE_CD", length = 3)
+	private String caseTypeCd;
+	
+	@Column(name = "PROV_ROLE", length = 30)
+	private String provRole;
+			
+	@Column(name = "CA_PRM_NODE_CD")
+	private String caPrmNodeCd;
+	
+	@Column(name = "CA_YEAR_ID", precision = 4)
+	private Integer caYearId;
+	
+	@Column(name = "PROTECT_STATUS", length = 1)
+	private String projectStatus;
+	
+	@Column(name = "INVST_TYPE_CD", length = 3)
+	private String invstTypeCd;
+	
+	@Column(name = "CASE_SOURCE_CD", length = 3)
+	private String caseSourceCd;
+	
+	@Column(name = "CASE_STATUS_CD", length = 3)
+	private String caseStatusCd;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CASE_STATUS_DT")
+	private Date caseStatusDt;
+	
+	@Column(name = "ISSUE_CD", length = 3)
+	private String issueCd;
+	
+	@Column(name = "ASSIGN_USR", length = 25)
+	private String assignUsr;
+	
+	
+	@Column(name = "ASSIGN_SECTION_CD", length = 3)
+	private String assignSectionCd;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ASSIGN_DATE")
+	private Date assignDate;
+	
+	@Column(name = "PARTICIPANT_ID", length = 25)
+	private String participantId;
+	
+	@Column(name = "HDR_CLM_TCN", unique = true, nullable = false, length = 17)
+	private String hdrClmTcn;
+	
+	@Column(name = "LI_NUM", unique = true, nullable = false, length = 4)
+	private String liNum;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "HDR_CLM_PD_DT")
+	private Date hdrClmPdDt;
+	
+	@Column(name = "LI_DRUG_VALID_CLM_IND", length = 1)
+	private String liDrugValidClmInd;
+	
+	@Column(name = "REC_MATCH_IND", length = 1)
+	private String recMatchInd;
+
+}
+
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaRecipientT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_RECIPIENT_T")
+public class CaRecipientT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "CASE_ID", unique = true, nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Column(name = "ADDR_LINE1", length = 80)
+	private String addrLine1;
+	
+	@Column(name = "ADDR_LINE2", length = 80)
+	private String addrLine2;
+	
+	@Column(name = "CITY_NAME", length = 40)
+	private String cityName;
+	
+	@Column(name = "STATE_CD", length = 2)
+	private String stateCd;
+	
+	@Column(name = "ZIP_CD", length = 10)
+	private String zipCd;
+	
+	@Column(name = "PHONE_NUMBER", length = 15)
+	private String phoneNumber;
+	
+	@Column(name = "PHONE_EXT", length = 5)
+	private String phoneExt;
+	
+	@Column(name = "FAX_NUMBER", length = 15)
+	private String faxNumber;
+	
+	@Column(name = "CONTACT_NAME", length = 80)
+	private String contactName;
+	
+	@Column(name = "EMAIL_ADDR", length = 80)
+	private String emailAddr;
+	
+	@Column(name = "COUNTY_NAME", length = 80)
+	private String countyName;
+	
+	@Column(name = "COUNTY_CD", length = 80)
+	private String countyCd;
+	
+	@Column(name = "RECIP_AID_CATEGORY", length = 80)
+	private String recipAidCategory;
+	
+	@Column(name = "RECIP_AREA_OF_REVIEW", length = 80)
+	private String recipAreaOfReview;
+	
+	@Column(name = "RECIP_BENEFIT_PLAN", length = 80)
+	private String recipBenefitPlan;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_BIRTH_DT", length = 7)
+	private Date recipBirthDt;
+	
+	@Column(name = "RECIP_CAT_OF_ELIG", length = 80)
+	private String recipCatOfElig;
+	
+	@Column(name = "RECIP_GENDER_DESC", length = 80)
+	private String recipGenderDesc;
+	
+	@Column(name = "RECIP_HOUSEHOLD_ID", length = 80)
+	private String recipHouseholdId;
+	
+	@Column(name = "RECIP_RACE_DESC", length = 80)
+	private String recipRaceDesc;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_DEATH_DT", length = 7)
+	private Date recipDeathDt;
+	
+	@Column(name = "RECIP_SSN", length = 80)
+	private String recipSsn;
+	
+	@Column(name = "RECIP_DIST_OFC", length = 80)
+	private String recipDistOfc;
+	
+	@Column(name = "RECIP_TANF", length = 80)
+	private String recipTanf;
+	
+	@Column(name = "RECIP_SFT_RISK", length = 80)
+	private String recipSftRisk;
+	
+	@Column(name = "RECIP_MED", length = 80)
+	private String recipMed;
+	
+	@Column(name = "RECIP_REGION", length = 80)
+	private String recipRegion;
+	
+	@Column(name = "RECIP_CUST_A", length = 80)
+	private String recipCustA;
+	
+	@Column(name = "RECIP_CUST_B", length = 80)
+	private String recipCustB;
+	
+	@Column(name = "RECIP_CUST_C", length = 80)
+	private String recipCustC;
+	
+	@Column(name = "RECIP_CUST_D", length = 80)
+	private String recipCustD;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.*;
+
+import jakarta.validation.constraints.Size;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+import org.hibernate.annotations.Cascade;
+
+/**
+ * CaProviderT entity. 
+ *  @author Anil Wagh
+ */
+
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_PROVIDER_T")
+public class CaProviderT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "CASE_ID", unique = true, nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+
+ 	@Size(max = 80)
+	@Column(name = "ADDR_LINE1", length = 80)
+	private String addrLine1;
+	
+ 	@Size(max = 80)
+	@Column(name = "ADDR_LINE2", length = 80)
+	private String addrLine2;
+	
+ 	@Size(max = 40)
+	@Column(name = "CITY_NAME", length = 40)
+	private String cityName;
+	
+	@Column(name = "STATE_CD", length = 2)
+	private String stateCd;
+	
+    @Size(max = 10)
+	@Column(name = "ZIP_CD", length = 10)
+	private String zipCd;
+	
+	@Column(name = "PHONE_NUMBER", length = 15)
+	private String phoneNumber;
+	
+	@Column(name = "PHONE_EXT", length = 5)
+	private String phoneExt;
+	
+	@Column(name = "FAX_NUMBER", length = 15)
+	private String faxNumber;
+	
+	@Column(name = "CONTACT_NAME", length = 80)
+	private String contactName;
+	
+	@Column(name = "EMAIL_ADDR", length = 80)
+	private String emailAddr;
+	
+	@Column(name = "COUNTY_NAME", length = 80)
+	private String countyName;
+	
+	@Column(name = "COUNTY_CD", length = 80)
+	private String countyCd;
+	
+	@Column(name = "PROV_NPI", length = 80)
+	private String provNpi;
+	
+	@Column(name = "PROV_DEA", length = 80)
+	private String provDea;
+	
+	@Column(name = "PROV_DBA", length = 80)
+	private String provDba;
+	
+	@Column(name = "PROV_FEIN", length = 80)
+	private String provFein;
+	
+	@Column(name = "PROV_TYPE_CD", length = 80)
+	private String provTypeCd;
+	
+	@Column(name = "PROV_PRIOR_CASES", precision = 0)
+	private Integer provPriorCases;
+	
+	@Column(name = "PROV_TAXONOMY_ID", length = 80)
+	private String provTaxonomyId;
+	
+	@Column(name = "PROV_NABP", length = 80)
+	private String provNabp;
+	
+	@Column(name = "PROV_CLIA", length = 80)
+	private String provClia;
+	
+	@Column(name = "PROV_SPEC_DESC", length = 80)
+	private String provSpecDesc;
+	
+	@Column(name = "PROV_CAT_OF_SVC", length = 80)
+	private String provCatOfSvc;
+	
+	@Column(name = "PROV_LICENSE_NUM", length = 80)
+	private String provLicenseNum;
+	
+	@Column(name = "PROV_LIC_BEGIN_DT", length = 80)
+	private String provLicBeginDt;
+	
+	@Column(name = "PROV_LIC_END_DT", length = 80)
+	private String provLicEndDt;
+	
+	@Column(name = "PROV_ACTIVE_DT", length = 80)
+	private String provActiveDt;
+	
+	@Column(name = "PROV_TERM_DT", length = 80)
+	private String provTermDt;
+	
+	@Column(name = "PROV_CUST_A", length = 80)
+	private String provCustA;
+	
+	@Column(name = "PROV_CUST_B", length = 80)
+	private String provCustB;
+	
+	@Column(name = "PROV_CUST_C", length = 80)
+	private String provCustC;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaMetaBaseTPK entity. @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaMetaBaseTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "FIELD_ID", nullable = false, length = 30)
+	private String fieldId;
+	
+	@Column(name = "CASE_TYPE", nullable = false, length = 3)
+	private String caseType;
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaMetaBaseT entity provides the base persistence definition of the
+ * CaMetaBaseT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Table(name = "CA_META_BASE_T")
+public class CaMetaBaseT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private CaMetaBaseTPK id;
+	
+	@Column(name = "TABLE_NAME", length = 50)
+	private String tableName;
+	
+	@Column(name = "COLUMN_NAME")
+	private String columnName;
+	
+	@Column(name = "PRETTY_LABEL")
+	private String prettyLabel;
+	
+	@Column(name = "VISIBLE_TYPE", length = 1)
+	private String visibleType;
+	
+	@Column(name = "SQL_CLAUSE_TYPE", length = 25)
+	private String sqlClauseType;
+	
+	@Column(name = "ACTUAL_POSITION", precision = 4, scale = 0)
+	private Integer actualPosition;
+	
+	@Column(name = "HTML_FIELD_TYPE", length = 40)
+	private String htmlFieldType;
+	
+	@Column(name = "FIELD_SIZE", length = 2)
+	private String fieldSize;
+	
+	@Column(name = "OPT_FIELD", length = 2)
+	private String optField;
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * The persistent class for the CA_META_BASE_NOTICE_T database table.
+ * 
+ */
+
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "CA_META_BASE_NOTICE_T")
+public class CaMetaBaseNoticeT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "NOTICE_ID", unique = true, nullable = false, length = 10)
+	private String noticeId;
+	
+	@Column(name = "TABLE_NAME", length = 30)
+	private String tableName;
+	
+	@Column(name = "COLUMN_NAME", length = 30)
+	private String columnName;
+	
+	@Column(name = "STATUS_CD", length = 3)
+	private String statusCd;
+	
+	@Column(name = "NODE_CD", length = 5)
+	private String nodeCd;
+	
+	@Column(name = "COLUMN_DATE", length = 30)
+	private String columnDate;
+	
+	@Column(name = "THRESHOLD_NUM_DAYS", nullable = false, precision = 3, scale = 0)
+	private Integer thresholdNumDays;
+	
+	@Column(name = "SUBJ_EMAIL", length = 1000)
+	private String subjEmail;
+	
+	@Lob
+	@Column(name = "REM_COMMENT")
+	private String remComment;	// varchar(MAX)
+	
+	@Column(name = "NOTICE_FLAG", length = 1)
+	private String noticeFlag;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaLuValuesTPK entity. @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaLuValuesTPK implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "FIELD_ID", nullable = false, length = 30)
+	private String fieldId;
+	
+	@Column(name = "LU_VALUE", nullable = false, length = 3)
+	private String luValue;
+	
+	@Column(name = "LU_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer luSeq;
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * The base persistence definition of the
+ * CaLuValuesT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Table(name = "CA_LU_VALUES_T")
+public class CaLuValuesT implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaLuValuesTPK id;
+	
+	@Column(name = "LU_CODE", length = 10)
+	private String luCode;
+	
+	@Column(name = "LU_LABEL", length = 80)
+	private String luLabel;
+	
+	@Column(name = "LU_VIEW", length = 2)
+	private String luView;
+	
+	@Column(name = "LU_FILTER", length = 10)
+	private String luFilter;
+	
+	@Column(name = "LU_SCORE", length = 5)
+	private String luScore;
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of the
+ * CaLuScndNodeT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@Data
+@ToString
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_LU_SCND_NODE_T")
+public class CaLuScndNodeT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "NODE_CD", unique = true, nullable = false, length = 5)
+	private String nodeCd;
+	
+	@Column(name = "NODE_DESC", length = 50)
+	private String nodeDesc;
+	
+	@Column(name = "NODE_VIEW", length = 1)
+	private String nodeView;
+	
+	@Column(name = "NODE_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer nodeSeq;
+	
+	@Column(name = "NODE_FILTER", length = 5)
+	private String nodeFilter;
+	
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "caLuScndNodeT")
+	private Set<CaIntelligentKeyT> caIntelligentKeyTs = new HashSet<CaIntelligentKeyT>(0);
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import java.io.Serializable;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaLuPrmNodeT entity.  @author Anil Wagh
+ */
+@Getter
+@Setter
+@Data
+@ToString
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_PRM_NODE_T")
+public class CaLuPrmNodeT implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "NODE_CD", unique = true, nullable = false, length = 5)
+	private String nodeCd;
+
+	@Column(name = "NODE_DESC", length = 50)
+	private String nodeDesc;
+	
+	@Column(name = "NODE_VIEW", length = 1)
+	private String nodeView;
+	
+	@Column(name = "NODE_SEQ", precision = 5)
+	private Integer nodeSeq;
+	
+	@Column(name = "NODE_FILTER", length = 5)
+	private String nodeFilter;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of
+ * the CaLuPrelimStatusT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_PRELIM_STATUS_T")
+public  class CaLuPrelimStatusT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "STATUS_CD", unique = true, nullable = false, length = 3)
+	private String statusCd;
+	
+	@Column(name = "STATUS_DESC", length = 50)
+	private String statusDesc;
+	
+	@Column(name = "STATUS_VIEW", length = 1)
+	private String statusView;
+	
+	@Column(name = "STATUS_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer statusSeq;
+	
+	@Column(name = "STATUS_FILTER", length = 5)
+	private String statusFilter;
+	
+	@Column(name = "STATUS_CLS_IND", length = 1)
+	private String statusClsInd;
+	
+	@Column(name = "STATUS_TYPE", nullable = false, length = 15)
+	private String statusType;
+	
+	/*
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaAudPrStatusHistT> caAudPrStatusHistTs =
+	 * new HashSet<CaAudPrStatusHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaAudPreliminaryT> caAudPreliminaryTs = new
+	 * HashSet<CaAudPreliminaryT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaInvstPrHistT> caInvstPrHistTs = new
+	 * HashSet<CaInvstPrHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaInvstPreliminaryT> caInvstPreliminaryTs =
+	 * new HashSet<CaInvstPreliminaryT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaAudPrHistT> caAudPrHistTs = new
+	 * HashSet<CaAudPrHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaInvstPrStatusHistT> caInvstPrStatusHistTs
+	 * = new HashSet<CaInvstPrStatusHistT>(0);
+	 */
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of
+ * the CaLuPrelimStatusT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_PRELIM_STATUS_T")
+public  class CaLuPrelimStatusT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "STATUS_CD", unique = true, nullable = false, length = 3)
+	private String statusCd;
+	
+	@Column(name = "STATUS_DESC", length = 50)
+	private String statusDesc;
+	
+	@Column(name = "STATUS_VIEW", length = 1)
+	private String statusView;
+	
+	@Column(name = "STATUS_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer statusSeq;
+	
+	@Column(name = "STATUS_FILTER", length = 5)
+	private String statusFilter;
+	
+	@Column(name = "STATUS_CLS_IND", length = 1)
+	private String statusClsInd;
+	
+	@Column(name = "STATUS_TYPE", nullable = false, length = 15)
+	private String statusType;
+	
+	/*
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaAudPrStatusHistT> caAudPrStatusHistTs =
+	 * new HashSet<CaAudPrStatusHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaAudPreliminaryT> caAudPreliminaryTs = new
+	 * HashSet<CaAudPreliminaryT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaInvstPrHistT> caInvstPrHistTs = new
+	 * HashSet<CaInvstPrHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaInvstPreliminaryT> caInvstPreliminaryTs =
+	 * new HashSet<CaInvstPreliminaryT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaAudPrHistT> caAudPrHistTs = new
+	 * HashSet<CaAudPrHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimStatusT") private Set<CaInvstPrStatusHistT> caInvstPrStatusHistTs
+	 * = new HashSet<CaInvstPrStatusHistT>(0);
+	 */
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of
+ * the CaLuPrelimReasonT entity. @author Shyam Biry
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "CA_LU_PRELIM_REASON_T")
+public  class CaLuPrelimReasonT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "REASON_CD", unique = true, nullable = false, length = 3)
+	private String reasonCd;
+	
+	@Column(name = "REASON_DESC", length = 50)
+	private String reasonDesc;
+	
+	@Column(name = "REASON_VIEW", length = 1)
+	private String reasonView;
+	
+	@Column(name = "REASON_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer reasonSeq;
+	
+	@Column(name = "REASON_FILTER", length = 5)
+	private String reasonFilter;
+	
+	@Column(name = "REASON_TYPE", nullable = false, length = 15)
+	private String reasonType;
+	
+	/*
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimReasonT") private Set<CaAudPreliminaryT> caAudPreliminaryTs = new
+	 * HashSet<CaAudPreliminaryT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimReasonT") private Set<CaAudPrHistT> caAudPrHistTs = new
+	 * HashSet<CaAudPrHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimReasonT") private Set<CaInvstPrHistT> caInvstPrHistTs = new
+	 * HashSet<CaInvstPrHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuPrelimReasonT") private Set<CaInvstPreliminaryT> caInvstPreliminaryTs =
+	 * new HashSet<CaInvstPreliminaryT>(0);
+	 */
+
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * This entity provides the base persistence definition of
+ * the CaLuPrelimIssueT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_PRELIM_ISSUE_T")
+public class CaLuPrelimIssueT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "ISSUE_CD", unique = true, nullable = false, length = 3)
+	private String issueCd;
+	
+	@Column(name = "ISSUE_DESC", length = 50)
+	private String issueDesc;
+	
+	@Column(name = "ISSUE_VIEW", length = 1)
+	private String issueView;
+	
+	@Column(name = "ISSUE_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer issueSeq;
+	
+	@Column(name = "ISSUE_FILTER", length = 5)
+	private String issueFilter;
+	
+	@Column(name = "ISSUE_SCORE", length = 5)
+	private String issueScore;
+	
+	@Column(name = "ISSUE_TYPE", nullable = false, length = 15)
+	private String issueType;
+
+	}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaLuFullscaleStatusT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_FULL_SCALE_STATUS_T")
+public class CaLuFullscaleStatusT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "STATUS_CD", unique = true, nullable = false, length = 3)
+	private String statusCd;
+	
+	@Column(name = "STATUS_DESC", length = 50)
+	private String statusDesc;
+	
+	@Column(name = "STATUS_VIEW", length = 1)
+	private String statusView;
+	
+	@Column(name = "STATUS_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer statusSeq;
+	
+	@Column(name = "STATUS_FILTER", length = 5)
+	private String statusFilter;
+	
+	@Column(name = "STATUS_CLS_IND", length = 1)
+	private String statusClsInd;
+	
+	@Column(name = "STATUS_TYPE", nullable = false, length = 15)
+	private String statusType;
+	/*
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuFullscaleStatusT") private Set<CaAudFullscaleT> caAudFullscaleTs = new
+	 * HashSet<CaAudFullscaleT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuFullscaleStatusT") private Set<CaInvstFsStatusHistT>
+	 * caInvstFsStatusHistTs = new HashSet<CaInvstFsStatusHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuFullscaleStatusT") private Set<CaInvstFullscaleT> caInvstFullscaleTs =
+	 * new HashSet<CaInvstFullscaleT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuFullscaleStatusT") private Set<CaAudFsHistT> caAudFsHistTs = new
+	 * HashSet<CaAudFsHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuFullscaleStatusT") private Set<CaInvstFsHistT> caInvstFsHistTs = new
+	 * HashSet<CaInvstFsHistT>(0);
+	 * 
+	 * @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy =
+	 * "caLuFullscaleStatusT") private Set<CaAudFsStatusHistT> caAudFsStatusHistTs =
+	 * new HashSet<CaAudFsStatusHistT>(0);
+	 */
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaLuFullscaleSectionT entity provides the base persistence definition of
+ * the CaLuFullscaleSectionT entity. @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_FULLSCALE_SECTION_T")
+public class CaLuFullscaleSectionT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "SECTION_CD", unique = true, nullable = false, length = 3)
+	private String sectionCd;
+	
+	@Column(name = "SECTION_DESC", length = 50)
+	private String sectionDesc;
+	
+	@Column(name = "SECTION_VIEW", length = 1)
+	private String sectionView;
+	
+	@Column(name = "SECTION_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer sectionSeq;
+	
+	@Column(name = "SECTION_FILTER", length = 5)
+	private String sectionFilter;
+	
+	@Column(name = "SECTION_TYPE", nullable = false, length = 15)
+	private String sectionType;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * This entity provides the base persistence definition
+ * of the CaLuFullscaleIssueT entity. @author Shyam Biry
+ */
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Table(name = "CA_LU_FULLSCALE_ISSUE_T")
+public class CaLuFullscaleIssueT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "ISSUE_CD", unique = true, nullable = false, length = 3)
+	private String issueCd;
+	
+	@Column(name = "ISSUE_DESC", length = 50)
+	private String issueDesc;
+	
+	@Column(name = "ISSUE_VIEW", length = 1)
+	private String issueView;
+	
+	@Column(name = "ISSUE_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer issueSeq;
+	
+	@Column(name = "ISSUE_FILTER", length = 5)
+	private String issueFilter;
+	
+	@Column(name = "ISSUE_SCORE", length = 5)
+	private String issueScore;
+	
+	@Column(name = "ISSUE_TYPE", nullable = false, length = 15)
+	private String issueType;
+	
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * The persistent class for the CA_LU_CASE_TYPE_T database table.
+ * 
+ */
+
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "CA_LU_CASE_TYPE_T")
+public class CaLuCaseTypeT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "TYPE_CD", unique = true, nullable = false, length = 5)
+	private String typeCd;
+	
+	@Column(name = "TYPE_DESC", length = 50)
+	private String typeDesc;
+	
+	@Column(name = "TYPE_VIEW", length = 1)
+	private String typeView;
+	
+	@Column(name = "TYPE_SEQ", precision = 5)
+	private Integer typeSeq;
+	
+	@Column(name = "BATCH_VIEW", length = 1)
+	private String batchView;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+@Getter
+@Setter
+@EqualsAndHashCode
+@NoArgsConstructor
+@ToString
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_LU_CASE_SOURCE_T")
+public class CaLuCaseSourceT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "SOURCE_CD", unique = true, nullable = false, length = 3)
+	private String sourceCd;
+	
+	@Column(name = "SOURCE_DESC", length = 50)
+	private String sourceDesc;
+	
+	@Column(name = "SOURCE_VIEW", length = 1)
+	private String sourceView;
+	
+	@Column(name = "SOURCE_SEQ", nullable = false, precision = 5, scale = 0)
+	private Integer sourceSeq;
+	
+	@Column(name = "SOURCE_FILTER", length = 5)
+	private String sourceFilter;
+	
+	@Column(name = "SOURCE_SCORE", length = 5)
+	private String sourceScore;
+	
+	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "caLuCaseSourceT")
+	private Set<CaGeneralT> caGeneralTs = new HashSet<CaGeneralT>(0);
+
+}package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrStatusHistTId entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstPrStatusHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "SEQ_NUM", nullable = false, precision = 3, scale = 0)
+	@Builder.Default
+	private Integer seqNum = CaseEntryConstants.ONE;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaInvstPrStatusHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PR_STATUS_HIST_T")
+public class CaInvstPrStatusHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstPrStatusHistTPK id;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_STATUS_CD")
+	private CaLuPrelimStatusT caLuPrelimStatusT;
+	
+	@MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "STATUS_BEGIN_DT", length = 7)
+	private Date statusBeginDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "STATUS_END_DT", length = 7)
+	private Date statusEndDt;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrIssueTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstPrIssueTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "ISSUE_CD", nullable = false, length = 3)
+	private String issueCd;
+	
+	@Column(name = "ISSUE_ORDER", nullable = false, precision = 3, scale = 0)package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrStatusHistTId entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstPrIssueHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "HIST_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	@Builder.Default
+	private Integer histSeqNum = CaseEntryConstants.ONE;
+	
+	@Column(name = "ISSUE_CD", nullable = false, length = 3)
+	private String issueCd;
+
+}
+
+	@Builder.Default
+	private Integer issueOrder = CaseEntryConstants.ZERO;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * This entity provides the base persistence definition of
+ * the CaInvstPrIssueT entity. 
+ *  @author Anil Wagh
+ */
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PR_ISSUE_T")
+public class CaInvstPrIssueT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstPrIssueTPK id;
+	
+	@MapsId("caseId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ISSUE_CD", nullable = false, insertable = false, updatable = false)
+	private CaLuPrelimIssueT caLuPrelimIssueT;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaInvstPrStatusHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PR_ISSUE_HIST_T")
+public class CaInvstPrIssueHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstPrIssueHistTPK id;
+
+    @MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", length = 7)
+	private Date changeDt;
+	
+	@Column(name = "CHANGE_USR", length = 10)
+	private String changeUsr;
+	
+	@Column(name = "ISSUE_ORDER", precision = 3, scale = 0)
+	@Builder.Default
+	private Integer issueOrder = CaseEntryConstants.ZERO;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrHistTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstPrHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "HIST_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	private Integer histSeqNum;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of the
+ * CaInvstPrHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PR_HIST_T")
+public class CaInvstPrHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstPrHistTPK id;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_STATUS_CD")
+	private CaLuPrelimStatusT caLuPrelimStatusT;
+
+    @MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CHANGE_USR")
+	private UiUserBase uiUserBaseChangeUsr;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_CLOSED_CD")
+	private CaLuPrelimReasonT caLuPrelimReasonT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", length = 7)
+	private Date changeDt;
+	
+	@Column(name = "CASE_PRIORITY", length = 10)
+	private String casePriority;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CASE_STATUS_DT", length = 7)
+	private Date caseStatusDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_FROM_DT", length = 7)
+	private Date reviewFromDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_TO_DT", length = 7)
+	private Date reviewToDt;
+	
+	@Column(name = "REVIEW_BASED", length = 10)
+	private String reviewBased;
+	
+	@Column(name = "INV_PR_CUST_TXT_A", length = 50)
+	private String invPrCustTxtA;
+	
+	@Column(name = "INV_PR_CUST_TXT_B", length = 50)
+	private String invPrCustTxtB;
+	
+	@Column(name = "INV_PR_CUST_TXT_C", length = 50)
+	private String invPrCustTxtC;
+	
+	@Column(name = "INV_PR_CUST_TXT_D", length = 50)
+	private String invPrCustTxtD;
+	
+	@Column(name = "INV_PR_CUST_TXT_E", length = 50)
+	private String invPrCustTxtE;
+	
+	@Column(name = "INV_PR_CUST_TXT_F", length = 50)
+	private String invPrCustTxtF;
+	
+	@Column(name = "INV_PR_CUST_AMT_A", precision = 14)
+	private Double invPrCustAmtA;
+	
+	@Column(name = "INV_PR_CUST_AMT_B", precision = 14)
+	private Double invPrCustAmtB;
+	
+	@Column(name = "INV_PR_CUST_AMT_C", precision = 14)
+	private Double invPrCustAmtC;
+	
+	@Column(name = "INV_PR_CUST_AMT_D", precision = 14)
+	private Double invPrCustAmtD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_A", length = 7)
+	private Date invPrCustDateA;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_B", length = 7)
+	private Date invPrCustDateB;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_C", length = 7)
+	private Date invPrCustDateC;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_D", length = 7)
+	private Date invPrCustDateD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_E", length = 7)
+	private Date invPrCustDateE;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_F", length = 7)
+	private Date invPrCustDateF;
+
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaInvstPreliminaryT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+//@EqualsAndHashCode
+@NoArgsConstructor
+//@ToString
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PRELIMINARY_T")
+public class CaInvstPreliminaryT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;	
+	
+	@Id
+	@Column(name = "CASE_ID", unique = true, nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Column(name = "CASE_STATUS_CD", length = 3)
+	private String caseStatusCd;
+	
+	@Column(name = "CASE_CLOSED_CD", length = 3)
+	private String caseClosedCd;
+	
+	@Column(name = "CASE_PRIORITY", length = 10)
+	private String casePriority;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CASE_STATUS_DT", length = 7)
+	private Date caseStatusDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_FROM_DT", length = 7)
+	private Date reviewFromDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_TO_DT", length = 7)
+	private Date reviewToDt;
+	
+	@Column(name = "REVIEW_BASED", length = 10)
+	private String reviewBased;
+	
+	@Column(name = "INV_PR_CUST_TXT_A", length = 50)
+	private String invPrCustTxtA;
+	
+	@Column(name = "INV_PR_CUST_TXT_B", length = 50)
+	private String invPrCustTxtB;
+	
+	@Column(name = "INV_PR_CUST_TXT_C", length = 50)
+	private String invPrCustTxtC;
+	
+	@Column(name = "INV_PR_CUST_TXT_D", length = 50)
+	private String invPrCustTxtD;
+	
+	@Column(name = "INV_PR_CUST_TXT_E", length = 50)
+	private String invPrCustTxtE;
+	
+	@Column(name = "INV_PR_CUST_TXT_F", length = 50)
+	private String invPrCustTxtF;
+	
+	@Column(name = "INV_PR_CUST_AMT_A", precision = 14)
+	private Double invPrCustAmtA;
+	
+	@Column(name = "INV_PR_CUST_AMT_B", precision = 14)
+	private Double invPrCustAmtB;
+	
+	@Column(name = "INV_PR_CUST_AMT_C", precision = 14)
+	private Double invPrCustAmtC;
+	
+	@Column(name = "INV_PR_CUST_AMT_D", precision = 14)
+	private Double invPrCustAmtD;
+	
+	@Column(name = "INV_PR_CUST_NUM_A", precision = 10, scale = 0)
+	private Long invPrCustNumA;
+	
+	@Column(name = "INV_PR_CUST_NUM_B", precision = 10, scale = 0)
+	private Long invPrCustNumB;
+	
+	@Column(name = "INV_PR_CUST_NUM_C", precision = 10, scale = 0)
+	private Long invPrCustNumC;
+	
+	@Column(name = "INV_PR_CUST_NUM_D", precision = 10, scale = 0)
+	private Long invPrCustNumD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_A", length = 7)
+	private Date invPrCustDateA;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_B", length = 7)
+	private Date invPrCustDateB;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_C", length = 7)
+	private Date invPrCustDateC;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_D", length = 7)
+	private Date invPrCustDateD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_E", length = 7)
+	private Date invPrCustDateE;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_PR_CUST_DATE_F", length = 7)
+	private Date invPrCustDateF;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrAssignTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstPrAssignTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "ASSIGN_ID", nullable = false, precision = 3, scale = 0)
+	@Builder.Default
+	private Integer assignId = CaseEntryConstants.ONE;
+
+}
+
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * This entity provides the base persistence definition of
+ * the CaInvstPrAssignT entity. 
+ *  @author ANil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PR_ASSIGN_T")
+public class CaInvstPrAssignT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstPrAssignTPK id;
+	
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "ASSIGN_USR")
+	private UiUserBase uiUserBaseAssignUsr;
+	
+	 @MapsId("caseId")
+	 @ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ASSIGN_SECTION_CD")
+	private CaLuPrelimSectionT caLuPrelimSectionT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ASSIGN_DATE", length = 7)
+	private Date assignDate;
+	
+ 	@Size(max = 1)
+	@Column(name = "EMAIL_SENT", length = 1)
+	private String emailSent;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstFsAssignHistTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstPrAssignHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "HIST_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	@Builder.Default
+	private Integer histSeqNum = CaseEntryConstants.ONE;
+	
+	@Column(name = "ASSIGN_ID", nullable = false, precision = 7, scale = 0)
+	@Builder.Default
+	private Integer assignId = CaseEntryConstants.ONE;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/* This entity provides the base persistence definition
+ * of the CaInvstFsAssignHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_PR_ASSIGN_HIST_T")
+public class CaInvstPrAssignHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstPrAssignHistTPK id;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ASSIGN_TO")
+	private UiUserBase uiUserBaseByAssignTo;
+	
+	 @MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ASSIGN_SECTION_CD")
+	private CaLuPrelimSectionT caLuPrelimSectionT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CHANGE_USR", nullable = false)
+	private UiUserBase uiUserBaseByChangeUsr;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", nullable = false, length = 7)
+	private Date changeDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ASSIGN_DT", length = 7)
+	private Date assignDt;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of
+ * the CaInvstFullscaleT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FULLSCALE_T")
+public class CaInvstFullscaleT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Id
+	@Column(name = "CASE_ID", unique = true, nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+	
+	
+	@Column(name = "CASE_PRIORITY", length = 10)
+	private String casePriority;
+	
+	@Column(name = "CASE_STATUS_CD", length = 3)
+	private String caseStatusCd;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CASE_STATUS_DT", length = 7)
+	private Date caseStatusDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_FROM_DT", length = 7)
+	private Date reviewFromDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_TO_DT", length = 7)
+	private Date reviewToDt;
+	
+	@Column(name = "REVIEW_BASED", length = 10)
+	private String reviewBased;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "NEXT_REVIEW_DT", length = 7)
+	private Date nextReviewDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ACTION_DATE", length = 7)
+	private Date actionDate;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CMS_NOTIF_DATE", length = 7)
+	private Date cmsNotifDate;
+	
+	@Column(name = "INV_FS_CUST_TXT_A", length = 50)
+	private String invFsCustTxtA;
+	
+	@Column(name = "INV_FS_CUST_TXT_B", length = 50)
+	private String invFsCustTxtB;
+	
+	@Column(name = "INV_FS_CUST_TXT_C", length = 50)
+	private String invFsCustTxtC;
+	
+	@Column(name = "INV_FS_CUST_TXT_D", length = 50)
+	private String invFsCustTxtD;
+	
+	@Column(name = "INV_FS_CUST_TXT_E", length = 50)
+	private String invFsCustTxtE;
+	
+	@Column(name = "INV_FS_CUST_TXT_F", length = 50)
+	private String invFsCustTxtF;
+	
+	@Column(name = "INV_FS_CUST_AMT_A", precision = 14)
+	private Double invFsCustAmtA;
+	
+	@Column(name = "INV_FS_CUST_AMT_B", precision = 14)
+	private Double invFsCustAmtB;
+	
+	@Column(name = "INV_FS_CUST_AMT_C", precision = 14)
+	private Double invFsCustAmtC;
+	
+	@Column(name = "INV_FS_CUST_AMT_D", precision = 14)
+	private Double invFsCustAmtD;
+	
+	@Column(name = "INV_FS_CUST_NUM_A", precision = 10, scale = 0)
+	private Long invFsCustNumA;
+	
+	@Column(name = "INV_FS_CUST_NUM_B", precision = 10, scale = 0)
+	private Long invFsCustNumB;
+	
+	@Column(name = "INV_FS_CUST_NUM_C", precision = 10, scale = 0)
+	private Long invFsCustNumC;
+	
+	@Column(name = "INV_FS_CUST_NUM_D", precision = 10, scale = 0)
+	private Long invFsCustNumD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_A", length = 7)
+	private Date invFsCustDateA;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_B", length = 7)
+	private Date invFsCustDateB;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_C", length = 7)
+	private Date invFsCustDateC;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_D", length = 7)
+	private Date invFsCustDateD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_E", length = 7)
+	private Date invFsCustDateE;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_F", length = 7)
+	private Date invFsCustDateF;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstFsStatusHistTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstFsStatusHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "SEQ_NUM", nullable = false, precision = 3, scale = 0)
+	@Builder.Default
+	private Integer seqNum = CaseEntryConstants.ONE;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaInvstFsStatusHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_STATUS_HIST_T")
+public class CaInvstFsStatusHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsStatusHistTPK id;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_STATUS_CD")
+	private CaLuFullscaleStatusT caLuFullscaleStatusT;
+	
+	 @MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "STATUS_BEGIN_DT", length = 7)
+	private Date statusBeginDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "STATUS_END_DT", length = 7)
+	private Date statusEndDt;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrIssueTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstFsIssueTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "ISSUE_CD", nullable = false, length = 3)
+	private String issueCd;
+	
+	@Column(name = "ISSUE_ORDER", nullable = false, precision = 3, scale = 0)
+	@Builder.Default
+	private Integer issueOrder = CaseEntryConstants.ZERO;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * AbstractCaInvstFsIssueT entity provides the base persistence definition of
+ * the CaInvstFsIssueT entity. 
+ *  @author Shyam Biry
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_ISSUE_T")
+public class CaInvstFsIssueT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsIssueTPK id;
+	
+	 @MapsId("caseId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ISSUE_CD", nullable = false, insertable = false, updatable = false)
+	private CaLuFullscaleIssueT caLuFullscaleIssueT;
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * AbstractCaInvstFsIssueT entity provides the base persistence definition of
+ * the CaInvstFsIssueT entity. 
+ *  @author Shyam Biry
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_ISSUE_T")
+public class CaInvstFsIssueT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsIssueTPK id;
+	
+	 @MapsId("caseId")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "CASE_ID", nullable = false)
+    private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ISSUE_CD", nullable = false, insertable = false, updatable = false)
+	private CaLuFullscaleIssueT caLuFullscaleIssueT;package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaInvstPrStatusHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_ISSUE_HIST_T")
+public class CaInvstFsIssueHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsIssueHistTPK id;
+	
+	@MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", length = 7)
+	private Date changeDt;
+	
+	@Column(name = "CHANGE_USR", length = 10)
+	private String changeUsr;
+	
+	@Column(name = "ISSUE_ORDER", precision = 3, scale = 0)
+	@Builder.Default
+	private Integer issueOrder = CaseEntryConstants.ZERO;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition
+ * of the CaInvstPrStatusHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_ISSUE_HIST_T")
+public class CaInvstFsIssueHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsIssueHistTPK id;
+	
+	@MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", length = 7)
+	private Date changeDt;
+	
+	@Column(name = "CHANGE_USR", length = 10)
+	private String changeUsr;
+	
+	@Column(name = "ISSUE_ORDER", precision = 3, scale = 0)
+	@Builder.Default
+	private Integer issueOrder = CaseEntryConstants.ZERO;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * Provides the base persistence definition of the
+ * CaInvstFsHistT entity. 
+ *  @author Anil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_HIST_T")
+public class CaInvstFsHistT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsHistTPK id;
+	
+	
+	 @ManyToOne(fetch = FetchType.LAZY)
+	 @JoinColumn(name = "CASE_STATUS_CD") 
+	 private CaLuFullscaleStatusT  caLuFullscaleStatusT;
+	 
+	 @MapsId("caseId")
+	 @ManyToOne(fetch = FetchType.LAZY)
+	 @JoinColumn(name = "CASE_ID", nullable = false) 
+	 private CaIntelligentKeyT caIntelligentKeyT;
+	 
+	 /* 
+	 * @ManyToOne(fetch = FetchType.LAZY)
+	 * 
+	 * @JoinColumn(name = "MFCU_ACTION_CD") private CaLuFullscaleMfcuT
+	 * caLuFullscaleMfcuT;
+	 * 
+	 * @ManyToOne(fetch = FetchType.LAZY)
+	 * 
+	 * @JoinColumn(name = "CASE_DISPOS_CD") private CaLuFullscaleDisposT
+	 * caLuFullscaleDisposT;
+	 * 
+	 * @ManyToOne(fetch = FetchType.LAZY)
+	 * 
+	 * @JoinColumn(name = "CASE_CLOSED_CD") private CaLuFullscaleReasonT
+	 * caLuFullscaleReasonT;
+	 */
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CHANGE_USR")
+	private UiUserBase uiUserBaseChangeUsr;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CHANGE_DT", length = 7)
+	private Date changeDt;
+	
+	@Column(name = "CASE_PRIORITY", length = 10)
+	private String casePriority;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CASE_STATUS_DT", length = 7)
+	private Date caseStatusDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_FROM_DT", length = 7)
+	private Date reviewFromDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "REVIEW_TO_DT", length = 7)
+	private Date reviewToDt;
+	
+	@Column(name = "REVIEW_BASED", length = 4)
+	private String reviewBased;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "NEXT_REVIEW_DT", length = 7)
+	private Date nextReviewDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ACTION_DATE", length = 7)
+	private Date actionDate;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "CMS_NOTIF_DATE", length = 7)
+	private Date cmsNotifDate;
+	
+	@Column(name = "INV_FS_CUST_TXT_A", length = 50)
+	private String invFsCustTxtA;
+	
+	@Column(name = "INV_FS_CUST_TXT_B", length = 50)
+	private String invFsCustTxtB;
+	
+	@Column(name = "INV_FS_CUST_TXT_C", length = 50)
+	private String invFsCustTxtC;
+	
+	@Column(name = "INV_FS_CUST_TXT_D", length = 50)
+	private String invFsCustTxtD;
+	
+	@Column(name = "INV_FS_CUST_TXT_E", length = 50)
+	private String invFsCustTxtE;
+	
+	@Column(name = "INV_FS_CUST_TXT_F", length = 50)
+	private String invFsCustTxtF;
+	
+	@Column(name = "INV_FS_CUST_AMT_A", precision = 14)
+	private Double invFsCustAmtA;
+	
+	@Column(name = "INV_FS_CUST_AMT_B", precision = 14)
+	private Double invFsCustAmtB;
+	
+	@Column(name = "INV_FS_CUST_AMT_C", precision = 14)
+	private Double invFsCustAmtC;
+	
+	@Column(name = "INV_FS_CUST_AMT_D", precision = 14)
+	private Double invFsCustAmtD;
+	
+	@Column(name = "INV_FS_CUST_NUM_A", precision = 10, scale = 0)
+	private Long invFsCustNumA;
+	
+	@Column(name = "INV_FS_CUST_NUM_B", precision = 10, scale = 0)
+	private Long invFsCustNumB;
+	
+	@Column(name = "INV_FS_CUST_NUM_C", precision = 10, scale = 0)
+	private Long invFsCustNumC;
+	
+	@Column(name = "INV_FS_CUST_NUM_D", precision = 10, scale = 0)
+	private Long invFsCustNumD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_A", length = 7)
+	private Date invFsCustDateA;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_B", length = 7)
+	private Date invFsCustDateB;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_C", length = 7)
+	private Date invFsCustDateC;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_D", length = 7)
+	private Date invFsCustDateD;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_E", length = 7)
+	private Date invFsCustDateE;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "INV_FS_CUST_DATE_F", length = 7)
+	private Date invFsCustDateF;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstFsAssignTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstFsAssignTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "ASSIGN_ID", nullable = false, precision = 3, scale = 0)
+	@Builder.Default
+	private Integer assignId = CaseEntryConstants.ONE;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import java.util.Date;
+import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * This entity provides the base persistence definition of
+ * the CaInvstPrAssignT entity. 
+ *  @author ANil Wagh
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Builder
+@AllArgsConstructor
+@Table(name = "CA_INVST_FS_ASSIGN_T")
+public class CaInvstFsAssignT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@EmbeddedId
+	private CaInvstFsAssignTPK id;
+	
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "ASSIGN_USR")
+	private UiUserBase uiUserBaseAssignUsr;
+	
+	@MapsId("caseId")
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "CASE_ID", nullable = false)
+	private CaIntelligentKeyT caIntelligentKeyT;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "ASSIGN_SECTION_CD")
+	private CaLuFullscaleSectionT caLuFullscaleSectionT;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "ASSIGN_DATE", length = 7)
+	private Date assignDate;
+	
+	@Column(name = "EMAIL_SENT", length = 1)
+	private String emailSent;
+
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstFsAssignHistTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstFsAssignHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "HIST_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	@Builder.Default
+	private Integer histSeqNum = CaseEntryConstants.ONE;
+	
+	@Column(name = "ASSIGN_ID", nullable = false, precision = 7, scale = 0)
+	@Builder.Default
+	private Integer assignId = CaseEntryConstants.ONE;
+
+}
+
+	
+}
+package com.optum.fads.caseentrybatch.api.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * CaInvstPrStatusHistTPK entity. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class CaInvstFsIssueHistTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "CASE_ID", nullable = false, precision = 7, scale = 0)
+	private Integer caseId;
+	
+	@Column(name = "HIST_SEQ_NUM", nullable = false, precision = 7, scale = 0)
+	@Builder.Default
+	private Integer histSeqNum = CaseEntryConstants.ONE;
+	
+	@Column(name = "ISSUE_CD", nullable = false, length = 3)
+	private String issueCd;
+
 }
