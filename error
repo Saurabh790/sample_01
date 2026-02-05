@@ -1,129 +1,157 @@
-getCasesForAssocQueryFilters(...)
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-getCasesForAssocQueryOrderBy(...)
+  <parent>
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads</artifactId>
+    <version>8.1.2-SNAPSHOT</version>
+  </parent>
 
-setCasesForAssocQueryFilters(...)
+	<artifactId>fads-base</artifactId>
+	<packaging>jar</packaging>
 
-// for new Detail - Associations page
-	private void getCasesForAssocQueryFilters(StringBuilder sb, Map<String,String> filterConditions) {
-		if(filterConditions != null && !filterConditions.isEmpty()) {
-			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-						if ("intelligentKey".equals(entry.getKey())) {
-							sb.append(" and lower(c.caLuPrmNodeT.nodeCd ").append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" c.caLuScndNodeT.nodeCd ");
-								sb.append(" ||'-'|| ");
-							}
-							sb.append(" c.caYearId ");
-							sb.append(" ||'-'|| ");
-							//sb.append(" to_char(c.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
-							sb.append(" to_char(c.caSequenceId,'FM00000')) like :").append(entry.getKey());
-						} else if ("associatedIntelligentKey".equals(entry.getKey())) {
-							sb.append(" and lower(assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ")
-									.append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-								sb.append(" ||'-'|| ");
-							}
-							sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
-							sb.append(" ||'-'|| ");
-							//sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
-							sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :").append(entry.getKey());
-						} else {
-							/*
-							if (StringUtils.containsIgnoreCase(col.getColumnId(), "name")){
-								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
-										.append(escapeSingleQuote(getLowerSearchString(entry.getValue()))).append("' ");
-							} else {
-								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
-										.append(getLowerSearchString(entry.getValue())).append("' ");
-							}
-							*/
-							sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like :").append(entry.getKey());
-						}
-					}
-				}
-			}
-		}
-	}
+	<name>fads-base</name>
+	<url>http://maven.apache.org</url>
 
-private void getCasesForAssocQueryOrderBy(StringBuilder sb, Map<String,String> sortConditions) {
-		if (sortConditions != null && !sortConditions.isEmpty()) {
-			sb.append(" order by");
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-			for (Map.Entry<String, String> entry : sortConditions.entrySet()) {
-				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-						if (col.isColumnStringTypeForOrderBy()){
-							sb.append(" lower(").append(col.getColumnStringSearchOrderBy()).append(")");
-						} else {
-							sb.append(" ").append(col.getColumnQueryOrder());
-						}
-						break;
-					}
-				}
+		<junit.version>4.11</junit.version>
+		<log4j.version>2.25.3</log4j.version>
 
-				if ("-1".equals(entry.getValue())) {
-					sb.append(" DESC,");    // NULLS LAST
-				} else if ("1".equals(entry.getValue())) {
-					sb.append(" ASC,");		// NULLS FIRST
-				}
+	</properties>
+	<!-- ToDo: do more cleanup of dependencies, like spring-->
+	<dependencies>
 
-                if (! "intelligentKey".equals(entry.getKey())){
-                    sb.append(" ").append(CasesForAssociationsColumnsEnum.CASE_ID.getColumnQueryOrder());
-                } else {
-                    sb.delete(sb.length()-1, sb.length());
-                }
-			}
-		}
-	}
 	
-	private void setCasesForAssocQueryFilters(Query query, Map<String,String> filterConditions) {
-		if(filterConditions != null && !filterConditions.isEmpty()) {
-			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-						if ("intelligentKey".equals(entry.getKey())) {
-							/*
-							sb.append(" and lower(c.caLuPrmNodeT.nodeCd ").append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" c.caLuScndNodeT.nodeCd ");
-								sb.append(" ||'-'|| ");
-							}
-							sb.append(" c.caYearId ");
-							sb.append(" ||'-'|| ");
-							sb.append(" to_char(c.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
-							*/
-							query.setString(entry.getKey(), getLowerSearchString(entry.getValue()));
-						} else if ("associatedIntelligentKey".equals(entry.getKey())) {
-							/*
-							sb.append(" and lower(assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ")
-									.append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-								sb.append(" ||'-'|| ");
-							}
-							sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
-							sb.append(" ||'-'|| ");
-							sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like '").append(getLowerSearchString(entry.getValue())).append("' ");
-							*/
-							query.setString(entry.getKey(), getLowerSearchString(entry.getValue()));
-						} else {
-							/*
-							if (StringUtils.containsIgnoreCase(col.getColumnId(), "name")){
-								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
-										.append(escapeSingleQuote(getLowerSearchString(entry.getValue()))).append("' ");
-							} else {
-								sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like '")
-										.append(getLowerSearchString(entry.getValue())).append("' ");
-							}
-							*/
-							query.setString(entry.getKey(), getLowerSearchString(entry.getValue()));//escapeSingleQuote()
-						}
-					}
-				}
-			}
-		}
-	}
+	<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+		<version>${log4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-1.2-api</artifactId>
+		<version>${log4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>${log4j.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-beanutils</groupId>
+			<artifactId>commons-beanutils</artifactId>
+			<version>1.11.0</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+			<version>2.5</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.18.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>kernel</artifactId>
+			<version>7.0.2</version>
+		</dependency>
+
+		<!-- always needed -->
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>io</artifactId>
+			<version>7.0.2</version>
+		</dependency>
+
+		<!-- always needed -->
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>layout</artifactId>
+			<version>7.0.2</version>
+		</dependency>
+
+		<!-- only needed for forms -->
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>forms</artifactId>
+			<version>7.0.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.itextpdf</groupId>
+			<artifactId>pdfa</artifactId>
+			<version>7.0.2</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>1.8.4</version>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>${jackson.version}</version>
+		</dependency>
+
+		<!--
+         <dependency>
+           <groupId>org.slf4j</groupId>
+           <artifactId>slf4j-api</artifactId>
+           <version>1.5.0</version>
+         </dependency>
+
+
+             <dependency>
+               <groupId>commons-beanutils</groupId>
+               <artifactId>commons-beanutils</artifactId>
+               <version>1.11.0</version>
+             </dependency>
+             <dependency>
+               <groupId>commons-lang</groupId>
+               <artifactId>commons-lang</artifactId>
+               <version>2.5</version>
+             </dependency>
+             <dependency>
+               <groupId>org.apache.commons</groupId>
+               <artifactId>commons-lang3</artifactId>
+               <version>3.18.0</version>
+             </dependency>
+
+
+     <dependency>
+             <groupId>com.optum.uitk</groupId>
+             <artifactId>uitk-core</artifactId>
+             <version>${uitk.version}</version>
+         </dependency> -->
+	</dependencies>
+</project>    <!-- always needed -->
+
+
+
+C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-base>mvn clean install -Dmaven.test.skip=true
+[INFO] Scanning for projects...
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[FATAL] Non-parseable POM C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml: end tag name </pluginManagement> must match start tag name <plugins> from line 199 (position: TEXT seen ...</plugin>\n\n\t\t\t\t\n\t\t</pluginManagement>... @211:22)  @ C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml, line 211, column 22
+ @
+[ERROR] The build could not read 1 project -> [Help 1]
+[ERROR]
+[ERROR]   The project com.optum.fads:fads-base:8.1.2-SNAPSHOT (C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-base\pom.xml) has 1 error
+[ERROR]     Non-parseable POM C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml: end tag name </pluginManagement> must match start tag name <plugins> from line 199 (position: TEXT seen ...</plugin>\n\n\t\t\t\t\n\t\t</pluginManagement>... @211:22)  @ C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml, line 211, column 22 -> [Help 2]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
+[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/ModelParseException
+
+C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-base>
