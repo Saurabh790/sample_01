@@ -1,229 +1,41 @@
-package com.optum.fads.pgp.behavior.api.config;
+Tomcat started on port 8080 (http) with context path '/caseentrybatch'
+Quartz scheduler started
+casebatchJobTrigger set up with Cron Expression 0 0 0/4 ? * * *
+Started CaseEntryBatchApplication
+So the app is running. The only reason you’re not seeing “batch output” is because the job is scheduled every 4 hours and may not have hit its schedule yet, or there’s no data in CA_UNIVERSE_BATCH_T to process.
 
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+What is most likely happening
+Quartz trigger is working, but it runs at 0 0 0/4 ? * * *
+That means: every 4 hours at minute 0.
+If you started at 12:29, the first run would be 16:00, not immediately.
 
-import java.util.TimeZone;
+No batch rows are available, so even when it runs, it won’t create cases.
 
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-import org.springframework.web.client.RestTemplate;
+How to confirm if it’s running
+You can do any of the following:
 
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
+Option A — Change cron to run every minute (temp):
+Update CASE_CONFIG value for BATCH_CASE_ENTRY_SCHEDULE to something like:
 
-import jakarta.annotation.PostConstruct;
+0 0/1 * ? * * *
+Then restart the app and watch logs.
 
-@Configuration
-public class CommonConfig {
+Option B — Manually call the service
+If you have a controller or can run a Spring Bean manually, trigger:
 
-    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
+iCaseBatchService.createBatchCase()
+Option C — Check DB
+Verify that CA_UNIVERSE_BATCH_T has rows where REC_MATCH_IND is null (that’s what your repo uses).
 
-    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
-    private String azureKeyVaultUrl;
+About the warnings
+These are not fatal:
 
-    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
-    private String azureKeyVaultTenant;
+Logback Janino warning: only a warning about older config.
+Netty version mismatch: warning only, usually safe unless you see runtime errors.
+Tell me what output you expected
+Just tell me which of these is “missing”:
 
-    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
-    private String azureKeyVaultSecret;
-
-    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
-    private String azureKeyVaultClientId;
-
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
-    }
-
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-
-    @Bean
-    public SecretClient secretClient() {
-        logger.info("Initializing Azure Key Vault SecretClient...");
-        logger.debug("Azure Key Vault URL: {}", azureKeyVaultUrl);
-        logger.debug("Azure Key Vault Tenant ID: {}", azureKeyVaultTenant);
-        logger.debug("Azure Key Vault Client ID: {}", azureKeyVaultClientId);
-
-        ClientSecretCredential credential = new ClientSecretCredentialBuilder()
-                .clientId(azureKeyVaultClientId)
-                .clientSecret(azureKeyVaultSecret)
-                .tenantId(azureKeyVaultTenant)
-                .build();
-
-        return new SecretClientBuilder()
-                .vaultUrl(azureKeyVaultUrl)
-                .credential(credential)
-                .buildClient();
-    }
-
-    @PostConstruct
-    void started() {
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC-4"));
-    }
-}
-package com.optum.fads.pgp.behavior.api.config;
-
-import javax.sql.DataSource;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-@Configuration
-@EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api")
-@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
-public class ServiceConfig {
-
-    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
-
-    /**
-     * These properties are not actual username/password values.
-     * They are KeyVault secret NAMES (same as your authorization app).
-     */
-    @Value("${spring.datasource.userName}")
-    private String userNameSecretName;
-
-    @Value("${spring.datasource.password}")
-    private String passwordSecretName;
-
-    @Value("${spring.datasource.jdbcUrl}")
-    private String jdbcUrl;
-
-    @Value("${spring.datasource.driverClassName}")
-    private String driverClassName;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfig(SecretClient secretClient) {
-        this.secretClient = secretClient;
-    }
-
-    @Bean(name = "fadsDataSource")
-    @Primary
-    public DataSource customDataSource() {
-        logger.info("Initializing custom DataSource bean");
-
-        try {
-            // Fetch actual values from KeyVault using secret names
-            String userNameValue = secretClient.getSecret(userNameSecretName).getValue();
-            String passwordValue = secretClient.getSecret(passwordSecretName).getValue();
-
-            logger.debug("Building DriverManagerDataSource from KeyVault secrets");
-
-            DriverManagerDataSource dataSource = new DriverManagerDataSource();
-            dataSource.setDriverClassName(driverClassName);
-            dataSource.setUrl(jdbcUrl);
-            dataSource.setUsername(userNameValue);
-            dataSource.setPassword(passwordValue);
-
-            logger.info("DataSource bean created successfully");
-            return dataSource;
-
-        } catch (Exception e) {
-            logger.error("Failed to create DataSource bean", e);
-            throw new RuntimeException("Error initializing DataSource", e);
-        }
-    }
-}
-server:
-  port: 8080
-  servlet:
-    contextPath: /behavior
-
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
-
-spring:
-  application:
-    name: behavior
-
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
-      credential:
-        client-id: ce5962ff-06f5-4911-be66-e51b86531710
-        client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-        tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
-
-  jpa:
-    database-platform: org.hibernate.dialect.SQLServerDialect
-    database: SQL_SERVER
-    show-sql: false
-    hibernate:
-      naming:
-        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-
-  datasource:
-    initialize: false
-    type: com.zaxxer.hikari.HikariDataSource
-
-    # IMPORTANT: Use jdbcUrl / driverClassName / userName as in your authorization app
-    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-
-    # These are KeyVault secret NAMES (not actual values)
-    userName: sql-admin-user
-    password: sql-admin-password
-
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
-          jws-algorithms: RS256
-
-management:
-  health:
-    db:
-      enabled: true
-  endpoint:
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  endpoints:
-    web:
-      exposure:
-        include:
-          - health
-          - info
-          - prometheus
-  prometheus:
-    metrics:
-      export:
-        enabled: true
+You expected the batch to run immediately.
+You expected output (records) but nothing appears in DB.
+You expected emails and didn’t get them.
+Once you tell me which one, I’ll give exact fixes with SQL + config.
