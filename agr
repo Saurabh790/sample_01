@@ -1,23 +1,869 @@
-<dependencyManagement>
-  <dependencies>
+package com.optum.fads.caseentrybatch.api.snowflakeDomain;
 
-    <dependency>
-      <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-dependencies</artifactId>
-      <version>${spring.cloud.version}</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
+import java.math.BigDecimal;
+import java.util.Date;
 
-    <!-- ✅ Add this Azure BOM -->
-    <dependency>
-      <groupId>com.azure.spring</groupId>
-      <artifactId>spring-cloud-azure-dependencies</artifactId>
-      <version>6.1.0</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
+import jakarta.persistence.Column;
+import jakarta.persistence.EmbeddedId;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 
-    <!-- your other BOMs... -->
-  </dependencies>
-</dependencyManagement>
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+/**
+ * DmClaimDrugT entity provides the base persistence definition
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "DM_CLAIM_DRUG_T")
+public class DmClaimDrugT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+
+	@EmbeddedId
+	private DmClaimDrugTPK id;
+	
+	@Column(name="HDR_CLM_ADJ_STS_CD", length = 1) // length not known
+	private String hdrClmAdjStsCd;
+	
+	@Column(name="CLAIM_STATUS_DESC", length = 40)	// length not known
+	private String ClaimjStatusDesc;
+	
+	@Column(name="HDR_PAY_TO_PROV_ID", length = 12)
+	private String hdrPayToProvId;
+	
+	@Column(name="HDR_PAY_TO_PROV_NM", length = 60)
+	private String hdrPayToProvNm;
+	
+	@Column(name="HDR_PRESCR_PROV_ID", length = 12)
+	private String hdrPrescrProvId;
+	
+	@Column(name="HDR_PRESCR_PROV_NPI", length = 12)
+	private String hdrPrescrProvNpi;
+	
+	@Column(name="HDR_COS_CD", length = 2)
+	private String hdrCosCd;
+	
+	@Column(name="COS_DESC", length = 42)
+	private String cosDesc;
+
+	@Column(name="HDR_RECIP_ORIG_ID", length = 22)
+	private String hdrRecipOrigId;
+	
+	@Column(name="HDR_RECIP_FULL_NM", length = 85)
+	private String hdrRecipFullNm;
+	
+//	HDR_CLM_TCN	- Key column
+	
+	@Column(name="HDR_CLM_TCN_OLD", length = 17)
+	private String hdrClmTcnOld;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="LI_SRV_FROM_DT", length = 7)
+	private Date liSrvFromDt;
+	
+	@Column(name="LI_DRUG_PRESCR_NUM", length = 12)
+	private String liDrugPrescrNum;
+	
+	@Column(name="LI_DRUG_REFILL_NUM", precision = 2, scale = 0)
+	private Integer LiDrugRefillNum;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="LI_DRUG_PRESCR_DT", length = 7)
+	private Date liDrugPrescrDt;
+	
+	@Column(name="LI_DRUG_NDC", length = 11)
+	private String liDrugNdc;
+	
+	@Column(name="NDC_DESC", length = 40)
+	private String ndcDesc;
+	
+	@Column(name="LI_DRUG_SPEC_THERA_CLS_CD", length = 10)
+	private String liDrugSpecTheraClsCd;
+	
+	@Column(name="THERA_CLASS_SPEC_DESC", length = 40)
+	private String theraClassSpecDesc;
+	
+	@Column(name="LI_DRUG_DAYS_SUPPLY", precision = 4, scale = 0)
+	private Integer liDrugDaysSupply;
+	
+	@Column(name="LI_BILL_UOS_QTY", precision = 15, scale = 5)
+	private BigDecimal liBillUosQty;
+	
+	@Column(name="LI_PD_UOS_QTY", precision = 15, scale = 5)
+	private BigDecimal liPdUosQty;
+
+	@Column(name="HDR_BILL_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrBillAmt;
+
+	@Column(name="LI_BILL_AMT", precision = 13, scale = 2)
+	private BigDecimal liBillAmt;
+	
+	@Column(name="LI_PD_AMT", precision = 13, scale = 2)
+	private BigDecimal liPdAmt;
+	
+	@Column(name="HDR_PD_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrPdAmt;
+
+//	HDR_CLM_PD_DT - Key column
+	
+	@Column(name="HDR_CLEAN_CLM_IND", length = 1)
+	private String hdrCleanClmInd;
+	
+	@Column(name="LI_CLEAN_CLM_IND", length = 1)
+	private String liCleanClmInd;
+	
+//	LI_NUM - Key column
+	
+	@Column(name="HDR_CLM_TYPE_CD", length = 1)
+	private String hdrClmTypeCd;
+	
+	@Column(name="HDR_CLM_TYPE_DESC", length = 40)
+	private String hdrClmTypeDesc;
+	
+	@Column(name="HDR_PAY_TO_PROV_NPI_ID", length = 12)
+	private String hdrPayToProvNpiId;
+	
+	@Column(name="GCN_DESC", length = 100)
+	private String gcnDesc;
+	
+	@Column(name="HDR_RECIP_CURR_ID", length = 22)
+	private String hdrRecipCurrId;
+	
+	@Column(name="HDR_ENCOUNTER_CD", length = 1)
+	private String hdrEncounterCd;
+	
+	@Column(name="LI_MCO_SHADOW_PRICE", precision = 11, scale = 2)
+	private BigDecimal liMcoShadowPrice;
+	
+	@Column(name="HDR_MCO_TCN", length = 40)
+	private String hdrMcoTcn;
+	
+	@Column(name="HDR_MCO_ID", length = 15)
+	private String hdrMcoId;
+	
+	@Column(name="HDR_MCO_NM", length = 50)
+	private String hdrMcoNm;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="HDR_MCO_PD_DT", length = 7)
+	private Date hdrMcoPdDt;
+	
+	@Column(name="HDR_MCO_SHADOW_PRICE", precision = 11, scale = 2)
+	private BigDecimal hdrMcoShadowPrice;
+	
+	@Column(name="HDR_PAY_TO_PROV_TY_CD", length = 3)
+	private String hdrPayToProvTyCd;
+	
+	@Column(name="HDR_PAY_TO_PROV_TY_DESC", length = 40)
+	private String hdrPayToProvTyDesc;
+	
+	@Column(name="HDR_PAY_TO_PROV_SPEC_CD", length = 3)
+	private String hdrPayToProvSpecCd;
+	
+	@Column(name = "HDR_PAY_TO_PROV_SPEC_DESC", length = 40)
+	private String hdrPayToProvSpecDesc;
+	
+	@Column(name = "PROV_FEIN", length = 9)
+	private String provFein;
+	
+	@Column(name = "PROV_PRAC_ADDR_LINE_1", length = 30)
+	private String provPracAddrLine1;
+	
+	@Column(name = "PROV_PRAC_ADDR_LINE_2", length = 30)
+	private String provPracAddrLine2;
+	
+	@Column(name = "HDR_PRESCR_PROV_NM", length = 60)
+	private String hdrPrescrProvNm;
+	
+	@Column(name="HDR_PRESCR_PROV_TY_CD", length = 3)
+	private String hdrPrescrProvTyCd;
+	
+	@Column(name = "HDR_PRESCR_PROV_TY_DESC", length = 40)
+	private String hdrPrescrProvTyDesc;
+	
+	@Column(name="HDR_PRESCR_PROV_SPEC_CD", length = 3)
+	private String hdrPrescrProvSpecCd;
+	
+	@Column(name = "HDR_PRESCR_PROV_SPEC_DESC", length = 40)
+	private String hdrPrescrProvSpecDesc;
+	
+	@Column(name="HDR_RECIP_AGE_MTHS_QTY", precision = 6, scale = 0)
+	private Integer hdrRecipAgeMthsQty;
+	
+	@Column(name="HDR_RECIP_AGE_YRS_QTY", precision = 5, scale = 0)
+	private Integer hdrRecipAgeYrsQty;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_BIRTH_DT", length = 7)
+	private Date recipBirthDt;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_DEATH_DT", length = 7)
+	private Date recipDeathDt;
+	
+	@Column(name = "RECIP_CNTY_CD", length = 5)
+	private String recipCntyCd;
+	
+	@Column(name = "RECIP_CNTY_DESC", length = 40)
+	private String recipCntyDesc;
+	
+	@Column(name = "RECIP_CITY_NM", length = 40)
+	private String recipCityNm;
+	
+	@Column(name = "RECIP_STATE_CD", length = 2)
+	private String recipStateCd;
+	
+	@Column(name = "RECIP_ZIP_CD", length = 5)
+	private String recipZipCd;
+	
+	@Column(name = "RECIP_GENDER_CD", length = 1)
+	private String recipGenderCd;
+	
+	@Column(name = "RECIP_GENDER_DESC", length = 40)
+	private String recipGenderDesc;
+	
+	@Column(name = "RECIP_ADDR_LINE_1", length = 55)
+	private String recipAddrLine1;
+	
+	@Column(name = "RECIP_ADDR_LINE_2", length = 55)
+	private String recipAddrLine2;
+	
+	@Column(name="HDR_RECIP_MCARE_ID", length = 22)
+	private String hdrRecipMcareId;
+	
+	@Column(name = "RECIP_TEFRA_IND", length = 1)
+	private String recipTefraInd;
+			
+	@Column(name="RECIP_BNFT_PLAN_CD", length = 5)
+	private String recipBnftPlanCd;
+	
+	@Column(name = "RECIP_BNFT_PLAN_DESC", length = 50)
+	private String recipBnftPlanDesc;
+	
+	@Column(name="HDR_DRUG_NH_IND", length = 1)
+	private String hdrDrugNhInd;
+
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="HDR_SRV_FROM_DT", length = 7)
+	private Date hdrSrvFromDt;
+	
+	@Column(name="HDR_COPAY_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrCopayAmt;
+	
+	@Column(name="HDR_TPL_AMT", precision = 13, scale = 2)
+	private BigDecimal hdrTplAmt;
+	
+	@Column(name="HDR_DRUG_DISPENSING_FEE", precision = 13, scale = 2)
+	private BigDecimal hdrDrugDispensingFee;
+	
+	@Column(name="LI_TPL_AMT", precision = 13, scale = 2)
+	private BigDecimal liTplAmt;
+	
+	@Column(name="LI_DRUG_COMPOUND_IND", length = 1)
+	private String liDrugCompoundInd;
+	
+	@Column(name="LI_DRUG_GCN", length = 5)
+	private String liDrugGcn;
+	
+	@Column(name="LI_DRUG_DOSAGE_FORM_DESC", length = 10)
+	private String liDrugDosageFormDesc;
+	
+	@Column(name="R_PACKAGE_SIZE", precision = 11, scale = 3)
+	private BigDecimal rPackageSize;
+	
+	@Column(name="R_STRENGTH_DESC", length = 10)
+	private String rStrengthDesc;
+	
+	@Column(name="R_CLASS_CD", length = 1)
+	private String rClassCd;
+	
+//	R_DRUG_CAT
+	@Column(name="R_DRUG_CAT", length = 1)
+	private String rDrugCat;
+	
+	@Column(name="R_DRUG_DEA", length = 1)
+	private String rDrugDea;
+
+	@Column(name="R_ROUTE_DESC", length = 10)
+	private String rRouteDesc;
+	
+	@Column(name="LI_HEADER_PAY_IND", length = 1)
+	private String liHeaderPayInd;
+	
+/*	Duplicate
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name="LI_SRV_FROM_DT", length = 7)
+	private Date liSrvFromDt;
+
+	@Column(name="LI_CLEAN_CLM_IND", length = 1)
+	private String liCleanClmInd;
+*/	
+	
+	@Column(name="LI_CLM_ADJ_STS_CD", length = 3)
+	private String liClmAdjStsCd;
+	
+	@Column(name="LI_COE_CD", length = 4)
+	private String liCoeCd;
+	
+	@Column(name="LI_COPAY_AMT_1", precision = 13, scale = 2)
+	private BigDecimal liCopayAmt1;
+	
+	@Column(name="HDR_FUND_CD", length = 4)
+	private String hdrFundCd;
+	
+	@Column(name = "FUND_DESC", length = 40)
+	private String fundDesc;
+	
+	@Column(name="FIN_FUND_CD", length = 4)
+	private String finFundCd;
+	
+	@Column(name="COMP_DRUG_INGRED_COUNT", precision = 38, scale = 18)
+	private BigDecimal compDrugIngredCount;
+	
+	@Column(name="COMP_DRUG_PRODUCT_ID_QLFR", length = 2)
+	private String compDrugProductIdQlfr;
+	
+	@Column(name="COMP_DRUG_INGRED_QTY", precision = 14, scale = 3)
+	private BigDecimal compDrugIngredQty;
+	
+	@Column(name = "COMP_DRUG_INGRED_DRG_COST", precision = 8, scale = 2)
+    private BigDecimal compDrugIngredCost;
+/*	
+	@Column(name="FIN_ACTION_REASON_CD", length = 4)
+	private String finActionReasonCd;
+	
+	@Column(name = "ACTION_REASON_DESC", length = 40)
+	private String actionReasonDesc;
+*/
+}
+package com.optum.fads.caseentrybatch.api.snowflakeDomain;
+
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * DmClaimDrugT entity key. 
+ *  @author Anil Wagh
+ */
+@Builder
+@Data
+@EqualsAndHashCode
+@NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+@Embeddable
+public class DmClaimDrugTPK implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Column(name = "HDR_CLM_TCN", nullable = false, length = 17)
+	private String hdrClmTcn;
+	
+	@Column(name = "LI_NUM", nullable = false, length = 4)
+	private String liNum;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "HDR_CLM_PD_DT", nullable = false, length = 7)
+	private Date hdrClmPdDt;
+	
+}
+package com.optum.fads.caseentrybatch.api.snowflakeDomain;
+
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * DmProviderT entity. 
+ *  @author Anil Wagh
+ */
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "DM_PROVIDER_T")
+public class DmProviderT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "PROV_ID", unique = true, nullable = false, length = 19)
+	private String provId;
+	
+	@Column(name = "PROV_NM", length = 35)
+	private String provNm;
+	
+	@Column(name = "PROV_DEA", length = 15)
+	private String provDea;
+	
+	@Column(name = "PROV_PRAC_PHONE_NUM", length = 12)
+	private String provPracPhoneNum;
+	
+	@Column(name = "PROV_SSN_IRS_CD", length = 1)
+	private String provSsnIrsCd;
+	
+	@Column(name = "PROV_PRAC_ADDR_LINE_1", length = 30)
+	private String provPracAddrLine1;
+	
+	@Column(name = "PROV_PRAC_ADDR_LINE_2", length = 30)
+	private String provPracAddrLine2;
+	
+	@Column(name = "PROV_PRAC_CNTY_CD", length = 3)
+	private String provPracCntyCd;
+	
+	@Column(name = "PROV_PRAC_CITY_NM", length = 20)
+	private String provPracCityNm;
+	
+	@Column(name = "PROV_OWN_CD", length = 1)
+	private String provOwnCd;
+	
+	@Column(name = "PROV_PRAC_STATE_CD", length = 2)
+	private String provPraStateCd;
+	
+	@Column(name = "PROV_PRAC_ZIP_CD5", length = 5)
+	private String provPraZipCd5;
+
+	@Column(name = "PROV_LIC_NUM", length = 15)
+	private String provLicNm;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "PROV_LIC_ISSUE_DT", length = 7)
+	private Date provLicIssueDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "PROV_LIC_EXP_DT", length = 7)
+	private Date provLicExpDt;
+	
+	@Column(name = "PROV_ORG_TYPE_CD", length = 2)
+	private String provOrgTypeCd;
+	
+	@Column(name = "PROV_CURR_STAT_CD", length = 2)
+	private String provCurrStatCd;
+	
+	@Column(name = "PROV_MAIL_ADDR_LINE_1", length = 30)
+	private String provMailAddrLine1;
+	
+	@Column(name = "PROV_MAIL_ADDR_LINE_2", length = 30)
+	private String provMailAddrLine2;
+	
+	@Column(name = "PROV_MAIL_CITY_NM", length = 20)
+	private String provMailCityNm;
+	
+	@Column(name = "PROV_MAIL_STATE_CD", length = 2)
+	private String provMailStateCd;
+	
+	@Column(name = "PROV_MAIL_ZIP_CD5", length = 5)
+	private String provMailZipCd5;
+	
+	@Column(name = "PROV_PRAC_ZIP_CD4", length = 4)
+	private String provPracZipCd4;
+	
+	
+	@Column(name = "PROV_EMC_BILL_CD", length = 1)
+	private String provEmcBillCd;
+	
+	@Column(name = "PROV_FEIN", length = 9)
+	private String provFein;
+	
+	@Column(name = "PROV_MCARE_PART_IND", length = 1)
+	private String provMcarePartInd;
+	
+	@Column(name = "PROV_OUT_OF_STATE_IND", length = 1)
+	private String provOutOfStateInd;
+	
+	@Column(name = "PROV_MCARE_ID", length = 1)
+	private String provMcareId;
+	
+	@Column(name="PROV_BED_TOT_QTY")
+	private Integer provBedTotQty;
+	
+	@Column(name = "PROV_NPI", length = 10)
+	private String provNpi;
+	
+	@Column(name = "PROV_OWNER_NAME", length = 10)
+	private String provOwnerName;
+	
+	@Column(name = "PROV_TXNMY_CD", length = 10)
+	private String provTxnmyCd;
+	
+	@Column(name = "PROV_TYPE_CD", length = 3)
+	private String provTypeCd;
+	
+	@Column(name = "PROV_SPEC1_CD", length = 3)
+	private String provSpec1Cd;
+	
+	@Column(name = "PROV_SPEC2_CD", length = 3)
+	private String provSpec2Cd;
+	
+	@Column(name = "PROV_SPEC3_CD", length = 3)
+	private String provSpec3Cd;
+	
+	@Column(name = "PROV_MAIL_ZIP_CD4", length = 4)
+	private String provMailZipCd4;
+	
+	
+	@Column(name = "PROV_SYS_ID", length = 12)
+	private String provSysID;
+	
+	@Column(name = "PROV_BILL_ADDR_LINE_1", length = 30)
+	private String provBillAddrLine1;
+	
+	@Column(name = "PROV_BILL_ADDR_LINE_2", length = 30)
+	private String provBillAddrLine2;
+	
+	@Column(name = "PROV_BILL_CITY_NM", length = 20)
+	private String provBillCityNm;
+	
+	@Column(name = "PROV_BILL_STATE_CD", length = 2)
+	private String provBillStateCd;
+	
+	@Column(name = "PROV_BILL_ZIP_CD5", length = 5)
+	private String provBillZipCd5;
+	
+	@Column(name = "PROV_BILL_ZIP_CD4", length = 4)
+	private String provBillZipCd4;
+	
+//	@Column(name = "PROV_CURR_CLIA_NUM", length = 10)
+//	private String provCurrCliaNum;
+	
+	@Column(name = "PROV_TYPE_DESC", length = 40)
+	private String provTypeDesc;
+	
+	@Column(name = "PROV_SPEC1_DESC", length = 40)
+	private String provSpec1Desc;
+	
+	@Column(name = "PROV_SPEC2_DESC", length = 40)
+	private String provSpec2Desc;
+	
+	@Column(name = "PROV_SPEC3_DESC", length = 40)
+	private String provSpec3Desc;
+	
+	@Column(name = "PROV_PRAC_CNTY_NM", length = 40)
+	private String provPracCntyNm;
+	
+	@Column(name = "PROV_SPEC4_CD", length = 3)
+	private String provSpec4Cd;
+	
+	@Column(name = "PROV_SPEC5_CD", length = 3)
+	private String provSpec5Cd;
+	
+	@Column(name = "PROV_SPEC6_CD", length = 3)
+	private String provSpec6Cd;
+	/*
+	@Column(name = "PROV_SPEC7_CD", length = 3)
+	private String provSpec7Cd;
+	
+	@Column(name = "PROV_SPEC8_CD", length = 3)
+	private String provSpec8Cd;
+	*/
+	@Column(name = "PROV_INDIV_GRP_CD", length = 1)
+	private String provIndivGrpCd;
+	/*
+	@Column(name = "PROV_LOCN_CD", length = 1)
+	private String provLocnCd;
+	
+	@Column(name = "PROV_MULTI_LOCN_IND", length = 1)
+	private String provMultiLocnCd;
+	*/
+	@Column(name="PROV_PRAC_GEO_LAT", precision = 11, scale = 7)
+	private Double provPracGeoLat;
+
+	@Column(name="PROV_PRAC_GEO_LONG", precision = 11, scale = 7)
+	private Double provPracGeoLong;
+/*	
+	@Column(name = "PROV_NTRPRS_ID", length = 8)
+	private String provNtprsId;
+	
+	@Column(name = "PROV_GROUP_ID", length = 8)
+	private String provGroupId;
+	*/
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "PROV_CURR_STAT_BEG_DT", length = 7)
+	private Date provCurrStatBegDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "PROV_CURR_STAT_End_DT", length = 7)
+	private Date provCurrStatEndDt;
+	/*
+	@Column(name = "PROV_DBA_NM", length = 35)
+	private String provDbaNm;
+	
+	@Column(name = "PROV_MCO_NM", length = 35)
+	private String provMcoNm;
+	
+	@Column(name = "PROV_PRAC_EMAIL", length = 40)
+	private String provProcEmail;
+	*/
+	@Column(name = "PROV_TXNMY_DESC", length = 40)
+	private String provTxnmyDesc;
+	
+	@Column(name = "PROV_SSN", length = 11)
+	private String provSsn;
+	/*
+	@Column(name = "PROV_PRAC_FAX_NUM", length = 12)
+	private String provPraxFaxNum;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "PROV_SS_DOD_DT", length = 7)
+	private Date provSsDodDt;
+	
+	@Column(name = "PROV_SS_DOD_IND", length = 1)
+	private String provSsDodInd;
+	*/
+	@Column(name = "PCMH_IND", length = 1)
+	private String pmchInd;	
+	
+}
+package com.optum.fads.caseentrybatch.api.snowflakeDomain;
+
+import java.util.Date;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+/**
+ * DmProviderT entity. 
+ *  @author Anil Wagh
+ */
+
+@Getter
+@Setter
+@NoArgsConstructor
+@Entity
+@Table(name = "DM_RECIPIENT_T")
+public class DmRecipientT implements java.io.Serializable {
+	private static final long serialVersionUID = 1L;
+	
+	@Id
+	@Column(name = "RECIP_ORIG_ID", unique = true, nullable = false, length = 20)
+	private String recipOrigId;
+	
+	@Column(name = "RECIP_CURR_ID", length = 20)
+	private String recipCurrId;
+	
+	@Column(name = "RECIP_MCARE_ID", length = 13)
+	private String recipMcareId;
+	
+	@Column(name = "RECIP_FIRST_NM", length = 25)
+	private String recipFirstNm;
+	
+	@Column(name = "RECIP_LAST_NM", length = 35)
+	private String recipLastNm;
+	
+	@Column(name = "RECIP_MI", length = 1)
+	private String recipMi;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_BIRTH_DT", length = 7)
+	private Date recipBirthDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_DEATH_DT", length = 7)
+	private Date recipDeathDt;
+
+	@Column(name = "RECIP_RACE_CD", length = 2)
+	private String recipRaceCd;
+	
+	@Column(name = "RECIP_GENDER_CD", length = 1)
+	private String recipGenderCd;
+	
+	@Column(name = "RECIP_SSN", length = 9)
+	private String recipSsn;
+	
+	@Column(name = "RECIP_ADDR_LINE_1", length = 25)
+	private String recipAddLine1;
+	
+	@Column(name = "RECIP_ADDR_LINE_2", length = 25)
+	private String recipAddLine2;
+	
+	@Column(name = "RECIP_CITY_NM", length = 20)
+	private String recipCityNm;
+	
+	@Column(name = "RECIP_STATE_CD", length = 2)
+	private String recipStateCd;
+	
+	@Column(name = "RECIP_ZIP_CD", length = 5)
+	private String recipZipCd;
+	
+	@Column(name = "RECIP_CNTY_CD", length = 5)
+	private String recipCntyCd;
+	
+	@Column(name = "RECIP_AGE_GRP_CD", length = 2)
+	private String recipAgeGrpCd;
+	
+	@Column(name = "RECIP_HEAD_OF_HOUSE_IND", length = 1)
+	private String recipHeadOfHouseInd;
+	
+	@Column(name = "RECIP_TPL_IND", length = 1)
+	private String recipTplInd;
+
+	@Column(name = "RECIP_CASE_ID", length = 12)
+	private String recipCaseId;
+	
+	@Column(name = "RECIP_CURR_NH_IND", length = 1)
+	private String recipCurrNhInd;
+	
+	@Column(name="RECIP_AGE_MTHS_QTY")
+	private Integer recipAgeMthsQty;
+	
+	@Column(name="RECIP_AGE_YRS_QTY")
+	private Integer recipAgeYrsQty;
+	
+	@Column(name="RECIP_FULL_NM", length = 85)
+	private String recipFullNm;
+	
+	@Column(name="RECIP_PHONE_NUM", length = 10)
+	private String recipPhoneNum;
+	
+	@Column(name="RECIP_MCARE_IND", length = 1)
+	private String recipMcareInd;
+	
+	@Column(name="RECIP_SYS_ID", length = 22)
+	private String recipSysId;
+	
+	@Column(name = "RECIP_ZIP4_CD", length = 4)
+	private String recipZip4Cd;
+	
+	@Column(name = "RECIP_CURR_COE_CD", length = 4)
+	private String recipCurrCoeCd;
+	
+	@Column(name = "RECIP_CURR_MAJ_PGM_CD", length = 2)
+	private String recipCurrMajPgmCd;
+	
+	@Column(name = "RECIP_CASE_HH_NUM", length = 9)
+	private String recipCaseHhNum;
+	
+	@Column(name = "RECIP_REL_HEAD_HH_CD", length = 40)
+	private String recipRelHeadHhCd;
+	
+	@Column(name="RECIP_LAT_NUM", precision = 16, scale = 13)
+	private Double recipLatNum;
+	
+	@Column(name="RECIP_LON_NUM", precision = 16, scale = 13)
+	private Double recipLonNum;
+	
+	@Column(name="RECIP_BNFT_PLAN", length = 6)
+	private Double recipBnftPlan;
+	
+	@Column(name = "RECIP_ADMIN_CNTY_CD", length = 2)
+	private String recipAdminCntyCd;
+	
+	@Column(name = "RECIP_LEVEL_OF_CARE_CD", length = 3)
+	private String recipLevelOfCareCd;
+	
+	@Column(name = "RECIP_TRIBAL_AFFL_CD", length = 2)
+	private String recipTribalAfflCd;
+	
+	@Column(name = "RECIP_COHRT_NUM", length = 3)
+	private String recipCohrtNum;
+	
+	@Column(name = "RECIP_LAT_LONG_STATUS", length = 20)
+	private String recipLatLongStatus;
+	
+	@Column(name = "RECIP_REP_NAME", length = 40)
+	private String recipRepName;
+	
+	@Column(name = "RECIP_CNTY_DESC", length = 40)
+	private String recipCntyDesc;
+	
+	@Column(name = "RECIP_CURR_COE_DESC", length = 40)
+	private String recipCurrCoeDesc;
+	
+	@Column(name = "RECIP_GENDER_DESC", length = 40)
+	private String recipGenderDesc;
+	
+	@Column(name = "RECIP_MAJ_PROG_DESC", length = 40)
+	private String recipMajProgDesc;
+	
+	@Column(name = "RECIP_RACE_DESC", length = 40)
+	private String recipRaceDesc;
+	
+	@Column(name = "RECIP_ADMIN_CNTY_DESC", length = 40)
+	private String recipAdminCntyDesc;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_CURR_COE_BEG_DT", length = 7)
+	private Date recipCurrCoeBegDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_CURR_COE_END_DT", length = 7)
+	private Date recipCurrCoeEndDt;
+	
+	@Column(name = "RECIP_PRIMARY_MCO_ID", length = 20)
+	private String recipPrimaryMcoId;
+	
+	@Column(name = "RECIP_PRIMARY_MCO_NM", length = 40)
+	private String recipPrimaryMcoNm;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_PRIM_MCO_BEG_DT", length = 7)
+	private Date recipPrimMcoBegDt;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_PRIM_MCO_END_DT", length = 7)
+	private Date recipPrimMcoEndDt;
+	
+	@Column(name = "LAT_LONG_STATUS", length = 20)
+	private String latLongStatus;
+	
+	@Temporal(TemporalType.TIMESTAMP)
+	@Column(name = "RECIP_SS_DOD_DT", length = 7)
+	private Date recipSsDocDt;
+	
+	@Column(name = "RECIP_SS_DOD_IND", length = 1)
+	private String recipSsDodInd;
+	
+	@Column(name = "RECIP_SS_DOD_V_P_CD", length = 1)
+	private String recipSsDodVPCd;
+	
+	@Column(name = "RECIP_C19_CNTY_DESC", length = 40)
+	private String recipC19CntyDesc;
+	
+	@Column(name = "RECIP_C19_DIAG_IND", length = 1)
+	private String recipC19DiagInd;
+	
+}
