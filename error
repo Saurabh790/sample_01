@@ -1,155 +1,25 @@
-19:46:35.051 [main] ERROR org.springframework.boot.SpringApplication -- Application run failed
-java.lang.IllegalStateException: Failed to configure KeyVault property source 'kv'
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultEnvironmentPostProcessor.buildKeyVaultPropertySource(KeyVaultEnvironmentPostProcessor.java:146)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultEnvironmentPostProcessor.buildKeyVaultPropertySourceList(KeyVaultEnvironmentPostProcessor.java:130)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultEnvironmentPostProcessor.postProcessEnvironment(KeyVaultEnvironmentPostProcessor.java:93)
-        at org.springframework.boot.env.EnvironmentPostProcessorApplicationListener.onApplicationEnvironmentPreparedEvent(EnvironmentPostProcessorApplicationListener.java:134)
-        at org.springframework.boot.env.EnvironmentPostProcessorApplicationListener.onApplicationEvent(EnvironmentPostProcessorApplicationListener.java:117)
-        at org.springframework.context.event.SimpleApplicationEventMulticaster.doInvokeListener(SimpleApplicationEventMulticaster.java:185)
-        at org.springframework.context.event.SimpleApplicationEventMulticaster.invokeListener(SimpleApplicationEventMulticaster.java:178)
-        at org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(SimpleApplicationEventMulticaster.java:156)
-        at org.springframework.context.event.SimpleApplicationEventMulticaster.multicastEvent(SimpleApplicationEventMulticaster.java:138)
-        at org.springframework.boot.context.event.EventPublishingRunListener.multicastInitialEvent(EventPublishingRunListener.java:136)
-        at org.springframework.boot.context.event.EventPublishingRunListener.environmentPrepared(EventPublishingRunListener.java:81)
-        at org.springframework.boot.SpringApplicationRunListeners.lambda$environmentPrepared$2(SpringApplicationRunListeners.java:64)
-        at java.base/java.lang.Iterable.forEach(Iterable.java:75)
-        at org.springframework.boot.SpringApplicationRunListeners.doWithListeners(SpringApplicationRunListeners.java:118)
-        at org.springframework.boot.SpringApplicationRunListeners.doWithListeners(SpringApplicationRunListeners.java:112)
-        at org.springframework.boot.SpringApplicationRunListeners.environmentPrepared(SpringApplicationRunListeners.java:63)
-        at org.springframework.boot.SpringApplication.prepareEnvironment(SpringApplication.java:353)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:313)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-        at com.optum.fads.pgp.behavior.api.BehaviorPatternApiApplication.main(BehaviorPatternApiApplication.java:15)
-Caused by: com.azure.identity.CredentialUnavailableException: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/environmentcredential/troubleshoot
-WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured. See the troubleshooting guide for more information. https://aka.ms/azsdk/java/identity/workloadidentitycredential/troubleshoot
-ManagedIdentityCredential authentication unavailable. Connection to IMDS endpoint cannot be established, Connect timed out.
-IntelliJ authentication not available. Please login with the Azure Toolkit for IntelliJ. You may also need to upgrade to a newer version of the Azure Toolkit for IntelliJ. This authentication is supported on version 3.53 and higher. Please see https://aka.ms/azsdk/java/identity/intellijcredential/troubleshoot for more information.
-Visual Studio Code Authentication is not available. Ensure you have azure-identity-broker dependency added to your application. Then ensure, you have signed into Azure via VS Code and have Azure Resources Extension installed in VS Code. For more details, refer to https://aka.ms/azsdk/java/identity/vscodecredential/troubleshoot
-AzureCliCredential authentication unavailable. Azure CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azclicredential/troubleshoot
-Azure PowerShell authentication failed using defaultpowershell(pwsh) with following error: PowerShell command failure.
-Azure PowerShell authentication failed using powershell-core(powershell) with following error: Az.Account module with version >= 2.2.0 is not installed. It needs to be installed to use Azure PowerShell Credential.
-AzureDeveloperCliCredential authentication unavailable. Azure Developer CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azdevclicredential/troubleshoot
-azure-identity-broker dependency is not available. Ensure you have azure-identity-broker dependency added to your application. To mitigate this issue, refer to http://aka.ms/azsdk/java/identity/dacbrokerauth/troubleshootTo mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azure-identity-java-default-azure-credential-troubleshoot
-        at com.azure.identity.ChainedTokenCredential.getTokenSync(ChainedTokenCredential.java:160)
-        at com.azure.core.implementation.AccessTokenCache.lambda$new$2(AccessTokenCache.java:65)
-        at com.azure.core.implementation.AccessTokenCache.lambda$retrieveTokenSync$11(AccessTokenCache.java:230)
-        at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:93)
-        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:220)
-        at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:207)
-        at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestSync(KeyVaultCredentialPolicy.java:241)
-        at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.processSync(KeyVaultCredentialPolicy.java:373)
-        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:216)
-        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:233)
-        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:233)
-        at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:233)
-        at com.azure.core.http.policy.RetryPolicy.processSync(RetryPolicy.java:160)
-        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-        at com.azure.core.http.policy.AddHeadersPolicy.processSync(AddHeadersPolicy.java:66)
-        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-        at com.azure.core.http.policy.HttpPipelineSyncPolicy.processSync(HttpPipelineSyncPolicy.java:51)
-        at com.azure.core.http.policy.UserAgentPolicy.processSync(UserAgentPolicy.java:174)
-        at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-        at com.azure.core.http.HttpPipeline.sendSync(HttpPipeline.java:138)
-        at com.azure.core.implementation.http.rest.SyncRestProxy.send(SyncRestProxy.java:62)
-        at com.azure.core.implementation.http.rest.SyncRestProxy.invoke(SyncRestProxy.java:83)
-        at com.azure.core.implementation.http.rest.RestProxyBase.invoke(RestProxyBase.java:124)
-        at com.azure.core.http.rest.RestProxy.invoke(RestProxy.java:95)
-        at jdk.proxy2/jdk.proxy2.$Proxy11.getSecretsSync(Unknown Source)
-        at com.azure.security.keyvault.secrets.implementation.SecretClientImpl.getSecretsSinglePage(SecretClientImpl.java:1125)
-        at com.azure.security.keyvault.secrets.implementation.SecretClientImpl.lambda$getSecrets$0(SecretClientImpl.java:1181)
-        at com.azure.core.http.rest.PagedIterable.lambda$new$3(PagedIterable.java:168)
-        at com.azure.core.http.rest.PagedIterable.lambda$mapPage$7(PagedIterable.java:210)
-        at com.azure.core.http.rest.PagedIterable.lambda$new$5(PagedIterable.java:193)
-        at com.azure.core.util.paging.ContinuablePagedByIteratorBase.requestPage(ContinuablePagedByIteratorBase.java:104)
-        at com.azure.core.util.paging.ContinuablePagedByPageIterable$ContinuablePagedByPageIterator.<init>(ContinuablePagedByPageIterable.java:82)
-        at com.azure.core.util.paging.ContinuablePagedByPageIterable.iterator(ContinuablePagedByPageIterable.java:58)
-        at java.base/java.lang.Iterable.spliterator(Iterable.java:101)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultOperation.lambda$listSecrets$0(KeyVaultOperation.java:49)
-        at java.base/java.util.Optional.map(Optional.java:260)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultOperation.listSecrets(KeyVaultOperation.java:49)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultPropertySource.loadProperties(KeyVaultPropertySource.java:77)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultPropertySource.<init>(KeyVaultPropertySource.java:71)
-        at com.azure.spring.cloud.autoconfigure.implementation.keyvault.environment.KeyVaultEnvironmentPostProcessor.buildKeyVaultPropertySource(KeyVaultEnvironmentPostProcessor.java:144)
-        ... 20 common frames omitted
-        Suppressed: com.azure.identity.CredentialUnavailableException: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/environmentcredential/troubleshoot
-WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured. See the troubleshooting guide for more information. https://aka.ms/azsdk/java/identity/workloadidentitycredential/troubleshoot
-ManagedIdentityCredential authentication unavailable. Connection to IMDS endpoint cannot be established, Connect timed out.
-IntelliJ authentication not available. Please login with the Azure Toolkit for IntelliJ. You may also need to upgrade to a newer version of the Azure Toolkit for IntelliJ. This authentication is supported on version 3.53 and higher. Please see https://aka.ms/azsdk/java/identity/intellijcredential/troubleshoot for more information.
-Visual Studio Code Authentication is not available. Ensure you have azure-identity-broker dependency added to your application. Then ensure, you have signed into Azure via VS Code and have Azure Resources Extension installed in VS Code. For more details, refer to https://aka.ms/azsdk/java/identity/vscodecredential/troubleshoot
-AzureCliCredential authentication unavailable. Azure CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azclicredential/troubleshoot
-Azure PowerShell authentication failed using defaultpowershell(pwsh) with following error: PowerShell command failure.
-Azure PowerShell authentication failed using powershell-core(powershell) with following error: Az.Account module with version >= 2.2.0 is not installed. It needs to be installed to use Azure PowerShell Credential.
-AzureDeveloperCliCredential authentication unavailable. Azure Developer CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azdevclicredential/troubleshoot
-azure-identity-broker dependency is not available. Ensure you have azure-identity-broker dependency added to your application. To mitigate this issue, refer to http://aka.ms/azsdk/java/identity/dacbrokerauth/troubleshootTo mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azure-identity-java-default-azure-credential-troubleshoot
-                at com.azure.identity.ChainedTokenCredential.getTokenSync(ChainedTokenCredential.java:160)
-                at com.azure.core.implementation.AccessTokenCache.lambda$new$2(AccessTokenCache.java:65)
-                at com.azure.core.implementation.AccessTokenCache.lambda$retrieveTokenSync$11(AccessTokenCache.java:230)
-                at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:93)
-                at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:220)
-                at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:207)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestOnChallengeSync(KeyVaultCredentialPolicy.java:340)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.handleChallengeSync(KeyVaultCredentialPolicy.java:415)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.processSync(KeyVaultCredentialPolicy.java:379)
-                at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-                at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:216)
-                ... 48 common frames omitted
-        Suppressed: com.azure.identity.CredentialUnavailableException: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/environmentcredential/troubleshoot
-WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured. See the troubleshooting guide for more information. https://aka.ms/azsdk/java/identity/workloadidentitycredential/troubleshoot
-ManagedIdentityCredential authentication unavailable. Connection to IMDS endpoint cannot be established, Connect timed out.
-IntelliJ authentication not available. Please login with the Azure Toolkit for IntelliJ. You may also need to upgrade to a newer version of the Azure Toolkit for IntelliJ. This authentication is supported on version 3.53 and higher. Please see https://aka.ms/azsdk/java/identity/intellijcredential/troubleshoot for more information.
-Visual Studio Code Authentication is not available. Ensure you have azure-identity-broker dependency added to your application. Then ensure, you have signed into Azure via VS Code and have Azure Resources Extension installed in VS Code. For more details, refer to https://aka.ms/azsdk/java/identity/vscodecredential/troubleshoot
-AzureCliCredential authentication unavailable. Azure CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azclicredential/troubleshoot
-Azure PowerShell authentication failed using defaultpowershell(pwsh) with following error: PowerShell command failure.
-Azure PowerShell authentication failed using powershell-core(powershell) with following error: Az.Account module with version >= 2.2.0 is not installed. It needs to be installed to use Azure PowerShell Credential.
-AzureDeveloperCliCredential authentication unavailable. Azure Developer CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azdevclicredential/troubleshoot
-azure-identity-broker dependency is not available. Ensure you have azure-identity-broker dependency added to your application. To mitigate this issue, refer to http://aka.ms/azsdk/java/identity/dacbrokerauth/troubleshootTo mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azure-identity-java-default-azure-credential-troubleshoot
-                at com.azure.identity.ChainedTokenCredential.getTokenSync(ChainedTokenCredential.java:160)
-                at com.azure.core.implementation.AccessTokenCache.lambda$new$2(AccessTokenCache.java:65)
-                at com.azure.core.implementation.AccessTokenCache.lambda$retrieveTokenSync$11(AccessTokenCache.java:230)
-                at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:93)
-                at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:220)
-                at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:207)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestSync(KeyVaultCredentialPolicy.java:241)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.processSync(KeyVaultCredentialPolicy.java:373)
-                at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-                at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:216)
-                ... 49 common frames omitted
-        Suppressed: com.azure.identity.CredentialUnavailableException: EnvironmentCredential authentication unavailable. Environment variables are not fully configured.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/environmentcredential/troubleshoot
-WorkloadIdentityCredential authentication unavailable. The workload options are not fully configured. See the troubleshooting guide for more information. https://aka.ms/azsdk/java/identity/workloadidentitycredential/troubleshoot
-ManagedIdentityCredential authentication unavailable. Connection to IMDS endpoint cannot be established, Connect timed out.
-IntelliJ authentication not available. Please login with the Azure Toolkit for IntelliJ. You may also need to upgrade to a newer version of the Azure Toolkit for IntelliJ. This authentication is supported on version 3.53 and higher. Please see https://aka.ms/azsdk/java/identity/intellijcredential/troubleshoot for more information.
-Visual Studio Code Authentication is not available. Ensure you have azure-identity-broker dependency added to your application. Then ensure, you have signed into Azure via VS Code and have Azure Resources Extension installed in VS Code. For more details, refer to https://aka.ms/azsdk/java/identity/vscodecredential/troubleshoot
-AzureCliCredential authentication unavailable. Azure CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azclicredential/troubleshoot
-Azure PowerShell authentication failed using defaultpowershell(pwsh) with following error: PowerShell command failure.
-Azure PowerShell authentication failed using powershell-core(powershell) with following error: Az.Account module with version >= 2.2.0 is not installed. It needs to be installed to use Azure PowerShell Credential.
-AzureDeveloperCliCredential authentication unavailable. Azure Developer CLI not installed.To mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azsdk/java/identity/azdevclicredential/troubleshoot
-azure-identity-broker dependency is not available. Ensure you have azure-identity-broker dependency added to your application. To mitigate this issue, refer to http://aka.ms/azsdk/java/identity/dacbrokerauth/troubleshootTo mitigate this issue, please refer to the troubleshooting guidelines here at https://aka.ms/azure-identity-java-default-azure-credential-troubleshoot
-                at com.azure.identity.ChainedTokenCredential.getTokenSync(ChainedTokenCredential.java:160)
-                at com.azure.core.implementation.AccessTokenCache.lambda$new$2(AccessTokenCache.java:65)
-                at com.azure.core.implementation.AccessTokenCache.lambda$retrieveTokenSync$11(AccessTokenCache.java:230)
-                at com.azure.core.implementation.AccessTokenCache.getTokenSync(AccessTokenCache.java:93)
-                at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderHelperSync(BearerTokenAuthenticationPolicy.java:220)
-                at com.azure.core.http.policy.BearerTokenAuthenticationPolicy.setAuthorizationHeaderSync(BearerTokenAuthenticationPolicy.java:207)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.authorizeRequestSync(KeyVaultCredentialPolicy.java:241)
-                at com.azure.security.keyvault.secrets.implementation.KeyVaultCredentialPolicy.processSync(KeyVaultCredentialPolicy.java:373)
-                at com.azure.core.http.HttpPipelineNextSyncPolicy.processSync(HttpPipelineNextSyncPolicy.java:53)
-                at com.azure.core.http.policy.RetryPolicy.attemptSync(RetryPolicy.java:216)
-                ... 50 common frames omitted
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/optum/fads/fads-base/8.1.2-SNAPSHOT/maven-metadata.xml
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/optum/fads/fads/8.1.2-SNAPSHOT/maven-metadata.xml
+Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/com/optum/fads/fads/8.1.2-SNAPSHOT/fads-8.1.2-SNAPSHOT.pom
+[WARNING] 1 problem was encountered while building the effective model for org.javassist:javassist:jar:3.20.0-GA during dependency collection step for project (use -X to see details)
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  31.409 s
-[INFO] Finished at: 2026-02-02T19:46:35+05:30
+[INFO] Total time:  3.558 s
+[INFO] Finished at: 2026-02-05T13:14:47+05:30
 [INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.9:run (default-cli) on project fads-pgp-behavior-api: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] Failed to execute goal on project fads-casetracking: Could not collect dependencies for project com.optum.fads:fads-casetracking:jar:8.1.2-SNAPSHOT
+[ERROR] Failed to read artifact descriptor for com.optum.fads:fads-base:jar:8.1.2-SNAPSHOT
+[ERROR]         Caused by: The following artifacts could not be resolved: com.optum.fads:fads:pom:8.1.2-SNAPSHOT (absent): Could not find artifact com.optum.fads:fads:pom:8.1.2-SNAPSHOT in artifactory (https://repo1.uhc.com/artifactory/repo)
+[ERROR]
+[ERROR] -> [Help 1]
 [ERROR]
 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
 [ERROR]
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>
-C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>
+C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-casetracking>
