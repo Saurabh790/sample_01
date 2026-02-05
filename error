@@ -1,265 +1,537 @@
-[ERROR] Malformed POM C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-web\pom.xml: expected START_TAG or END_TAG not TEXT (position: TEXT seen ...<groupId>commons-codec</groupId>ldap-spring-ldap-core\n\t\t\t<a... @110:6)  @ C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-web\pom.xml, line 110, column 6
- @
-[ERROR] The build could not read 1 project -> [Help 1]
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.0:compile (default-compile) on project fads-casetracking: Compilation failure
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-casetracking/src/main/java/com/optum/fads/casetracking/pdf/AppealsPDF.java:[107,66] cannot access com.sun.beans.introspect.PropertyInfo
+[ERROR]   class file for com.sun.beans.introspect.PropertyInfo not found
 [ERROR]
-[ERROR]   The project com.optum.fads:fads-web:8.1.2-SNAPSHOT (C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-web\pom.xml) has 1 error
-[ERROR]     Malformed POM C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-web\pom.xml: expected START_TAG or END_TAG not TEXT (position: TEXT seen ...<groupId>commons-codec</groupId>ldap-spring-ldap-core\n\t\t\t<a... @110:6)  @ C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-web\pom.xml, line 110, column 6 -> [Help 2]
+[ERROR] -> [Help 1]
 [ERROR]
 [ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
 [ERROR]
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
-[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/ModelParseException
-
-C:\Users\sgupt664\BE_Projects\fads-ui-components>
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns="http://maven.apache.org/POM/4.0.0"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-
-	<parent>
-		<groupId>com.optum</groupId>
-		<artifactId>ParentPom</artifactId>
-		<version>1.0.4</version>
-	</parent>
-
-	<groupId>com.optum.fads</groupId>
-	<artifactId>fads</artifactId>
-	<version>8.1.2-SNAPSHOT</version>
-	<packaging>pom</packaging>
-	<name>fads</name>
-	<url>http://maven.apache.org</url>
-
-	<properties>
-		<compileSource>1.8</compileSource>
-		<spring.boot.version>2.5.15</spring.boot.version>
-		<uitk.version>3.14.1</uitk.version>
-		<spring.boot.version>2.6.11</spring.boot.version>
-		<!-- spring.boot.version>2.5.6</spring.boot.version -->
-		<spring-cloud.version>2021.0.3</spring-cloud.version>
-		<spring-security-oauth2.version>2.5.2.RELEASE</spring-security-oauth2.version>
-		<spring-security-jwt.version>1.0.9.RELEASE</spring-security-jwt.version>
-		<spring.version>5.1.0.RELEASE</spring.version>
-
-		<hibernate.validator>5.4.1.Final</hibernate.validator>
-		<c3p0.version>0.9.5.2</c3p0.version>
-
-		<jackson.version>2.9.4</jackson.version>
-		<hibernate.version>5.2.17.Final</hibernate.version>
-		<servlet-api.version>3.1.0</servlet-api.version>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<sonar.exlusions>
-			**/src/main/webapp/**,**/js/angular/**,**/js/angular-translate/**,**/js/google-code-prettify/**,**/js/jquery/**,**/js/lodash/**,**/src/main/webapp/webHelp/Content/*.*,**/src/main/webapp/webHelp/Content/Resources/**,**/src/main/webapp/uitk-core/js/ckeditor/**/*.js,**/src/main/webapp/uitk-core/js/ckeditor/**/*.css,**/src/main/webapp/uitk-core/js/ckeditor/**/*.html,**/src/main/webapp/uitk-core/js/polyfills/**,**/src/main/webapp/uitk-core/lib/**,src/main/webapp/app/**/*.js,**/src/main/webapp/app/**/*.js,**/src/main/webapp/uitk-core/lib/**/*,**/src/main/webapp/uitk/choropleth/**/*,**/bower_components/**</sonar.exlusions>
-	</properties>
-
-	<modules>
-		<module>fads-base</module>
-		<module>fads-casetracking</module>
-		<module>fads-web</module>
-	</modules>
-	<distributionManagement>
-		<repository>
-			<id>UHG-Releases</id>
-			<name>Local Repository for UHG Application Releases</name>
-			<url>https://repo1.uhc.com/artifactory/UHG-Releases</url>
-		</repository>
-		<snapshotRepository>
-			<id>UHG-Snapshots</id>
-			<name>Local Repository for UHG Application Snapshots</name>
-			<url>https://repo1.uhc.com/artifactory/UHG-Snapshots</url>
-		</snapshotRepository>
-	</distributionManagement>
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.apache.logging.log4j</groupId>
-				<artifactId>log4j-bom</artifactId>
-				<version>2.17.2</version>
-				<scope>import</scope>
-				<type>pom</type>
-			</dependency>
-			<dependency>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-dependencies</artifactId>
-				<version>${spring.boot.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-
-			</dependency>
-
-			<dependency>
-				<groupId>org.springframework.cloud</groupId>
-				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>${spring-cloud.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-
-		</dependencies>
-	</dependencyManagement>
-
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-client</artifactId>			
-			<exclusions>
-				<exclusion>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-logging</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-thymeleaf</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
-			<exclusions>
-				<exclusion>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-logging</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>com.auth0</groupId>
-			<artifactId>jwks-rsa</artifactId>
-			<version>0.9.0</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-mail</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>io.projectreactor.netty</groupId>
-			<artifactId>reactor-netty</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>javax.inject</groupId>
-			<artifactId>javax.inject</artifactId>
-			<version>1</version>
-		</dependency>
-		<dependency>
-			<groupId>io.jsonwebtoken</groupId>
-			<artifactId>jjwt</artifactId>
-			<version>0.9.0</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>		
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-
-		</dependency>
-		<dependency>
-			<groupId>org.springframework</groupId>
-			<artifactId>spring-orm</artifactId>
-		</dependency>
-		<!--     <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-entitymanager</artifactId>
-            <version>${hibernate.version}</version>
-        </dependency>-->
-		<!-- Hibernate Validator -->
-		<!--  <dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-validator</artifactId>
-            <version>${hibernate.validator}</version>
-        </dependency>-->
-		<!--
-		https://mvnrepository.com/artifact/org.springframework.security/spring-security-ldap -->
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-ldap</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-redis</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-tomcat</artifactId>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.thymeleaf.extras</groupId>
-			<artifactId>thymeleaf-extras-springsecurity5</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security.oauth</groupId>
-			<artifactId>spring-security-oauth2</artifactId>
-			<version>${spring-security-oauth2.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-ldap</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.oracle.jdbc</groupId>
-			<artifactId>ojdbc8</artifactId>
-			<version>12.2.0.1</version>
-		</dependency>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>			
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR]
 
 
-	<build>
-		<pluginManagement>
-			<plugins>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-compiler-plugin</artifactId>
-					<!--<version>3.0</version>-->
-					<configuration>
-						<source>${compileSource}</source>
-						<target>${compileSource}</target>
-					</configuration>
-				</plugin>
+package com.optum.fads.casetracking.pdf;
 
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-surefire-plugin</artifactId>
-					<version>2.19.1</version>
-				</plugin>
+import java.beans.PropertyDescriptor;
+import java.util.List;
 
-				<plugin>
-					<groupId>org.codehaus.mojo</groupId>
-					<artifactId>sonar-maven-plugin</artifactId>
-					<version>2.5</version>
-				</plugin>
+import com.optum.fads.caseconfig.dto.CaseMetaBaseDto;
+import com.optum.fads.caseconfig.dto.LabelValueBean;
+import com.optum.fads.casetracking.common.AppealsMetaBaseEnum;
+import com.optum.fads.casetracking.common.CaseConstants;
+import com.optum.fads.casetracking.util.CaseUtil;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
-				<plugin>
-					<groupId>org.codehaus.sonar</groupId>
-					<artifactId>sonar-maven3-plugin</artifactId>
-					<version>4.5.2</version>
-				</plugin>
-			</plugins>
-		</pluginManagement>
-	</build>
+import com.itextpdf.kernel.color.DeviceRgb;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.layout.border.Border;
+import com.itextpdf.layout.element.Cell;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.optum.fads.casetracking.appeals.AppealBean;
+import com.optum.fads.casetracking.common.CaseLabel;
+import com.optum.fads.casetracking.dto.CaseDetailDTO;
 
-</project>
+@Component
+public class AppealsPDF {
+	private final Logger logger = Logger.getLogger(this.getClass().getName());
+	
+	@Autowired
+	CommonPDFHelper commonPDFHelper;
+
+	public Table createAppeals(CaseDetailDTO caseDTO, List<AppealBean> prevAppeals, List<CaseMetaBaseDto> customFields) {
+		Table appealsTable = new Table(new float[] {1});
+		appealsTable.setWidthPercent(100).setFixedLayout();
+		Cell cell = new Cell();
+		cell.setBorder(Border.NO_BORDER);
+
+		Cell headerCell = new Cell().add(commonPDFHelper.createHeader(caseDTO));
+		appealsTable.addCell(headerCell);
+		cell = new Cell().add(commonPDFHelper.createCommonGeneralInformation(caseDTO, true));
+		appealsTable.addCell(cell);
+
+		Cell appealHdr = commonPDFHelper.createPlainHeader(CaseLabel.MENU_APPEAL_HDR, null);
+		appealHdr.setBorder(Border.NO_BORDER);
+		appealsTable.addCell(appealHdr);
+
+		cell = new Cell().add(createCurrentAppealData(caseDTO, customFields)).setBorder(Border.NO_BORDER);
+		appealsTable.addCell(cell);
+		cell = new Cell().add(createPreviousAppealsData(prevAppeals, customFields)).setBorder(Border.NO_BORDER);
+		appealsTable.addCell(cell);
+
+		return appealsTable;
+	}
+
+	private Table createAppealHeader(String header) {
+		Table detailTable = new Table(new float[]{1, 1, 1, 1});
+		detailTable.setWidthPercent(100).setFixedLayout();
+
+		PdfFont font = commonPDFHelper.getCustomBoldFont();
+		DeviceRgb deviceRgb = new DeviceRgb(194, 86, 8);
+		Paragraph caseInfo = new Paragraph(header).setFont(font).setFontSize(10).setFontColor(deviceRgb);
+		Cell hcell = new Cell(0, 4).add(caseInfo);
+		hcell.setBorder(Border.NO_BORDER);
+		detailTable.addCell(hcell);
+		return detailTable;
+	}
+
+	private Table createCurrentAppealData(CaseDetailDTO caseDTO, List<CaseMetaBaseDto> customFields) {
+		Table infoTable = new Table(new float[]{1});
+		infoTable.setWidthPercent(100);
+
+		Table detailTable = createAppealHeader(CaseLabel.APPEAL_CURRENT_HDR);
+		Cell infoCell = new Cell().add(detailTable);
+		infoCell.setBorder(Border.NO_BORDER);
+		infoTable.addCell(infoCell);
+
+		AppealBean cAppeal = caseDTO.getCurrentAppeal();
+		if (cAppeal != null) {
+			infoTable.addCell(createAppeal(cAppeal, customFields, false));
+		} else {
+			PdfFont font = commonPDFHelper.getCustomFont();
+			Paragraph caseInfo = new Paragraph("No current appeal.").setFont(font).setFontSize(8).setMarginRight(25);
+			Cell hcell = new Cell(0, 4).add(caseInfo);
+			hcell.setBorder(Border.NO_BORDER);
+			infoTable.addCell(hcell);
+		}
+
+		return infoTable;
+	}
+
+	private Table createAppeal(AppealBean appeal, List<CaseMetaBaseDto> customFields, boolean isPrevAppeal) {
+		Table detailTable = new Table(new float[]{1, 1, 1, 1});
+		detailTable.setWidthPercent(100).setFixedLayout();
+		if (isPrevAppeal) {
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_ID));
+			Cell cell = new Cell(0, 3).add(commonPDFHelper.creatFieldValue(StringUtils.defaultString(String.valueOf(appeal.getAppealId()), "")));
+			cell.setBorder(Border.NO_BORDER);
+			detailTable.addCell(cell);
+		}
+
+		int count = 0;
+		for (CaseMetaBaseDto caseMetaBaseDto : customFields) {
+			String value = "";
+			try {
+				if (StringUtils.equals(caseMetaBaseDto.getFieldType(), CaseConstants.CASE_FIELD_TYPE_DECIMAL)) {
+					Double dValue = (Double) new PropertyDescriptor(caseMetaBaseDto.getFieldName(), AppealBean.class).getReadMethod().invoke(appeal);
+					if (dValue != null) {
+						value = "$ " + CaseUtil.getDoubleInString(dValue);
+					}
+				} else if (StringUtils.equals(caseMetaBaseDto.getFieldType(), CaseConstants.CASE_FIELD_TYPE_NUMBER)) {
+					Long dValue = (Long) new PropertyDescriptor(caseMetaBaseDto.getFieldName(), AppealBean.class).getReadMethod().invoke(appeal);
+					if (dValue != null) {
+						value = commonPDFHelper.formatNumber(String.valueOf(dValue));
+					}
+				} else if (StringUtils.equals(caseMetaBaseDto.getFieldType(), "CHECKBOX")) {
+					Boolean dValue = (Boolean) new PropertyDescriptor(caseMetaBaseDto.getFieldName(), AppealBean.class).getReadMethod().invoke(appeal);
+					if (dValue) {
+						value = "Y";
+					}
+				} else if (CaseConstants.CASE_FIELD_TYPE_DROPDOWN.equals(caseMetaBaseDto.getFieldType())) {
+					if (AppealsMetaBaseEnum.STATUS_CD.name().equalsIgnoreCase(caseMetaBaseDto.getFieldId())) {
+						value = appeal.getAppealStatusDesc();
+					} else if (AppealsMetaBaseEnum.TYPE_CD.name().equalsIgnoreCase(caseMetaBaseDto.getFieldId())) {
+						value = appeal.getAppealTypeDesc();
+					} else if (AppealsMetaBaseEnum.DECISION_CD.name().equalsIgnoreCase(caseMetaBaseDto.getFieldId())) {
+						value = appeal.getDecisionAppealDesc();
+					} else if (AppealsMetaBaseEnum.ASSIGNED_TO.name().equalsIgnoreCase(caseMetaBaseDto.getFieldId())) {
+						value = appeal.getAssignedUserName();
+					} else { // add for other scenarios of Cust Text type fields might be changed to Drop-Down type
+						value = (String) new PropertyDescriptor(caseMetaBaseDto.getFieldName(), AppealBean.class).getReadMethod().invoke(appeal);
+						for (LabelValueBean labelValueBean : caseMetaBaseDto.getFieldValidValues()) {
+							if (StringUtils.equals(labelValueBean.getValue(), value)) {
+								value = labelValueBean.getLabel();
+								break;
+							}
+						}
+					}
+				} else {
+					value = (String) new PropertyDescriptor(caseMetaBaseDto.getFieldName(), AppealBean.class).getReadMethod().invoke(appeal);
+				}
+
+			} catch (Exception e) {
+				logger.error("Exception in createCurrentAppealData: ", e);
+			}
+
+			if (!"TEXTAREA".equalsIgnoreCase(caseMetaBaseDto.getFieldType())) {
+				detailTable.addCell(commonPDFHelper.createFieldLabel(caseMetaBaseDto.getPrettyLabel()));
+			}
+			if ("TEXTAREA".equalsIgnoreCase(caseMetaBaseDto.getFieldType())) {
+					if (count != 0 && count % 2 != 0) {
+						Cell blankcell = new Cell();
+						blankcell.setBorder(Border.NO_BORDER);
+						detailTable.addCell(blankcell);
+						detailTable.addCell(blankcell);
+					}
+
+				Cell blankcell = new Cell();
+				blankcell.setBorder(Border.NO_BORDER);
+				detailTable.addCell(commonPDFHelper.createFieldLabel(caseMetaBaseDto.getPrettyLabel()));
+				Cell cell = new Cell(0, 3).add(commonPDFHelper.creatFieldValue(CaseUtil.findTrimText(StringUtils.defaultString(value, ""))));
+				cell.setBorder(Border.NO_BORDER);
+				detailTable.addCell(cell);
+			} else {
+				if (StringUtils.isBlank(value)) {
+					detailTable.addCell(commonPDFHelper.creatFieldValue(""));
+				} else {
+					detailTable.addCell(commonPDFHelper.creatFieldValue(CaseUtil.findTrimText(StringUtils.defaultString(value, ""))));
+				}
+			}
+			count++;
+		}
+		return detailTable;
+	}
+
+	private Table createPreviousAppealsData(List<AppealBean> prevAppeals, List<CaseMetaBaseDto> customFields) {
+		Table infoTable = new Table(new float[] {1});
+		infoTable.setWidthPercent(100);
+		Table detailTable = createAppealHeader(CaseLabel.APPEAL_PREVIOUS_HDR);
+		Cell infoCell = new Cell().add(detailTable);
+		infoCell.setBorder(Border.NO_BORDER);
+		infoTable.addCell(infoCell);
+
+		if (prevAppeals != null && prevAppeals.size()>0) {
+			for (AppealBean appeal : prevAppeals) {
+				infoTable.addCell(createAppeal(appeal, customFields, true));
+			}
+		} else {
+			PdfFont font = commonPDFHelper.getCustomFont();
+			Paragraph caseInfo = new Paragraph("No previous appeal.").setFont(font).setFontSize(8).setMarginRight(25);
+			Cell hcell = new Cell(0, 4).add(caseInfo);
+			hcell.setBorder(Border.NO_BORDER);
+			infoTable.addCell(hcell);
+		}
+
+		return infoTable;
+	}
+
+/*
+	private Table createCurrentAppealData(AppealBean appeal) {
+		Table infoTable = new Table(new float[] {1});
+		infoTable.setWidthPercent(100);
+		float[] widths = { 25, 25, 25, 25 };
+		Table detailTable = new Table(widths);
+		detailTable.setFixedLayout();
+		detailTable.setWidthPercent(100);
+		try {
+			PdfFont font = commonPDFHelper.getCustomBoldFont();
+			DeviceRgb deviceRgb = new DeviceRgb(194, 86, 8);
+			
+			Paragraph caseInfo = new Paragraph(CaseLabel.APPEAL_CURRENT_HDR).setFont(font).setFontSize(10).setFontColor(deviceRgb);
+			Cell cell = new Cell(0, 4).add(caseInfo);
+			cell.setBorder(Border.NO_BORDER);
+			
+			DeviceRgb gray=	new DeviceRgb(230, 234, 233);			
+			
+			detailTable.addCell(cell);
+			infoTable.addCell(detailTable);			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_TYPE, gray));			
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getAppealTypeDesc(), gray));			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_REQUESTED, gray));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getRequestedBy(), gray));			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_STATUS));			
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getAppealStatusDesc()));
+			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_ASSIGNED));
+			//String assigned = CaseUtil.getLabelDescription(validValueBean.getAllAnalysts(), appeal.getAssignedUserName());
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getAssignedUserName()));
+			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_DECISION, gray));			
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getDecisionAppealDesc(), gray));
+			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_OAC_NO, gray));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getOacNumber(), gray));
+			*/
+/*Cell oacCell = new Cell().add(commonPDFHelper.creatFieldValue(appeal.getOacNumber(), gray));
+			oacCell.setBorder(Border.NO_BORDER);
+			detailTable.addCell(oacCell);*//*
+
+
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_TXT_A));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getAplCustTxtA()));
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_TXT_B));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getAplCustTxtB()));
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_DATE_A, gray));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getAplCustDateA(), gray));
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_AMT_A, gray));
+			//String aplCustAmtA = appeal.getAplCustAmtA() != null ? String.valueOf(appeal.getAplCustAmtA()) : null;
+			//detailTable.addCell(commonPDFHelper.creatFieldValue(StringUtils.defaultString(aplCustAmtA, ""), gray));
+			String aplCustAmtA = appeal.getAplCustAmtA() != null ? String.valueOf(appeal.getAplCustAmtA()) : "";
+			String amount = commonPDFHelper.formatAmount(aplCustAmtA);
+			detailTable.addCell(commonPDFHelper.creatFieldValue(("$" + amount), gray));
+
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_START_DATE));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getStartOfAppealDt()));
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_PREHEARING_DATE));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getPrehearingDt()));
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_HEARING_DATE, gray));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getHearingDt(), gray));
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_CLOSED_DATE, gray));
+			detailTable.addCell(commonPDFHelper.creatFieldValue(appeal.getClosedDt(), gray));
+			
+			detailTable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_COMMENTS));
+			Cell commentCell = new Cell(0, 7);
+			commentCell.setBorder(Border.NO_BORDER);
+			commentCell.add(commonPDFHelper.creatFieldValue(appeal.getComments()));
+			
+			detailTable.addCell(commentCell);
+			Cell infoCell = new Cell().add(detailTable);			
+			infoTable.addCell(infoCell);
+
+		} catch (Exception e) {			
+			e.printStackTrace();
+		}
+		return detailTable;
+	}
+*/
+
+/*
+	private Table createPreviousAppealsData(Collection<AppealBean> prevAppeals) {
+		float[] widths = { 12, 13, 13, 13, 13, 13, 13, 13 };
+		Table detailTable = new Table(widths);
+		detailTable.setWidthPercent(100).setFixedLayout();;		
+		
+		try {
+			
+			PdfFont font = commonPDFHelper.getCustomBoldFont();
+		
+		
+		DeviceRgb deviceRgb = new DeviceRgb(194, 86, 8);
+		
+		Paragraph caseInfo = new Paragraph(CaseLabel.APPEAL_PREVIOUS_HDR).setFont(font).setFontSize(10).setFontColor(deviceRgb).setBorder(Border.NO_BORDER);
+		Cell cell = new Cell(0, 8).add(caseInfo);
+		
+		cell.setBorder(Border.NO_BORDER);
+
+		
+		detailTable.addCell(cell);
+		detailTable.setBorder(Border.NO_BORDER);		
+		
+		Iterator<AppealBean> itr = prevAppeals.iterator();
+		DeviceRgb gray=	new DeviceRgb(230, 234, 233);
+		DeviceRgb white=	new DeviceRgb(255, 255, 255);
+		DeviceRgb selectedColor = white;
+		while (itr.hasNext()) {
+			AppealBean appeal = itr.next();		
+			
+			createPreviousAppeal(detailTable, appeal, selectedColor);		
+			
+		}
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return detailTable;
+	}
+	
+	
+	private Table createPreviousAppeal(Table datatable, AppealBean appeal, DeviceRgb selectedColor) {
+		try {
+			PdfFont font = commonPDFHelper.getCustomFont();
+			PdfFont fontBold = commonPDFHelper.getCustomBoldFont();
+			
+			Text key = new Text(CaseLabel.APPEAL_ID).setFont(fontBold).setFontSize(8);
+			Text space = new Text("  ");
+			Text value = new Text(String.valueOf(appeal.getAppealId())).setFont(font).setFontSize(8);
+			Paragraph appealId = new Paragraph("");
+
+			List textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			appealId.addAll(textList);
+			Cell referenceCell = new Cell(0, 2).add(appealId).setFont(font).setFontSize(8);
+			referenceCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(referenceCell);
+
+			key = new Text(CaseLabel.APPEAL_TYPE).setFont(fontBold).setFontSize(8);
+			value = new Text(appeal.getAppealTypeDesc()).setFont(font).setFontSize(8);
+			Paragraph appealType = new Paragraph("");
+
+			textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			appealType.addAll(textList);
+			Cell dateCell = new Cell(0, 2).add(appealType);
+			dateCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(dateCell);
+
+			key = new Text(CaseLabel.APPEAL_START_DATE).setFont(fontBold).setFontSize(8);
+			value = new Text(appeal.getStartOfAppealDt()).setFont(font).setFontSize(8);
+			Paragraph letterDt = new Paragraph("");
+
+			textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			letterDt.addAll(textList);
+			Cell userCell = new Cell(0, 2).add(letterDt);
+			userCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(userCell);
+
+			key = new Text(CaseLabel.APPEAL_CLOSED_DATE).setFont(fontBold).setFontSize(8);
+			value = new Text(appeal.getClosedDt()).setFont(font).setFontSize(8);
+			Paragraph finalDt = new Paragraph("");
+			textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			finalDt.addAll(textList);
+			Cell textCell = new Cell(0, 2).add(finalDt);
+			textCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(textCell);
+
+			Paragraph empty = new Paragraph("");
+			textList = new ArrayList();
+			textList.add(space);
+			empty.addAll(textList);
+			Cell emptyCell = new Cell(0, 2).add(empty);
+			emptyCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(emptyCell);
+
+			key = new Text(CaseLabel.APPEAL_STATUS).setFont(fontBold).setFontSize(8);
+			value = new Text(appeal.getAppealStatusDesc()).setFont(font).setFontSize(8);
+			Paragraph aplStatus = new Paragraph("");
+			textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			aplStatus.addAll(textList);
+			Cell aplStCell = new Cell(0, 2).add(aplStatus);
+			aplStCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(aplStCell);
+
+			key = new Text(CaseLabel.APPEAL_REQUESTED).setFont(fontBold).setFontSize(8);
+			value = new Text(appeal.getRequestedBy()).setFont(font).setFontSize(8);
+			Paragraph requestBy = new Paragraph("");
+			textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			requestBy.addAll(textList);
+			Cell requestByCell = new Cell(0, 2).add(requestBy);
+			requestByCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(requestByCell);
+
+			key = new Text(CaseLabel.APPEAL_ASSIGNED).setFont(fontBold).setFontSize(8);
+			value = new Text(appeal.getAssignedUserName()).setFont(font).setFontSize(8);
+			Paragraph assigned = new Paragraph("");
+			textList = new ArrayList();
+			textList.add(key);
+			textList.add(space);
+			textList.add(value);
+			assigned.addAll(textList);
+			Cell assignedCell = new Cell(0, 2).add(assigned);
+			assignedCell.setBorder(Border.NO_BORDER).setBackgroundColor(selectedColor);
+			datatable.addCell(assignedCell);
+
+			DeviceRgb gray=	new DeviceRgb(230, 234, 233);
+			
+			//datatable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_STATUS, gray));
+			//datatable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_REQUESTED, gray));
+			//datatable.addCell(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_ASSIGNED, gray));
+			
+			Cell appealDecisionCell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_DECISION, gray));
+			appealDecisionCell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(appealDecisionCell);
+			
+			Cell appealPreHearingCell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_PREHEARING_DATE, gray));
+			appealPreHearingCell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(appealPreHearingCell);
+			
+			Cell appealHearingCell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_HEARING_DATE, gray));
+			appealHearingCell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(appealHearingCell);
+			
+			Cell oacCell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APPEAL_OAC_NO, gray));
+			oacCell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(oacCell);
+			
+			Cell decisionValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getDecisionAppealDesc()));
+			decisionValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(decisionValueCell);
+			
+			Cell preHearingValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getPrehearingDt()));
+			preHearingValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(preHearingValueCell);
+			
+			Cell hearingValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getHearingDt()));
+			hearingValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(hearingValueCell);
+			
+			Cell oacValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getOacNumber()));
+			oacValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(oacValueCell);
+			
+			Cell custTxtACell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_TXT_A, gray));
+			custTxtACell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(custTxtACell);
+			
+			Cell custTxtBCell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_TXT_B, gray));
+			custTxtBCell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(custTxtBCell);
+			
+			Cell custDateACell = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_DATE_A, gray));
+			custDateACell.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(custDateACell);
+			
+			Cell custAmtA = new Cell(0, 2).add(commonPDFHelper.createFieldLabel(CaseLabel.APL_CUST_AMT_A, gray));
+			custAmtA.setBorder(Border.NO_BORDER).setBackgroundColor(gray);
+			datatable.addCell(custAmtA);
+			
+			Cell custTxtAValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getAplCustTxtA()));
+			custTxtAValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(custTxtAValueCell);
+			
+			Cell custTxtBValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getAplCustTxtB()));
+			custTxtBValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(custTxtBValueCell);
+			
+			Cell custDateAValueCell = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(appeal.getAplCustDateA()));
+			custDateAValueCell.setBorder(Border.NO_BORDER);
+			datatable.addCell(custDateAValueCell);
+
+			String aplCustAmtA = appeal.getAplCustAmtA() != null ? String.valueOf(appeal.getAplCustAmtA()) : "";
+			String amount = commonPDFHelper.formatAmount(aplCustAmtA);
+			//detailTable.addCell(commonPDFHelper.creatFieldValue(("$" + amount), gray));
+			//Cell custAmtAValue = new Cell(0, 2).add(commonPDFHelper.creatFieldValue(String.valueOf(appeal.getAplCustAmtA())));
+			Cell custAmtAValue = new Cell(0, 2).add(commonPDFHelper.creatFieldValue("$" + amount));
+			custAmtAValue.setBorder(Border.NO_BORDER);
+			datatable.addCell(custAmtAValue);
+			
+			//datatable.addCell(commonPDFHelper.creatFieldValue(appeal.getAppealStatusDesc()));
+			//datatable.addCell(commonPDFHelper.creatFieldValue(appeal.getRequestedBy()));
+			//datatable.addCell(commonPDFHelper.creatFieldValue(appeal.getAssignedUserName()));
+
+			Cell commentFieldCell = new Cell();
+			commentFieldCell.setBorderTop(Border.NO_BORDER);
+			commentFieldCell.setBorderLeft(Border.NO_BORDER);
+			commentFieldCell.setBorderRight(Border.NO_BORDER);
+			commentFieldCell.add(commonPDFHelper.createFieldLabel("Comments", gray));
+			datatable.addCell(commentFieldCell);
+			
+			Cell commentValueCell = new Cell(0,7);
+			commentValueCell.setBorderTop(Border.NO_BORDER);
+			commentValueCell.setBorderLeft(Border.NO_BORDER);
+			commentValueCell.setBorderRight(Border.NO_BORDER);
+			commentValueCell.add(commonPDFHelper.creatFieldValue(appeal.getComments()));			
+			datatable.addCell(commentValueCell);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return datatable;
+	}
+*/
+
+}
+
+
+getting another error after reosloving the previous one is this ?
