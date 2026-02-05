@@ -1,157 +1,47 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
+protected void configure(final HttpSecurity http) throws Exception {
+		// String authType = env.getProperty("security.authentication.type").trim();
+		if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
+			// System.out.println("****authType::"+authType);
+			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
+			http.headers().frameOptions().disable();
+			http.addFilterBefore(ssoTokenFilter(), BasicAuthenticationFilter.class);
 
-  <parent>
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads</artifactId>
-    <version>8.1.2-SNAPSHOT</version>
-  </parent>
+			http.authorizeRequests().antMatchers("/**").permitAll().anyRequest().authenticated();
+			http.authorizeRequests()
+					.antMatchers("/login/**", "/signup", "/sessionexpired", "/logout", "/logout/**", "/signout/**",
+							"/signout", "/sessionout", "/styles/**", "/images/**", "/bower_components/**",
+							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/fonts/**")
+					.permitAll().anyRequest().authenticated();
 
-	<artifactId>fads-base</artifactId>
-	<packaging>jar</packaging>
+			http.logout().logoutRequestMatcher(new AntPathRequestMatcher("/signout")).logoutSuccessUrl("/signout")
+					.deleteCookies("JSESSIONID").invalidateHttpSession(true);
 
-	<name>fads-base</name>
-	<url>http://maven.apache.org</url>
+			http.exceptionHandling().authenticationEntryPoint(authEntryPoint).accessDeniedHandler(accessDeniedHandler);
+		} else {
 
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
+			http.headers().frameOptions().disable();
+			http// .authenticationProvider(new FadsAuthenticationProvider(authentService))
+					.formLogin().loginPage("/login").defaultSuccessUrl("/", true)
+					.failureUrl(FORM_LOGIN_DEFAULT_FAILURE_URL).usernameParameter(FORM_LOGIN_USERNAME_PARAM)
+					.passwordParameter("password").successHandler(new AuthenticationSuccessHandlerImpl())
+					.failureHandler(new AuthenticationFailureHandlerImpl(FORM_LOGIN_USERNAME_PARAM,
+							FORM_LOGIN_DEFAULT_FAILURE_URL))
+					.permitAll();
 
-		<junit.version>4.11</junit.version>
-		<log4j.version>2.25.3</log4j.version>
+			configureSessionManagement(http);
 
-	</properties>
-	<!-- ToDo: do more cleanup of dependencies, like spring-->
-	<dependencies>
+			http.logout().logoutUrl("/signout").invalidateHttpSession(true)
+					.logoutSuccessHandler(new LogoutSuccessHandlerImpl());
 
-	
-	<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-api</artifactId>
-		<version>${log4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-1.2-api</artifactId>
-		<version>${log4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-			<version>${log4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-beanutils</groupId>
-			<artifactId>commons-beanutils</artifactId>
-			<version>1.11.0</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
-			<version>2.5</version>
-		</dependency>
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.18.0</version>
-		</dependency>
+			http.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class);
+			// Http URL Filters
 
-		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>kernel</artifactId>
-			<version>7.0.2</version>
-		</dependency>
+			http.authorizeRequests()
+					.antMatchers("/license", "/termsofuse", "/privacypolicy", "/contactus", "/sessionexpired",
+							"/sessionout", "/signup", "/login/**", "/styles/**", "/images/**", "/bower_components/**",
+							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/webHelp/**")
+					.permitAll().anyRequest().authenticated();
 
-		<!-- always needed -->
-		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>io</artifactId>
-			<version>7.0.2</version>
-		</dependency>
-
-		<!-- always needed -->
-		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>layout</artifactId>
-			<version>7.0.2</version>
-		</dependency>
-
-		<!-- only needed for forms -->
-		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>forms</artifactId>
-			<version>7.0.2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.itextpdf</groupId>
-			<artifactId>pdfa</artifactId>
-			<version>7.0.2</version>
-		</dependency>
-
-
-		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-all</artifactId>
-			<version>1.8.4</version>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>${jackson.version}</version>
-		</dependency>
-
-		<!--
-         <dependency>
-           <groupId>org.slf4j</groupId>
-           <artifactId>slf4j-api</artifactId>
-           <version>1.5.0</version>
-         </dependency>
-
-
-             <dependency>
-               <groupId>commons-beanutils</groupId>
-               <artifactId>commons-beanutils</artifactId>
-               <version>1.11.0</version>
-             </dependency>
-             <dependency>
-               <groupId>commons-lang</groupId>
-               <artifactId>commons-lang</artifactId>
-               <version>2.5</version>
-             </dependency>
-             <dependency>
-               <groupId>org.apache.commons</groupId>
-               <artifactId>commons-lang3</artifactId>
-               <version>3.18.0</version>
-             </dependency>
-
-
-     <dependency>
-             <groupId>com.optum.uitk</groupId>
-             <artifactId>uitk-core</artifactId>
-             <version>${uitk.version}</version>
-         </dependency> -->
-	</dependencies>
-</project>    <!-- always needed -->
-
-
-
-C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-base>mvn clean install -Dmaven.test.skip=true
-[INFO] Scanning for projects...
-[ERROR] [ERROR] Some problems were encountered while processing the POMs:
-[FATAL] Non-parseable POM C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml: end tag name </pluginManagement> must match start tag name <plugins> from line 199 (position: TEXT seen ...</plugin>\n\n\t\t\t\t\n\t\t</pluginManagement>... @211:22)  @ C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml, line 211, column 22
- @
-[ERROR] The build could not read 1 project -> [Help 1]
-[ERROR]
-[ERROR]   The project com.optum.fads:fads-base:8.1.2-SNAPSHOT (C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-base\pom.xml) has 1 error
-[ERROR]     Non-parseable POM C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml: end tag name </pluginManagement> must match start tag name <plugins> from line 199 (position: TEXT seen ...</plugin>\n\n\t\t\t\t\n\t\t</pluginManagement>... @211:22)  @ C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml, line 211, column 22 -> [Help 2]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
-[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/ModelParseException
-
-C:\Users\sgupt664\BE_Projects\fads-ui-components\fads-base>
+		}
+	}
