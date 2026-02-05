@@ -60,3 +60,51 @@
 
         return resultListSize;
     }
+
+ @Override
+    public List<AssociationListItem> findAllCaseAssociations(Map<String,String> filterConditions,
+                                           Map<String,String> sortConditions,
+                                           final int firstRecord, final int maxRecords, String[] nodes) {
+        StringBuilder sb = new StringBuilder();
+        getFindAllQuerySelectFrom(sb);
+
+        sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
+
+        if (ArrayUtils.isNotEmpty(nodes)) {
+            sb.append(" and c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd IN (:nodeList) ");
+        }
+
+        // CODEQL FIX START
+        Map<String, String> safeParams = buildSafeParamMap(filterConditions);
+        getFindAllQueryFilters(sb, filterConditions, safeParams);
+        // CODEQL FIX END
+
+        getFindAllQueryOrderBy(sb, sortConditions);
+
+        final String queryString = sb.toString();
+        List<AssociationListItem> resultList = new ArrayList<>();
+        try {
+            Query query = getCurrentSession().createQuery(queryString);
+
+            if (ArrayUtils.isNotEmpty(nodes)) {
+                query.setParameterList("nodeList", nodes);
+            }
+
+            // CODEQL FIX START
+            setFindAllQueryFilters(query, filterConditions, safeParams);
+
+            // REMOVE THIS BLOCK (it reintroduces CodeQL issue and can bind wrong values)
+            // for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
+            //     query.setParameter(entry.getKey(), entry.getValue());
+            // }
+            // CODEQL FIX END
+
+            query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
+            query.setFirstResult(firstRecord);
+            query.setMaxResults(maxRecords);
+
+            resultList = query.list();
+        } catch (Exception e) {
+            log.error("Exception in findAllCaseAssociations: ", e);
+            throw e;
+        }
