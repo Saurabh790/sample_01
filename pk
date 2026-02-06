@@ -1,3 +1,29 @@
+SELECT COUNT(*) AS pending_rows
+FROM CA_UNIVERSE_BATCH_T
+WHERE REC_MATCH_IND IS NULL;
+If this is 0, the job runs but does nothing.
+
+2) Confirm the cron value actually updated
+
+sql
+
+SELECT OPTION_VALUE
+FROM CASE_CONFIG_T
+WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
+3) Confirm Quartz is using the new cron
+In logs you should see:
+casebatchJobTrigger set up with Cron Expression 0 0/1 * ? * *
+
+If you don’t see that after restart, Quartz is still reading the old value or app didn’t restart.
+
+4) Confirm the job actually fires
+Search logs for:
+
+CaseEntryBatchJob execution
+any createBatchCase or createIndBatchCaseEntries
+errors after trigger
+
+
 SELECT *
 FROM CASE_CONFIG_T
 WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
