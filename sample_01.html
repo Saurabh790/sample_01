@@ -1,3 +1,200 @@
+il end
+2026-02-06T12:50:00.474+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : Next Batch Id = 36
+2026-02-06T12:50:00.608+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 36
+2026-02-06T12:50:00.616+05:30  WARN 26244 --- [eduler_Worker-6] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 0, SQLState: S1093
+2026-02-06T12:50:00.617+05:30 ERROR 26244 --- [eduler_Worker-6] o.h.engine.jdbc.spi.SqlExceptionHelper   : The column name claim_status_desc is not valid.
+2026-02-06T12:50:00.619+05:30 ERROR 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  :  Case Batch Processing failed for Batch ID 36
+2026-02-06T12:50:00.619+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n/a]
+2026-02-06T12:50:00.619+05:30 ERROR 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : Exception Trace:
+
+org.springframework.orm.jpa.JpaSystemException: Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n/a]
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:348)
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:256)
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:560)
+        at org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61)
+        at org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:343)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.jpa.repository.support.CrudMethodMetadataPostProcessor$CrudMethodMetadataPopulatingMethodInterceptor.invoke(CrudMethodMetadataPostProcessor.java:136)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:223)
+        at jdk.proxy2/jdk.proxy2.$Proxy162.findClaimDrugTbyId(Unknown Source)
+        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createCaUniverseTList(CaseBatchService.java:215)
+        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCaseEntries(CaseBatchService.java:96)
+        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCase(CaseBatchService.java:77)
+        at com.optum.fads.caseentrybatch.api.job.CaseEntryBatchJob.executeInternal(CaseEntryBatchJob.java:21)
+        at org.springframework.scheduling.quartz.QuartzJobBean.execute(QuartzJobBean.java:75)
+        at org.quartz.core.JobRunShell.run(JobRunShell.java:203)
+        at org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:566)
+Caused by: org.hibernate.exception.GenericJDBCException: Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n/a]
+        at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:61)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:94)
+        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.resolveColumnPosition(AbstractResultSetAccess.java:70)
+        at org.hibernate.query.results.ResultsHelper.lambda$resolveSqlExpression$0(ResultsHelper.java:64)
+        at org.hibernate.query.results.DomainResultCreationStateImpl.resolveSqlExpression(DomainResultCreationStateImpl.java:280)
+        at org.hibernate.query.results.ResultsHelper.resolveSqlExpression(ResultsHelper.java:58)
+        at org.hibernate.query.results.implicit.ImplicitFetchBuilderBasic.buildFetch(ImplicitFetchBuilderBasic.java:97)
+        at org.hibernate.query.results.implicit.ImplicitFetchBuilderBasic.buildFetch(ImplicitFetchBuilderBasic.java:37)
+        at org.hibernate.query.results.DomainResultCreationStateImpl.lambda$createFetchableConsumer$3(DomainResultCreationStateImpl.java:541)
+        at org.hibernate.metamodel.mapping.internal.ImmutableAttributeMappingList.forEach(ImmutableAttributeMappingList.java:49)
+        at org.hibernate.persister.entity.AbstractEntityPersister.visitFetchables(AbstractEntityPersister.java:5742)
+        at org.hibernate.query.results.DomainResultCreationStateImpl.visitFetches(DomainResultCreationStateImpl.java:456)
+        at org.hibernate.sql.results.graph.AbstractFetchParent.afterInitialize(AbstractFetchParent.java:32)
+        at org.hibernate.sql.results.graph.entity.AbstractEntityResultGraphNode.afterInitialize(AbstractEntityResultGraphNode.java:65)
+        at org.hibernate.persister.entity.AbstractEntityPersister.createDomainResult(AbstractEntityPersister.java:1243)
+        at org.hibernate.query.results.dynamic.DynamicResultBuilderEntityCalculated.buildResult(DynamicResultBuilderEntityCalculated.java:134)
+        at org.hibernate.query.results.dynamic.DynamicResultBuilderEntityCalculated.buildResult(DynamicResultBuilderEntityCalculated.java:31)
+        at org.hibernate.query.results.ResultSetMappingImpl.resolve(ResultSetMappingImpl.java:229)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.resolveJdbcValuesSource(JdbcSelectExecutorStandardImpl.java:477)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.doExecuteQuery(JdbcSelectExecutorStandardImpl.java:267)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.executeQuery(JdbcSelectExecutorStandardImpl.java:168)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.list(JdbcSelectExecutorStandardImpl.java:93)
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:31)
+        at org.hibernate.query.sql.internal.NativeSelectQueryPlanImpl.performList(NativeSelectQueryPlanImpl.java:97)
+        at org.hibernate.query.sql.internal.NativeQueryImpl.doList(NativeQueryImpl.java:621)
+        at org.hibernate.query.spi.AbstractSelectionQuery.list(AbstractSelectionQuery.java:367)
+        at org.hibernate.query.spi.AbstractSelectionQuery.getSingleResult(AbstractSelectionQuery.java:473)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution$SingleEntityExecution.doExecute(JpaQueryExecution.java:226)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution.execute(JpaQueryExecution.java:95)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.doExecute(AbstractJpaQuery.java:160)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.execute(AbstractJpaQuery.java:148)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:170)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
+        ... 12 common frames omitted
+Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: The column name claim_status_desc is not valid.
+        at com.microsoft.sqlserver.jdbc.SQLServerException.makeFromDriverError(SQLServerException.java:250)
+        at com.microsoft.sqlserver.jdbc.SQLServerResultSet.findColumn(SQLServerResultSet.java:751)
+        at com.zaxxer.hikari.pool.HikariProxyResultSet.findColumn(HikariProxyResultSet.java)
+        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.resolveColumnPosition(AbstractResultSetAccess.java:65)
+        ... 51 common frames omitted
+
+2026-02-06T12:50:00.621+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : The column name claim_status_desc is not valid.
+2026-02-06T12:50:00.634+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:getEmailSpecs SmtpHostName is null, Using Azure Logic App
+2026-02-06T12:50:00.636+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
+
+2026-02-06T12:50:00.650+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 36 Failed
+2026-02-06T12:50:00.650+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 36 Failed","EmailText":"Case Batch ID 36 failed.  A case management administrator will resolve the batch error and resubmit the batch ID for processing. Once complete, you will receive a successful batch email.","SendTo":"anil.wagh@optum.com"}
+2026-02-06T12:50:00.650+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
+2026-02-06T12:50:00.925+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : saveEmailBatchT Batch Id 36 Notice ID NBFU toEmail anil.wagh@optum.com User ID ca88510043 Email Type Fail
+2026-02-06T12:50:00.934+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail end
+2026-02-06T12:50:00.934+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
+
+2026-02-06T12:50:00.949+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 36 Failed
+2026-02-06T12:50:00.950+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 36 Failed","EmailText":"Case Batch ID 36 failed. See error log: Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n\/a], The column name claim_status_desc is not valid..","SendTo":"anil.wagh@optum.com"}
+2026-02-06T12:50:00.950+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
+2026-02-06T12:50:01.052+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : saveEmailBatchT Batch Id 36 Notice ID NBFA toEmail anil.wagh@optum.com User ID ca88510043 Email Type Fail
+2026-02-06T12:50:01.060+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail end
+2026-02-06T12:50:01.060+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.api.job.CaseEntryBatchJob        : Create Batch Case job end...
+2026-02-06T12:51:00.002+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.api.job.CaseEntryBatchJob        : Create Batch Case job is starting...
+2026-02-06T12:51:00.002+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  :  Run Case Batch
+2026-02-06T12:51:00.015+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  : Next Batch Id = 35
+2026-02-06T12:51:00.021+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 35
+2026-02-06T12:51:00.029+05:30  WARN 26244 --- [eduler_Worker-7] o.h.engine.jdbc.spi.SqlExceptionHelper   : SQL Error: 0, SQLState: S1093
+2026-02-06T12:51:00.029+05:30 ERROR 26244 --- [eduler_Worker-7] o.h.engine.jdbc.spi.SqlExceptionHelper   : The column name claim_status_desc is not valid.
+2026-02-06T12:51:00.030+05:30 ERROR 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  :  Case Batch Processing failed for Batch ID 35
+2026-02-06T12:51:00.030+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  : Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n/a]
+2026-02-06T12:51:00.030+05:30 ERROR 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  : Exception Trace:
+
+org.springframework.orm.jpa.JpaSystemException: Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n/a]
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:348)
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:256)
+        at org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:241)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.translateExceptionIfPossible(AbstractEntityManagerFactoryBean.java:560)
+        at org.springframework.dao.support.ChainedPersistenceExceptionTranslator.translateExceptionIfPossible(ChainedPersistenceExceptionTranslator.java:61)
+        at org.springframework.dao.support.DataAccessUtils.translateIfNecessary(DataAccessUtils.java:343)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:160)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.jpa.repository.support.CrudMethodMetadataPostProcessor$CrudMethodMetadataPopulatingMethodInterceptor.invoke(CrudMethodMetadataPostProcessor.java:136)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:223)
+        at jdk.proxy2/jdk.proxy2.$Proxy162.findClaimDrugTbyId(Unknown Source)
+        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createCaUniverseTList(CaseBatchService.java:215)
+        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCaseEntries(CaseBatchService.java:96)
+        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCase(CaseBatchService.java:77)
+        at com.optum.fads.caseentrybatch.api.job.CaseEntryBatchJob.executeInternal(CaseEntryBatchJob.java:21)
+        at org.springframework.scheduling.quartz.QuartzJobBean.execute(QuartzJobBean.java:75)
+        at org.quartz.core.JobRunShell.run(JobRunShell.java:203)
+        at org.quartz.simpl.SimpleThreadPool$WorkerThread.run(SimpleThreadPool.java:566)
+Caused by: org.hibernate.exception.GenericJDBCException: Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n/a]
+        at org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:61)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:108)
+        at org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:94)
+        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.resolveColumnPosition(AbstractResultSetAccess.java:70)
+        at org.hibernate.query.results.ResultsHelper.lambda$resolveSqlExpression$0(ResultsHelper.java:64)
+        at org.hibernate.query.results.DomainResultCreationStateImpl.resolveSqlExpression(DomainResultCreationStateImpl.java:280)
+        at org.hibernate.query.results.ResultsHelper.resolveSqlExpression(ResultsHelper.java:58)
+        at org.hibernate.query.results.implicit.ImplicitFetchBuilderBasic.buildFetch(ImplicitFetchBuilderBasic.java:97)
+        at org.hibernate.query.results.implicit.ImplicitFetchBuilderBasic.buildFetch(ImplicitFetchBuilderBasic.java:37)
+        at org.hibernate.query.results.DomainResultCreationStateImpl.lambda$createFetchableConsumer$3(DomainResultCreationStateImpl.java:541)
+        at org.hibernate.metamodel.mapping.internal.ImmutableAttributeMappingList.forEach(ImmutableAttributeMappingList.java:49)
+        at org.hibernate.persister.entity.AbstractEntityPersister.visitFetchables(AbstractEntityPersister.java:5742)
+        at org.hibernate.query.results.DomainResultCreationStateImpl.visitFetches(DomainResultCreationStateImpl.java:456)
+        at org.hibernate.sql.results.graph.AbstractFetchParent.afterInitialize(AbstractFetchParent.java:32)
+        at org.hibernate.sql.results.graph.entity.AbstractEntityResultGraphNode.afterInitialize(AbstractEntityResultGraphNode.java:65)
+        at org.hibernate.persister.entity.AbstractEntityPersister.createDomainResult(AbstractEntityPersister.java:1243)
+        at org.hibernate.query.results.dynamic.DynamicResultBuilderEntityCalculated.buildResult(DynamicResultBuilderEntityCalculated.java:134)
+        at org.hibernate.query.results.dynamic.DynamicResultBuilderEntityCalculated.buildResult(DynamicResultBuilderEntityCalculated.java:31)
+        at org.hibernate.query.results.ResultSetMappingImpl.resolve(ResultSetMappingImpl.java:229)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.resolveJdbcValuesSource(JdbcSelectExecutorStandardImpl.java:477)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.doExecuteQuery(JdbcSelectExecutorStandardImpl.java:267)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.executeQuery(JdbcSelectExecutorStandardImpl.java:168)
+        at org.hibernate.sql.exec.internal.JdbcSelectExecutorStandardImpl.list(JdbcSelectExecutorStandardImpl.java:93)
+        at org.hibernate.sql.exec.spi.JdbcSelectExecutor.list(JdbcSelectExecutor.java:31)
+        at org.hibernate.query.sql.internal.NativeSelectQueryPlanImpl.performList(NativeSelectQueryPlanImpl.java:97)
+        at org.hibernate.query.sql.internal.NativeQueryImpl.doList(NativeQueryImpl.java:621)
+        at org.hibernate.query.spi.AbstractSelectionQuery.list(AbstractSelectionQuery.java:367)
+        at org.hibernate.query.spi.AbstractSelectionQuery.getSingleResult(AbstractSelectionQuery.java:473)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution$SingleEntityExecution.doExecute(JpaQueryExecution.java:226)
+        at org.springframework.data.jpa.repository.query.JpaQueryExecution.execute(JpaQueryExecution.java:95)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.doExecute(AbstractJpaQuery.java:160)
+        at org.springframework.data.jpa.repository.query.AbstractJpaQuery.execute(AbstractJpaQuery.java:148)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.doInvoke(RepositoryMethodInvoker.java:170)
+        at org.springframework.data.repository.core.support.RepositoryMethodInvoker.invoke(RepositoryMethodInvoker.java:158)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.doInvoke(QueryExecutorMethodInterceptor.java:170)
+        at org.springframework.data.repository.core.support.QueryExecutorMethodInterceptor.invoke(QueryExecutorMethodInterceptor.java:149)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.data.projection.DefaultMethodInvokingMethodInterceptor.invoke(DefaultMethodInvokingMethodInterceptor.java:69)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:380)
+        at org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+        at org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:184)
+        at org.springframework.dao.support.PersistenceExceptionTranslationInterceptor.invoke(PersistenceExceptionTranslationInterceptor.java:138)
+        ... 12 common frames omitted
+Caused by: com.microsoft.sqlserver.jdbc.SQLServerException: The column name claim_status_desc is not valid.
+        at com.microsoft.sqlserver.jdbc.SQLServerException.makeFromDriverError(SQLServerException.java:250)
+        at com.microsoft.sqlserver.jdbc.SQLServerResultSet.findColumn(SQLServerResultSet.java:751)
+        at com.zaxxer.hikari.pool.HikariProxyResultSet.findColumn(HikariProxyResultSet.java)
+        at org.hibernate.sql.results.jdbc.internal.AbstractResultSetAccess.resolveColumnPosition(AbstractResultSetAccess.java:65)
+        ... 51 common frames omitted
+
+2026-02-06T12:51:00.032+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.service.impl.CaseBatchService  : The column name claim_status_desc is not valid.
+2026-02-06T12:51:00.046+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:getEmailSpecs SmtpHostName is null, Using Azure Logic App
+2026-02-06T12:51:00.048+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
+
+2026-02-06T12:51:00.059+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 35 Failed
+2026-02-06T12:51:00.060+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 35 Failed","EmailText":"Case Batch ID 35 failed.  A case management administrator will resolve the batch error and resubmit the batch ID for processing. Once complete, you will receive a successful batch email.","SendTo":"anil.wagh@optum.com"}
+2026-02-06T12:51:00.060+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
+2026-02-06T12:51:00.257+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.s.impl.CaseBatchEmailService   : saveEmailBatchT Batch Id 35 Notice ID NBFU toEmail anil.wagh@optum.com User ID ca88510043 Email Type Fail
+2026-02-06T12:51:00.262+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail end
+2026-02-06T12:51:00.263+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
+
+2026-02-06T12:51:00.277+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 35 Failed
+2026-02-06T12:51:00.277+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 35 Failed","EmailText":"Case Batch ID 35 failed. See error log: Unable to find column position by name: claim_status_desc [The column name claim_status_desc is not valid.] [n\/a], The column name claim_status_desc is not valid..","SendTo":"anil.wagh@optum.com"}
+2026-02-06T12:51:00.277+05:30  INFO 26244 --- [eduler_Worker-7] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
+2026-02-06T12:51:00.414+05:30  INFO 26244 --- [eduler_Wo
+
+
 HDR_CLM_TCN
 HDR_CLM_TYPE_CD
 HDR_BILL_TYPE_CD
