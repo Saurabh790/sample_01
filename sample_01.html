@@ -1,5 +1,51 @@
-@Override protected void configure(final HttpSecurity http) throws Exception { // String authType = env.getProperty("security.authentication.type").trim(); if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) { // System.out.println("****authType::"+authType); http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher()); http.headers().frameOptions().disable(); http.addFilterBefore(ssoTokenFilter(), BasicAuthenticationFilter.class); http.authorizeRequests() .antMatchers("/login/**", "/signup", "/sessionexpired", "/logout", "/logout/**", "/signout/**", "/signout", "/sessionout", "/styles/**", "/images/**", "/bower_components/**", "/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/fonts/**") .permitAll().anyRequest().authenticated(); http.logout().logoutRequestMatcher(new AntPathRequestMatcher("/signout")).logoutSuccessUrl("/signout") .deleteCookies("JSESSIONID").invalidateHttpSession(true); http.exceptionHandling().authenticationEntryPoint(authEntryPoint).accessDeniedHandler(accessDeniedHandler); } else { http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher()); http.headers().frameOptions().disable(); http// .authenticationProvider(new FadsAuthenticationProvider(authentService)) .formLogin().loginPage("/login").defaultSuccessUrl("/", true) .failureUrl(FORM_LOGIN_DEFAULT_FAILURE_URL).usernameParameter(FORM_LOGIN_USERNAME_PARAM) .passwordParameter("password").successHandler(new AuthenticationSuccessHandlerImpl()) .failureHandler(new AuthenticationFailureHandlerImpl(FORM_LOGIN_USERNAME_PARAM, FORM_LOGIN_DEFAULT_FAILURE_URL)) .permitAll(); configureSessionManagement(http); http.logout().logoutUrl("/signout").invalidateHttpSession(true) .logoutSuccessHandler(new LogoutSuccessHandlerImpl()); http.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class); // Http URL Filters http.authorizeRequests() .antMatchers("/license", "/termsofuse", "/privacypolicy", "/contactus", "/sessionexpired", "/sessionout", "/signup", "/login/**", "/styles/**", "/images/**", "/bower_components/**", "/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/webHelp/**") .permitAll().anyRequest().authenticated(); } }
+is this fine now
+@Override
+	protected void configure(final HttpSecurity http) throws Exception {
+		// String authType = env.getProperty("security.authentication.type").trim();
+		if (SECURITY_AUTH_TYPE_OPENTOKEN.equalsIgnoreCase(authType)) {
+			// System.out.println("****authType::"+authType);
+			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
+			http.headers().frameOptions().disable();
+			http.addFilterBefore(ssoTokenFilter(), BasicAuthenticationFilter.class);
 
+			http.authorizeRequests()
+					.antMatchers("/login/**", "/signup", "/sessionexpired", "/logout", "/logout/**", "/signout/**",
+							"/signout", "/sessionout", "/styles/**", "/images/**", "/bower_components/**",
+							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/fonts/**")
+					.permitAll().anyRequest().authenticated();
+
+			http.logout().logoutRequestMatcher(new AntPathRequestMatcher("/signout")).logoutSuccessUrl("/signout")
+					.deleteCookies("JSESSIONID").invalidateHttpSession(true);
+
+			http.exceptionHandling().authenticationEntryPoint(authEntryPoint).accessDeniedHandler(accessDeniedHandler);
+		} else {
+
+			http.csrf().requireCsrfProtectionMatcher(new CsrfSecurityRequestMatcher());
+			http.headers().frameOptions().disable();
+			http// .authenticationProvider(new FadsAuthenticationProvider(authentService))
+					.formLogin().loginPage("/login").defaultSuccessUrl("/", true)
+					.failureUrl(FORM_LOGIN_DEFAULT_FAILURE_URL).usernameParameter(FORM_LOGIN_USERNAME_PARAM)
+					.passwordParameter("password").successHandler(new AuthenticationSuccessHandlerImpl())
+					.failureHandler(new AuthenticationFailureHandlerImpl(FORM_LOGIN_USERNAME_PARAM,
+							FORM_LOGIN_DEFAULT_FAILURE_URL))
+					.permitAll();
+
+			configureSessionManagement(http);
+
+			http.logout().logoutUrl("/signout").invalidateHttpSession(true)
+					.logoutSuccessHandler(new LogoutSuccessHandlerImpl());
+
+			http.addFilterAfter(new CsrfTokenGeneratorFilter(), CsrfFilter.class);
+			// Http URL Filters
+
+			http.authorizeRequests()
+					.antMatchers("/license", "/termsofuse", "/privacypolicy", "/contactus", "/sessionexpired",
+							"/sessionout", "/signup", "/login/**", "/styles/**", "/images/**", "/bower_components/**",
+							"/uitk-core/**", "/app/**", "/css/**", "/uitk/**", "/webHelp/**")
+					.permitAll().anyRequest().authenticated();
+
+		}
+	}
 il end
 2026-02-06T12:50:00.474+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : Next Batch Id = 36
 2026-02-06T12:50:00.608+05:30  INFO 26244 --- [eduler_Worker-6] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 36
