@@ -1,3 +1,58 @@
+
+SELECT TOP 1 *
+FROM CA_UNIVERSE_BATCH_T
+WHERE REC_MATCH_IND IS NULL
+ORDER BY CT_BATCH_DATE DESC;
+Note these values from that row:
+
+CT_BATCH_ID
+CT_BATCH_DATE
+HDR_CLM_TCN
+LI_NUM
+HDR_CLM_PD_DT
+Step 2: Find its row in CA_UNIVERSE_T (the “output” universe table)
+
+SELECT *
+FROM CA_UNIVERSE_T
+WHERE CT_BATCH_ID = :ct_batch_id
+  AND CT_BATCH_DATE = :ct_batch_date
+  AND HDR_CLM_TCN = :hdr_clm_tcn
+  AND LI_NUM = :li_num
+  AND HDR_CLM_PD_DT = :hdr_clm_pd_dt;
+This row should have CASE_ID, CA_SEQUENCE_ID, CLM_SEQ_NUM. That CASE_ID is the key that fans out to the other tables.
+
+Step 3: Verify that case exists in all case tables
+
+-- master key
+SELECT * FROM CA_INTELLIGENT_KEY_T WHERE CASE_ID = :case_id;
+
+-- general
+SELECT * FROM CA_GENERAL_T WHERE CASE_ID = :case_id;
+
+-- provider OR recipient (based on CASE_TYPE_CD)
+SELECT * FROM CA_PROVIDER_T  WHERE CASE_ID = :case_id;
+SELECT * FROM CA_RECIPIENT_T WHERE CASE_ID = :case_id;
+
+-- investigation (based on INVST_TYPE_CD)
+SELECT * FROM CA_INVST_PRELIMINARY_T WHERE CASE_ID = :case_id;
+SELECT * FROM CA_INVST_FULLSCALE_T  WHERE CASE_ID = :case_id;
+Step 4: Verify claims tables
+These are created per claim line using CASE_ID + CLM_SEQ_NUM, and include HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT (copied from CA_UNIVERSE_T).
+
+SELECT * FROM CA_CLAIM_LIST_T
+WHERE CASE_ID = :case_id;
+
+SELECT * FROM CA_CLAIM_CORRECTIONS_T
+WHERE CASE_ID = :case_id;
+
+SELECT * FROM CA_CLAIM_CORRECTIONS_HIST_T
+WHERE CASE_ID = :case_id;
+One query to trace everything for a single batch row
+
+
+
+
+
 SELECT * FROM CA_INTELLIGENT_KEY_T;
 SELECT * FROM CA_GENERAL_T;
 SELECT * FROM CA_PROVIDER_T;
