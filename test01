@@ -1,3 +1,45 @@
 UPDATE CA_UNIVERSE_BATCH_T
 SET REC_MATCH_IND = NULL
 WHERE CT_BATCH_ID = :ct_batch_id;
+
+
+UPDATE UI_USER_BASE
+SET UI_E_MAIL_ADDRESS = 'user@company.com'
+WHERE UI_SYSTEM_ID = :user_id;
+Assignment → email of the assigned user (also in UI_USER_BASE).
+
+Fail to Admin → distribution list from CASE_CONFIG_T
+Option name: SYSTEM_ADMIN_DIST_LIST
+
+sql
+
+SELECT OPTION_VALUE
+FROM CASE_CONFIG_T
+WHERE OPTION_NAME = 'SYSTEM_ADMIN_DIST_LIST';
+
+UPDATE CASE_CONFIG_T
+SET OPTION_VALUE = 'admin_dl@company.com'
+WHERE OPTION_NAME = 'SYSTEM_ADMIN_DIST_LIST';
+From address (SMTP) → CASE_CONFIG_T option CT_ADMIN_ID
+Also used to resolve the “admin system user” for logging.
+sql
+
+SELECT OPTION_VALUE
+FROM CASE_CONFIG_T
+WHERE OPTION_NAME = 'CT_ADMIN_ID';
+
+UPDATE CASE_CONFIG_T
+SET OPTION_VALUE = 'no-reply@company.com'
+WHERE OPTION_NAME = 'CT_ADMIN_ID';
+Email content templates
+Subject/body are pulled from CA_META_BASE_NOTICE_T (SUBJ_EMAIL, REM_COMMENT).
+If you want to change email wording:
+
+sql
+
+SELECT NOTICE_ID, SUBJ_EMAIL, REM_COMMENT, NOTICE_FLAG
+FROM CA_META_BASE_NOTICE_T;
+
+UPDATE CA_META_BASE_NOTICE_T
+SET SUBJ_EMAIL = '...', REM_COMMENT = '...'
+WHERE NOTICE_ID = :notice_id;
