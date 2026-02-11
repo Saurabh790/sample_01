@@ -1,175 +1,50 @@
-package com.optum.fads.pgp.reportsection.api.service;
+@Test
+void loadUserByUsername_userFound_mapsRoleAndAccesses() {
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+    UiUserBase uiDeep = mock(UiUserBase.class, RETURNS_DEEP_STUBS);
 
-import java.util.List;
-import java.util.Optional;
+    when(uiDeep.getUiEMailAddress()).thenReturn("u@x.com");
+    when(uiDeep.getUiUserId()).thenReturn("user1");
+    when(uiDeep.getUiSystemId()).thenReturn("SYS-1");
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+    when(uiDeep.getSeUsrGrp().getSeSurGrp().getSurGrpId()).thenReturn(10L);
+    when(uiDeep.getSeUsrGrp().getSeSurGrp().getSurGrpName()).thenReturn("Admin");
 
-import com.optum.fads.pgp.reportsection.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.reportsection.api.domain.UiUserBase;
-import com.optum.fads.pgp.reportsection.api.dto.AppUser;
-import com.optum.fads.pgp.reportsection.api.dto.ModuleAccess;
-import com.optum.fads.pgp.reportsection.api.repo.UserRepository;
-import com.optum.fads.pgp.reportsection.api.service.impl.UserDetailsService;
+    SeSurGrpModAccess modAccess = mock(SeSurGrpModAccess.class, RETURNS_DEEP_STUBS);
+    when(modAccess.getId().getSurModuleId()).thenReturn("REPORT_ITEMS");
+    when(modAccess.getSeSurModule().getSurModuleName()).thenReturn("Report Items");
+    when(modAccess.getSeSurAccess().getSurAccessId()).thenReturn("2");
 
-// NOTE: If you use mockStatic, you need mockito-inline in test scope.
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
+    when(uiDeep.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses())
+            .thenReturn(List.of(modAccess));
 
-    @Mock
-    private UserRepository userRepository;
+    when(userRepository.findByUiEMailAddressOrUiUserId("user1", "user1"))
+            .thenReturn(Optional.of(uiDeep));
 
-    @InjectMocks
-    private UserDetailsService service;
+    ModuleAccess anyEnum = ModuleAccess.values()[0];
 
-    @Test
-    void loadUserByUsername_userNotFound_throws() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("abc", "abc"))
-                .thenReturn(Optional.empty());
+    try (MockedStatic<ModuleAccess> mocked = mockStatic(ModuleAccess.class)) {
+        mocked.when(() -> ModuleAccess.getByName("REPORT_ITEMS"))
+              .thenReturn(anyEnum);
 
-        assertThrows(UsernameNotFoundException.class, () -> service.loadUserByUsername("abc"));
+        UserDetails out = service.loadUserByUsername("user1");
 
-        verify(userRepository).findByUiEMailAddressOrUiUserId("abc", "abc");
-        verifyNoMoreInteractions(userRepository);
+        assertNotNull(out);
+        assertTrue(out instanceof AppUser);
+
+        AppUser user = (AppUser) out;
+        assertEquals("u@x.com", user.getUserEmail());
+        assertEquals("user1", user.getUserId());
+        assertEquals("SYS-1", user.getUserSystemId());
+
+        assertEquals("10", user.getRole().getId());
+        assertEquals("Admin", user.getRole().getRoleName());
+
+        assertEquals(1, user.getRole().getAllowedAccesses().size());
+        assertEquals("REPORT_ITEMS", user.getRole().getAllowedAccesses().get(0).getModuleId());
+        assertEquals("Report Items", user.getRole().getAllowedAccesses().get(0).getModuleName());
     }
 
-    @Test
-    void loadUserByUsername_userFound_mapsRoleAndAccesses() {
-        // ---- Arrange: NO deep stubs (avoid final-method chain issues) ----
-        UiUserBase uiUserBase = mock(UiUserBase.class);
-
-        when(uiUserBase.getUiEMailAddress()).thenReturn("u@x.com");
-        when(uiUserBase.getUiUserId()).thenReturn("user1");
-        when(uiUserBase.getUiSystemId()).thenReturn("SYS-1");
-
-        // Build nested mocks explicitly
-        // uiUserBase.getSeUsrGrp().getSeSurGrp().getSurGrpId()/getSurGrpName()/getSeSurGrpModAccesses()
-        Object seUsrGrp = mock(Object.class, withSettings().defaultAnswer(CALLS_REAL_METHODS)); 
-        // ^ we can't type this without your domain class name.
-        // So instead, mock via "mockito" by returning a typed mock from the getters you DO have.
-
-        // If you DO have these domain types available, replace Object with the real types, e.g.:
-        // SeUsrGrp usrGrp = mock(SeUsrGrp.class);
-        // SeSurGrp surGrp = mock(SeSurGrp.class);
-
-        // Because we don't know the exact SeUsrGrp / SeSurGrp types in your project,
-        // use "RETURNS_DEEP_STUBS" ONLY for that one chain, but keep the rest explicit:
-        UiUserBase uiDeep = mock(UiUserBase.class, RETURNS_DEEP_STUBS);
-        when(uiDeep.getUiEMailAddress()).thenReturn("u@x.com");
-        when(uiDeep.getUiUserId()).thenReturn("user1");
-        when(uiDeep.getUiSystemId()).thenReturn("SYS-1");
-        when(uiDeep.getSeUsrGrp().getSeSurGrp().getSurGrpId()).thenReturn(10L);
-        when(uiDeep.getSeUsrGrp().getSeSurGrp().getSurGrpName()).thenReturn("Admin");
-
-        // One module access row (deep stubs are ok here because it is small and controlled)
-        SeSurGrpModAccess modAccess = mock(SeSurGrpModAccess.class, RETURNS_DEEP_STUBS);
-        when(modAccess.getId().getSurModuleId()).thenReturn("REPORT_ITEMS");
-        when(modAccess.getSeSurModule().getSurModuleName()).thenReturn("Report Items");
-        when(modAccess.getSeSurAccess().getSurAccessId()).thenReturn("2");
-
-        when(uiDeep.getSeUsrGrp().getSeSurGrp().getSeSurGrpModAccesses())
-                .thenReturn(List.of(modAccess));
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("user1", "user1"))
-                .thenReturn(Optional.of(uiDeep));
-
-        // ---- Static mock: avoid anyString() matcher inside lambda ----
-        ModuleAccess anyEnum = ModuleAccess.values()[0];
-
-        try (MockedStatic<ModuleAccess> mocked = mockStatic(ModuleAccess.class)) {
-            mocked.when(() -> ModuleAccess.getByName("REPORT_ITEMS"))
-                  .thenReturn(anyEnum);
-
-            // ---- Act ----
-            UserDetails out = service.loadUserByUsername("user1");
-
-            // ---- Assert ----
-            assertNotNull(out);
-            assertTrue(out instanceof AppUser);
-
-            AppUser user = (AppUser) out;
-            assertEquals("u@x.com", user.getUserEmail());
-            assertEquals("user1", user.getUserId());
-            assertEquals("SYS-1", user.getUserSystemId());
-
-            assertNotNull(user.getRole());
-            assertEquals("10", user.getRole().getId());
-            assertEquals("Admin", user.getRole().getRoleName());
-
-            assertNotNull(user.getRole().getAllowedAccesses());
-            assertEquals(1, user.getRole().getAllowedAccesses().size());
-            assertEquals("REPORT_ITEMS", user.getRole().getAllowedAccesses().get(0).getModuleId());
-            assertEquals("Report Items", user.getRole().getAllowedAccesses().get(0).getModuleName());
-        }
-
-        verify(userRepository).findByUiEMailAddressOrUiUserId("user1", "user1");
-    }
+    verify(userRepository).findByUiEMailAddressOrUiUserId("user1", "user1");
+    verifyNoMoreInteractions(userRepository);
 }
-
-6-02-12T00:24:15.577+05:30  INFO  --- [           main] c.o.f.p.r.a.s.i.ReportSectionDataService : Get Available  Report Items List
-2026-02-12T00:24:15.577+05:30  INFO  --- [           main] c.o.f.p.r.a.s.i.ReportSectionDataService : No data obtained.
-2026-02-12T00:24:15.583+05:30  INFO  --- [           main] c.o.f.p.r.a.s.i.ReportSectionDataService :  Obtain Report Section for the ID = 99
-2026-02-12T00:24:15.895+05:30  INFO  --- [           main] c.o.f.p.r.a.s.i.ReportSectionDataService : Get Selected  Report Items List
-2026-02-12T00:24:15.897+05:30  INFO  --- [           main] c.o.f.p.r.a.s.i.ReportSectionDataService : 0 Report Item records retrieved for Report Section ID = 7
-2026-02-12T00:24:15.901+05:30  INFO  --- [           main] c.o.f.p.r.a.s.i.ReportSectionDataService :  Delete Report Section for input ID
-[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.516 s -- in com.optum.fads.pgp.reportsection.api.service.ReportSectionDataServiceTest
-[INFO] Running com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest
-[ERROR] Tests run: 2, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.703 s <<< FAILURE! -- in com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest
-[ERROR] com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses -- Time elapsed: 0.677 s <<< ERROR!
-org.mockito.exceptions.misusing.UnnecessaryStubbingException:
-
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:51)
-  2. -> at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:52)
-  3. -> at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:53)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-        at org.mockito.junit.jupiter.MockitoExtension.afterEach(MockitoExtension.java:186)
-        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-        at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
-
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Errors:
-[ERROR]   UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses » UnnecessaryStubbing
-Unnecessary stubbings detected.
-Clean & maintainable test code requires zero unnecessary code.
-Following stubbings are unnecessary (click to navigate to relevant line of code):
-  1. -> at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:51)
-  2. -> at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:52)
-  3. -> at com.optum.fads.pgp.reportsection.api.service.UserDetailsServiceTest.loadUserByUsername_userFound_mapsRoleAndAccesses(UserDetailsServiceTest.java:53)
-Please remove unnecessary stubbings or use 'lenient' strictness. More info: javadoc for UnnecessaryStubbingException class.
-[INFO]
-[ERROR] Tests run: 90, Failures: 0, Errors: 1, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  32.251 s
-[INFO] Finished at: 2026-02-12T00:24:16+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-reportsection-api:
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-
-C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api>
