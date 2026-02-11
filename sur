@@ -1,98 +1,65 @@
-package com.optum.fads.caseentrybatch.api.config;
+server:
+  port: 8080
+  servlet:
+    context-path: /reportgroup
 
-import javax.sql.DataSource;
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
 
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+spring:
+  application:
+    name: reportgroup
 
-import com.azure.security.keyvault.secrets.SecretClient;
+  cloud:
+    azure:
+      # ✅ MUST be here (NOT under keyvault)
+      credential:
+        client-id: ${AZURE_CLIENT_ID}
+        client-secret: ${AZURE_CLIENT_SECRET}
+        tenant-id: ${AZURE_TENANT_ID}
 
-import jakarta.persistence.EntityManagerFactory;
+      keyvault:
+        # ✅ singular: secret
+        secret:
+          endpoint: ${AZURE_KEYVAULT_ENDPOINT}
 
-/**
- * @author sbajaj8
- *
- */
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
-						transactionManagerRef = "txManagerSQL",
-						basePackages = "com.optum.fads.caseentrybatch.api.repo" )
-		public class ServiceConfigSQL 
-		{
-			@Value("${spring.datasource.sql.userName}")
-			private String userName;
+  datasource:
+    # (Boot 3 uses spring.sql.init.mode; this key is harmless but doesn't do much)
+    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
-			@Value("${spring.datasource.sql.password}")
-			private String password;
+    # these are KeyVault secret NAMES (your ServiceConfig uses SecretClient to resolve them)
+    userName: sql-admin-user
+    password: sql-admin-password
 
-			@Value("${spring.datasource.sql.jdbcUrl}")
-			private String url;
+  jpa:
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+      ddl-auto: none
 
-			@Value("${spring.datasource.sql.driverClassName}")
-			private String driverClassName;
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL}
+          jws-algorithms: ${JWS_ALG:RS256}
 
-			private final SecretClient secretClient;
-
-			public ServiceConfigSQL(SecretClient secretClient) {
-				this.secretClient = secretClient;
-			}
-
-			@Primary
-			@Bean(name = "fadsSQLDataSource")
-			public DataSource fadsSQLDataSource() {
-				String userNameValue = secretClient.getSecret(userName).getValue();
-				String passwordValue = secretClient.getSecret(password).getValue();
-
-				DriverManagerDataSource dataSource = new DriverManagerDataSource();
-				dataSource.setDriverClassName(driverClassName);
-				dataSource.setUsername(userNameValue);
-				dataSource.setPassword(passwordValue);
-				dataSource.setUrl(url);
-
-				return dataSource;
-			}
-	
-			@Bean(name = "sqlEntityManagerFactory")
-				public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
-					{
-						LocalContainerEntityManagerFactoryBean em
-								= new LocalContainerEntityManagerFactoryBean();
-						em.setDataSource(fadsSQLDataSource());
-						em.setPackagesToScan(
-								new String[] { "com.optum.fads.caseentrybatch.api.domain" });
-						HibernateJpaVendorAdapter vendorAdapter
-							= new HibernateJpaVendorAdapter();
-						em.setJpaVendorAdapter(vendorAdapter);
-					return em;
-					}
-	 
-	 
-	 @Bean(name = "txManagerSQL")
-	 public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
-	 {
-		 JpaTransactionManager txManager = new JpaTransactionManager();
-	        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
-	        return txManager;
-	 }
-	 
-	}
-
-
-	
-
+management:
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
