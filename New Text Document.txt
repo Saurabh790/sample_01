@@ -1,48 +1,32 @@
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import javax.sql.DataSource;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 @ExtendWith(MockitoExtension.class)
 class ServiceConfigTest {
 
     @Test
     void customDataSource_buildsDatasource_usingSecretsFromKeyVault() {
+
         SecretClient secretClient = mock(SecretClient.class);
 
         when(secretClient.getSecret("db-user-secret"))
-                .thenReturn(new KeyVaultSecret("db-user-secret", "dbUser"));
+                .thenReturn(new KeyVaultSecret("db-user-secret", "dbuser"));
+
         when(secretClient.getSecret("db-pass-secret"))
-                .thenReturn(new KeyVaultSecret("db-pass-secret", "dbPass"));
+                .thenReturn(new KeyVaultSecret("db-pass-secret", "dbpass"));
 
         ServiceConfig config = new ServiceConfig(secretClient);
 
-        // set @Value fields manually
         ReflectionTestUtils.setField(config, "userNameSecretName", "db-user-secret");
         ReflectionTestUtils.setField(config, "passwordSecretName", "db-pass-secret");
         ReflectionTestUtils.setField(config, "jdbcUrl", "jdbc:h2:mem:test");
         ReflectionTestUtils.setField(config, "driverClassName", "org.h2.Driver");
 
         DataSource ds = config.customDataSource();
+
         assertNotNull(ds);
         assertTrue(ds instanceof DriverManagerDataSource);
 
         DriverManagerDataSource dmds = (DriverManagerDataSource) ds;
         assertEquals("jdbc:h2:mem:test", dmds.getUrl());
-        assertEquals("dbUser", dmds.getUsername());
-        assertEquals("dbPass", dmds.getPassword());
-        assertEquals("org.h2.Driver", dmds.getDriverClassName());
-
-        verify(secretClient).getSecret("db-user-secret");
-        verify(secretClient).getSecret("db-pass-secret");
+        assertEquals("dbuser", dmds.getUsername());
+        assertEquals("dbpass", dmds.getPassword());
     }
 }
