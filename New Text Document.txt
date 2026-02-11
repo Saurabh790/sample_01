@@ -1,8 +1,312 @@
-public void processBatchEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
-    // move the full body of createBatchCaseEntries(...) here unchanged
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+
+@Configuration
+public class CommonConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
+
+    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
+    private String azureKeyVaultUrl;
+
+    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
+    private String azureKeyVaultTenant;
+
+    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
+    private String azureKeyVaultSecret;
+
+    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
+    private String azureKeyVaultClientId;
+
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+
+    @Bean
+    public SecretClient secretClient() {
+        logger.info("Initializing Azure Key Vault SecretClient...");
+        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                .clientId(azureKeyVaultClientId)
+                .clientSecret(azureKeyVaultSecret)
+                .tenantId(azureKeyVaultTenant)
+                .build();
+
+        return new SecretClientBuilder()
+                .vaultUrl(azureKeyVaultUrl)
+                .credential(clientSecretCredential)
+                .buildClient();
+    }
+}
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.TimeZone;
+
+import org.junit.jupiter.api.Test;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.web.client.RestTemplate;
+
+class CommonConfigTest {
+
+    @Test
+    void modelMapper_configuredWithStrictMatchingAndAmbiguityIgnored() {
+        CommonConfig config = new CommonConfig();
+
+        ModelMapper mapper = config.modelMapper();
+
+        assertNotNull(mapper);
+        assertEquals(MatchingStrategies.STRICT, mapper.getConfiguration().getMatchingStrategy());
+        assertTrue(mapper.getConfiguration().isAmbiguityIgnored());
+    }
+
+    @Test
+    void restTemplate_createsBean() {
+        CommonConfig config = new CommonConfig();
+
+        RestTemplate restTemplate = config.restTemplate();
+
+        assertNotNull(restTemplate);
+    }
+
+    @Test
+    void started_setsDefaultTimeZoneToUtcMinus4() {
+        CommonConfig config = new CommonConfig();
+
+        config.started();
+
+        TimeZone tz = TimeZone.getDefault();
+        assertTrue(TimeZone.getDefault().getID().contains("GMT"));
+    }
 }
 
 
-private synchronized void createBatchCaseEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
-    processBatchEntries(caUniverseBatchTList);
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import javax.sql.DataSource;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+@Configuration
+@EnableTransactionManagement
+@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.behavior.api.repo")
+@ComponentScan(basePackages = { "com.optum.fads.pgp.behavior.api" })
+public class ServiceConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
+
+    // these are secret NAMES stored in KeyVault
+    @Value("${spring.datasource.userName}")
+    private String userNameSecretName;
+
+    @Value("${spring.datasource.password}")
+    private String passwordSecretName;
+
+    @Value("${spring.datasource.jdbcUrl}")
+    private String jdbcUrl;
+
+    @Value("${spring.datasource.driverClassName}")
+    private String driverClassName;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfig(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsDataSource")
+    @Primary
+    public DataSource customDataSource() {
+        logger.info("Initializing custom DataSource bean...");
+
+        String username = secretClient.getSecret(userNameSecretName).getValue();
+        String password = secretClient.getSecret(passwordSecretName).getValue();
+
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName(driverClassName);
+        dataSource.setUrl(jdbcUrl);
+        dataSource.setUsername(username);
+        dataSource.setPassword(password);
+
+        return dataSource;
+    }
 }
+
+
+package com.optum.fads.pgp.behavior.api.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Date;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.PlainJWT;
+import com.optum.fads.pgp.behavior.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+
+@ExtendWith(MockitoExtension.class)
+class SecurityConfigTest {
+
+    @Mock
+    private IUserDetailsService userDetailsService;
+
+    private SecurityConfig createConfig() {
+        return new SecurityConfig(userDetailsService);
+    }
+
+    @Test
+    void jwtDecoder_decodesNimbusJwt_andConvertsDatesToInstant() throws Exception {
+    	SecurityConfig config = createConfig();
+        JwtDecoder decoder = config.jwtDecoder();
+
+        Date iat = new Date(1_000_000L);
+        Date exp = new Date(2_000_000L);
+
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .subject("sub-123")
+                .claim("groups", List.of("admin"))
+                .issueTime(iat)
+                .expirationTime(exp)
+                .build();
+
+        PlainJWT jwtPlain = new PlainJWT(claimsSet);
+        String token = jwtPlain.serialize();
+
+        Jwt jwt = decoder.decode(token);
+
+        assertEquals("sub-123", jwt.getSubject());
+        assertEquals(List.of("admin"), jwt.getClaimAsStringList("groups"));
+        assertEquals(iat.toInstant(), jwt.getIssuedAt());
+        assertEquals(exp.toInstant(), jwt.getExpiresAt());
+    }
+
+    @Test
+    void userJwtAuthenticationConverter_createsBean() {
+        SecurityConfig config = createConfig();
+
+        UserJwtAuthenticationConverter converter = config.userJwtAuthenticationConverter();
+
+        assertNotNull(converter);
+    }
+
+    @Test
+    void passwordEncoder_encodesAndMatches() {
+        SecurityConfig config = createConfig();
+
+        PasswordEncoder encoder = config.passwordEncoder();
+
+        String raw = "secret123";
+        String encoded = encoder.encode(raw);
+
+        assertNotNull(encoded);
+        assertTrue(encoder.matches(raw, encoded));
+    }
+
+    @Test
+    void corsConfigurationSource_allowsAllOriginsMethodsHeaders() {
+        SecurityConfig config = createConfig();
+
+        CorsConfigurationSource source = config.corsConfigurationSource();
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/any/path");
+
+        CorsConfiguration cfg = source.getCorsConfiguration(request);
+        assertNotNull(cfg);
+
+        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedOrigins());
+        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedMethods());
+        assertEquals(List.of(CorsConfiguration.ALL), cfg.getAllowedHeaders());
+    }
+}
+
+
+mbol:   method started()
+  location: variable config of type com.optum.fads.pgp.behavior.api.config.CommonConfig
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/config/ServiceConfigTest.java:[13,32] constructor ServiceConfig in class com.optum.fads.pgp.behavior.api.config.ServiceConfig cannot be applied to given types;
+  required: com.azure.security.keyvault.secrets.SecretClient
+  found:    no arguments
+  reason: actual and formal argument lists differ in length
+[INFO] 3 errors
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  18.146 s
+[INFO] Finished at: 2026-02-11T23:22:40+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:testCompile (default-testCompile) on project fads-pgp-behavior-api: Compilation failure: Compilation failure:
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/config/CommonConfigTest.java:[29,43] cannot find symbol
+[ERROR]   symbol:   method restTemplate()
+[ERROR]   location: variable config of type com.optum.fads.pgp.behavior.api.config.CommonConfig
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/config/CommonConfigTest.java:[38,15] cannot find symbol
+[ERROR]   symbol:   method started()
+[ERROR]   location: variable config of type com.optum.fads.pgp.behavior.api.config.CommonConfig
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/config/ServiceConfigTest.java:[13,32] constructor ServiceConfig in class com.optum.fads.pgp.behavior.api.config.ServiceConfig cannot be applied to given types;
+[ERROR]   required: com.azure.security.keyvault.secrets.SecretClient
+[ERROR]   found:    no arguments
+[ERROR]   reason: actual and formal argument lists differ in length
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>
