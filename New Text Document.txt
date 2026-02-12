@@ -1,47 +1,104 @@
-ession 0 0/1 * ? * *
-2026-02-12T23:13:52.444+05:30  WARN 10716 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
-2026-02-12T23:13:52.453+05:30  WARN 10716 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration$EnableWebMvcConfiguration': Unsatisfied dependency expressed through method 'setConfigurers' parameter 0: Error creating bean with name 'openEntityManagerInViewInterceptorConfigurer' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/JpaBaseConfiguration$JpaWebConfiguration.class]: Unsatisfied dependency expressed through method 'openEntityManagerInViewInterceptorConfigurer' parameter 0: Error creating bean with name 'openEntityManagerInViewInterceptor' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/JpaBaseConfiguration$JpaWebConfiguration.class]: No qualifying bean of type 'jakarta.persistence.EntityManagerFactory' available: expected single matching bean but found 2: snfkEntityManagerFactory,sqlEntityManagerFactory
-2026-02-12T23:13:52.456+05:30  INFO 10716 --- [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
-2026-02-12T23:13:52.458+05:30  INFO 10716 --- [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
-2026-02-12T23:13:52.479+05:30  INFO 10716 --- [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
-2026-02-12T23:13:52.558+05:30  INFO 10716 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+server:
+  port: 8080
+  servlet:
+    contextPath: /caseentrybatch
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
 
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-02-12T23:13:52.842+05:30 ERROR 10716 --- [           main] o.s.b.d.LoggingFailureAnalysisReporter   :
-
-***************************
-APPLICATION FAILED TO START
-***************************
-
-Description:
-
-Parameter 0 of method openEntityManagerInViewInterceptorConfigurer in org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration$JpaWebConfiguration required a single bean, but 2 were found:
-        - snfkEntityManagerFactory: defined by method 'snfkEntityManagerFactory' in class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]
-        - sqlEntityManagerFactory: defined by method 'sqlEntityManagerFactory' in class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfigSQL.class]
-
-This may be due to missing parameter name information
-
-Action:
-
-Consider marking one of the beans as @Primary, updating the consumer to accept multiple beans, or using @Qualifier to identify the bean that should be consumed
-
-Ensure that your compiler is configured to use the '-parameters' flag.
-You may need to update both your build tool settings as well as your IDE.
-(See https://github.com/spring-projects/spring-framework/wiki/Spring-Framework-6.1-Release-Notes#parameter-name-retention)
-
-
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  01:24 min
-[INFO] Finished at: 2026-02-12T23:13:53+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.8:run (default-cli) on project fads-case-entry-batch: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
-
-C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batch>
+spring: 
+  application:
+   name: caseentrybatch
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net
+        credential:
+          client-id: ce5962ff-06f5-4911-be66-e51b86531710
+          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
+          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1 
+  jpa:
+    database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
+    
+  datasource:
+     hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+     sql:
+       type: com.zaxxer.hikari.HikariDataSource
+       jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
+       userName: sql-admin-user
+       password: sql-admin-password
+       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+       jpa:
+           database-platform: org.hibernate.dialect.SQLServer2016Dialect
+           database: SQL_SERVER 
+           format-sql: true
+           globally_quoted_identifiers: true
+           show-sql: true
+           hibernate:
+              use-new-id-generator-mappings: true
+              globally_quoted_identifiers: true
+              hibernate.allow_update_outside_transaction: true
+              naming:
+                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+     snfk:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
+        jdbcUrl: jdbc:snowflake://ew98463.east-us-2.azure.snowflakecomputing.com:443/?TIMEZONE=UTC&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true
+        database: PI_DEV_DB
+        userName: pi-sf-usr-dev
+        password: pi-sf-usr-dev-pw
+        certKey: pi-sf-key-dev
+        passphrase: pi-sf-key-dev-pw
+        schema: FADS
+        warehouse: SGS_PI_DEMO_XSMALL_WH
+        role: 
+        account: 
+        jpa:
+            database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
+            database: default 
+            format-sql: true
+            globally_quoted_identifiers: true
+            show-sql: true
+            hibernate:
+               use-new-id-generator-mappings: true
+               globally_quoted_identifiers: true
+               naming:
+                     implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                     physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+  quartz:
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 3      
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          jwk-set-uri: ${JWKS_URL}
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+db:
+  snfk-login:
+    useCert: ${USE_CERT:false}
