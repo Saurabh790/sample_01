@@ -1,450 +1,511 @@
-tionContext
-2026-02-12T00:53:23.086+05:30  INFO 2348 --- [reportgroup] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2208 ms
-2026-02-12T00:53:23.303+05:30  WARN 2348 --- [reportgroup] [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'dataSourceScriptDatabaseInitializer' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'dataSourceScriptDatabaseInitializer' defined in class path resource [org/springframework/boot/autoconfigure/sql/init/DataSourceInitializationConfiguration.class]: Unsatisfied dependency expressed through method 'dataSourceScriptDatabaseInitializer' parameter 0: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\classes\com\optum\fads\pgp\reportsection\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-2026-02-12T00:53:23.308+05:30  INFO 2348 --- [reportgroup] [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
-2026-02-12T00:53:23.382+05:30  INFO 2348 --- [reportgroup] [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+package com.optum.fads.caseentrybatch.api.service.impl;
 
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-02-12T00:53:23.402+05:30 ERROR 2348 --- [reportgroup] [           main] o.s.boot.SpringApplication               : Application run failed
-
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to initialize dependency 'dataSourceScriptDatabaseInitializer' of LoadTimeWeaverAware bean 'entityManagerFactory': Error creating bean with name 'dataSourceScriptDatabaseInitializer' defined in class path resource [org/springframework/boot/autoconfigure/sql/init/DataSourceInitializationConfiguration.class]: Unsatisfied dependency expressed through method 'dataSourceScriptDatabaseInitializer' parameter 0: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\classes\com\optum\fads\pgp\reportsection\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:328) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973) ~[spring-context-6.2.15.jar:6.2.15]
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627) ~[spring-context-6.2.15.jar:6.2.15]
-        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146) ~[spring-boot-3.5.9.jar:3.5.9]
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752) ~[spring-boot-3.5.9.jar:3.5.9]
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439) ~[spring-boot-3.5.9.jar:3.5.9]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318) ~[spring-boot-3.5.9.jar:3.5.9]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361) ~[spring-boot-3.5.9.jar:3.5.9]
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350) ~[spring-boot-3.5.9.jar:3.5.9]
-        at com.optum.fads.pgp.reportsection.api.ReportSectionApiApplication.main(ReportSectionApiApplication.java:16) ~[classes/:na]
-Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'dataSourceScriptDatabaseInitializer' defined in class path resource [org/springframework/boot/autoconfigure/sql/init/DataSourceInitializationConfiguration.class]: Unsatisfied dependency expressed through method 'dataSourceScriptDatabaseInitializer' parameter 0: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\classes\com\optum\fads\pgp\reportsection\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:546) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:315) ~[spring-beans-6.2.15.jar:6.2.15]
-        ... 10 common frames omitted
-Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'serviceConfig' defined in file [C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api\target\classes\com\optum\fads\pgp\reportsection\api\config\ServiceConfig.class]: Unsatisfied dependency expressed through constructor parameter 0: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.autowireConstructor(ConstructorResolver.java:240) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.autowireConstructor(AbstractAutowireCapableBeanFactory.java:1395) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1232) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:413) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.config.DependencyDescriptor.resolveCandidate(DependencyDescriptor.java:254) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1770) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791) ~[spring-beans-6.2.15.jar:6.2.15]
-        ... 20 common frames omitted
-Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'commonConfig': Injection of autowired dependencies failed
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:515) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.populateBean(AbstractAutowireCapableBeanFactory.java:1459) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:606) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:413) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1708) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791) ~[spring-beans-6.2.15.jar:6.2.15]
-        ... 43 common frames omitted
-Caused by: org.springframework.util.PlaceholderResolutionException: Could not resolve placeholder 'spring.cloud.azure.credential.tenant-id' in value "${spring.cloud.azure.credential.tenant-id}"
-        at org.springframework.util.PlaceholderResolutionException.withValue(PlaceholderResolutionException.java:81) ~[spring-core-6.2.15.jar:6.2.15]
-        at org.springframework.util.PlaceholderParser$ParsedValue.resolve(PlaceholderParser.java:298) ~[spring-core-6.2.15.jar:6.2.15]
-        at org.springframework.util.PlaceholderParser.replacePlaceholders(PlaceholderParser.java:131) ~[spring-core-6.2.15.jar:6.2.15]
-        at org.springframework.util.PropertyPlaceholderHelper.replacePlaceholders(PropertyPlaceholderHelper.java:114) ~[spring-core-6.2.15.jar:6.2.15]
-        at org.springframework.core.env.AbstractPropertyResolver.doResolvePlaceholders(AbstractPropertyResolver.java:293) ~[spring-core-6.2.15.jar:6.2.15]
-        at org.springframework.core.env.AbstractPropertyResolver.resolveRequiredPlaceholders(AbstractPropertyResolver.java:264) ~[spring-core-6.2.15.jar:6.2.15]
-        at org.springframework.context.support.PropertySourcesPlaceholderConfigurer.lambda$processProperties$0(PropertySourcesPlaceholderConfigurer.java:186) ~[spring-context-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.AbstractBeanFactory.resolveEmbeddedValue(AbstractBeanFactory.java:970) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1675) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.resolveFieldValue(AutowiredAnnotationBeanPostProcessor.java:784) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor$AutowiredFieldElement.inject(AutowiredAnnotationBeanPostProcessor.java:767) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.annotation.InjectionMetadata.inject(InjectionMetadata.java:146) ~[spring-beans-6.2.15.jar:6.2.15]
-        at org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor.postProcessProperties(AutowiredAnnotationBeanPostProcessor.java:509) ~[spring-beans-6.2.15.jar:6.2.15]
-        ... 63 common frames omitted
-
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  16.300 s
-[INFO] Finished at: 2026-02-12T00:53:23+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.9:run (default-cli) on project fads-pgp-reportsection-api: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
-
-C:\Users\sgupt664\BE_Projects\fads-pgp-reportsection-api>
-
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
-
-package com.optum.fads.pgp.reportsection.api.config;
-
-
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
-
-import com.azure.identity.ClientSecretCredential;
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-
-@Configuration
-public class CommonConfig {
-
-    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
-
-    @Value("${spring.cloud.azure.keyvault.secret.endpoint}")
-    private String azureKeyVaultUrl;
-
-    @Value("${spring.cloud.azure.credential.tenant-id}")
-    private String azureKeyVaultTenant;
-
-    @Value("${spring.cloud.azure.credential.client-secret}")
-    private String azureKeyVaultSecret;
-
-    @Value("${spring.cloud.azure.credential.client-id}")
-    private String azureKeyVaultClientId;
-
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
-    }
-
-    @Bean
-    public SecretClient secretClient() {
-        logger.info("Initializing Azure Key Vault SecretClient...");
-
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(azureKeyVaultClientId)
-                .clientSecret(azureKeyVaultSecret)
-                .tenantId(azureKeyVaultTenant)
-                .build();
-
-        return new SecretClientBuilder()
-                .vaultUrl(azureKeyVaultUrl)
-                .credential(clientSecretCredential)
-                .buildClient();
-    }
-}
-
-package com.optum.fads.pgp.reportsection.api.config;
-
-import java.util.Collections;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import com.optum.fads.pgp.reportsection.api.security.UserJwtAuthenticationConverter;
-import com.optum.fads.pgp.reportsection.api.service.IUserDetailsService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtException;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTParser;
+import com.microsoft.sqlserver.jdbc.SQLServerException;
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseTPK;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
+import com.optum.fads.caseentrybatch.api.snowflakeDomain.DmClaimDrugT;
+import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
 
-@Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
-public class SecurityConfig {
+import lombok.extern.slf4j.Slf4j;
 
-	private final IUserDetailsService userDetailsService;
+/**
+ * @author anil wagh
+ * CaseBatchService
+ */
 
-	private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+@Service
+@Slf4j
+public class CaseBatchService  implements ICaseBatchService {
 
-	public SecurityConfig(IUserDetailsService userDetailsService) {
-		this.userDetailsService = userDetailsService;
-	}
+    @Autowired
+    private CaUniverseBatchRepository caUniverseBatchRepository;
 
-	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Autowired
+    private	CaseBatchEmailService caseBatchEmailService;
 
-		http.csrf(csrf -> csrf
-						.ignoringRequestMatchers("/actuator/**", "/api/**")
-				)
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/**").permitAll()
-						.anyRequest().authenticated())
-				.oauth2ResourceServer(oauth2 -> oauth2
-						.jwt(jwt -> jwt
-								.decoder(jwtDecoder())
-								.jwtAuthenticationConverter(userJwtAuthenticationConverter())
-						)
-				);
+    @Autowired
+    private	ICaseBatchIndividualService iCaseBatchIndividualService;
 
-		return http.build();
-	}
+    @Autowired
+    private CaseBatchUtil caseBatchUtil;
+    
+    @Autowired
+	private DmClaimDrugRepository dmClaimDrugRepository;
 
-	@Bean
-	public JwtDecoder jwtDecoder() {
-		// Custom JWT decoder that skips signature validation
-		return token -> {
-			try {
-				JWT jwt = JWTParser.parse(token);
 
-				// Convert claims, handling Date to Instant conversion
-				Map<String, Object> claims = new HashMap<>(jwt.getJWTClaimsSet().getClaims());
+    /**
+     * this method will create cases and entries in CA_UNIVERSE_T table
+     *
+     * Input - CA_UNIVERSE_BATCH_T table entries
+     */
+    public String createBatchCase(){
 
-				convertDateToInstant(claims, "iat");  // issued at
-				convertDateToInstant(claims, "exp");  // expires at
-				convertDateToInstant(claims, "nbf");  // not before
-				convertDateToInstant(claims, "auth_time");  // authentication time
+        log.info(" Run Case Batch " );
 
-				return Jwt.withTokenValue(token)
-						.headers(headers -> headers.putAll(jwt.getHeader().toJSONObject()))
-						.claims(claimsMap -> claimsMap.putAll(claims))
-						.build();
-			} catch (Exception e) {
-				throw new JwtException("Failed to parse JWT", e);
+        // Get a list of Batch IDs from CaUniverseBatchT
+        List<CaUniverseBatchT> caUniverseBatchTList = null;
+        List<Integer> caUniverseBatchTIdList = caUniverseBatchRepository.findDistinctBatchIds();
+
+        // Get a list of CaUniverseBatchT records for each batch sorted by participant ID
+        for (Integer caUniverseBatchTId : caUniverseBatchTIdList) {
+            log.info("Next Batch Id = " + caUniverseBatchTId);
+            caUniverseBatchTList = caUniverseBatchRepository.findAllByBatchId(caUniverseBatchTId);
+            createBatchCaseEntries(caUniverseBatchTList);
+
+        }
+
+        return CaseEntryConstants.SUCCESS_MESSAGE;
+    }	// Create Batch Case End
+
+    /**
+     * this method will create Batch Case Entries in various Case Tracking tables for a batch
+     *
+     * Parameters - List<CaUniverseBatchT> caUniverseBatchTList
+     */
+    private synchronized void createBatchCaseEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	processBatchEntries(caUniverseBatchTList);
+    }
+    
+    /**
+     * this method will create CaUniverseT List
+     *
+     * Parameters - caUniverseBatchTList
+     */
+    
+    private void  sendInvalidClaimsMail(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	
+    	HashSet<String> uniqueTcns = new HashSet<>();
+    	
+			log.error("Found invalid/Duplicate TCNs in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+            emailData.setBatchId(caUniverseBatchTList.get(0).getId().getCtBatchId());
+            emailData.setSubmittedBy(caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId());
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            StringBuilder invalidTcnsText = new StringBuilder();
+            for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+            	if (caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.NO) || caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.DUPLICATE)) {
+            		if (uniqueTcns.add(caUniverseBatchT.getHdrClmTcn())) {
+            			invalidTcnsText.append(caUniverseBatchT.getHdrClmTcn()+CaseEntryConstants.TEXT_SEPERATOR);
+            		}
+            	}
+    		}
+            invalidTcnsText.setLength(invalidTcnsText.length() - 2);
+            emailData.setErrorLog(invalidTcnsText.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	
+
+    }
+    /**
+	  * this method will create CaUniversT list and append to CaUniverseT the data from DM_CLAIM_DRUG_T
+	  * it also validates the input claims data against DM_CLAIM_DRUG_T and checks for duplicate TCN+LiNum records
+	  * Parameters - caUniverseBatchTList
+	  */
+	public List<CaUniverseT> createCaUniverseTList(List<CaUniverseBatchT> caUniverseBatchTList) {
+		
+		log.info("Start Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		boolean validBatch = true;
+		List<CaUniverseT> caUniverseTList = new ArrayList<>();
+		LocalDateTime currentSqlDate = LocalDateTime.now(caseBatchUtil.getZoneId());
+		DmClaimDrugT dmClaimDrugT = null;
+		
+		// Get a map of TCN + Line Number and their occurrences
+		Map<Pair<String, String>, Long> tcnLiNumsMapPairs = caUniverseBatchTList.stream()
+		        .collect(Collectors.groupingBy(e -> Pair.of(e.getHdrClmTcn(), e.getLiNum()), Collectors.counting()));
+
+		// case ID, caSequenceId, clmSeqNum set in CaseBatchIndividual Service
+		
+		for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+			
+//			Date dtHdrClaimPaidDate = caUniverseBatchT.getId().getHdrClmPdDt();
+			Date dtHdrClaimPaidDate = caUniverseBatchT.getHdrClmPdDt();
+			LocalDate localHdrClaimPdDate = dtHdrClaimPaidDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+			caUniverseBatchT.setRecMatchInd(CaseEntryConstants.YES);
+			
+			// Check if duplicate
+			Pair<String, String> pair = Pair.of(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum());
+			if (tcnLiNumsMapPairs.containsKey(pair) && tcnLiNumsMapPairs.get(pair) > 1) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.DUPLICATE);
+					validBatch = false;
+			} else {
+				dmClaimDrugT = dmClaimDrugRepository.findClaimDrugTbyId(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum(), localHdrClaimPdDate);
+					
+				if (dmClaimDrugT == null) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+					validBatch = false;
+				} else {			// Provider ID or Recipient ID must match participant ID
+					String origId =  CaseEntryConstants.BLANK_STR;
+					if (CaseEntryConstants.MEMBER.equals(caUniverseBatchT.getCaseTypeCd())) {
+							origId = dmClaimDrugT.getHdrRecipOrigId();
+					} else {
+						switch (caUniverseBatchT.getProvRole()) {
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_ATTENDING:
+					        	origId = dmClaimDrugT.getHdrAttendProvId();
+					                 break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_BILLING:
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+					               break;
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_REFERRING:
+					        	origId = dmClaimDrugT.getHdrReferProvId();
+					                 break;
+					        case CaseEntryConstants.PROVIDER_ROLE_TREATING:
+					        	 origId = dmClaimDrugT.getLiTreatProvId();
+					                  break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_PRESCRIBING:
+					        	origId = dmClaimDrugT.getHdrPrescrProvId();
+					              break;
+					        default: 
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+				                  break;
+						}	
+					}
+					if (!origId.equals(caUniverseBatchT.getParticipantId()) || dmClaimDrugT.getHdrRecipFullNm() == null) {
+						caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+						validBatch = false;
+					}
+				}
 			}
-		};
+			if (validBatch) {
+				CaUniverseT	caUniverseT = CaUniverseT.builder().id(CaUniverseTPK.builder().ctBatchId(caUniverseBatchT.getId().getCtBatchId()).ctBatchDate(currentSqlDate)
+//		                      .hdrClmTcn(caUniverseBatchT.getId().getHdrClmTcn()).liNum(caUniverseBatchT.getId().getLiNum()).hdrClmPdDt(caUniverseBatchT.getId().getHdrClmPdDt()).build())
+		        		.hdrClmTcn(caUniverseBatchT.getHdrClmTcn()).liNum(caUniverseBatchT.getLiNum()).hdrClmPdDt(caUniverseBatchT.getHdrClmPdDt()).build())
+		                .uiUserBase(UiUserBase.builder().uiSystemId(caUniverseBatchT.getUiUserBase().getUiSystemId()).build())
+		                .caseTypeCd(caUniverseBatchT.getCaseTypeCd()).provRole(caUniverseBatchT.getProvRole()).caPrmNodeCd(caUniverseBatchT.getCaPrmNodeCd())
+		                .caYearId(caUniverseBatchT.getCaYearId()).projectStatus(caUniverseBatchT.getProjectStatus()).invstTypeCd(caUniverseBatchT.getInvstTypeCd())
+		                .caseSourceCd(caUniverseBatchT.getCaseSourceCd()).caseStatusCd(caUniverseBatchT.getCaseStatusCd()).caseStatusDt(caUniverseBatchT.getCaseStatusDt())
+		                .issueCd(caUniverseBatchT.getIssueCd()).assignUsr(caUniverseBatchT.getAssignUsr()).assignSectionCd(caUniverseBatchT.getAssignSectionCd())
+		                .assignDate(caUniverseBatchT.getAssignDate()).participantId(caUniverseBatchT.getParticipantId()).liDrugValidClmInd(caUniverseBatchT.getLiDrugValidClmInd()).build();
+		        
+			    caUniverseT.setHdrClmAdjStsCd(dmClaimDrugT.getHdrClmAdjStsCd());
+				caUniverseT.setClaimjStatusDesc(dmClaimDrugT.getClaimjStatusDesc());
+				caUniverseT.setHdrPayToProvId(dmClaimDrugT.getHdrPayToProvId());
+				caUniverseT.setHdrPayToProvNm(dmClaimDrugT.getHdrPayToProvNm());
+				caUniverseT.setHdrPrescrProvId(dmClaimDrugT.getHdrPrescrProvId());
+				caUniverseT.setHdrPrescrProvNpi(dmClaimDrugT.getHdrPrescrProvNpi());
+				caUniverseT.setHdrCosCd(dmClaimDrugT.getHdrCosCd());
+				caUniverseT.setCosDesc(dmClaimDrugT.getCosDesc());
+				caUniverseT.setHdrRecipOrigId(dmClaimDrugT.getHdrRecipOrigId());
+				caUniverseT.setHdrRecipFullNm(dmClaimDrugT.getHdrRecipFullNm());
+				caUniverseT.setHdrClmTcnOld(dmClaimDrugT.getHdrClmTcnOld());
+				caUniverseT.setLiSrvFromDt(dmClaimDrugT.getLiSrvFromDt());
+				caUniverseT.setLiDrugPrescrNum(dmClaimDrugT.getLiDrugPrescrNum());
+				caUniverseT.setLiDrugRefillNum(dmClaimDrugT.getLiDrugRefillNum());
+				caUniverseT.setLiDrugPrescrDt(dmClaimDrugT.getLiDrugPrescrDt());
+				caUniverseT.setLiDrugNdc(dmClaimDrugT.getLiDrugNdc());
+				caUniverseT.setNdcDesc(dmClaimDrugT.getNdcDesc());
+				caUniverseT.setLiDrugSpecTheraClsCd(dmClaimDrugT.getLiDrugSpecTheraClsCd());
+				caUniverseT.setTheraClassSpecDesc(dmClaimDrugT.getTheraClassSpecDesc());
+				caUniverseT.setLiDrugDaysSupply(dmClaimDrugT.getLiDrugDaysSupply());
+				caUniverseT.setLiBillUosQty(dmClaimDrugT.getLiBillUosQty());
+				caUniverseT.setLiPdUosQty(dmClaimDrugT.getLiPdUosQty());
+				caUniverseT.setHdrBillAmt(dmClaimDrugT.getHdrBillAmt());
+				caUniverseT.setLiBillAmt(dmClaimDrugT.getLiBillAmt());
+				caUniverseT.setLiPdAmt(dmClaimDrugT.getLiPdAmt());
+				if (caUniverseT.getId().getLiNum().equals(CaseEntryConstants.ONE_STR)) {
+					caUniverseT.setHdrPdAmt(dmClaimDrugT.getHdrPdAmt());
+				} else {
+					caUniverseT.setHdrPdAmt(BigDecimal.valueOf(CaseEntryConstants.ZERO));
+				}
+				caUniverseT.setHdrCleanClmInd(dmClaimDrugT.getHdrCleanClmInd());
+				caUniverseT.setLiCleanClmInd(dmClaimDrugT.getLiCleanClmInd());
+				caUniverseT.setHdrClmTypeCd(dmClaimDrugT.getHdrClmTypeCd());
+				caUniverseT.setHdrClmTypeDesc(dmClaimDrugT.getHdrClmTypeDesc());
+				caUniverseT.setHdrPayToProvNpiId(dmClaimDrugT.getHdrPayToProvNpiId());
+				caUniverseT.setGcnDesc(dmClaimDrugT.getGcnDesc());
+				caUniverseT.setHdrRecipCurrId(dmClaimDrugT.getHdrRecipCurrId());
+				caUniverseT.setHdrEncounterCd(dmClaimDrugT.getHdrEncounterCd());
+				caUniverseT.setLiMcoShadowPrice(dmClaimDrugT.getLiMcoShadowPrice());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoTcn());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoId());
+				caUniverseT.setHdrMcoNm(dmClaimDrugT.getHdrMcoNm());
+				caUniverseT.setHdrMcoPdDt(dmClaimDrugT.getHdrMcoPdDt());
+				caUniverseT.setHdrMcoShadowPrice(dmClaimDrugT.getHdrMcoShadowPrice());
+				caUniverseT.setHdrPayToProvTyCd(dmClaimDrugT.getHdrPayToProvTyCd());
+				caUniverseT.setHdrPayToProvTyDesc(dmClaimDrugT.getHdrPayToProvTyDesc());
+				caUniverseT.setHdrPayToProvSpecCd(dmClaimDrugT.getHdrPayToProvSpecCd());
+				caUniverseT.setHdrPayToProvSpecDesc(dmClaimDrugT.getHdrPayToProvSpecDesc());
+				caUniverseT.setProvFein(dmClaimDrugT.getProvFein());
+				caUniverseT.setProvPracAddrLine1(dmClaimDrugT.getProvPracAddrLine1());
+				caUniverseT.setProvPracAddrLine2(dmClaimDrugT.getProvPracAddrLine2());
+				caUniverseT.setHdrPrescrProvNm(dmClaimDrugT.getHdrPrescrProvNm());
+				caUniverseT.setHdrPrescrProvTyCd(dmClaimDrugT.getHdrPrescrProvTyCd());
+				caUniverseT.setHdrPrescrProvTyDesc(dmClaimDrugT.getHdrPrescrProvTyDesc());
+				caUniverseT.setHdrPrescrProvSpecCd(dmClaimDrugT.getHdrPrescrProvSpecCd());
+				caUniverseT.setHdrPrescrProvSpecDesc(dmClaimDrugT.getHdrPrescrProvSpecDesc());
+				caUniverseT.setHdrRecipAgeMthsQty(dmClaimDrugT.getHdrRecipAgeMthsQty());
+				caUniverseT.setHdrRecipAgeYrsQty(dmClaimDrugT.getHdrRecipAgeYrsQty());
+				caUniverseT.setRecipBirthDt(dmClaimDrugT.getRecipBirthDt());
+				caUniverseT.setRecipDeathDt(dmClaimDrugT.getRecipDeathDt());
+				caUniverseT.setRecipCntyCd(dmClaimDrugT.getRecipCntyCd());
+				caUniverseT.setRecipCntyDesc(dmClaimDrugT.getRecipCntyDesc());
+				caUniverseT.setRecipCityNm(dmClaimDrugT.getRecipCityNm());
+				caUniverseT.setRecipStateCd(dmClaimDrugT.getRecipStateCd());
+				caUniverseT.setRecipZipCd(dmClaimDrugT.getRecipZipCd());
+				caUniverseT.setRecipGenderCd(dmClaimDrugT.getRecipGenderCd());
+				caUniverseT.setRecipGenderDesc(dmClaimDrugT.getRecipGenderDesc());
+				caUniverseT.setRecipAddrLine1(dmClaimDrugT.getRecipAddrLine1());
+				caUniverseT.setRecipAddrLine2(dmClaimDrugT.getRecipAddrLine2());
+				caUniverseT.setHdrRecipMcareId(dmClaimDrugT.getHdrRecipMcareId());
+				caUniverseT.setRecipTefraInd(dmClaimDrugT.getRecipTefraInd());
+				caUniverseT.setRecipBnftPlanCd(dmClaimDrugT.getRecipBnftPlanCd());
+				caUniverseT.setRecipBnftPlanDesc(dmClaimDrugT.getRecipBnftPlanDesc());
+				caUniverseT.setHdrDrugNhInd(dmClaimDrugT.getHdrDrugNhInd());
+				caUniverseT.setHdrSrvFromDt(dmClaimDrugT.getHdrSrvFromDt());
+				caUniverseT.setHdrCopayAmt(dmClaimDrugT.getHdrCopayAmt());
+				caUniverseT.setHdrTplAmt(dmClaimDrugT.getHdrTplAmt());
+				caUniverseT.setHdrDrugDispensingFee(dmClaimDrugT.getHdrDrugDispensingFee());
+				caUniverseT.setLiTplAmt(dmClaimDrugT.getLiTplAmt());
+				caUniverseT.setLiDrugCompoundInd(dmClaimDrugT.getLiDrugCompoundInd());
+				caUniverseT.setLiDrugGcn(dmClaimDrugT.getLiDrugGcn());
+				caUniverseT.setLiDrugDosageFormDesc(dmClaimDrugT.getLiDrugDosageFormDesc());
+				caUniverseT.setRPackageSize(dmClaimDrugT.getRPackageSize());
+				caUniverseT.setRStrengthDesc(dmClaimDrugT.getRStrengthDesc());
+				caUniverseT.setRClassCd(dmClaimDrugT.getRClassCd());
+				caUniverseT.setRDrugCat(dmClaimDrugT.getRDrugCat());
+				caUniverseT.setRDrugDea(dmClaimDrugT.getRDrugDea());
+				caUniverseT.setRRouteDesc(dmClaimDrugT.getRRouteDesc());
+				caUniverseT.setLiHeaderPayInd(dmClaimDrugT.getLiHeaderPayInd());
+				caUniverseT.setLiClmAdjStsCd(dmClaimDrugT.getLiClmAdjStsCd());
+				caUniverseT.setLiCoeCd(dmClaimDrugT.getLiCoeCd());
+				caUniverseT.setLiCopayAmt1(dmClaimDrugT.getLiCopayAmt1());
+				caUniverseT.setHdrFundCd(dmClaimDrugT.getHdrFundCd());
+				caUniverseT.setFundDesc(dmClaimDrugT.getFundDesc());
+	//			caUniverseT.setFinFundCd(dmClaimDrugT.getFinFundCd()); - not needed
+				caUniverseT.setCompDrugIngredCount(dmClaimDrugT.getCompDrugIngredCount());
+				caUniverseT.setCompDrugProductIdQlfr(dmClaimDrugT.getCompDrugProductIdQlfr());
+				caUniverseT.setCompDrugIngredQty(dmClaimDrugT.getCompDrugIngredQty());
+				caUniverseT.setCompDrugIngredCost(dmClaimDrugT.getCompDrugIngredCost());
+				caUniverseTList.add(caUniverseT);
+			}
+	       }
+		log.info("End Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		return caUniverseTList;
 	}
+	
+	public void processBatchEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
 
-	private void convertDateToInstant(Map<String, Object> claims, String claimName) {
-		Object value = claims.get(claimName);
-		if (value instanceof Date) {
-			claims.put(claimName, ((Date) value).toInstant());
-		}
-	}
 
-	@Bean
-	UserJwtAuthenticationConverter userJwtAuthenticationConverter() {
-		return new UserJwtAuthenticationConverter(userDetailsService);
-	}
+        boolean batchFailed = false;
+        List<CaUniverseT> caUniverseTList;
+        Integer caseUniverseBatchIdin = caUniverseBatchTList.get(0).getId().getCtBatchId();
+        String userId = caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId();
+        try {
+        	caUniverseTList = createCaUniverseTList(caUniverseBatchTList);
+        	if (caUniverseTList.size() == caUniverseBatchTList.size()) {	
+        		iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
+        	} else {
+        		caUniverseBatchRepository.saveAll(caUniverseBatchTList);	// DB Operation 1
+                caUniverseBatchRepository.flush();					// DB Operation
+        		sendInvalidClaimsMail(caUniverseBatchTList);
+        		batchFailed = true;	
+        	}
+        	caUniverseTList.clear();
+        } catch (Exception e) {
+            batchFailed = true;
+            log.error(" Case Batch Processing failed for Batch ID " + caseUniverseBatchIdin);
+            log.info(e.getMessage());
+            log.error("Exception Trace: ", e);
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
+            emailData.setBatchId(caseUniverseBatchIdin);
+            emailData.setSubmittedBy(userId);
+            StringBuilder exceptionMessage = new StringBuilder();
+            if (e.getMessage() != null) {
+                if (e.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                    exceptionMessage.append(e.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                } else {
+                    exceptionMessage.append(e.getMessage().substring(0, e.getMessage().length()));
+                }
+            } else {
+                exceptionMessage.append("Exception message is null.");
+            }
+            if (e.getCause() != null) {
+                if (e.getCause().getCause() instanceof SQLServerException) {
+                    exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
+                    SQLServerException sqlServerException = (SQLServerException) e.getCause().getCause();
+                    log.info(sqlServerException.getMessage());
+                    if (sqlServerException.getMessage() != null) {
+                        if (sqlServerException.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                        } else {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, sqlServerException.getMessage().length()));
+                        }
+                    } else {
+                        exceptionMessage.append("SqlServerException message is null.");
+                    }
+                }
+            }
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            emailData.setErrorLog(exceptionMessage.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to User
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to admin
+        } // try
+        if (!batchFailed) {
+            log.info(" Delete caUniverseBatchT entries in Batch ID " + caseUniverseBatchIdin);
+            caUniverseBatchRepository.deleteByBatchId(caseUniverseBatchIdin); // DB Operation 2
+        }
 
-	@Bean
-	PasswordEncoder passwordEncoder() {
-		return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    
 	}
-
-	@Bean
-	CorsConfigurationSource corsConfigurationSource() {
-		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(Collections.singletonList(CorsConfiguration.ALL));
-		configuration.setAllowedMethods(Collections.singletonList(CorsConfiguration.ALL));
-		configuration.setAllowedHeaders(Collections.singletonList(CorsConfiguration.ALL));
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		logger.info("CORS configuration registered for all paths");
-		return source;
-	}
+	
+	
+	
+    
 }
 
 
-package com.optum.fads.pgp.reportsection.api.config;
 
-import javax.sql.DataSource;
 
-import com.azure.security.keyvault.secrets.SecretClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+package com.optum.fads.caseentrybatch.batch;
+
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+import com.optum.fads.caseentrybatch.api.service.CaseBatchProcessingService;
+
+@Component
+public class BatchIdProcessor implements ItemProcessor<Integer, Integer> {
+
+    private final CaseBatchProcessingService service;
+
+    public BatchIdProcessor(CaseBatchProcessingService service) {
+        this.service = service;
+    }
+
+    @Override
+    public Integer process(Integer batchId) {
+        service.processBatchId(batchId);
+        return batchId;
+    }
+}
+
+
+
+package com.optum.fads.caseentrybatch.batch;
+
+import java.util.Iterator;
+import java.util.List;
+
+import org.springframework.batch.item.ItemReader;
+import org.springframework.stereotype.Component;
+
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+
+@Component
+public class BatchIdReader implements ItemReader<Integer> {
+
+    private final CaUniverseBatchRepository repo;
+    private Iterator<Integer> iterator;
+
+    public BatchIdReader(CaUniverseBatchRepository repo) {
+        this.repo = repo;
+    }
+
+    @Override
+    public Integer read() {
+        if (iterator == null) {
+            List<Integer> ids = repo.findDistinctBatchIds();
+            iterator = ids.iterator();
+        }
+        return iterator.hasNext() ? iterator.next() : null;
+    }
+}
+
+
+
+
+package com.optum.fads.caseentrybatch.batch;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.PlatformTransactionManager;
 
 @Configuration
-@EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.optum.fads.pgp.reportsection.api")
-@ComponentScan(basePackages = { "com.optum.fads.pgp.reportsection.api" })
-public class ServiceConfig {
+@EnableBatchProcessing
+public class CaseBatchJobConfig {
 
-    private static final Logger logger = LoggerFactory.getLogger(ServiceConfig.class);
+    private static final int CHUNK_SIZE = 1;
 
-    // these are secret NAMES stored in KeyVault
-    @Value("${spring.datasource.userName}")
-    private String userNameSecretName;
-
-    @Value("${spring.datasource.password}")
-    private String passwordSecretName;
-
-    @Value("${spring.datasource.jdbcUrl}")
-    private String jdbcUrl;
-
-    @Value("${spring.datasource.driverClassName}")
-    private String driverClassName;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfig(SecretClient secretClient) {
-        this.secretClient = secretClient;
+    @Bean
+    public Job caseEntryBatchJob(
+            JobRepository jobRepository,
+            Step processBatchIdStep
+    ) {
+        return new JobBuilder("caseEntryBatchJob", jobRepository)
+                .start(processBatchIdStep)
+                .build();
     }
 
-    @Bean(name = "fadsDataSource")
-    @Primary
-    public DataSource customDataSource() {
-        logger.info("Initializing custom DataSource bean...");
-
-        String username = secretClient.getSecret(userNameSecretName).getValue();
-        String password = secretClient.getSecret(passwordSecretName).getValue();
-
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        dataSource.setDriverClassName(driverClassName);
-        dataSource.setUrl(jdbcUrl);
-        dataSource.setUsername(username);
-        dataSource.setPassword(password);
-
-        return dataSource;
+    @Bean
+    public Step processBatchIdStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            BatchIdReader batchIdReader,
+            BatchIdProcessor batchIdProcessor
+    ) {
+        return new StepBuilder("processBatchIdStep", jobRepository)
+                .<Integer, Integer>chunk(CHUNK_SIZE, transactionManager)
+                .reader(batchIdReader)
+                .processor(batchIdProcessor)
+                .writer(items -> { /* no-op */ })
+                .build();
     }
 }
-server:
-  port: 8080
-  servlet:
-    contextPath: /reportgroup
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
 
-spring:
-  application:
-   name: reportgroup
-   
-  cloud:
-    azure:
-      keyvault:
-        secret:
-          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
-        credential:
-          client-id: ce5962ff-06f5-4911-be66-e51b86531710
-          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
-
-  datasource:
-    initialize: false
-    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-
-    # these are KeyVault secret names
-    userName: sql-admin-user
-    password: sql-admin-password
-
-  jpa:
-    database: SQL_SERVER
-    show-sql: false
-    hibernate:
-      ddl-auto: none
-      
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${JWKS_URL}
-          jws-algorithms: ${JWS_ALG:RS256}
-          
-management:
-  endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
 
 <?xml version="1.0" encoding="UTF-8"?>
 <project
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0">
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-reportsection-api</artifactId>
+    <artifactId>fads-case-entry-batch</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-
-    <parent>
+    
+     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.9</version>
+         <version>3.5.8</version>
         <relativePath/>
     </parent>
 
-    <repositories>
+   <repositories>
         <repository>
-              <id>central</id>
+             <id>central</id>
 			<name>centraluhg.jfrog.io-releases</name>
 			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
         </repository>
@@ -458,33 +519,56 @@ management:
     <properties>
         <maven.test.skip>false</maven.test.skip>
         <skipTests>${maven.test.skip}</skipTests>
-        <!-- >surefire.skip>${skipTests}</surefire.skip -->
+        <surefire.skip>${skipTests}</surefire.skip>
         <failsafe.skip>${skipTests}</failsafe.skip>
-		 <logback.version>1.5.25</logback.version>
+	    <log4j2.version>2.16.0</log4j2.version>
         <java.version>17</java.version>
-        <spring.cloud.version>2025.0.1</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
+        <spring.boot.version>3.5.8</spring.boot.version>
+        <spring.cloud.version>2025.0.0</spring.cloud.version>
+        <jasypt.version>3.0.5</jasypt.version>
+        <jwt.version>4.4.0</jwt.version>
+        <cloudsdk.version>4.2.0-RELEASE</cloudsdk.version>
         <modelmapper.version>3.2.2</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
+        <jacoco.version>0.8.12</jacoco.version>
         <springrunner.version>0.1.0</springrunner.version>
         <guava.version>32.1.2-jre</guava.version>
         <logback.encoder.version>7.4</logback.encoder.version>
         <lombok.version>1.18.28</lombok.version>
-        <restassured.version>3.3.0</restassured.version>
-        <mockito.version>5.3.1</mockito.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-        <log4j.version>2.24.3</log4j.version>
-        <snakeyaml.version>2.2</snakeyaml.version>
-        <jaxb.version>2.3.1</jaxb.version>
-        <sonar.version>3.9.1.2184</sonar.version>
-
+        <restassured.version>5.5.0</restassured.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+	    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+        <sonar.coverage.exclusions>
+            **/com/optum/fads/caseentrybatch.api/**,
+        </sonar.coverage.exclusions>
+        <bcp.version>1.67</bcp.version>
+        <netty.version>4.1.129.Final</netty.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            
+            <dependency>
+                <groupId>com.azure.spring</groupId>
+                <artifactId>spring-cloud-azure-dependencies</artifactId>
+                <version>6.1.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+			<dependency>
+				<groupId>org.apache.logging.log4j</groupId>
+				<artifactId>log4j-bom</artifactId>
+				<version>2.24.3</version>
+				<scope>import</scope>
+				<type>pom</type>
+			</dependency>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
 
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
@@ -493,94 +577,149 @@ management:
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <scope>import</scope>
-                <type>pom</type>
-            </dependency>
-            
-            <dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-bom</artifactId>
-				<version>4.1.130.Final</version>
-				<type>pom</type>
-				<scope>import</scope>
+			
+			<dependency>
+			  <groupId>com.microsoft.azure</groupId>
+			  <artifactId>msal4j</artifactId>
+			  <version>1.17.2</version>
 			</dependency>
 			
 			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>6.1.0</version>
-				<type>pom</type>
-				<scope>import</scope>
+			  <groupId>io.netty</groupId>
+			  <artifactId>netty-bom</artifactId>
+			  <version>${netty.version}</version>
+			  <type>pom</type>
+			  <scope>import</scope>
 			</dependency>
-			
+
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-core</artifactId>
+				<version>1.5.25</version>
+			</dependency>
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-classic</artifactId>
+				<version>1.5.25</version>
+			</dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+      
+        <dependency>
+		  <groupId>io.netty</groupId>
+		  <artifactId>netty-codec-http</artifactId>
+		  <version>${netty.version}</version>
+		</dependency>
+		
+		
+           
+            <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+             <version>${spring.boot.version}</version>
+        </dependency>
+       
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch</artifactId>
+             <version>${spring.boot.version}</version>
+        </dependency>
+		
+		
+		<dependency>
+		  <groupId>io.netty</groupId>
+		  <artifactId>netty-codec-http2</artifactId>
+		  <version>${netty.version}</version>
+		</dependency>
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
         <!-- Spring Boot Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-        </dependency>
+         <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-classic</artifactId>
+		</dependency>
+		<dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-core</artifactId>
+		</dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.apache.tomcat.embed</groupId>
-            <artifactId>tomcat-embed-core</artifactId>
-            <version>10.1.47</version>
-        </dependency>
-
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-mail -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-email -->
+		<dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-email</artifactId>
+		    <version>1.5</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			 <version>3.18.0</version> 
+		</dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+		<dependency>
+			<groupId>org.hibernate.javax.persistence</groupId>
+			<artifactId>hibernate-jpa-2.1-api</artifactId>
+			<version>1.0.2.Final</version>
+		</dependency>
+		
+		<!-- Micrometer Prometheus registry  -->
+		<dependency>
+		    <groupId>io.micrometer</groupId>
+		    <artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+
+        <!-- Password Encryption -->
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version> 
+            <groupId>com.github.ulisesbocchio</groupId>
+            <artifactId>jasypt-spring-boot-starter</artifactId>
+            <version>${jasypt.version}</version>
         </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>com.auth0</groupId>
+            <artifactId>java-jwt</artifactId>
+            <version>${jwt.version}</version>
+        </dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt</artifactId>
+			<version>0.12.6</version>
+		</dependency>
+		
+ 		<dependency>
+		    <groupId>org.apache.httpcomponents</groupId>
+		    <artifactId>httpclient</artifactId>
+		    <version>4.5.14</version>
+		</dependency>
 
         <!-- Model Mapper -->
         <dependency>
@@ -588,9 +727,44 @@ management:
             <artifactId>modelmapper</artifactId>
             <version>${modelmapper.version}</version>
         </dependency>
+        
+        <!-- MapStruct -->
+
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct-jdk8</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct-processor</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
 
         <!-- Jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+	</dependency>
 
+	<dependency>
+	     <groupId>com.fasterxml.jackson.core</groupId>
+	     <artifactId>jackson-databind</artifactId>
+	</dependency>
+
+        <!--Used in Getter/Setter Verifier @NonNull  -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+
+        
 
         <!-- Lombok -->
         <dependency>
@@ -599,7 +773,7 @@ management:
             <scope>provided</scope>
         </dependency>
 
-        <!-- JSON logging -->
+        <!-- JSON logging-->
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
@@ -612,6 +786,13 @@ management:
             <artifactId>janino</artifactId>
             <scope>runtime</scope>
         </dependency>
+        
+		<!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
+		<dependency>
+		    <groupId>org.codehaus.jettison</groupId>
+		    <artifactId>jettison</artifactId>
+		    <version>1.5.4</version>
+		</dependency>
 
         <!-- Testing -->
         <dependency>
@@ -619,11 +800,18 @@ management:
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
+        
+        <dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-quartz</artifactId>
+		</dependency>
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
@@ -632,53 +820,79 @@ management:
 
         <!-- Before After Spring Test Runner -->
         <dependency>
-            <groupId>org.bitbucket.radistao.test</groupId>
-            <artifactId>before-after-spring-test-runner</artifactId>
-            <version>${springrunner.version}</version>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
+            <version>${restassured.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>13.2.1.jre11</version> 
-        </dependency>
-      
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-
+        
 		<dependency>
-			<groupId>com.azure.spring</groupId>
-			<artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		
+		<dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>          
+        </dependency>
+        
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
 		</dependency>
 
-  
-    </dependencies>
+        <!-- Quartz-Java dependency Remediation Upgrade  -->
+        <dependency>
+			<groupId>org.quartz-scheduler</groupId>
+			<artifactId>quartz</artifactId>
+		</dependency>
+		
+		<dependency>
+		    <groupId>com.microsoft.sqlserver</groupId>
+		    <artifactId>mssql-jdbc</artifactId>
+		    <version>13.2.1.jre11</version>
+		</dependency>
+
+		
+		<dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>6.2.3.Final</version>
+        </dependency>
+        
+        <!-- Snowflake dependency -->
+		<dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
+        <dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-ext-jdk15on</artifactId>
+			<version>${bcp.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcpkix-jdk15on</artifactId>
+			<version>${bcp.version}</version>
+		</dependency> 
+		<dependency>
+			<groupId>com.nimbusds</groupId>
+			<artifactId>nimbus-jose-jwt</artifactId>
+			<version>9.37.4</version>
+		</dependency>
+
+	</dependencies>
 
     <build>
-		<!--        <finalName>${project.artifactId}</finalName>-->
+        <finalName>${project.artifactId}</finalName>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -699,30 +913,29 @@ management:
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <annotationProcessorPaths>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${org.mapstruct.version}</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.0.0-M2</version>
                 <executions>
                     <execution>
                         <id>enforce-maven</id>
@@ -743,6 +956,7 @@ management:
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring.boot.version}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -752,28 +966,28 @@ management:
                 </executions>
             </plugin>
             <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.1</version>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
                 <executions>
                     <execution>
-                        <id>get-the-git-infos</id>
                         <goals>
                             <goal>revision</goal>
                         </goals>
-                        <phase>initialize</phase>
                     </execution>
                 </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
             </plugin>
-			<!-- Below plugin ensures the execution of test cases during maven build-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skip>${surefire.skip}</skip>
+                </configuration>
             </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
@@ -800,26 +1014,94 @@ management:
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
 
         </plugins>
     </build>
 </project>
+
+
+
+
+
+
+2026-02-12T22:28:45.632+05:30  INFO 13156 --- [           main] c.u.j.r.DefaultLazyPropertyResolver      : Property Resolver custom Bean not found with name 'encryptablePropertyResolver'. Initializing Default Property Resolver
+2026-02-12T22:28:45.649+05:30  INFO 13156 --- [           main] c.u.j.d.DefaultLazyPropertyDetector      : Property Detector custom Bean not found with name 'encryptablePropertyDetector'. Initializing Default Property Detector
+2026-02-12T22:28:46.602+05:30  INFO 13156 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-02-12T22:28:46.674+05:30  INFO 13156 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-02-12T22:28:46.677+05:30  INFO 13156 --- [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.49]
+2026-02-12T22:28:46.937+05:30  INFO 13156 --- [           main] o.a.c.c.C.[.[.[/caseentrybatch]          : Initializing Spring embedded WebApplicationContext
+2026-02-12T22:28:46.938+05:30  INFO 13156 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 13966 ms
+2026-02-12T22:28:47.704+05:30  WARN 13156 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'snfkEntityManagerFactory' defined in class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]: Failed to initialize dependency 'batchDataSourceInitializer' of LoadTimeWeaverAware bean 'snfkEntityManagerFactory': Error creating bean with name 'batchDataSourceInitializer' defined in class path resource [org/springframework/boot/autoconfigure/batch/BatchAutoConfiguration$DataSourceInitializerConfiguration.class]: Unsatisfied dependency expressed through method 'batchDataSourceInitializer' parameter 0: No qualifying bean of type 'javax.sql.DataSource' available: more than one 'primary' bean found among candidates: [fadsDataSource, fadsSQLDataSource]
+2026-02-12T22:28:47.717+05:30  INFO 13156 --- [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-02-12T22:28:49.770+05:30  INFO 13156 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-02-12T22:28:49.943+05:30 ERROR 13156 --- [           main] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'snfkEntityManagerFactory' defined in class path resource [com/optum/fads/caseentrybatch/api/config/ServiceConfig.class]: Failed to initialize dependency 'batchDataSourceInitializer' of LoadTimeWeaverAware bean 'snfkEntityManagerFactory': Error creating bean with name 'batchDataSourceInitializer' defined in class path resource [org/springframework/boot/autoconfigure/batch/BatchAutoConfiguration$DataSourceInitializerConfiguration.class]: Unsatisfied dependency expressed through method 'batchDataSourceInitializer' parameter 0: No qualifying bean of type 'javax.sql.DataSource' available: more than one 'primary' bean found among candidates: [fadsDataSource, fadsSQLDataSource]
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:328)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.caseentrybatch.api.CaseEntryBatchApplication.main(CaseEntryBatchApplication.java:29)
+Caused by: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'batchDataSourceInitializer' defined in class path resource [org/springframework/boot/autoconfigure/batch/BatchAutoConfiguration$DataSourceInitializerConfiguration.class]: Unsatisfied dependency expressed through method 'batchDataSourceInitializer' parameter 0: No qualifying bean of type 'javax.sql.DataSource' available: more than one 'primary' bean found among candidates: [fadsDataSource, fadsSQLDataSource]
+        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:804)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:546)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:202)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:315)
+        ... 10 common frames omitted
+Caused by: org.springframework.beans.factory.NoUniqueBeanDefinitionException: No qualifying bean of type 'javax.sql.DataSource' available: more than one 'primary' bean found among candidates: [fadsDataSource, fadsSQLDataSource]
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.determinePrimaryCandidate(DefaultListableBeanFactory.java:2114)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.determineAutowireCandidate(DefaultListableBeanFactory.java:2049)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.doResolveDependency(DefaultListableBeanFactory.java:1743)
+        at org.springframework.beans.factory.support.DefaultListableBeanFactory.resolveDependency(DefaultListableBeanFactory.java:1653)
+        at org.springframework.beans.factory.support.ConstructorResolver.resolveAutowiredArgument(ConstructorResolver.java:913)
+        at org.springframework.beans.factory.support.ConstructorResolver.createArgumentArray(ConstructorResolver.java:791)
+        ... 20 common frames omitted
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  48.063 s
+[INFO] Finished at: 2026-02-12T22:28:50+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.8:run (default-cli) on project fads-case-entry-batch: Process terminated with exit code: 1 -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batch>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
