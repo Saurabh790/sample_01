@@ -2,24 +2,24 @@ package com.optum.fads.authorization.api.security;
 
 import com.optum.fads.authorization.api.dto.FADSUser;
 import com.optum.fads.authorization.api.service.IUserDetailsService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.authentication.BadCredentialsException;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-public class UserJwtAuthenticationConverterTest {
+@ExtendWith(MockitoExtension.class)
+class UserJwtAuthenticationConverterTest {
 
     @Mock
     private IUserDetailsService userDetailsService;
@@ -27,26 +27,13 @@ public class UserJwtAuthenticationConverterTest {
     @InjectMocks
     private UserJwtAuthenticationConverter userJwtAuthenticationConverter;
 
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
-
-
     @Test
-    void testConvert_WithValidEmailClaim_Success() {
-
+    void convert_withValidEmailClaim_success() {
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", "valid-user@example.com");
-        claims.put("unique_name", "valid-user@example.com");
-        claims.put("upn", "valid-user@example.com");
         claims.put("groups", List.of("admin", "user"));
 
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .claims(c -> c.putAll(claims))
-                .build();
+        Jwt jwt = jwtWithClaims(claims);
 
         FADSUser mockUser = new FADSUser();
         when(userDetailsService.loadUserByUsername("valid-user@example.com")).thenReturn(mockUser);
@@ -54,42 +41,35 @@ public class UserJwtAuthenticationConverterTest {
         AbstractAuthenticationToken token = userJwtAuthenticationConverter.convert(jwt);
 
         assertNotNull(token);
-        assertEquals(mockUser, token.getPrincipal());
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_ADMIN")));
-        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_USER")));
+        assertSame(mockUser, token.getPrincipal()); // stronger than assertEquals
+        assertAuthorities(token.getAuthorities(), "ROLE_ADMIN", "ROLE_USER");
 
+        verify(userDetailsService, times(1)).loadUserByUsername("valid-user@example.com");
+        verifyNoMoreInteractions(userDetailsService);
     }
 
     @Test
-    void testConvert_WhenUserNotFound_ThrowsBadCredentialsException() {
-
+    void convert_whenUserNotFound_throwsBadCredentialsException() {
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", "missing-user@example.com");
         claims.put("groups", List.of("admin"));
 
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .claims(c -> c.putAll(claims))
-                .build();
+        Jwt jwt = jwtWithClaims(claims);
 
         when(userDetailsService.loadUserByUsername("missing-user@example.com")).thenReturn(null);
 
-
         assertThrows(BadCredentialsException.class, () -> userJwtAuthenticationConverter.convert(jwt));
 
+        verify(userDetailsService).loadUserByUsername("missing-user@example.com");
+        verifyNoMoreInteractions(userDetailsService);
     }
 
-
     @Test
-    void testConvert_WithNoGroups_ReturnsEmptyAuthorities() {
-
+    void convert_withNoGroups_returnsEmptyAuthorities() {
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", "user@example.com");
 
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "none")
-                .claims(c -> c.putAll(claims))
-                .build();
+        Jwt jwt = jwtWithClaims(claims);
 
         FADSUser mockUser = new FADSUser();
         when(userDetailsService.loadUserByUsername("user@example.com")).thenReturn(mockUser);
@@ -99,6 +79,47 @@ public class UserJwtAuthenticationConverterTest {
         assertNotNull(token);
         assertTrue(token.getAuthorities().isEmpty());
 
+        verify(userDetailsService).loadUserByUsername("user@example.com");
+        verifyNoMoreInteractions(userDetailsService);
     }
 
+    // Optional but recommended: fallback claim test
+    @Test
+    void convert_whenEmailMissing_usesUniqueName() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("unique_name", "unique@example.com");
+        claims.put("groups", List.of("admin"));
+
+        Jwt jwt = jwtWithClaims(claims);
+
+        FADSUser mockUser = new FADSUser();
+        when(userDetailsService.loadUserByUsername("unique@example.com")).thenReturn(mockUser);
+
+        AbstractAuthenticationToken token = userJwtAuthenticationConverter.convert(jwt);
+
+        assertNotNull(token);
+        assertSame(mockUser, token.getPrincipal());
+        assertAuthorities(token.getAuthorities(), "ROLE_ADMIN");
+
+        verify(userDetailsService).loadUserByUsername("unique@example.com");
+        verifyNoMoreInteractions(userDetailsService);
+    }
+
+    // Helper to build Jwt consistently
+    private static Jwt jwtWithClaims(Map<String, Object> claims) {
+        return Jwt.withTokenValue("token")
+                .header("alg", "none")
+                .claims(c -> c.putAll(claims))
+                .build();
+    }
+
+    // Helper to compare authorities exactly (order-independent)
+    private static void assertAuthorities(Collection<? extends GrantedAuthority> actual, String... expected) {
+        Set<String> actualSet = new HashSet<>();
+        for (GrantedAuthority a : actual) actualSet.add(a.getAuthority());
+
+        Set<String> expectedSet = new HashSet<>(Arrays.asList(expected));
+
+        assertEquals(expectedSet, actualSet);
+    }
 }
