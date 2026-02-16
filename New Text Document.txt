@@ -1,3 +1,31 @@
+Test
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   UserJwtAuthenticationConverterTest.convert_userNotFound_throwsBadCredentials:80 Unexpected exception type thrown, expected: <org.springframework.security.authentication.BadCredentialsException> but was: <java.lang.NullPointerException>
+[ERROR] Errors:
+[ERROR]   UserJwtAuthenticationConverterTest.convert_noGroups_returnsEmptyAuthorities:104 » NullPointer Cannot invoke "java.util.List.stream()" because "this.uniqueIdClaims" is null
+[ERROR]   UserJwtAuthenticationConverterTest.convert_success:45 » NullPointer Cannot invoke "java.util.List.stream()" because "this.uniqueIdClaims" is null
+[INFO]
+[ERROR] Tests run: 55, Failures: 1, Errors: 2, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  27.724 s
+[INFO] Finished at: 2026-02-16T13:28:58+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-behavior-api: There are test failures.
+[ERROR]
+[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+
+
 package com.optum.fads.pgp.behavior.api.security;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,7 +68,7 @@ class UserJwtAuthenticationConverterTest {
                 .thenReturn(user);
 
         UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService);
+                new UserJwtAuthenticationConverter(userDetailsService, null);
 
         Authentication auth = converter.convert(jwt);
 
@@ -75,7 +103,7 @@ class UserJwtAuthenticationConverterTest {
                 .thenReturn(null);
 
         UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService);
+                new UserJwtAuthenticationConverter(userDetailsService, null);
 
         assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
 
@@ -99,7 +127,7 @@ class UserJwtAuthenticationConverterTest {
                 .thenReturn(user);
 
         UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService);
+                new UserJwtAuthenticationConverter(userDetailsService, null);
 
         Authentication auth = converter.convert(jwt);
 
@@ -110,4 +138,73 @@ class UserJwtAuthenticationConverterTest {
         verify(userDetailsService, times(1)).loadUserByUsername("john@test.com");
         verifyNoMoreInteractions(userDetailsService);
     }
+}
+
+
+package com.optum.fads.pgp.behavior.api.security;
+
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
+
+//@SuppressWarnings("unused")
+public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken>{
+
+	private static final String GROUPS_CLAIM = "groups";
+	private static final String ROLE_PREFIX = "ROLE_";
+
+	private final IUserDetailsService userDetailsService;
+	private final List<String> uniqueIdClaims;
+
+	public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService, List<String> uniqueIdClaims) {
+		this.userDetailsService = userDetailsService;
+		this.uniqueIdClaims = uniqueIdClaims;
+		
+	}
+
+	@Override
+	public AbstractAuthenticationToken convert(Jwt jwt) {
+		Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
+		return Optional.ofNullable(userDetailsService.loadUserByUsername(getUniqueID(jwt)))
+				.map(u -> new UsernamePasswordAuthenticationToken(u, "n/a", authorities))
+				.orElseThrow(() -> new BadCredentialsException("No user found"));
+	}
+
+	private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+		return this.getGroups(jwt).stream().map(authority -> ROLE_PREFIX + authority.toUpperCase())
+				.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+	}
+
+	@SuppressWarnings("unchecked")
+	private Collection<String> getGroups(Jwt jwt) {
+		Object groups = jwt.getClaims().get(GROUPS_CLAIM);
+		if (groups instanceof Collection) {
+			return (Collection<String>) groups;
+		}
+
+		return Collections.emptyList();
+	}
+	private String getUniqueID(Jwt jwt) {
+		return uniqueIdClaims.stream()
+				.map(jwt::getClaimAsString)
+				.filter(v -> v != null && !v.isBlank())
+				.findFirst()
+				.orElse(null);
+	}
+	
+	
 }
