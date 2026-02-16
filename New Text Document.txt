@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,12 +45,23 @@ class UserJwtAuthenticationConverterTest {
         Authentication auth = converter.convert(jwt);
 
         assertNotNull(auth);
-        assertEquals(user, auth.getPrincipal());
+
+        // Safer than assertEquals unless AppUser overrides equals/hashCode properly
+        assertSame(user, auth.getPrincipal());
+
+        // Your converter sets credentials as "n/a"
         assertEquals("n/a", auth.getCredentials());
-        assertTrue(auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
-        assertTrue(auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_USER")));
+
+        // Assert authorities EXACTLY (order independent)
+        Set<String> authorities = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .collect(Collectors.toSet());
+
+        assertEquals(Set.of("ROLE_ADMIN", "ROLE_USER"), authorities);
+
+        // Verify service was called exactly once with expected username
+        verify(userDetailsService, times(1)).loadUserByUsername("john@test.com");
+        verifyNoMoreInteractions(userDetailsService);
     }
 
     @Test
@@ -64,9 +77,37 @@ class UserJwtAuthenticationConverterTest {
         UserJwtAuthenticationConverter converter =
                 new UserJwtAuthenticationConverter(userDetailsService);
 
-        assertThrows(
-                BadCredentialsException.class,
-                () -> converter.convert(jwt)
-        );
+        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
+
+        verify(userDetailsService, times(1)).loadUserByUsername("missing@test.com");
+        verifyNoMoreInteractions(userDetailsService);
+    }
+
+    // Optional: recommended extra coverage if converter expects groups missing -> empty authorities
+    @Test
+    void convert_noGroups_returnsEmptyAuthorities() {
+        Jwt jwt = Jwt.withTokenValue("pqr")
+                .header("alg", "none")
+                .claim("email", "john@test.com")
+                .build();
+
+        AppUser user = new AppUser();
+        user.setUserId("johnid");
+        user.setUserEmail("john@test.com");
+
+        when(userDetailsService.loadUserByUsername("john@test.com"))
+                .thenReturn(user);
+
+        UserJwtAuthenticationConverter converter =
+                new UserJwtAuthenticationConverter(userDetailsService);
+
+        Authentication auth = converter.convert(jwt);
+
+        assertNotNull(auth);
+        assertSame(user, auth.getPrincipal());
+        assertTrue(auth.getAuthorities().isEmpty());
+
+        verify(userDetailsService, times(1)).loadUserByUsername("john@test.com");
+        verifyNoMoreInteractions(userDetailsService);
     }
 }
