@@ -1,49 +1,41 @@
--- 1) Inspect metadata rows used by findSqlAndPopulateFields('PV')
+-- 1) Metadata rows for provider case type
 SELECT
-    CASE_TYPE_CD,
+    CASE_TYPE,
     FIELD_ID,
     SQL_CLAUSE_TYPE,
     TABLE_NAME,
     COLUMN_NAME,
     HTML_FIELD_TYPE
 FROM CA_META_BASE_T
-WHERE CASE_TYPE_CD = 'PV'
+WHERE CASE_TYPE = 'PV'
 ORDER BY
     CASE WHEN SQL_CLAUSE_TYPE = 'SELECT' THEN 1 ELSE 2 END,
     FIELD_ID;
--- 2) Sanity: code expects exactly one CONDITION row (because queryForMap gets only 1 param)
+-- 2) CONDITION count (should be exactly 1 for current Java method)
 SELECT COUNT(*) AS condition_count
 FROM CA_META_BASE_T
-WHERE CASE_TYPE_CD = 'PV'
+WHERE CASE_TYPE = 'PV'
   AND SQL_CLAUSE_TYPE = 'CONDITION';
--- 3) Build same lookup query dynamically from metadata and run it for participant 120403407
-DECLARE @caseType       varchar(10)  = 'PV';
-DECLARE @participantId  varchar(50)  = '120403407';
-DECLARE @tableName      sysname;
-DECLARE @selectCols     nvarchar(max);
-DECLARE @conditionCol   sysname;
-DECLARE @sql            nvarchar(max);
-DECLARE @countSql       nvarchar(max);
+-- 3) Build and run the same dynamic lookup for participant 120403407
+DECLARE @caseType      varchar(10) = 'PV';
+DECLARE @participantId varchar(50) = '120403407';
+DECLARE @tableName     sysname;
+DECLARE @selectCols    nvarchar(max);
+DECLARE @conditionCol  sysname;
+DECLARE @sql           nvarchar(max);
+DECLARE @countSql      nvarchar(max);
 
 SELECT
     @tableName = MAX(TABLE_NAME),
     @selectCols = STRING_AGG(CASE WHEN SQL_CLAUSE_TYPE = 'SELECT' THEN QUOTENAME(COLUMN_NAME) END, ','),
     @conditionCol = MAX(CASE WHEN SQL_CLAUSE_TYPE = 'CONDITION' THEN COLUMN_NAME END)
 FROM CA_META_BASE_T
-WHERE CASE_TYPE_CD = @caseType;
+WHERE CASE_TYPE = @caseType;
 
 SELECT @tableName AS table_name, @conditionCol AS condition_column, @selectCols AS select_columns;
 
-SET @sql = N'
-SELECT ' + @selectCols + N'
-FROM ' + QUOTENAME(@tableName) + N'
-WHERE ' + QUOTENAME(@conditionCol) + N' = @p';
-
+SET @sql = N'SELECT ' + @selectCols + N' FROM ' + QUOTENAME(@tableName) + N' WHERE ' + QUOTENAME(@conditionCol) + N' = @p';
 EXEC sp_executesql @sql, N'@p varchar(50)', @participantId;
 
-SET @countSql = N'
-SELECT COUNT(*) AS row_count
-FROM ' + QUOTENAME(@tableName) + N'
-WHERE ' + QUOTENAME(@conditionCol) + N' = @p';
-
+SET @countSql = N'SELECT COUNT(*) AS row_count FROM ' + QUOTENAME(@tableName) + N' WHERE ' + QUOTENAME(@conditionCol) + N' = @p';
 EXEC sp_executesql @countSql, N'@p varchar(50)', @participantId;
