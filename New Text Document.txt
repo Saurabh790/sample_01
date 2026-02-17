@@ -1,128 +1,17 @@
-package com.optum.fads.pgp.behavior.api.security;
+porary credential: null, gzip disabled: null, browser response timeout: null
+2026-02-17T21:12:32.659+05:30  INFO 27332 --- [eduler_Worker-2] net.snowflake.client.core.SFSession      : Connecting to GLOBAL Snowflake domain
+2026-02-17T21:12:33.322+05:30  INFO 27332 --- [eduler_Worker-2] net.snowflake.client.core.SFSession      : Opening session with server: https://ew98463.east-us-2.azure.snowflakecomputing.com:443/, account: ew98463, user: PIDEMOUSR1, password is provided, role: null, database: PI_DEV_DB, schema: FADS, warehouse: SGS_PI_DEMO_XSMALL_WH, validate default parameters: null, authenticator: null, ocsp mode: FAIL_OPEN, passcode in password: null, passcode is not provided, private key is not provided, disable socks proxy: null, application: null, app id: JDBC, app version: 3.23.1, login timeout: null, retry timeout: null, network timeout: null, query timeout: null, connection timeout: null, socket timeout: null, tracing: null, private key file: null, private key pwd is not provided, enable_diagnostics: not provided, diagnostics_allowlist_path: null, session parameters: client store temporary credential: null, gzip disabled: null, browser response timeout: null
+2026-02-17T21:12:33.323+05:30  INFO 27332 --- [eduler_Worker-2] net.snowflake.client.core.SFSession      : Connecting to GLOBAL Snowflake domain
+2026-02-17T21:12:34.323+05:30  INFO 27332 --- [eduler_Worker-2] net.snowflake.client.core.SFSession      : Opening session with server: https://ew98463.east-us-2.azure.snowflakecomputing.com:443/, account: ew98463, user: PIDEMOUSR1, password is provided, role: null, database: PI_DEV_DB, schema: FADS, warehouse: SGS_PI_DEMO_XSMALL_WH, validate default parameters: null, authenticator: null, ocsp mode: FAIL_OPEN, passcode in password: null, passcode is not provided, private key is not provided, disable socks proxy: null, application: null, app id: JDBC, app version: 3.23.1, login timeout: null, retry timeout: null, network timeout: null, query timeout: null, connection timeout: null, socket timeout: null, tracing: null, private key file: null, private key pwd is not provided, enable_diagnostics: not provided, diagnostics_allowlist_path: null, session parameters: client store temporary credential: null, gzip disabled: null, browser response timeout: null
+2026-02-17T21:12:34.325+05:30  INFO 27332 --- [eduler_Worker-2] net.snowflake.client.core.SFSession      : Connecting to GLOBAL Snowflake domain
+2026-02-17T21:12:35.231+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 451
+2026-02-17T21:12:35.843+05:30 ERROR 27332 --- [eduler_Worker-2] c.o.f.c.a.service.impl.CaseBatchService  : Found invalid/Duplicate TCNs in Batch ID 451
+2026-02-17T21:12:36.366+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:getEmailSpecs SmtpHostName is null, Using Azure Logic App
+2026-02-17T21:12:36.372+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
-
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.service.IUserDetailsService;
-
-@ExtendWith(MockitoExtension.class)
-class UserJwtAuthenticationConverterTest {
-
-    @Mock
-    private IUserDetailsService userDetailsService;
-
-    private static final List<String> UNIQUE_ID_CLAIMS = List.of("email", "upn", "unique_name");
-
-    @Test
-    void convert_success() {
-        Jwt jwt = Jwt.withTokenValue("abc")
-                .header("alg", "none")
-                .claim("groups", List.of("admin", "user"))
-                .claim("email", "john@test.com")
-                .build();
-
-        AppUser user = new AppUser();
-        user.setUserId("johnid");
-        user.setUserEmail("john@test.com");
-
-        when(userDetailsService.loadUserByUsername("john@test.com")).thenReturn(user);
-
-        UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService, UNIQUE_ID_CLAIMS);
-
-        Authentication auth = converter.convert(jwt);
-
-        assertNotNull(auth);
-        assertSame(user, auth.getPrincipal());
-        assertEquals("n/a", auth.getCredentials());
-
-        Set<String> authorities = auth.getAuthorities().stream()
-                .map(a -> a.getAuthority())
-                .collect(Collectors.toSet());
-
-        assertEquals(Set.of("ROLE_ADMIN", "ROLE_USER"), authorities);
-
-        verify(userDetailsService).loadUserByUsername("john@test.com");
-        verifyNoMoreInteractions(userDetailsService);
-    }
-
-    @Test
-    void convert_userNotFound_throwsBadCredentials() {
-        Jwt jwt = Jwt.withTokenValue("xyz")
-                .header("alg", "none")
-                .claim("email", "missing@test.com")
-                .build();
-
-        when(userDetailsService.loadUserByUsername("missing@test.com")).thenReturn(null);
-
-        UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService, UNIQUE_ID_CLAIMS);
-
-        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
-
-        verify(userDetailsService).loadUserByUsername("missing@test.com");
-        verifyNoMoreInteractions(userDetailsService);
-    }
-
-    @Test
-    void convert_noGroups_returnsEmptyAuthorities() {
-        Jwt jwt = Jwt.withTokenValue("pqr")
-                .header("alg", "none")
-                .claim("email", "john@test.com")
-                .build();
-
-        AppUser user = new AppUser();
-        user.setUserId("johnid");
-        user.setUserEmail("john@test.com");
-
-        when(userDetailsService.loadUserByUsername("john@test.com")).thenReturn(user);
-
-        UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService, UNIQUE_ID_CLAIMS);
-
-        Authentication auth = converter.convert(jwt);
-
-        assertNotNull(auth);
-        assertSame(user, auth.getPrincipal());
-        assertTrue(auth.getAuthorities().isEmpty());
-
-        verify(userDetailsService).loadUserByUsername("john@test.com");
-        verifyNoMoreInteractions(userDetailsService);
-    }
-
-    // Optional but valuable: if email missing, should fall back to upn / unique_name
-    @Test
-    void convert_emailMissing_usesUpnFallback() {
-        Jwt jwt = Jwt.withTokenValue("zzz")
-                .header("alg", "none")
-                .claim("upn", "upn@test.com")
-                .build();
-
-        AppUser user = new AppUser();
-        when(userDetailsService.loadUserByUsername("upn@test.com")).thenReturn(user);
-
-        UserJwtAuthenticationConverter converter =
-                new UserJwtAuthenticationConverter(userDetailsService, UNIQUE_ID_CLAIMS);
-
-        Authentication auth = converter.convert(jwt);
-
-        assertNotNull(auth);
-        assertSame(user, auth.getPrincipal());
-
-        verify(userDetailsService).loadUserByUsername("upn@test.com");
-        verifyNoMoreInteractions(userDetailsService);
-    }
-}
+2026-02-17T21:12:36.726+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 451 Failed
+2026-02-17T21:12:36.728+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 451 Failed","EmailText":"Batch 451 Failed.  The following TCNs are duplicate or encountered a data mismatch with the provider ID, TCN, line number or paid date in the database: 2523005002781, 2523024008611, 2523027012195, 2523034002968, 2523034019163, 2523045025506, 2523053023046, 2523055007555, 2523063008534, 2523076024224, 2523080017619, 2523094025217, 2523095017095, 2523102020011, 7023006012826, 7023027006106, 7023077001130, 7023097003907. Please delete batch 451.  Correct the batch file and resubmit.","SendTo":"agupt313@optumsgs.onmicrosoft.com"}
+2026-02-17T21:12:36.728+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
+2026-02-17T21:12:37.329+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : saveEmailBatchT Batch Id 451 Notice ID NBIU toEmail agupt313@optumsgs.onmicrosoft.com User ID ca88510043 Email Type Fail
+2026-02-17T21:12:37.450+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail end
+2026-02-17T21:12:37.450+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.job.CaseEntryBatchJob        : Create Batch Case job end...
