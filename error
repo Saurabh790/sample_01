@@ -1,13 +1,31 @@
-ile: null, private key pwd is not provided, enable_diagnostics: not provided, diagnostics_allowlist_path: null, session parameters: client store temporary credential: null, gzip disabled: null, browser response timeout: null
-2026-02-17T21:33:10.753+05:30  INFO 27332 --- [eduler_Worker-2] net.snowflake.client.core.SFSession      : Connecting to GLOBAL Snowflake domain
-2026-02-17T21:33:11.491+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 448
-2026-02-17T21:33:11.952+05:30 ERROR 27332 --- [eduler_Worker-2] c.o.f.c.a.service.impl.CaseBatchService  : Found invalid/Duplicate TCNs in Batch ID 448
-2026-02-17T21:33:12.462+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:getEmailSpecs SmtpHostName is null, Using Azure Logic App
-2026-02-17T21:33:12.468+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
+SELECT CT_BATCH_ID, HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT, PARTICIPANT_ID, CASE_TYPE_CD, PROV_ROLE, REC_MATCH_IND
+FROM CA_UNIVERSE_BATCH_T
+WHERE CT_BATCH_ID = 448
+  AND REC_MATCH_IND = 'N';
+sql
 
-2026-02-17T21:33:12.832+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 448 Failed
-2026-02-17T21:33:12.833+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 448 Failed","EmailText":"Batch 448 Failed.  The following TCNs are duplicate or encountered a data mismatch with the provider ID, TCN, line number or paid date in the database: B0706710100015930, B0706710100016270, B0706710100015910, B0706710100016260, B0706710100016210, B0706710100016200, B0706710100016140, B0706710100016220, B0706710100016230, B0706710100015970, B0706710100016240. Please delete batch 448.  Correct the batch file and resubmit.","SendTo":"bryan.hinsen@optum.com"}
-2026-02-17T21:33:12.833+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
-2026-02-17T21:33:13.674+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : saveEmailBatchT Batch Id 448 Notice ID NBIU toEmail bryan.hinsen@optum.com User ID ca88510043 Email Type Fail
-2026-02-17T21:33:13.828+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail end
-2026-02-17T21:33:13.829+05:30  INFO 27332 --- [eduler_Worker-2] c.o.f.c.api.job.CaseEntryBatchJob        : Create Batch Case job end...
+-- SQL Server: ensure no duplicates by TCN+line
+SELECT HDR_CLM_TCN, LI_NUM, COUNT(*) cnt
+FROM CA_UNIVERSE_BATCH_T
+WHERE CT_BATCH_ID = 448
+GROUP BY HDR_CLM_TCN, LI_NUM
+HAVING COUNT(*) > 1;
+Then in Snowflake (for the failed TCNs from email), check match keys + provider id:
+
+sql
+
+SELECT HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT, HDR_PAY_TO_PROV_ID, HDR_RECIP_FULL_NM
+FROM DM_CLAIM_DRUG_T
+WHERE HDR_CLM_TCN IN (
+  'B0706710100015930','B0706710100016270','B0706710100015910',
+  'B0706710100016260','B0706710100016210','B0706710100016200',
+  'B0706710100016140','B0706710100016220','B0706710100016230',
+  'B0706710100015970','B0706710100016240'
+)
+ORDER BY HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT;
+If Snowflake rows exist but still fail, compare:
+
+PARTICIPANT_ID (SQL Server) vs HDR_PAY_TO_PROV_ID (Snowflake)
+paid date exact equality
+HDR_RECIP_FULL_NM not null
+If you share output of these 2 datasets, I can tell you exact failing reason per TCN.
