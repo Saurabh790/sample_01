@@ -1,95 +1,1262 @@
--- Participants in batch 451 (provider cases)
-SELECT DISTINCT PARTICIPANT_ID
-FROM CA_UNIVERSE_BATCH_T
-WHERE CT_BATCH_ID = 451
-  AND CASE_TYPE_CD = 'PV';
+package com.optum.fads.caseentrybatch.api;
 
-SELECT DISTINCT LTRIM(RTRIM(PARTICIPANT_ID)) AS PARTICIPANT_ID
-FROM CA_UNIVERSE_BATCH_T
-WHERE CT_BATCH_ID = 451
-  AND CASE_TYPE_CD = 'PV';
-SELECT LTRIM(RTRIM(PROV_ID)) AS PROV_ID
-FROM DM_PROVIDER_T
-WHERE LTRIM(RTRIM(PROV_ID)) IN (
-  '120403407'  -- add all IDs from step 1
-);
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 
+/**
+ * Entry point to the cloud scaffolding boiler plate - Spring Boot
+ * Enabled Spring Batch processing and scheduling for case entry batch jobs
+ *
+ * @author AUTHOR, AUTHOR_EMAIL
+ * @version VERSION
+ */
+@SpringBootApplication
+@EnableScheduling
+@Configuration
+public class CaseEntryBatchApplication {
+    /**
+     * Main method for cloud scaffolding boiler plate. Sends metadata to discovery
+     * service.
+     */
+    public static void main(String[] args) {
+        SpringApplication.run(CaseEntryBatchApplication.class, args);
+    }
+}
+package com.optum.fads.caseentrybatch.api.batch;
 
--- Check if issue is whitespace/type formatting
-SELECT DISTINCT b.PARTICIPANT_ID
-FROM CA_UNIVERSE_BATCH_T b
-LEFT JOIN DM_PROVIDER_T p
-  ON LTRIM(RTRIM(p.PROV_ID)) = LTRIM(RTRIM(b.PARTICIPANT_ID))
-WHERE b.CT_BATCH_ID = 451
-  AND b.CASE_TYPE_CD = 'PV'
-  AND p.PROV_ID IS NULL;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.item.ItemStreamException;
+import org.springframework.batch.item.ItemStreamReader;
+import org.springframework.stereotype.Component;
+
+import java.util.Iterator;
+import java.util.List;
+
+/**
+ * Custom ItemReader that reads batch IDs and fetches all records for each batch ID.
+ * Each read returns all CaUniverseBatchT records for a single batch ID.
+ * Returns null when all batches have been processed.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class BatchIdItemReader implements ItemStreamReader<List<CaUniverseBatchT>> {
+
+    private final CaUniverseBatchRepository caUniverseBatchRepository;
+    private Iterator<Integer> batchIdIterator;
+    private List<Integer> batchIds;
+    private int currentIndex = 0;
+
+    public BatchIdItemReader(CaUniverseBatchRepository caUniverseBatchRepository) {
+        this.caUniverseBatchRepository = caUniverseBatchRepository;
+    }
+
+    @Override
+    public void open(ExecutionContext executionContext) throws ItemStreamException {
+        // Load batch IDs when the reader is opened
+        if (batchIds == null) {
+            batchIds = caUniverseBatchRepository.findDistinctBatchIds();
+            log.info("Found {} distinct batch IDs to process", batchIds.size());
+        }
+
+        // Resume from saved position if restarting a failed job
+        if (executionContext.containsKey("batch.reader.current.index")) {
+            currentIndex = executionContext.getInt("batch.reader.current.index");
+            log.info("Resuming from batch index: {}", currentIndex);
+        } else {
+            currentIndex = 0;
+        }
+    }
+
+    @Override
+    public List<CaUniverseBatchT> read() throws Exception {
+        // Check if there are more batches to process
+        if (batchIds != null && currentIndex < batchIds.size()) {
+            Integer batchId = batchIds.get(currentIndex);
+            log.info("Reading batch ID: {} (index: {}/{})", batchId, currentIndex + 1, batchIds.size());
+
+            List<CaUniverseBatchT> batchList = caUniverseBatchRepository.findAllByBatchId(batchId);
+            log.info("Found {} records for batch ID: {}", batchList.size(), batchId);
+
+            currentIndex++;
+            return batchList;
+        }
+
+        // Return null to signal end of data
+        log.info("All batches processed");
+        return null;
+    }
+
+    @Override
+    public void update(ExecutionContext executionContext) throws ItemStreamException {
+        // Save current position for job restart capability
+        executionContext.putInt("batch.reader.current.index", currentIndex);
+    }
+
+    @Override
+    public void close() throws ItemStreamException {
+        // Clean up resources if needed
+        log.info("Closing BatchIdItemReader");
+        batchIdIterator = null;
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import lombok.Getter;
+
+import java.util.List;
+
+/**
+ * Result object for batch processing that holds either valid or invalid data.
+ * Used to route processing through different writers.
+ *
+ * @author Spring Batch Conversion
+ */
+@Getter
+public class BatchProcessingResult {
+    private final boolean valid;
+    private final List<CaUniverseT> validRecords;
+    private final List<CaUniverseBatchT> invalidRecords;
+
+    private BatchProcessingResult(boolean valid,
+                                  List<CaUniverseT> validRecords,
+                                  List<CaUniverseBatchT> invalidRecords) {
+        this.valid = valid;
+        this.validRecords = validRecords;
+        this.invalidRecords = invalidRecords;
+    }
+
+    public static BatchProcessingResult valid(List<CaUniverseT> records) {
+        return new BatchProcessingResult(true, records, null);
+    }
+
+    public static BatchProcessingResult invalid(List<CaUniverseBatchT> records) {
+        return new BatchProcessingResult(false, null, records);
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+/**
+ * ItemProcessor that converts a list of CaUniverseBatchT records to CaUniverseT records.
+ * This processor validates claims against DM_CLAIM_DRUG_T and checks for duplicates.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class CaseEntryBatchProcessor implements ItemProcessor<List<CaUniverseBatchT>, List<CaUniverseT>> {
+
+    private final CaseBatchService caseBatchService;
+
+    public CaseEntryBatchProcessor(CaseBatchService caseBatchService) {
+        this.caseBatchService = caseBatchService;
+    }
+
+    @Override
+    public List<CaUniverseT> process(List<CaUniverseBatchT> batchList) throws Exception {
+        if (batchList == null || batchList.isEmpty()) {
+            log.warn("Received empty batch list to process");
+            return null;
+        }
+
+        Integer batchId = batchList.get(0).getId().getCtBatchId();
+        log.info("Processing batch ID: {} with {} records", batchId, batchList.size());
+
+        try {
+            // Use existing business logic to create CaUniverseT list
+            List<CaUniverseT> caUniverseTList = caseBatchService.createCaUniverseTList(batchList);
+
+            log.info("Processed batch ID: {}. Created {} valid CaUniverseT records out of {} input records",
+                     batchId, caUniverseTList.size(), batchList.size());
+
+            return caUniverseTList;
+        } catch (Exception e) {
+            log.error("Error processing batch ID: {}", batchId, e);
+            throw e;
+        }
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.microsoft.sqlserver.jdbc.SQLServerException;
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.List;
+
+/**
+ * ItemWriter that writes processed CaUniverseT records to the database.
+ * Handles validation, error notification, and batch cleanup.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class CaseEntryBatchWriter implements ItemWriter<List<CaUniverseT>> {
+
+    private final ICaseBatchIndividualService iCaseBatchIndividualService;
+    private final CaUniverseBatchRepository caUniverseBatchRepository;
+    private final CaseBatchEmailService caseBatchEmailService;
+    private final CaseBatchUtil caseBatchUtil;
+
+    public CaseEntryBatchWriter(ICaseBatchIndividualService iCaseBatchIndividualService,
+                                CaUniverseBatchRepository caUniverseBatchRepository,
+                                CaseBatchEmailService caseBatchEmailService,
+                                CaseBatchUtil caseBatchUtil) {
+        this.iCaseBatchIndividualService = iCaseBatchIndividualService;
+        this.caUniverseBatchRepository = caUniverseBatchRepository;
+        this.caseBatchEmailService = caseBatchEmailService;
+        this.caseBatchUtil = caseBatchUtil;
+    }
+
+    @Override
+    public void write(Chunk<? extends List<CaUniverseT>> chunk) throws Exception {
+        for (List<CaUniverseT> caUniverseTList : chunk.getItems()) {
+            if (caUniverseTList == null || caUniverseTList.isEmpty()) {
+                log.warn("Skipping empty CaUniverseT list");
+                continue;
+            }
+
+            Integer batchId = caUniverseTList.get(0).getId().getCtBatchId();
+            String userId = caUniverseTList.get(0).getUiUserBase().getUiSystemId();
+            boolean batchFailed = false;
+
+            try {
+                log.info("Writing {} records for batch ID: {}", caUniverseTList.size(), batchId);
+
+                // Write the processed records
+                iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
+
+                log.info("Successfully wrote batch ID: {}", batchId);
+
+            } catch (Exception e) {
+                batchFailed = true;
+                log.error("Case Batch Processing failed for Batch ID {}", batchId, e);
+                handleBatchFailure(batchId, userId, e);
+            }
+
+            // Clean up processed batch if successful
+            if (!batchFailed) {
+                log.info("Deleting caUniverseBatchT entries for Batch ID {}", batchId);
+                caUniverseBatchRepository.deleteByBatchId(batchId);
+            }
+        }
+    }
+
+    /**
+     * Handle batch processing failure by sending notification emails
+     */
+    private void handleBatchFailure(Integer batchId, String userId, Exception e) {
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
+        emailData.setBatchId(batchId);
+        emailData.setSubmittedBy(userId);
+
+        StringBuilder exceptionMessage = new StringBuilder();
+        if (e.getMessage() != null) {
+            if (e.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                exceptionMessage.append(e.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+            } else {
+                exceptionMessage.append(e.getMessage());
+            }
+        } else {
+            exceptionMessage.append("Exception message is null.");
+        }
+
+        if (e.getCause() != null && e.getCause().getCause() instanceof SQLServerException) {
+            exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
+            SQLServerException sqlServerException = (SQLServerException) e.getCause().getCause();
+            if (sqlServerException.getMessage() != null) {
+                if (sqlServerException.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                    exceptionMessage.append(sqlServerException.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                } else {
+                    exceptionMessage.append(sqlServerException.getMessage());
+                }
+            } else {
+                exceptionMessage.append("SqlServerException message is null.");
+            }
+        }
+
+        EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+        emailData.setErrorLog(exceptionMessage.toString());
+
+        // Send email to user
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
+
+        // Send email to admin
+        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+/**
+ * Composite writer that routes valid and invalid batches to appropriate writers.
+ * Valid batches go to CaseEntryBatchWriter, invalid batches go to InvalidClaimsBatchWriter.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class CompositeRoutingWriter implements ItemWriter<BatchProcessingResult> {
+
+    private final CaseEntryBatchWriter validWriter;
+    private final InvalidClaimsBatchWriter invalidWriter;
+
+    public CompositeRoutingWriter(CaseEntryBatchWriter validWriter,
+                                  InvalidClaimsBatchWriter invalidWriter) {
+        this.validWriter = validWriter;
+        this.invalidWriter = invalidWriter;
+    }
+
+    @Override
+    public void write(Chunk<? extends BatchProcessingResult> chunk) throws Exception {
+        Chunk validChunk = new Chunk();
+        Chunk invalidChunk = new Chunk();
+
+        for (BatchProcessingResult result : chunk.getItems()) {
+            if (result.isValid()) {
+                validChunk.add(result.getValidRecords());
+            } else {
+                invalidChunk.add(result.getInvalidRecords());
+            }
+        }
+
+        // Write valid records
+        if (!validChunk.isEmpty()) {
+            log.info("Writing {} valid batches", validChunk.size());
+            validWriter.write(validChunk);
+        }
+
+        // Write invalid records
+        if (!invalidChunk.isEmpty()) {
+            log.info("Writing {} invalid batches", invalidChunk.size());
+            invalidWriter.write(invalidChunk);
+        }
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.List;
+
+/**
+ * ItemWriter for handling invalid claims.
+ * Saves invalid records back to the batch table and sends notification emails.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class InvalidClaimsBatchWriter implements ItemWriter<List<CaUniverseBatchT>> {
+
+    private final CaUniverseBatchRepository caUniverseBatchRepository;
+    private final CaseBatchEmailService caseBatchEmailService;
+    private final CaseBatchUtil caseBatchUtil;
+
+    public InvalidClaimsBatchWriter(CaUniverseBatchRepository caUniverseBatchRepository,
+                                    CaseBatchEmailService caseBatchEmailService,
+                                    CaseBatchUtil caseBatchUtil) {
+        this.caUniverseBatchRepository = caUniverseBatchRepository;
+        this.caseBatchEmailService = caseBatchEmailService;
+        this.caseBatchUtil = caseBatchUtil;
+    }
+
+    @Override
+    public void write(Chunk<? extends List<CaUniverseBatchT>> chunk) throws Exception {
+        for (List<CaUniverseBatchT> caUniverseBatchTList : chunk.getItems()) {
+            if (caUniverseBatchTList == null || caUniverseBatchTList.isEmpty()) {
+                continue;
+            }
+
+            Integer batchId = caUniverseBatchTList.get(0).getId().getCtBatchId();
+            log.error("Found invalid/Duplicate TCNs in Batch ID {}", batchId);
+
+            // Save invalid records back to database
+            caUniverseBatchRepository.saveAll(caUniverseBatchTList);
+            caUniverseBatchRepository.flush();
+
+            // Send email notification
+            sendInvalidClaimsMail(caUniverseBatchTList);
+        }
+    }
+
+    /**
+     * Send email notification for invalid claims
+     */
+    private void sendInvalidClaimsMail(List<CaUniverseBatchT> caUniverseBatchTList) {
+        HashSet<String> uniqueTcns = new HashSet<>();
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+        emailData.setBatchId(caUniverseBatchTList.get(0).getId().getCtBatchId());
+        emailData.setSubmittedBy(caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId());
+
+        EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+        StringBuilder invalidTcnsText = new StringBuilder();
+
+        for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+            if (CaseEntryConstants.NO.equals(caUniverseBatchT.getRecMatchInd()) ||
+                CaseEntryConstants.DUPLICATE.equals(caUniverseBatchT.getRecMatchInd())) {
+                if (uniqueTcns.add(caUniverseBatchT.getHdrClmTcn())) {
+                    invalidTcnsText.append(caUniverseBatchT.getHdrClmTcn())
+                                   .append(CaseEntryConstants.TEXT_SEPERATOR);
+                }
+            }
+        }
+
+        if (invalidTcnsText.length() > 2) {
+            invalidTcnsText.setLength(invalidTcnsText.length() - 2);
+        }
+
+        emailData.setErrorLog(invalidTcnsText.toString());
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+/**
+ * Composite processor that validates batches and routes to appropriate processing.
+ * Valid batches are converted to CaUniverseT, invalid batches are marked for error handling.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class ValidatingBatchProcessor implements ItemProcessor<List<CaUniverseBatchT>, BatchProcessingResult> {
+
+    private final CaseBatchService caseBatchService;
+
+    public ValidatingBatchProcessor(CaseBatchService caseBatchService) {
+        this.caseBatchService = caseBatchService;
+    }
+
+    @Override
+    public BatchProcessingResult process(List<CaUniverseBatchT> batchList) throws Exception {
+        if (batchList == null || batchList.isEmpty()) {
+            log.warn("Received empty batch list to process");
+            return null;
+        }
+
+        Integer batchId = batchList.get(0).getId().getCtBatchId();
+        log.info("Validating and processing batch ID: {} with {} records", batchId, batchList.size());
+
+        try {
+            // Create CaUniverseT list (includes validation)
+            List<CaUniverseT> caUniverseTList = caseBatchService.createCaUniverseTList(batchList);
+
+            // Check if all records are valid
+            if (caUniverseTList.size() == batchList.size()) {
+                log.info("Batch ID: {} is valid. All {} records passed validation", batchId, batchList.size());
+                return BatchProcessingResult.valid(caUniverseTList);
+            } else {
+                log.warn("Batch ID: {} has invalid records. Valid: {}, Total: {}",
+                         batchId, caUniverseTList.size(), batchList.size());
+                return BatchProcessingResult.invalid(batchList);
+            }
+        } catch (Exception e) {
+            log.error("Error validating batch ID: {}", batchId, e);
+            throw e;
+        }
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.config;
+
+import com.optum.fads.caseentrybatch.api.batch.BatchIdItemReader;
+import com.optum.fads.caseentrybatch.api.batch.BatchProcessingResult;
+import com.optum.fads.caseentrybatch.api.batch.CompositeRoutingWriter;
+import com.optum.fads.caseentrybatch.api.batch.ValidatingBatchProcessor;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.support.SynchronizedItemStreamReader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import java.util.List;
+
+/**
+ * Spring Batch configuration for Case Entry Batch processing.
+ * Configures the job, step, reader, processor, and writer components.
+ *
+ * @author Spring Batch Conversion
+ */
+@Configuration
+@Slf4j
+public class CaseEntryBatchConfiguration {
+
+    @Autowired
+    private JobRepository jobRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private BatchIdItemReader batchIdItemReader;
+
+    @Autowired
+    private ValidatingBatchProcessor validatingBatchProcessor;
+
+    @Autowired
+    private CompositeRoutingWriter compositeRoutingWriter;
+
+    /**
+     * Main batch job that processes case entries
+     */
+    @Bean(name = "caseEntryBatchJob")
+    public Job caseEntryBatchJob() {
+        log.info("Configuring caseEntryBatchJob");
+        return new JobBuilder("caseEntryBatchJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(processBatchStep())
+                .build();
+    }
+
+    /**
+     * Step that processes batches one at a time.
+     * Each chunk is one batch ID with all its records.
+     */
+    @Bean
+    public Step processBatchStep() {
+        log.info("Configuring processBatchStep");
+        return new StepBuilder("processBatchStep", jobRepository)
+                .<List<CaUniverseBatchT>, BatchProcessingResult>chunk(1, transactionManager)
+                .reader(synchronizedReader())
+                .processor(validatingBatchProcessor)
+                .writer(compositeRoutingWriter)
+                .faultTolerant()
+                .skip(Exception.class)
+                .skipLimit(10)
+                .build();
+    }
+
+    /**
+     * Synchronized reader to ensure thread-safe reading in case of concurrent execution
+     */
+    @Bean
+    public SynchronizedItemStreamReader<List<CaUniverseBatchT>> synchronizedReader() {
+        SynchronizedItemStreamReader<List<CaUniverseBatchT>> reader = new SynchronizedItemStreamReader<>();
+        reader.setDelegate(batchIdItemReader);
+        return reader;
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.scheduler;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+/**
+ * Scheduler for Case Entry Batch processing.
+ * Automatically triggers the Spring Batch job at configured intervals.
+ *
+ * @author Spring Batch Conversion
+ */
+@Component
+@Slf4j
+public class CaseBatchScheduler {
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    @Qualifier("caseEntryBatchJob")
+    private Job caseEntryBatchJob;
+
+    /**
+     * Scheduled job that runs at configured intervals.
+     * Default: Every day at 2:00 AM
+     * Can be customized via application.yml using cron expression
+     */
+    @Scheduled(cron = "${batch.schedule.cron:0 0 2 * * ?}")
+    public void runScheduledBatch() {
+        log.info("Starting scheduled batch job execution");
+
+        try {
+            // Create unique job parameters to allow multiple executions
+            JobParameters jobParameters = new JobParametersBuilder()
+                    .addLong("startTime", System.currentTimeMillis())
+                    .addString("triggeredBy", "scheduler")
+                    .toJobParameters();
+
+            JobExecution jobExecution = jobLauncher.run(caseEntryBatchJob, jobParameters);
+
+            log.info("Scheduled batch job completed with status: {} and exit code: {}",
+                     jobExecution.getStatus(),
+                     jobExecution.getExitStatus().getExitCode());
+
+            if (jobExecution.getAllFailureExceptions() != null && !jobExecution.getAllFailureExceptions().isEmpty()) {
+                log.error("Batch job completed with {} failures", jobExecution.getAllFailureExceptions().size());
+                jobExecution.getAllFailureExceptions().forEach(ex ->
+                    log.error("Failure exception: ", ex)
+                );
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to execute scheduled batch job", e);
+        }
+    }
+
+    /**
+     * Alternative scheduler for fixed delay execution
+     * Uncomment @Scheduled annotation to use
+     * Runs every 6 hours after the previous execution completes
+     */
+    // @Scheduled(fixedDelayString = "${batch.schedule.fixed-delay:21600000}", initialDelay = 60000)
+    public void runScheduledBatchFixedDelay() {
+        log.info("Starting fixed-delay scheduled batch job execution");
+        runScheduledBatch();
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.service;
+
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+
+import org.springframework.batch.core.JobExecution;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+
+/**
+ * @author anil wagh 
+ * ICaseBatchService
+ */
+public interface ICaseBatchService {
+
+    /**
+     * Legacy method for creating batch cases
+     * @deprecated Use executeBatchJob() instead for Spring Batch processing
+     */
+    @Deprecated
+    public String createBatchCase();
+
+    /**
+     * Execute the Spring Batch job for processing case entries
+     * @return JobExecution containing the job execution details
+     */
+    public JobExecution executeBatchJob();
+
+}
+package com.optum.fads.caseentrybatch.api.service.impl;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import com.microsoft.sqlserver.jdbc.SQLServerException;
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseTPK;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
+import com.optum.fads.caseentrybatch.api.snowflakeDomain.DmClaimDrugT;
+import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * @author anil wagh
+ * CaseBatchService
+ */
+
+@Service
+@Slf4j
+public class CaseBatchService  implements ICaseBatchService {
+
+    @Autowired
+    private CaUniverseBatchRepository caUniverseBatchRepository;
+
+    @Autowired
+    private	CaseBatchEmailService caseBatchEmailService;
+
+    @Autowired
+    private	ICaseBatchIndividualService iCaseBatchIndividualService;
+
+    @Autowired
+    private CaseBatchUtil caseBatchUtil;
+    
+    @Autowired
+	private DmClaimDrugRepository dmClaimDrugRepository;
+
+	@Autowired
+	private JobLauncher jobLauncher;
+
+	@Autowired
+	@Qualifier("caseEntryBatchJob")
+	private Job caseEntryBatchJob;
 
 
+    /**
+     * Execute the Spring Batch job for processing case entries
+     * @return JobExecution containing the job execution details and status
+     */
+    @Override
+    public JobExecution executeBatchJob() {
+        try {
+            log.info("Starting Spring Batch job execution for case entry batch processing");
 
-SELECT TOP 1 * FROM DM_PROVIDER_T;
-SELECT COUNT(*) FROM DM_PROVIDER_T WHERE <condition_column_from_metadata> = '120403407';
+            JobParameters jobParameters = new JobParametersBuilder()
+                    .addLong("startTime", System.currentTimeMillis())
+                    .addString("jobId", String.valueOf(System.currentTimeMillis()))
+                    .toJobParameters();
 
+            JobExecution jobExecution = jobLauncher.run(caseEntryBatchJob, jobParameters);
 
-SELECT COLUMN_NAME
-FROM CA_META_BASE_T
-WHERE CASE_TYPE = 'PV'
-  AND SQL_CLAUSE_TYPE = 'CONDITION';
+            log.info("Spring Batch job execution completed with status: {}", jobExecution.getStatus());
+            return jobExecution;
 
--- table name from metadata for PV
-SELECT DISTINCT TABLE_NAME
-FROM CA_META_BASE_T
-WHERE CASE_TYPE = 'PV';
-SELECT COUNT(*) AS row_count
-FROM DM_PROVIDER_T
-WHERE PROV_ID = '120403407';
-SELECT *
-FROM DM_PROVIDER_T
-WHERE PROV_ID = '120403407';
-SELECT COUNT(*) AS row_count_trim
-FROM DM_PROVIDER_T
-WHERE LTRIM(RTRIM(PROV_ID)) = '120403407';
+        } catch (Exception e) {
+            log.error("Failed to execute Spring Batch job", e);
+            throw new RuntimeException("Failed to execute batch job: " + e.getMessage(), e);
+        }
+    }
 
+    /**
+     * this method will create cases and entries in CA_UNIVERSE_T table
+     *
+     * @deprecated This method is replaced by executeBatchJob() which uses Spring Batch.
+     * Input - CA_UNIVERSE_BATCH_T table entries
+     */
+    @Deprecated
+    public String createBatchCase(){
 
+        log.info(" Run Case Batch " );
 
--- 1) Metadata rows for provider case type
-SELECT
-    CASE_TYPE,
-    FIELD_ID,
-    SQL_CLAUSE_TYPE,
-    TABLE_NAME,
-    COLUMN_NAME,
-    HTML_FIELD_TYPE
-FROM CA_META_BASE_T
-WHERE CASE_TYPE = 'PV'
-ORDER BY
-    CASE WHEN SQL_CLAUSE_TYPE = 'SELECT' THEN 1 ELSE 2 END,
-    FIELD_ID;
--- 2) CONDITION count (should be exactly 1 for current Java method)
-SELECT COUNT(*) AS condition_count
-FROM CA_META_BASE_T
-WHERE CASE_TYPE = 'PV'
-  AND SQL_CLAUSE_TYPE = 'CONDITION';
--- 3) Build and run the same dynamic lookup for participant 120403407
-DECLARE @caseType      varchar(10) = 'PV';
-DECLARE @participantId varchar(50) = '120403407';
-DECLARE @tableName     sysname;
-DECLARE @selectCols    nvarchar(max);
-DECLARE @conditionCol  sysname;
-DECLARE @sql           nvarchar(max);
-DECLARE @countSql      nvarchar(max);
+        // Get a list of Batch IDs from CaUniverseBatchT
+        List<CaUniverseBatchT> caUniverseBatchTList = null;
+        List<Integer> caUniverseBatchTIdList = caUniverseBatchRepository.findDistinctBatchIds();
 
-SELECT
-    @tableName = MAX(TABLE_NAME),
-    @selectCols = STRING_AGG(CASE WHEN SQL_CLAUSE_TYPE = 'SELECT' THEN QUOTENAME(COLUMN_NAME) END, ','),
-    @conditionCol = MAX(CASE WHEN SQL_CLAUSE_TYPE = 'CONDITION' THEN COLUMN_NAME END)
-FROM CA_META_BASE_T
-WHERE CASE_TYPE = @caseType;
+        // Get a list of CaUniverseBatchT records for each batch sorted by participant ID
+        for (Integer caUniverseBatchTId : caUniverseBatchTIdList) {
+            log.info("Next Batch Id = " + caUniverseBatchTId);
+            caUniverseBatchTList = caUniverseBatchRepository.findAllByBatchId(caUniverseBatchTId);
+            createBatchCaseEntries(caUniverseBatchTList);
 
-SELECT @tableName AS table_name, @conditionCol AS condition_column, @selectCols AS select_columns;
+        }
 
-SET @sql = N'SELECT ' + @selectCols + N' FROM ' + QUOTENAME(@tableName) + N' WHERE ' + QUOTENAME(@conditionCol) + N' = @p';
-EXEC sp_executesql @sql, N'@p varchar(50)', @participantId;
+        return CaseEntryConstants.SUCCESS_MESSAGE;
+    }	// Create Batch Case End
 
-SET @countSql = N'SELECT COUNT(*) AS row_count FROM ' + QUOTENAME(@tableName) + N' WHERE ' + QUOTENAME(@conditionCol) + N' = @p';
-EXEC sp_executesql @countSql, N'@p varchar(50)', @participantId;
+    /**
+     * this method will create Batch Case Entries in various Case Tracking tables for a batch
+     *
+     * @deprecated This method is replaced by Spring Batch processing.
+     * Use the batch job execution instead.
+     *
+     * Parameters - List<CaUniverseBatchT> caUniverseBatchTList
+     */
+    @Deprecated
+    private void createBatchCaseEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
+
+        boolean batchFailed = false;
+        List<CaUniverseT> caUniverseTList;
+        Integer caseUniverseBatchIdin = caUniverseBatchTList.get(0).getId().getCtBatchId();
+        String userId = caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId();
+        try {
+        	caUniverseTList = createCaUniverseTList(caUniverseBatchTList);
+        	if (caUniverseTList.size() == caUniverseBatchTList.size()) {	
+        		iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
+        	} else {
+        		caUniverseBatchRepository.saveAll(caUniverseBatchTList);	// DB Operation 1
+                caUniverseBatchRepository.flush();					// DB Operation
+        		sendInvalidClaimsMail(caUniverseBatchTList);
+        		batchFailed = true;	
+        	}
+        	caUniverseTList.clear();
+        } catch (Exception e) {
+            batchFailed = true;
+            log.error(" Case Batch Processing failed for Batch ID " + caseUniverseBatchIdin);
+            log.info(e.getMessage());
+            log.error("Exception Trace: ", e);
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
+            emailData.setBatchId(caseUniverseBatchIdin);
+            emailData.setSubmittedBy(userId);
+            StringBuilder exceptionMessage = new StringBuilder();
+            if (e.getMessage() != null) {
+                if (e.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                    exceptionMessage.append(e.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                } else {
+                    exceptionMessage.append(e.getMessage().substring(0, e.getMessage().length()));
+                }
+            } else {
+                exceptionMessage.append("Exception message is null.");
+            }
+            if (e.getCause() != null) {
+                if (e.getCause().getCause() instanceof SQLServerException) {
+                    exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
+                    SQLServerException sqlServerException = (SQLServerException) e.getCause().getCause();
+                    log.info(sqlServerException.getMessage());
+                    if (sqlServerException.getMessage() != null) {
+                        if (sqlServerException.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                        } else {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, sqlServerException.getMessage().length()));
+                        }
+                    } else {
+                        exceptionMessage.append("SqlServerException message is null.");
+                    }
+                }
+            }
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            emailData.setErrorLog(exceptionMessage.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to User
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to admin
+        } // try
+        if (!batchFailed) {
+            log.info(" Delete caUniverseBatchT entries in Batch ID " + caseUniverseBatchIdin);
+            caUniverseBatchRepository.deleteByBatchId(caseUniverseBatchIdin); // DB Operation 2
+        }
+
+    }
+    
+    /**
+     * this method will create CaUniverseT List
+     *
+     * Parameters - caUniverseBatchTList
+     */
+    
+    private void  sendInvalidClaimsMail(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	
+    	HashSet<String> uniqueTcns = new HashSet<>();
+    	
+			log.error("Found invalid/Duplicate TCNs in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+            emailData.setBatchId(caUniverseBatchTList.get(0).getId().getCtBatchId());
+            emailData.setSubmittedBy(caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId());
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            StringBuilder invalidTcnsText = new StringBuilder();
+            for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+            	if (caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.NO) || caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.DUPLICATE)) {
+            		if (uniqueTcns.add(caUniverseBatchT.getHdrClmTcn())) {
+            			invalidTcnsText.append(caUniverseBatchT.getHdrClmTcn()+CaseEntryConstants.TEXT_SEPERATOR);
+            		}
+            	}
+    		}
+            invalidTcnsText.setLength(invalidTcnsText.length() - 2);
+            emailData.setErrorLog(invalidTcnsText.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	
+
+    }
+    /**
+	  * this method will create CaUniversT list and append to CaUniverseT the data from DM_CLAIM_DRUG_T
+	  * it also validates the input claims data against DM_CLAIM_DRUG_T and checks for duplicate TCN+LiNum records
+	  * Parameters - caUniverseBatchTList
+	  */
+	public List<CaUniverseT> createCaUniverseTList(List<CaUniverseBatchT> caUniverseBatchTList) {
+		
+		log.info("Start Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		boolean validBatch = true;
+		List<CaUniverseT> caUniverseTList = new ArrayList<>();
+		LocalDateTime currentSqlDate = LocalDateTime.now(caseBatchUtil.getZoneId());
+		DmClaimDrugT dmClaimDrugT = null;
+		
+		// Get a map of TCN + Line Number and their occurrences
+		Map<Pair<String, String>, Long> tcnLiNumsMapPairs = caUniverseBatchTList.stream()
+		        .collect(Collectors.groupingBy(e -> Pair.of(e.getHdrClmTcn(), e.getLiNum()), Collectors.counting()));
+
+		// case ID, caSequenceId, clmSeqNum set in CaseBatchIndividual Service
+		
+		for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+			
+//			Date dtHdrClaimPaidDate = caUniverseBatchT.getId().getHdrClmPdDt();
+			Date dtHdrClaimPaidDate = caUniverseBatchT.getHdrClmPdDt();
+			LocalDate localHdrClaimPdDate = dtHdrClaimPaidDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+			caUniverseBatchT.setRecMatchInd(CaseEntryConstants.YES);
+			
+			// Check if duplicate
+			Pair<String, String> pair = Pair.of(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum());
+			if (tcnLiNumsMapPairs.containsKey(pair) && tcnLiNumsMapPairs.get(pair) > 1) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.DUPLICATE);
+					validBatch = false;
+			} else {
+				dmClaimDrugT = dmClaimDrugRepository.findClaimDrugTbyId(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum(), localHdrClaimPdDate);
+					
+				if (dmClaimDrugT == null) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+					validBatch = false;
+				} else {			// Provider ID or Recipient ID must match participant ID
+					String origId =  CaseEntryConstants.BLANK_STR;
+					if (CaseEntryConstants.MEMBER.equals(caUniverseBatchT.getCaseTypeCd())) {
+							origId = dmClaimDrugT.getHdrRecipOrigId();
+					} else {
+						switch (caUniverseBatchT.getProvRole()) {
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_ATTENDING:
+					        	origId = dmClaimDrugT.getHdrAttendProvId();
+					                 break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_BILLING:
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+					               break;
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_REFERRING:
+					        	origId = dmClaimDrugT.getHdrReferProvId();
+					                 break;
+					        case CaseEntryConstants.PROVIDER_ROLE_TREATING:
+					        	 origId = dmClaimDrugT.getLiTreatProvId();
+					                  break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_PRESCRIBING:
+					        	origId = dmClaimDrugT.getHdrPrescrProvId();
+					              break;
+					        default: 
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+				                  break;
+						}	
+					}
+					if (!origId.equals(caUniverseBatchT.getParticipantId()) || dmClaimDrugT.getHdrRecipFullNm() == null) {
+						caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+						validBatch = false;
+					}
+				}
+			}
+			if (validBatch) {
+				CaUniverseT	caUniverseT = CaUniverseT.builder().id(CaUniverseTPK.builder().ctBatchId(caUniverseBatchT.getId().getCtBatchId()).ctBatchDate(currentSqlDate)
+//		                      .hdrClmTcn(caUniverseBatchT.getId().getHdrClmTcn()).liNum(caUniverseBatchT.getId().getLiNum()).hdrClmPdDt(caUniverseBatchT.getId().getHdrClmPdDt()).build())
+		        		.hdrClmTcn(caUniverseBatchT.getHdrClmTcn()).liNum(caUniverseBatchT.getLiNum()).hdrClmPdDt(caUniverseBatchT.getHdrClmPdDt()).build())
+		                .uiUserBase(UiUserBase.builder().uiSystemId(caUniverseBatchT.getUiUserBase().getUiSystemId()).build())
+		                .caseTypeCd(caUniverseBatchT.getCaseTypeCd()).provRole(caUniverseBatchT.getProvRole()).caPrmNodeCd(caUniverseBatchT.getCaPrmNodeCd())
+		                .caYearId(caUniverseBatchT.getCaYearId()).projectStatus(caUniverseBatchT.getProjectStatus()).invstTypeCd(caUniverseBatchT.getInvstTypeCd())
+		                .caseSourceCd(caUniverseBatchT.getCaseSourceCd()).caseStatusCd(caUniverseBatchT.getCaseStatusCd()).caseStatusDt(caUniverseBatchT.getCaseStatusDt())
+		                .issueCd(caUniverseBatchT.getIssueCd()).assignUsr(caUniverseBatchT.getAssignUsr()).assignSectionCd(caUniverseBatchT.getAssignSectionCd())
+		                .assignDate(caUniverseBatchT.getAssignDate()).participantId(caUniverseBatchT.getParticipantId()).liDrugValidClmInd(caUniverseBatchT.getLiDrugValidClmInd()).build();
+		        
+			    caUniverseT.setHdrClmAdjStsCd(dmClaimDrugT.getHdrClmAdjStsCd());
+				caUniverseT.setClaimjStatusDesc(dmClaimDrugT.getClaimjStatusDesc());
+				caUniverseT.setHdrPayToProvId(dmClaimDrugT.getHdrPayToProvId());
+				caUniverseT.setHdrPayToProvNm(dmClaimDrugT.getHdrPayToProvNm());
+				caUniverseT.setHdrPrescrProvId(dmClaimDrugT.getHdrPrescrProvId());
+				caUniverseT.setHdrPrescrProvNpi(dmClaimDrugT.getHdrPrescrProvNpi());
+				caUniverseT.setHdrCosCd(dmClaimDrugT.getHdrCosCd());
+				caUniverseT.setCosDesc(dmClaimDrugT.getCosDesc());
+				caUniverseT.setHdrRecipOrigId(dmClaimDrugT.getHdrRecipOrigId());
+				caUniverseT.setHdrRecipFullNm(dmClaimDrugT.getHdrRecipFullNm());
+				caUniverseT.setHdrClmTcnOld(dmClaimDrugT.getHdrClmTcnOld());
+				caUniverseT.setLiSrvFromDt(dmClaimDrugT.getLiSrvFromDt());
+				caUniverseT.setLiDrugPrescrNum(dmClaimDrugT.getLiDrugPrescrNum());
+				caUniverseT.setLiDrugRefillNum(dmClaimDrugT.getLiDrugRefillNum());
+				caUniverseT.setLiDrugPrescrDt(dmClaimDrugT.getLiDrugPrescrDt());
+				caUniverseT.setLiDrugNdc(dmClaimDrugT.getLiDrugNdc());
+				caUniverseT.setNdcDesc(dmClaimDrugT.getNdcDesc());
+				caUniverseT.setLiDrugSpecTheraClsCd(dmClaimDrugT.getLiDrugSpecTheraClsCd());
+				caUniverseT.setTheraClassSpecDesc(dmClaimDrugT.getTheraClassSpecDesc());
+				caUniverseT.setLiDrugDaysSupply(dmClaimDrugT.getLiDrugDaysSupply());
+				caUniverseT.setLiBillUosQty(dmClaimDrugT.getLiBillUosQty());
+				caUniverseT.setLiPdUosQty(dmClaimDrugT.getLiPdUosQty());
+				caUniverseT.setHdrBillAmt(dmClaimDrugT.getHdrBillAmt());
+				caUniverseT.setLiBillAmt(dmClaimDrugT.getLiBillAmt());
+				caUniverseT.setLiPdAmt(dmClaimDrugT.getLiPdAmt());
+				if (caUniverseT.getId().getLiNum().equals(CaseEntryConstants.ONE_STR)) {
+					caUniverseT.setHdrPdAmt(dmClaimDrugT.getHdrPdAmt());
+				} else {
+					caUniverseT.setHdrPdAmt(BigDecimal.valueOf(CaseEntryConstants.ZERO));
+				}
+				caUniverseT.setHdrCleanClmInd(dmClaimDrugT.getHdrCleanClmInd());
+				caUniverseT.setLiCleanClmInd(dmClaimDrugT.getLiCleanClmInd());
+				caUniverseT.setHdrClmTypeCd(dmClaimDrugT.getHdrClmTypeCd());
+				caUniverseT.setHdrClmTypeDesc(dmClaimDrugT.getHdrClmTypeDesc());
+				caUniverseT.setHdrPayToProvNpiId(dmClaimDrugT.getHdrPayToProvNpiId());
+				caUniverseT.setGcnDesc(dmClaimDrugT.getGcnDesc());
+				caUniverseT.setHdrRecipCurrId(dmClaimDrugT.getHdrRecipCurrId());
+				caUniverseT.setHdrEncounterCd(dmClaimDrugT.getHdrEncounterCd());
+				caUniverseT.setLiMcoShadowPrice(dmClaimDrugT.getLiMcoShadowPrice());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoTcn());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoId());
+				caUniverseT.setHdrMcoNm(dmClaimDrugT.getHdrMcoNm());
+				caUniverseT.setHdrMcoPdDt(dmClaimDrugT.getHdrMcoPdDt());
+				caUniverseT.setHdrMcoShadowPrice(dmClaimDrugT.getHdrMcoShadowPrice());
+				caUniverseT.setHdrPayToProvTyCd(dmClaimDrugT.getHdrPayToProvTyCd());
+				caUniverseT.setHdrPayToProvTyDesc(dmClaimDrugT.getHdrPayToProvTyDesc());
+				caUniverseT.setHdrPayToProvSpecCd(dmClaimDrugT.getHdrPayToProvSpecCd());
+				caUniverseT.setHdrPayToProvSpecDesc(dmClaimDrugT.getHdrPayToProvSpecDesc());
+				caUniverseT.setProvFein(dmClaimDrugT.getProvFein());
+				caUniverseT.setProvPracAddrLine1(dmClaimDrugT.getProvPracAddrLine1());
+				caUniverseT.setProvPracAddrLine2(dmClaimDrugT.getProvPracAddrLine2());
+				caUniverseT.setHdrPrescrProvNm(dmClaimDrugT.getHdrPrescrProvNm());
+				caUniverseT.setHdrPrescrProvTyCd(dmClaimDrugT.getHdrPrescrProvTyCd());
+				caUniverseT.setHdrPrescrProvTyDesc(dmClaimDrugT.getHdrPrescrProvTyDesc());
+				caUniverseT.setHdrPrescrProvSpecCd(dmClaimDrugT.getHdrPrescrProvSpecCd());
+				caUniverseT.setHdrPrescrProvSpecDesc(dmClaimDrugT.getHdrPrescrProvSpecDesc());
+				caUniverseT.setHdrRecipAgeMthsQty(dmClaimDrugT.getHdrRecipAgeMthsQty());
+				caUniverseT.setHdrRecipAgeYrsQty(dmClaimDrugT.getHdrRecipAgeYrsQty());
+				caUniverseT.setRecipBirthDt(dmClaimDrugT.getRecipBirthDt());
+				caUniverseT.setRecipDeathDt(dmClaimDrugT.getRecipDeathDt());
+				caUniverseT.setRecipCntyCd(dmClaimDrugT.getRecipCntyCd());
+				caUniverseT.setRecipCntyDesc(dmClaimDrugT.getRecipCntyDesc());
+				caUniverseT.setRecipCityNm(dmClaimDrugT.getRecipCityNm());
+				caUniverseT.setRecipStateCd(dmClaimDrugT.getRecipStateCd());
+				caUniverseT.setRecipZipCd(dmClaimDrugT.getRecipZipCd());
+				caUniverseT.setRecipGenderCd(dmClaimDrugT.getRecipGenderCd());
+				caUniverseT.setRecipGenderDesc(dmClaimDrugT.getRecipGenderDesc());
+				caUniverseT.setRecipAddrLine1(dmClaimDrugT.getRecipAddrLine1());
+				caUniverseT.setRecipAddrLine2(dmClaimDrugT.getRecipAddrLine2());
+				caUniverseT.setHdrRecipMcareId(dmClaimDrugT.getHdrRecipMcareId());
+				caUniverseT.setRecipTefraInd(dmClaimDrugT.getRecipTefraInd());
+				caUniverseT.setRecipBnftPlanCd(dmClaimDrugT.getRecipBnftPlanCd());
+				caUniverseT.setRecipBnftPlanDesc(dmClaimDrugT.getRecipBnftPlanDesc());
+				caUniverseT.setHdrDrugNhInd(dmClaimDrugT.getHdrDrugNhInd());
+				caUniverseT.setHdrSrvFromDt(dmClaimDrugT.getHdrSrvFromDt());
+				caUniverseT.setHdrCopayAmt(dmClaimDrugT.getHdrCopayAmt());
+				caUniverseT.setHdrTplAmt(dmClaimDrugT.getHdrTplAmt());
+				caUniverseT.setHdrDrugDispensingFee(dmClaimDrugT.getHdrDrugDispensingFee());
+				caUniverseT.setLiTplAmt(dmClaimDrugT.getLiTplAmt());
+				caUniverseT.setLiDrugCompoundInd(dmClaimDrugT.getLiDrugCompoundInd());
+				caUniverseT.setLiDrugGcn(dmClaimDrugT.getLiDrugGcn());
+				caUniverseT.setLiDrugDosageFormDesc(dmClaimDrugT.getLiDrugDosageFormDesc());
+				caUniverseT.setRPackageSize(dmClaimDrugT.getRPackageSize());
+				caUniverseT.setRStrengthDesc(dmClaimDrugT.getRStrengthDesc());
+				caUniverseT.setRClassCd(dmClaimDrugT.getRClassCd());
+				caUniverseT.setRDrugCat(dmClaimDrugT.getRDrugCat());
+				caUniverseT.setRDrugDea(dmClaimDrugT.getRDrugDea());
+				caUniverseT.setRRouteDesc(dmClaimDrugT.getRRouteDesc());
+				caUniverseT.setLiHeaderPayInd(dmClaimDrugT.getLiHeaderPayInd());
+				caUniverseT.setLiClmAdjStsCd(dmClaimDrugT.getLiClmAdjStsCd());
+				caUniverseT.setLiCoeCd(dmClaimDrugT.getLiCoeCd());
+				caUniverseT.setLiCopayAmt1(dmClaimDrugT.getLiCopayAmt1());
+				caUniverseT.setHdrFundCd(dmClaimDrugT.getHdrFundCd());
+				caUniverseT.setFundDesc(dmClaimDrugT.getFundDesc());
+	//			caUniverseT.setFinFundCd(dmClaimDrugT.getFinFundCd()); - not needed
+				caUniverseT.setCompDrugIngredCount(dmClaimDrugT.getCompDrugIngredCount());
+				caUniverseT.setCompDrugProductIdQlfr(dmClaimDrugT.getCompDrugProductIdQlfr());
+				caUniverseT.setCompDrugIngredQty(dmClaimDrugT.getCompDrugIngredQty());
+				caUniverseT.setCompDrugIngredCost(dmClaimDrugT.getCompDrugIngredCost());
+				caUniverseTList.add(caUniverseT);
+			}
+	       }
+		log.info("End Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		return caUniverseTList;
+	}
+    
+}
+server:
+  port: 8080
+  servlet:
+    contextPath: /caseentrybatch
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring: 
+  application:
+   name: caseentrybatch
+  batch:
+    jdbc:
+      initialize-schema: always
+      table-prefix: BATCH_
+    job:
+      enabled: false
+  task:
+    scheduling:
+      pool:
+        size: 5
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: ${AZURE_KV_URL}
+        credential:
+          client-id: ${AZURE_KV_CLIENT_ID}
+          client-secret: ${AZURE_KV_CLIENT_SECRET}
+          tenant-id: ${AZURE_TENANT_ID}  
+  jpa:
+    database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
+    
+  datasource:
+     hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+     sql:
+       type: com.zaxxer.hikari.HikariDataSource
+       jdbcUrl: ${DB_URL}
+       userName: ${DB_USR}
+       password: ${DB_PWD}
+       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+       jpa:
+           database-platform: org.hibernate.dialect.SQLServer2016Dialect
+           database: SQL_SERVER 
+           format-sql: true
+           globally_quoted_identifiers: true
+           show-sql: true
+           hibernate:
+              use-new-id-generator-mappings: true
+              globally_quoted_identifiers: true
+              hibernate.allow_update_outside_transaction: true
+              naming:
+                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+     snfk:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
+        jdbcUrl: ${SNFK_DB_URL}
+        database: ${SNFK_DATABASE}
+        userName: ${SNFK_USR}
+        password: ${SNFK_PWD}
+        certKey: ${SNFK_CERT_KEY}
+        passphrase: ${SNFK_CERT_PASSPHRASE}
+        schema: ${SNFK_SCHEMA}
+        warehouse: ${SNFK_WAREHOUSE}
+        role: ${SNFK_ROLE}
+        account: ${SNFK_ACCOUNT}
+        jpa:
+            database-platform: com.optum.fads.caseentrybatch.api.config.SnowflakeDialect
+            database: default 
+            format-sql: true
+            globally_quoted_identifiers: true
+            show-sql: true
+            hibernate:
+               use-new-id-generator-mappings: true
+               globally_quoted_identifiers: true
+               naming:
+                     implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                     physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+  quartz:
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 3      
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          jwk-set-uri: ${JWKS_URL}
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+db:
+  snfk-login:
+    useCert: ${USE_CERT:false}
+
+# Batch Scheduler Configuration
+batch:
+  schedule:
+    # Cron expression for batch job scheduling
+    # Default: Every day at 2:00 AM (0 0 2 * * ?)
+    # Examples:
+    #   - Every 30 minutes: 0 */30 * * * ?
+    #   - Every hour: 0 0 * * * ?
+    #   - Every day at 3 AM: 0 0 3 * * ?
+    #   - Every Monday at 2 AM: 0 0 2 ? * MON
+    cron: ${BATCH_SCHEDULE_CRON:0 0 2 * * ?}
+    # Alternative: Fixed delay in milliseconds (21600000 = 6 hours)
+    fixed-delay: ${BATCH_SCHEDULE_FIXED_DELAY:21600000}
+
