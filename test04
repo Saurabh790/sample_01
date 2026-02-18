@@ -1,112 +1,118 @@
-[
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100015930",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016270",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100015910",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016260",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016210",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016200",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2019-03-24T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016140",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016220",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016230",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100015970",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  },
-  {
-    "CT_BATCH_ID": "448",
-    "HDR_CLM_TCN": "B0706710100016240",
-    "LI_NUM": "1",
-    "HDR_CLM_PD_DT": "2017-03-08T00:00:00.0000000",
-    "PARTICIPANT_ID": "89058275",
-    "CASE_TYPE_CD": "PV",
-    "PROV_ROLE": "BP",
-    "REC_MATCH_IND": "N"
-  }
-]
+I have convertednormal app to secret oiented one for reading th prop values so can u tell me is my changes fine for in terms of app prop 
+below onewith akv 
+
+server:
+  port: 8080
+  servlet:
+    contextPath: /behavior
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring:
+  application:
+   name: behavior
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
+        credential:
+          client-id: ce5962ff-06f5-4911-be66-e51b86531710
+          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
+          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+  datasource:
+    initialize: false
+    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
+    userName: sql-admin-user
+    password: sql-admin-password
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+ 
+  jpa:
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+    
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL}
+          jws-algorithms: ${JWS_ALG:RS256}
+          unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
+          
+          
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+
+
+
+below one with the prev so what things I hv to keep n remove 
+
+
+server:
+  port: 8080
+  servlet:
+    contextPath: /behavior
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring:
+  application:
+   name: behavior
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER 
+    show-sql: false
+    hibernate:
+       naming:
+            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: ${DB_URL}
+    userName: ${DB_USR}
+    password: ${DB_PWD}
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL}
+          jws-algorithms: ${JWS_ALG:RS256}
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
