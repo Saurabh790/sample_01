@@ -1,6 +1,3 @@
-I have convertednormal app to secret oiented one for reading th prop values so can u tell me is my changes fine for in terms of app prop 
-below onewith akv 
-
 server:
   port: 8080
   servlet:
@@ -16,16 +13,16 @@ spring:
     azure:
       keyvault:
         secrets:
-          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
+          endpoint: ${AZURE_KV_URL}
         credential:
-          client-id: ce5962ff-06f5-4911-be66-e51b86531710
-          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+          client-id: ${AZURE_KV_CLIENT_ID}
+          client-secret: ${AZURE_KV_CLIENT_SECRET}
+          tenant-id: ${AZURE_TENANT_ID}
   datasource:
     initialize: false
-    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true;
-    userName: sql-admin-user
-    password: sql-admin-password
+    jdbcUrl: ${DB_URL}
+    userName: ${DB_USR}
+    password: ${DB_PWD}
     driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
  
   jpa:
@@ -43,64 +40,6 @@ spring:
           unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
           
           
-management:
-  endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
-
-
-
-below one with the prev so what things I hv to keep n remove 
-
-
-server:
-  port: 8080
-  servlet:
-    contextPath: /behavior
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
-
-spring:
-  application:
-   name: behavior
-  jpa:
-    database-platform: org.hibernate.dialect.SQLServer2016Dialect
-    database: SQL_SERVER 
-    show-sql: false
-    hibernate:
-       naming:
-            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-  datasource:
-    type: com.zaxxer.hikari.HikariDataSource
-    jdbcUrl: ${DB_URL}
-    userName: ${DB_USR}
-    password: ${DB_PWD}
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${JWKS_URL}
-          jws-algorithms: ${JWS_ALG:RS256}
 management:
   endpoint:
     metrics.enabled: true
