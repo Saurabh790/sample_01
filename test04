@@ -2,35 +2,48 @@ server:
   port: 8080
   servlet:
     contextPath: /behavior
+
 quickstart:
   generateOrderPeriod: 10s
   processOrderPeriod: 30s
 
 spring:
   application:
-   name: behavior
+    name: behavior
+
   cloud:
     azure:
+      credential:
+        client-id: ${AZURE_KV_CLIENT_ID}
+        client-secret: ${AZURE_KV_CLIENT_SECRET}
+      profile:
+        tenant-id: ${AZURE_TENANT_ID}
       keyvault:
-        secrets:
+        secret:
           endpoint: ${AZURE_KV_URL}
-        credential:
-          client-id: ${AZURE_KV_CLIENT_ID}
-          client-secret: ${AZURE_KV_CLIENT_SECRET}
-          tenant-id: ${AZURE_TENANT_ID}
+
   datasource:
-    initialize: false
-    jdbcUrl: ${DB_URL}
-    userName: ${DB_USR}
+    url: ${DB_URL}
+    username: ${DB_USR}
     password: ${DB_PWD}
-    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
- 
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+
   jpa:
     database: SQL_SERVER
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
     show-sql: false
     hibernate:
       ddl-auto: none
-    
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
   security:
     oauth2:
       resourceserver:
@@ -38,20 +51,18 @@ spring:
           jwk-set-uri: ${JWKS_URL}
           jws-algorithms: ${JWS_ALG:RS256}
           unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
-          
-          
+
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
   endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
