@@ -2,14 +2,15 @@ server:
   port: 8080
   servlet:
     contextPath: /peergroup
+
 quickstart:
   generateOrderPeriod: 10s
   processOrderPeriod: 30s
 
-spring: 
+spring:
   application:
-   name: peergroup
-   
+    name: peergroup
+
   cloud:
     azure:
       keyvault:
@@ -18,16 +19,17 @@ spring:
         credential:
           client-id: ce5962ff-06f5-4911-be66-e51b86531710
           client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1   
-   
+          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
+
   jpa:
     database-platform: org.hibernate.dialect.SQLServer2016Dialect
     database: SQL_SERVER
     show-sql: false
     hibernate:
-       naming:
-            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
@@ -39,7 +41,8 @@ spring:
       minimum-idle: ${MIN_POOL_IDLE:1}
       connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}    
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+
   security:
     oauth2:
       resourceserver:
@@ -47,15 +50,25 @@ spring:
           jwk-set-uri: ${JWKS_URL}
           jws-algorithms: ${JWS_ALG:RS256}
           unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
+
 management:
   endpoint:
     metrics.enabled: true
     prometheus.enabled: true
-  endpoints.web.exposure.include:
-    - health
-    - info
-    - prometheus
-  prometheus.metrics.export.enabled: true
+
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
 #logging:
 #  level:
 #    org:
