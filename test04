@@ -5,18 +5,13 @@ import java.util.Map;
 
 import javax.sql.DataSource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import org.springframework.orm.jpa.JpaTransactionManager;
@@ -26,10 +21,15 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import com.azure.security.keyvault.secrets.SecretClient;
-
 import jakarta.persistence.EntityManagerFactory;
 
+import org.springframework.beans.factory.annotation.Value;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+
+/**
+ * @author sbajaj8
+ */
 @Configuration
 @EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
 @EnableTransactionManagement
@@ -40,106 +40,71 @@ import jakarta.persistence.EntityManagerFactory;
 )
 public class ServiceConfigSQL {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(ServiceConfigSQL.class);
-
-    // Secret names stored in Key Vault
+    // --- ADDED: read secret names + jdbc config ---
     @Value("${spring.datasource.sql.userName}")
     private String userNameSecretName;
 
     @Value("${spring.datasource.sql.password}")
     private String passwordSecretName;
 
-    // Normal properties
     @Value("${spring.datasource.sql.jdbcUrl}")
     private String jdbcUrl;
 
     @Value("${spring.datasource.sql.driverClassName}")
     private String driverClassName;
 
+    // --- ADDED: inject SecretClient ---
     private final SecretClient secretClient;
 
     public ServiceConfigSQL(SecretClient secretClient) {
         this.secretClient = secretClient;
     }
 
-    /**
-     * DataSource using Azure Key Vault secrets
-     */
+    // --- CHANGED (minimal): keep same bean name + method name ---
     @Bean(name = "fadsSQLDataSource")
     public DataSource fadsSQLDataSource() {
 
-        logger.info("Initializing SQL DataSource using Azure Key Vault...");
+        // Fetch actual values from Key Vault using secret names from properties
+        String username = secretClient.getSecret(userNameSecretName).getValue();
+        String password = secretClient.getSecret(passwordSecretName).getValue();
 
-        String username =
-                secretClient.getSecret(userNameSecretName).getValue();
+        DriverManagerDataSource ds = new DriverManagerDataSource();
+        ds.setDriverClassName(driverClassName);
+        ds.setUrl(jdbcUrl);
+        ds.setUsername(username);
+        ds.setPassword(password);
 
-        String password =
-                secretClient.getSecret(passwordSecretName).getValue();
-
-        DriverManagerDataSource dataSource =
-                new DriverManagerDataSource();
-
-        dataSource.setDriverClassName(driverClassName);
-        dataSource.setUrl(jdbcUrl);
-        dataSource.setUsername(username);
-        dataSource.setPassword(password);
-
-        logger.info("SQL DataSource initialized successfully");
-
-        return dataSource;
+        return ds;
     }
 
-    /**
-     * EntityManagerFactory
-     */
+    // keep existing structure
     @Bean(name = "sqlEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory(
-            @Qualifier("fadsSQLDataSource") DataSource dataSource) {
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
 
         LocalContainerEntityManagerFactoryBean em =
                 new LocalContainerEntityManagerFactoryBean();
 
-        em.setDataSource(dataSource);
+        em.setDataSource(fadsSQLDataSource());
+        em.setPackagesToScan("com.optum.fads.caseentry.api.domain");
 
-        em.setPackagesToScan(
-                "com.optum.fads.caseentry.api.domain");
-
-        HibernateJpaVendorAdapter vendorAdapter =
-                new HibernateJpaVendorAdapter();
-
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         em.setJpaVendorAdapter(vendorAdapter);
 
-        Map<String, Object> properties = new HashMap<>();
-
-        properties.put(
-                "hibernate.dialect",
-                "org.hibernate.dialect.SQLServer2016Dialect");
-
-        properties.put("hibernate.show_sql", true);
-        properties.put("hibernate.format_sql", true);
-        properties.put("hibernate.globally_quoted_identifiers", true);
-        properties.put("hibernate.allow_update_outside_transaction", true);
-
-        em.setJpaPropertyMap(properties);
+        // OPTIONAL but safe: set dialect here (since you already had dialect scattered in yml)
+        Map<String, Object> props = new HashMap<>();
+        props.put("hibernate.dialect", "org.hibernate.dialect.SQLServer2016Dialect");
+        em.setJpaPropertyMap(props);
 
         return em;
     }
 
-    /**
-     * Transaction Manager
-     */
+    // --- SMALL FIX (still minimal): use injected parameter, not sqlEntityManagerFactory().getObject() ---
     @Bean(name = "txManagerSQL")
     public PlatformTransactionManager txManagerSQL(
-            @Qualifier("sqlEntityManagerFactory")
-            EntityManagerFactory emf) {
+            @Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
 
-        JpaTransactionManager txManager =
-                new JpaTransactionManager();
-
-        txManager.setEntityManagerFactory(emf);
-
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
         return txManager;
     }
-
 }
