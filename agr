@@ -1,63 +1,103 @@
-set JAVA_TOOL_OPTIONS=--add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED
-mvn spring-boot:run
+package com.optum.fads.caseentry.api.domain;
 
-SELECT CT_BATCH_ID, COUNT(*) AS row_count
-FROM CA_UNIVERSE_BATCH_T
-WHERE REC_MATCH_IND IS NULL
-GROUP BY CT_BATCH_ID
-ORDER BY CT_BATCH_ID;
-2) Batches with no duplicates (inside SQL Server)
-Duplicates are same HDR_CLM_TCN + LI_NUM within the batch.
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.util.Date;
 
-sql
+import jakarta.persistence.*;
 
-SELECT CT_BATCH_ID
-FROM CA_UNIVERSE_BATCH_T
-GROUP BY CT_BATCH_ID
-HAVING SUM(CASE WHEN CNT > 1 THEN 1 ELSE 0 END) = 0;
+import lombok.*;
 
--- with the duplication check
-WITH d AS (
-  SELECT CT_BATCH_ID, HDR_CLM_TCN, LI_NUM, COUNT(*) AS CNT
-  FROM CA_UNIVERSE_BATCH_T
-  GROUP BY CT_BATCH_ID, HDR_CLM_TCN, LI_NUM
-)
-SELECT CT_BATCH_ID
-FROM d
-GROUP BY CT_BATCH_ID
-HAVING SUM(CASE WHEN CNT > 1 THEN 1 ELSE 0 END) = 0;
-3) Batches already marked invalid
-sql
+/**
+ * The persistent class for the CA_UNIVERSE_BATCH_T database table. 
+ * 
+ */
 
-SELECT CT_BATCH_ID,
-       SUM(CASE WHEN REC_MATCH_IND = 'N' THEN 1 ELSE 0 END) AS invalid_rows,
-       SUM(CASE WHEN REC_MATCH_IND = 'D' THEN 1 ELSE 0 END) AS dup_rows,
-       SUM(CASE WHEN REC_MATCH_IND = 'Y' THEN 1 ELSE 0 END) AS valid_rows
-FROM CA_UNIVERSE_BATCH_T
-GROUP BY CT_BATCH_ID
-ORDER BY CT_BATCH_ID;
-4) Best “clean” candidates in SQL Server
-This gives batches that are pending and have no duplicates inside the batch:
 
-sql
+@EqualsAndHashCode
+@NoArgsConstructor
+@Data
+@ToString
+@Entity
+@Table(name = "CA_UNIVERSE_BATCH_T")
+public class CaUniverseBatchT implements Serializable {
+	private static final long serialVersionUID = 1L;
 
-WITH d AS (
-  SELECT CT_BATCH_ID, HDR_CLM_TCN, LI_NUM, COUNT(*) AS CNT
-  FROM CA_UNIVERSE_BATCH_T
-  WHERE REC_MATCH_IND IS NULL
-  GROUP BY CT_BATCH_ID, HDR_CLM_TCN, LI_NUM
-)
-SELECT CT_BATCH_ID
-FROM d
-GROUP BY CT_BATCH_ID
-HAVING SUM(CASE WHEN CNT > 1 THEN 1 ELSE 0 END) = 0
-ORDER BY CT_BATCH_ID;
-5) Full validation (needs Snowflake)
-The code also validates that each row exists in Snowflake DM_CLAIM_DRUG_T and matches participant.
-So even if SQL Server looks clean, Snowflake can still reject it.
+    @Id
+    @Column(name = "CA_BATCH_ROWSEQ", precision = 14)
+    @GeneratedValue(strategy= GenerationType.IDENTITY)
+    private Integer caBatchRowSeq;
 
-If you want, I can give a Snowflake query to validate a batch id once you tell me:
+    @Column(name = "CT_BATCH_ID",  nullable = false, precision = 10)
+    private Integer ctBatchId;
 
-your Snowflake DB/schema
-whether you can query CA_UNIVERSE_BATCH_T from Snowflake (or I should export keys).
-Tell me which batch id you want to validate and I’ll give exact Snowflake validation SQL.
+
+
+    //@Temporal(TemporalType.TIMESTAMP)
+    @Column(name = "CT_BATCH_DATE")
+    private LocalDateTime ctBatchDate;
+
+    @Column(name = "HDR_CLM_TCN", unique = true, nullable = false, length = 17)
+    private String hdrClmTcn;
+
+    @Column(name = "LI_NUM", unique = true, nullable = false, length = 4)
+    private String liNum;
+
+    @Temporal(TemporalType.DATE)
+    @Column(name = "HDR_CLM_PD_DT")
+    private Date hdrClmPdDt;
+	//bi-directional one-to-one association to UiUserBase
+	@OneToOne
+	@JoinColumn(name="UI_SYSTEM_ID")
+	private UiUserBase uiUserBase;
+	
+	@Column(name = "CASE_TYPE_CD", length = 3)
+	private String caseTypeCd;
+	
+	@Column(name = "PROV_ROLE", length = 30)
+	private String provRole;
+			
+	@Column(name = "CA_PRM_NODE_CD")
+	private String caPrmNodeCd;
+	
+	@Column(name = "CA_YEAR_ID", precision = 4)
+	private Integer caYearId;
+	
+	@Column(name = "PROTECT_STATUS", length = 1)
+	private String projectStatus;
+	
+	@Column(name = "INVST_TYPE_CD", length = 3)
+	private String invstTypeCd;
+	
+	@Column(name = "CASE_SOURCE_CD", length = 3)
+	private String caseSourceCd;
+	
+	@Column(name = "CASE_STATUS_CD", length = 3)
+	private String caseStatusCd;
+	
+	@Temporal(TemporalType.DATE)
+	@Column(name = "CASE_STATUS_DT")
+	private Date caseStatusDt;
+	
+	@Column(name = "ISSUE_CD", length = 3)
+	private String issueCd;
+	
+	@Column(name = "ASSIGN_USR", length = 25)
+	private String assignUsr;
+	
+	@Column(name = "ASSIGN_SECTION_CD", length = 3)
+	private String assignSectionCd;
+	
+	@Temporal(TemporalType.DATE)
+	@Column(name = "ASSIGN_DATE")
+	private Date assignDate;
+	
+	@Column(name = "PARTICIPANT_ID", length = 25)
+	private String participantId;
+
+	@Column(name = " LI_DRUG_VALID_CLM_IND", length = 1)
+	private String liDrugValidClmInd;
+	
+	@Column(name = "REC_MATCH_IND", length = 1)
+	private String recMatchInd;
+}
