@@ -1,7 +1,25 @@
 -- 1) confirm current Snowflake context used by your SQL session
 SELECT CURRENT_ACCOUNT(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_ROLE(), CURRENT_WAREHOUSE();
+
+{
+"\r\n-- 1) confirm current Snowflake context used by your SQL session\r\nSELECT CURRENT_ACCOUNT(), CURRENT_DATABASE(), CURRENT_SCHEMA(), CURRENT_ROLE(), CURRENT_WAREHOUSE()": [
+	{
+		"CURRENT_ACCOUNT()" : "EW98463",
+		"CURRENT_DATABASE()" : null,
+		"CURRENT_SCHEMA()" : null,
+		"CURRENT_ROLE()" : "SGS_PI_DEMO_ALL_RL",
+		"CURRENT_WAREHOUSE()" : "SGS_PI_DEMO_XSMALL_WH"
+	}
+]}
+
 -- 2) confirm where DM_CLAIM_DRUG_T exists
 SHOW TABLES LIKE 'DM_CLAIM_DRUG_T' IN DATABASE PI_DEV_DB;
+
+"created_on","name","database_name","schema_name","kind","comment","cluster_by","rows","bytes","owner","retention_time","automatic_clustering","change_tracking","search_optimization","search_optimization_progress","search_optimization_bytes","is_external","enable_schema_evolution","owner_role_type","is_event","is_hybrid","is_iceberg","is_dynamic","is_immutable"
+2026-02-04 08:03:40.539,DM_CLAIM_DRUG_T,PI_DEV_DB,FADS,TABLE,"","",20,30720,SGS_PI_DEMO_ALL_RL,"1",OFF,OFF,OFF,,,N,N,ROLE,N,N,N,N,N
+
+
+
 -- 3) quick existence check by TCN only
 SELECT COUNT(*) AS CNT
 FROM PI_DEV_DB.FADS.DM_CLAIM_DRUG_T
@@ -9,3 +27,4 @@ WHERE TRIM(HDR_CLM_TCN) IN (
   '2520207004713','2520207005248','2520207005560',
   '2520207005567','2520207008736','2520207008805'
 );
+
