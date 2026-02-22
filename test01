@@ -1,278 +1,54 @@
--- check current cron
-SELECT OPTION_VALUE
-FROM CASE_CONFIG_T
-WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
-
--- update cron (example: every minute)
-UPDATE CASE_CONFIG_T
-SET OPTION_VALUE = '0 0/1 * ? * *'
-WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
-
-
-
-SELECT COUNT(*) AS pending_rows
-FROM CA_UNIVERSE_BATCH_T
-WHERE REC_MATCH_IND IS NULL;
-If this is 0, the job runs but does nothing.
-
-2) Confirm the cron value actually updated
-
-sql
-
-SELECT OPTION_VALUE
-FROM CASE_CONFIG_T
-WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
-3) Confirm Quartz is using the new cron
-In logs you should see:
-casebatchJobTrigger set up with Cron Expression 0 0/1 * ? * *
-
-If you don’t see that after restart, Quartz is still reading the old value or app didn’t restart.
-
-4) Confirm the job actually fires
-Search logs for:
-
-CaseEntryBatchJob execution
-any createBatchCase or createIndBatchCaseEntries
-errors after trigger
-
-
+-- Clone one existing row and create 6 new claim rows for batch 452 keys
+WITH base AS (
+    SELECT *
+    FROM DM_CLAIM_DRUG_T
+    WHERE HDR_CLM_TCN = '2523080017619' AND LI_NUM = 1
+    LIMIT 1
+),
+new_keys AS (
+    SELECT
+        COLUMN1::STRING AS HDR_CLM_TCN,
+        COLUMN2::NUMBER AS LI_NUM,
+        TO_DATE(COLUMN3) AS HDR_CLM_PD_DT
+    FROM VALUES
+      ('2520207004713', 1, '2020-08-06'),
+      ('2520207005248', 1, '2020-08-06'),
+      ('2520207005560', 1, '2020-08-06'),
+      ('2520207005567', 1, '2020-08-06'),
+      ('2520207008736', 1, '2020-08-06'),
+      ('2520207008805', 1, '2020-08-06')
+),
+to_insert AS (
+    SELECT
+      b.* REPLACE (
+        '206887407'::STRING AS HDR_PAY_TO_PROV_ID,        -- must match PARTICIPANT_ID in batch
+        'TEST PHARMACY 206887407'::STRING AS HDR_PAY_TO_PROV_NM,
+        k.HDR_CLM_TCN AS HDR_CLM_TCN,
+        k.LI_NUM AS LI_NUM,
+        k.HDR_CLM_PD_DT AS HDR_CLM_PD_DT,
+        'TEST RECIPIENT B452'::STRING AS HDR_RECIP_FULL_NM -- must be NOT NULL
+      )
+    FROM base b
+    CROSS JOIN new_keys k
+)
+INSERT INTO DM_CLAIM_DRUG_T
 SELECT *
-FROM CASE_CONFIG_T
-WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
-Then update it:
-
-sql
-
-UPDATE CASE_CONFIG_T
-SET OPTION_VALUE = '0 0/1 * ? * *'
-WHERE OPTION_NAME = 'BATCH_CASE_ENTRY_SCHEDULE';
-
-
-
-SELECT TOP 1
-    ub.CT_BATCH_ID,
-    ub.CT_BATCH_DATE,
-    ub.HDR_CLM_TCN,
-    ub.LI_NUM,
-    ub.HDR_CLM_PD_DT,
-    u.*
-FROM CA_UNIVERSE_BATCH_T ub
-JOIN CA_UNIVERSE_T u
-  ON u.CT_BATCH_ID   = ub.CT_BATCH_ID
- AND u.CT_BATCH_DATE = ub.CT_BATCH_DATE
- AND u.HDR_CLM_TCN   = ub.HDR_CLM_TCN
- AND u.LI_NUM        = ub.LI_NUM
- AND u.HDR_CLM_PD_DT = ub.HDR_CLM_PD_DT
-WHERE ub.REC_MATCH_IND IS NULL
-ORDER BY ub.CT_BATCH_DATE DESC;
-
-
-
-SELECT TOP 1 *
-FROM CA_UNIVERSE_BATCH_T
-WHERE REC_MATCH_IND IS NULL
-ORDER BY CT_BATCH_DATE DESC;
-Note these values from that row:
-
-CT_BATCH_ID
-CT_BATCH_DATE
-HDR_CLM_TCN
-LI_NUM
-HDR_CLM_PD_DT
-Step 2: Find its row in CA_UNIVERSE_T (the “output” universe table)
-
-SELECT *
-FROM CA_UNIVERSE_T
-WHERE CT_BATCH_ID = :ct_batch_id
-  AND CT_BATCH_DATE = :ct_batch_date
-  AND HDR_CLM_TCN = :hdr_clm_tcn
-  AND LI_NUM = :li_num
-  AND HDR_CLM_PD_DT = :hdr_clm_pd_dt;
-This row should have CASE_ID, CA_SEQUENCE_ID, CLM_SEQ_NUM. That CASE_ID is the key that fans out to the other tables.
-
-Step 3: Verify that case exists in all case tables
-
--- master key
-SELECT * FROM CA_INTELLIGENT_KEY_T WHERE CASE_ID = :case_id;
-
--- general
-SELECT * FROM CA_GENERAL_T WHERE CASE_ID = :case_id;
-
--- provider OR recipient (based on CASE_TYPE_CD)
-SELECT * FROM CA_PROVIDER_T  WHERE CASE_ID = :case_id;
-SELECT * FROM CA_RECIPIENT_T WHERE CASE_ID = :case_id;
-
--- investigation (based on INVST_TYPE_CD)
-SELECT * FROM CA_INVST_PRELIMINARY_T WHERE CASE_ID = :case_id;
-SELECT * FROM CA_INVST_FULLSCALE_T  WHERE CASE_ID = :case_id;
-Step 4: Verify claims tables
-These are created per claim line using CASE_ID + CLM_SEQ_NUM, and include HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT (copied from CA_UNIVERSE_T).
-
-SELECT * FROM CA_CLAIM_LIST_T
-WHERE CASE_ID = :case_id;
-
-SELECT * FROM CA_CLAIM_CORRECTIONS_T
-WHERE CASE_ID = :case_id;
-
-SELECT * FROM CA_CLAIM_CORRECTIONS_HIST_T
-WHERE CASE_ID = :case_id;
-One query to trace everything for a single batch row
-
-
-
-
-
-SELECT * FROM CA_INTELLIGENT_KEY_T;
-SELECT * FROM CA_GENERAL_T;
-SELECT * FROM CA_PROVIDER_T;
-SELECT * FROM CA_RECIPIENT_T;
-SELECT * FROM CA_INVST_PRELIMINARY_T;
-SELECT * FROM CA_INVST_FULLSCALE_T;
-
-
-Tomcat started on port 8080 (http) with context path '/caseentrybatch'
-Quartz scheduler started
-casebatchJobTrigger set up with Cron Expression 0 0 0/4 ? * * *
-Started CaseEntryBatchApplication
-So the app is running. The only reason you’re not seeing “batch output” is because the job is scheduled every 4 hours and may not have hit its schedule yet, or there’s no data in CA_UNIVERSE_BATCH_T to process.
-
-What is most likely happening
-Quartz trigger is working, but it runs at 0 0 0/4 ? * * *
-That means: every 4 hours at minute 0.
-If you started at 12:29, the first run would be 16:00, not immediately.
-
-No batch rows are available, so even when it runs, it won’t create cases.
-
-How to confirm if it’s running
-You can do any of the following:
-
-Option A — Change cron to run every minute (temp):
-Update CASE_CONFIG value for BATCH_CASE_ENTRY_SCHEDULE to something like:
-
-0 0/1 * ? * * *
-Then restart the app and watch logs.
-
-Option B — Manually call the service
-If you have a controller or can run a Spring Bean manually, trigger:
-
-iCaseBatchService.createBatchCase()
-Option C — Check DB
-Verify that CA_UNIVERSE_BATCH_T has rows where REC_MATCH_IND is null (that’s what your repo uses).
-
-About the warnings
-These are not fatal:
-
-Logback Janino warning: only a warning about older config.
-Netty version mismatch: warning only, usually safe unless you see runtime errors.
-Tell me what output you expected
-Just tell me which of these is “missing”:
-
-You expected the batch to run immediately.
-You expected output (records) but nothing appears in DB.
-You expected emails and didn’t get them.
-Once you tell me which one, I’ll give exact fixes with SQL + config.
-
-
-
-
-
-If CA_UNIVERSE_BATCH_T has rows where REC_MATCH_IND is null, then
-
-1. Data Flow (what gets created)
-The job reads from CA_UNIVERSE_BATCH_T, validates those records against Snowflake DM_CLAIM_DRUG_T, then creates case data in your SQL Server tables.
-
-to below
-
-CA_INTELLIGENT_KEY_T
-CA_GENERAL_T
-CA_PROVIDER_T or CA_RECIPIENT_T
-CA_INVST_PRELIMINARY_T or CA_INVST_FULLSCALE_T
-Claim tracking tables:
-CA_CLAIM_LIST_T
-CA_CLAIM_CORRECTIONS_T
-CA_CLAIM_CORRECTIONS_HIST_T
-And it also populates:
-
-CA_UNIVERSE_T (validated and enriched entries)
-So the output is new database rows, not files.
-
-2. Emails
-will explicitly sends emails after:
-
-Successful batch completion (BATCH_SUCCESS_NOTIFICATION)
-Assignment (BATCH_ASSIGNMENT_NOTIFICATION)
-Failures (BATCH_FAIL_NOTIFICATION_USER/ADMIN)
-Invalid claims (BATCH_INVALID_NOTIFICATION_USER)
-These are sent via:
-
-Azure Logic App or
-SMTP server
-So expected output includes emails (if config is set).
-
-3. Invalid/Duplicate behavior
-If any record:
-
-Doesn’t exist in Snowflake
-Has wrong participant mapping
-Is a duplicate TCN+Line
-Then:
-
-It flags that row in CA_UNIVERSE_BATCH_T
-Sends an invalid claims email
-Does NOT create case records
-
-
-
-
-CA_UNIVERSE_T → new rows
-CA_INTELLIGENT_KEY_T → new case ids
-CA_GENERAL_T, CA_PROVIDER_T, CA_RECIPIENT_T
-CA_CLAIM_LIST_T, CA_CLAIM_CORRECTIONS_T, CA_CLAIM_CORRECTIONS_HIST_T
-If those tables have new data → batch ran successfully.
-
-
-UPDATE CA_UNIVERSE_BATCH_T
-SET REC_MATCH_IND = NULL
-WHERE CT_BATCH_ID = :ct_batch_id;
-
-
-UPDATE UI_USER_BASE
-SET UI_E_MAIL_ADDRESS = 'user@company.com'
-WHERE UI_SYSTEM_ID = :user_id;
-Assignment → email of the assigned user (also in UI_USER_BASE).
-
-Fail to Admin → distribution list from CASE_CONFIG_T
-Option name: SYSTEM_ADMIN_DIST_LIST
-
-sql
-
-SELECT OPTION_VALUE
-FROM CASE_CONFIG_T
-WHERE OPTION_NAME = 'SYSTEM_ADMIN_DIST_LIST';
-
-UPDATE CASE_CONFIG_T
-SET OPTION_VALUE = 'admin_dl@company.com'
-WHERE OPTION_NAME = 'SYSTEM_ADMIN_DIST_LIST';
-From address (SMTP) → CASE_CONFIG_T option CT_ADMIN_ID
-Also used to resolve the “admin system user” for logging.
-sql
-
-SELECT OPTION_VALUE
-FROM CASE_CONFIG_T
-WHERE OPTION_NAME = 'CT_ADMIN_ID';
-
-UPDATE CASE_CONFIG_T
-SET OPTION_VALUE = 'no-reply@company.com'
-WHERE OPTION_NAME = 'CT_ADMIN_ID';
-Email content templates
-Subject/body are pulled from CA_META_BASE_NOTICE_T (SUBJ_EMAIL, REM_COMMENT).
-If you want to change email wording:
-
-sql
-
-SELECT NOTICE_ID, SUBJ_EMAIL, REM_COMMENT, NOTICE_FLAG
-FROM CA_META_BASE_NOTICE_T;
-
-UPDATE CA_META_BASE_NOTICE_T
-SET SUBJ_EMAIL = '...', REM_COMMENT = '...'
-WHERE NOTICE_ID = :notice_id;
+FROM to_insert ti
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM DM_CLAIM_DRUG_T d
+    WHERE TRIM(d.HDR_CLM_TCN) = TRIM(ti.HDR_CLM_TCN)
+      AND d.LI_NUM = ti.LI_NUM
+      AND TO_DATE(d.HDR_CLM_PD_DT) = TO_DATE(ti.HDR_CLM_PD_DT)
+);
+
+
+
+
+SELECT TRIM(HDR_CLM_TCN), LI_NUM, TO_DATE(HDR_CLM_PD_DT), TRIM(HDR_PAY_TO_PROV_ID), HDR_RECIP_FULL_NM
+FROM DM_CLAIM_DRUG_T
+WHERE TRIM(HDR_CLM_TCN) IN (
+  '2520207004713','2520207005248','2520207005560',
+  '2520207005567','2520207008736','2520207008805'
+)
+ORDER BY 1,2,3;
