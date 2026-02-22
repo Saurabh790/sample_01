@@ -1,22 +1,98 @@
+-- Check current definition of the column (identity + default)
 SELECT 
-    i.name AS index_name,
-    i.is_unique,
-    i.is_primary_key,
-    c.name AS column_name,
-    ic.key_ordinal
-FROM sys.indexes i
-JOIN sys.index_columns ic 
-    ON i.object_id = ic.object_id AND i.index_id = ic.index_id
-JOIN sys.columns c 
-    ON ic.object_id = c.object_id AND ic.column_id = c.column_id
-WHERE i.object_id = OBJECT_ID('dbo.CA_UNIVERSE_BATCH_T')
-  AND (i.is_unique = 1 OR i.is_primary_key = 1)
-ORDER BY i.name, ic.key_ordinal;
+    c.name,
+    c.is_identity,
+    dc.name AS default_constraint_name,
+    dc.definition AS default_definition
+FROM sys.columns c
+LEFT JOIN sys.default_constraints dc
+    ON dc.parent_object_id = c.object_id
+   AND dc.parent_column_id = c.column_id
+WHERE c.object_id = OBJECT_ID('dbo.CA_UNIVERSE_BATCH_T')
+  AND c.name = 'CA_BATCH_ROWSEQ';
+  
+  
+  BEGIN TRAN;
+
+DECLARE @start_with INT;
+SELECT @start_with = ISNULL(MAX(CA_BATCH_ROWSEQ), 0) + 1
+FROM dbo.CA_UNIVERSE_BATCH_T;
+
+-- Create a sequence (only if it doesn't exist)
+IF NOT EXISTS (SELECT 1 FROM sys.sequences WHERE name = 'SEQ_CA_UNIVERSE_BATCH_ROWSEQ' AND SCHEMA_NAME(schema_id) = 'dbo')
+BEGIN
+    DECLARE @sql NVARCHAR(MAX) =
+        N'CREATE SEQUENCE dbo.SEQ_CA_UNIVERSE_BATCH_ROWSEQ AS INT ' +
+        N'START WITH ' + CAST(@start_with AS NVARCHAR(20)) + N' INCREMENT BY 1;';
+    EXEC sp_executesql @sql;
+END
+
+-- Add DEFAULT constraint on CA_BATCH_ROWSEQ (only if no default exists yet)
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.default_constraints dc
+    JOIN sys.columns c ON c.object_id = dc.parent_object_id AND c.column_id = dc.parent_column_id
+    WHERE dc.parent_object_id = OBJECT_ID('dbo.CA_UNIVERSE_BATCH_T')
+      AND c.name = 'CA_BATCH_ROWSEQ'
+)
+BEGIN
+    ALTER TABLE dbo.CA_UNIVERSE_BATCH_T
+    ADD CONSTRAINT DF_CA_UNIVERSE_BATCH_ROWSEQ
+    DEFAULT (NEXT VALUE FOR dbo.SEQ_CA_UNIVERSE_BATCH_ROWSEQ)
+    FOR CA_BATCH_ROWSEQ;
+END
+
+COMMIT;
 
 
 SELECT 
     c.name,
     c.is_identity,
+    dc.name AS default_constraint_name,
+    dc.definition AS default_definition
+FROM sys.columns c
+LEFT JOIN sys.default_constraints dc
+    ON dc.parent_object_id = c.object_id
+   AND dc.parent_column_id = c.column_id
+WHERE c.object_id = OBJECT_ID('dbo.CA_UNIVERSE_BATCH_T')
+  AND c.name = 'CA_BATCH_ROWSEQ';
+  
+  
+  
+  
+  BEGIN TRAN;
+
+-- Drop DEFAULT constraint on CA_BATCH_ROWSEQ (whatever its name is)
+DECLARE @df_name SYSNAME;
+
+SELECT @df_name = dc.name
+FROM sys.default_constraints dc
+JOIN sys.columns c 
+  ON c.object_id = dc.parent_object_id 
+ AND c.column_id = dc.parent_column_id
+WHERE dc.parent_object_id = OBJECT_ID('dbo.CA_UNIVERSE_BATCH_T')
+  AND c.name = 'CA_BATCH_ROWSEQ';
+
+IF @df_name IS NOT NULL
+BEGIN
+    DECLARE @sql NVARCHAR(MAX) = N'ALTER TABLE dbo.CA_UNIVERSE_BATCH_T DROP CONSTRAINT ' + QUOTENAME(@df_name) + N';';
+    EXEC sp_executesql @sql;
+END
+
+-- Drop the sequence (only if it exists)
+IF EXISTS (SELECT 1 FROM sys.sequences WHERE name = 'SEQ_CA_UNIVERSE_BATCH_ROWSEQ' AND SCHEMA_NAME(schema_id) = 'dbo')
+BEGIN
+    DROP SEQUENCE dbo.SEQ_CA_UNIVERSE_BATCH_ROWSEQ;
+END
+
+COMMIT;
+
+
+
+SELECT 
+    c.name,
+    c.is_identity,
+    dc.name AS default_constraint_name,
     dc.definition AS default_definition
 FROM sys.columns c
 LEFT JOIN sys.default_constraints dc
