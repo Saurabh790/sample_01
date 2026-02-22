@@ -1,153 +1,218 @@
-Below are skeletons only (no edits), matching your request: reader → processor → job config → service.
-These are aligned with your existing packages and logic.
-
-1. Batch Job Config
-CaseBatchJobConfig.java
-
-package com.optum.fads.caseentrybatch.batch;
-
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
-import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.transaction.PlatformTransactionManager;
-
-@Configuration
-@EnableBatchProcessing
-public class CaseBatchJobConfig {
-
-    private static final int CHUNK_SIZE = 1;
-
-    @Bean
-    public Job caseEntryBatchJob(
-            JobRepository jobRepository,
-            Step processBatchIdStep
-    ) {
-        return new JobBuilder("caseEntryBatchJob", jobRepository)
-                .start(processBatchIdStep)
-                .build();
-    }
-
-    @Bean
-    public Step processBatchIdStep(
-            JobRepository jobRepository,
-            PlatformTransactionManager transactionManager,
-            BatchIdReader batchIdReader,
-            BatchIdProcessor batchIdProcessor
-    ) {
-        return new StepBuilder("processBatchIdStep", jobRepository)
-                .<Integer, Integer>chunk(CHUNK_SIZE, transactionManager)
-                .reader(batchIdReader)
-                .processor(batchIdProcessor)
-                .writer(items -> { /* no-op */ })
-                .build();
-    }
-}
-2. Reader (distinct batch IDs)
-BatchIdReader.java
-
-package com.optum.fads.caseentrybatch.batch;
-
-import java.util.Iterator;
-import java.util.List;
-
-import org.springframework.batch.item.ItemReader;
-import org.springframework.stereotype.Component;
-
-import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
-
-@Component
-public class BatchIdReader implements ItemReader<Integer> {
-
-    private final CaUniverseBatchRepository repo;
-    private Iterator<Integer> iterator;
-
-    public BatchIdReader(CaUniverseBatchRepository repo) {
-        this.repo = repo;
-    }
-
-    @Override
-    public Integer read() {
-        if (iterator == null) {
-            List<Integer> ids = repo.findDistinctBatchIds();
-            iterator = ids.iterator();
+{
+    "assignDate": "2026-02-10",
+    "assignSection": "8",
+    "assignUser": "AK45678946",
+    "caseIssue": "24",
+    "caseSourceCd": "40",
+    "caseStatus": "14",
+    "caseStatusDate": "2026-02-01",
+    "caseType": "PV",
+    "caseYear": "2026",
+    "invstTypeCd": "FSI",
+    "prmNodeCd": "PAU",
+    "protectStatus": "N",
+    "providerRole": "BP",
+    "uiSystemId": "",
+    "basicClaimDataList": [
+        {
+            "providerId": "206887407",
+            "hdrClaimPdDt": "8/6/2020",
+            "hdrClaimTCN": "2520207004713",
+            "liNum": "1",
+            "liDrugValidClmInd": "N"
+        },
+        {
+            "providerId": "206887407",
+            "hdrClaimPdDt": "8/6/2020",
+            "hdrClaimTCN": "2520207005248",
+            "liNum": "1",
+            "liDrugValidClmInd": "N"
+        },
+        {
+            "providerId": "206887407",
+            "hdrClaimPdDt": "8/6/2020",
+            "hdrClaimTCN": "2520207005560",
+            "liNum": "1",
+            "liDrugValidClmInd": "N"
+        },
+        {
+            "providerId": "206887407",
+            "hdrClaimPdDt": "8/6/2020",
+            "hdrClaimTCN": "2520207005567",
+            "liNum": "1",
+            "liDrugValidClmInd": "N"
+        },
+        {
+            "providerId": "206887407",
+            "hdrClaimPdDt": "8/6/2020",
+            "hdrClaimTCN": "2520207008736",
+            "liNum": "1",
+            "liDrugValidClmInd": "N"
+        },
+        {
+            "providerId": "206887407",
+            "hdrClaimPdDt": "8/6/2020",
+            "hdrClaimTCN": "2520207008805",
+            "liNum": "1",
+            "liDrugValidClmInd": "N"
         }
-        return iterator.hasNext() ? iterator.next() : null;
-    }
+    ]
 }
-3. Processor (calls existing logic)
-BatchIdProcessor.java
 
-package com.optum.fads.caseentrybatch.batch;
 
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.stereotype.Component;
 
-import com.optum.fads.caseentrybatch.api.service.CaseBatchProcessingService;
 
-@Component
-public class BatchIdProcessor implements ItemProcessor<Integer, Integer> {
-
-    private final CaseBatchProcessingService service;
-
-    public BatchIdProcessor(CaseBatchProcessingService service) {
-        this.service = service;
-    }
-
-    @Override
-    public Integer process(Integer batchId) {
-        service.processBatchId(batchId);
-        return batchId;
-    }
-}
-4. New Service Interface
-CaseBatchProcessingService.java
-
-package com.optum.fads.caseentrybatch.api.service;
-
-public interface CaseBatchProcessingService {
-    void processBatchId(Integer batchId);
-}
-5. Service Impl
-CaseBatchProcessingServiceImpl.java
-
-package com.optum.fads.caseentrybatch.api.service.impl;
-
-import java.util.List;
-
-import org.springframework.stereotype.Service;
-
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
-import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
-import com.optum.fads.caseentrybatch.api.service.CaseBatchProcessingService;
-
-@Service
-public class CaseBatchProcessingServiceImpl implements CaseBatchProcessingService {
-
-    private final CaUniverseBatchRepository caUniverseBatchRepository;
-    private final CaseBatchService caseBatchService;
-
-    public CaseBatchProcessingServiceImpl(
-            CaUniverseBatchRepository caUniverseBatchRepository,
-            CaseBatchService caseBatchService
-    ) {
-        this.caUniverseBatchRepository = caUniverseBatchRepository;
-        this.caseBatchService = caseBatchService;
-    }
-
-    @Override
-    public void processBatchId(Integer batchId) {
-        List<CaUniverseBatchT> list = caUniverseBatchRepository.findAllByBatchId(batchId);
-        caseBatchService.processBatchEntries(list);
-    }
-}
-6. CaseBatchService change (skeleton only)
-Expose the core logic:
-
-public void processBatchEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
-    // move body of createBatchCaseEntries(...) here unchanged
-}
+---------------------------------------------------------------
+below is the table entry for 452 
+[
+  {
+    "CA_BATCH_ROWSEQ": "21396",
+    "CT_BATCH_ID": "452",
+    "CT_BATCH_DATE": "2026-02-22T10:42:18.1456009",
+    "UI_SYSTEM_ID": "SG0923042",
+    "CASE_TYPE_CD": "PV",
+    "PROV_ROLE": "BP",
+    "CA_PRM_NODE_CD": "PAU",
+    "CA_YEAR_ID": "2026",
+    "PROTECT_STATUS": "N",
+    "INVST_TYPE_CD": "FSI",
+    "CASE_SOURCE_CD": "40",
+    "CASE_STATUS_CD": "14",
+    "CASE_STATUS_DT": "2026-02-01T00:00:00.0000000",
+    "ISSUE_CD": "24",
+    "ASSIGN_USR": "AK45678946",
+    "ASSIGN_SECTION_CD": "8",
+    "ASSIGN_DATE": "2026-02-10T00:00:00.0000000",
+    "PARTICIPANT_ID": "206887407",
+    "HDR_CLM_TCN": "2520207004713",
+    "LI_NUM": "1",
+    "HDR_CLM_PD_DT": "2020-08-06T00:00:00.0000000",
+    "LI_DRUG_VALID_CLM_IND": "N",
+    "REC_MATCH_IND": null
+  },
+  {
+    "CA_BATCH_ROWSEQ": "21397",
+    "CT_BATCH_ID": "452",
+    "CT_BATCH_DATE": "2026-02-22T10:42:18.1456009",
+    "UI_SYSTEM_ID": "SG0923042",
+    "CASE_TYPE_CD": "PV",
+    "PROV_ROLE": "BP",
+    "CA_PRM_NODE_CD": "PAU",
+    "CA_YEAR_ID": "2026",
+    "PROTECT_STATUS": "N",
+    "INVST_TYPE_CD": "FSI",
+    "CASE_SOURCE_CD": "40",
+    "CASE_STATUS_CD": "14",
+    "CASE_STATUS_DT": "2026-02-01T00:00:00.0000000",
+    "ISSUE_CD": "24",
+    "ASSIGN_USR": "AK45678946",
+    "ASSIGN_SECTION_CD": "8",
+    "ASSIGN_DATE": "2026-02-10T00:00:00.0000000",
+    "PARTICIPANT_ID": "206887407",
+    "HDR_CLM_TCN": "2520207005248",
+    "LI_NUM": "1",
+    "HDR_CLM_PD_DT": "2020-08-06T00:00:00.0000000",
+    "LI_DRUG_VALID_CLM_IND": "N",
+    "REC_MATCH_IND": null
+  },
+  {
+    "CA_BATCH_ROWSEQ": "21398",
+    "CT_BATCH_ID": "452",
+    "CT_BATCH_DATE": "2026-02-22T10:42:18.1456009",
+    "UI_SYSTEM_ID": "SG0923042",
+    "CASE_TYPE_CD": "PV",
+    "PROV_ROLE": "BP",
+    "CA_PRM_NODE_CD": "PAU",
+    "CA_YEAR_ID": "2026",
+    "PROTECT_STATUS": "N",
+    "INVST_TYPE_CD": "FSI",
+    "CASE_SOURCE_CD": "40",
+    "CASE_STATUS_CD": "14",
+    "CASE_STATUS_DT": "2026-02-01T00:00:00.0000000",
+    "ISSUE_CD": "24",
+    "ASSIGN_USR": "AK45678946",
+    "ASSIGN_SECTION_CD": "8",
+    "ASSIGN_DATE": "2026-02-10T00:00:00.0000000",
+    "PARTICIPANT_ID": "206887407",
+    "HDR_CLM_TCN": "2520207005560",
+    "LI_NUM": "1",
+    "HDR_CLM_PD_DT": "2020-08-06T00:00:00.0000000",
+    "LI_DRUG_VALID_CLM_IND": "N",
+    "REC_MATCH_IND": null
+  },
+  {
+    "CA_BATCH_ROWSEQ": "21399",
+    "CT_BATCH_ID": "452",
+    "CT_BATCH_DATE": "2026-02-22T10:42:18.1456009",
+    "UI_SYSTEM_ID": "SG0923042",
+    "CASE_TYPE_CD": "PV",
+    "PROV_ROLE": "BP",
+    "CA_PRM_NODE_CD": "PAU",
+    "CA_YEAR_ID": "2026",
+    "PROTECT_STATUS": "N",
+    "INVST_TYPE_CD": "FSI",
+    "CASE_SOURCE_CD": "40",
+    "CASE_STATUS_CD": "14",
+    "CASE_STATUS_DT": "2026-02-01T00:00:00.0000000",
+    "ISSUE_CD": "24",
+    "ASSIGN_USR": "AK45678946",
+    "ASSIGN_SECTION_CD": "8",
+    "ASSIGN_DATE": "2026-02-10T00:00:00.0000000",
+    "PARTICIPANT_ID": "206887407",
+    "HDR_CLM_TCN": "2520207005567",
+    "LI_NUM": "1",
+    "HDR_CLM_PD_DT": "2020-08-06T00:00:00.0000000",
+    "LI_DRUG_VALID_CLM_IND": "N",
+    "REC_MATCH_IND": null
+  },
+  {
+    "CA_BATCH_ROWSEQ": "21400",
+    "CT_BATCH_ID": "452",
+    "CT_BATCH_DATE": "2026-02-22T10:42:18.1456009",
+    "UI_SYSTEM_ID": "SG0923042",
+    "CASE_TYPE_CD": "PV",
+    "PROV_ROLE": "BP",
+    "CA_PRM_NODE_CD": "PAU",
+    "CA_YEAR_ID": "2026",
+    "PROTECT_STATUS": "N",
+    "INVST_TYPE_CD": "FSI",
+    "CASE_SOURCE_CD": "40",
+    "CASE_STATUS_CD": "14",
+    "CASE_STATUS_DT": "2026-02-01T00:00:00.0000000",
+    "ISSUE_CD": "24",
+    "ASSIGN_USR": "AK45678946",
+    "ASSIGN_SECTION_CD": "8",
+    "ASSIGN_DATE": "2026-02-10T00:00:00.0000000",
+    "PARTICIPANT_ID": "206887407",
+    "HDR_CLM_TCN": "2520207008736",
+    "LI_NUM": "1",
+    "HDR_CLM_PD_DT": "2020-08-06T00:00:00.0000000",
+    "LI_DRUG_VALID_CLM_IND": "N",
+    "REC_MATCH_IND": null
+  },
+  {
+    "CA_BATCH_ROWSEQ": "21401",
+    "CT_BATCH_ID": "452",
+    "CT_BATCH_DATE": "2026-02-22T10:42:18.1456009",
+    "UI_SYSTEM_ID": "SG0923042",
+    "CASE_TYPE_CD": "PV",
+    "PROV_ROLE": "BP",
+    "CA_PRM_NODE_CD": "PAU",
+    "CA_YEAR_ID": "2026",
+    "PROTECT_STATUS": "N",
+    "INVST_TYPE_CD": "FSI",
+    "CASE_SOURCE_CD": "40",
+    "CASE_STATUS_CD": "14",
+    "CASE_STATUS_DT": "2026-02-01T00:00:00.0000000",
+    "ISSUE_CD": "24",
+    "ASSIGN_USR": "AK45678946",
+    "ASSIGN_SECTION_CD": "8",
+    "ASSIGN_DATE": "2026-02-10T00:00:00.0000000",
+    "PARTICIPANT_ID": "206887407",
+    "HDR_CLM_TCN": "2520207008805",
+    "LI_NUM": "1",
+    "HDR_CLM_PD_DT": "2020-08-06T00:00:00.0000000",
+    "LI_DRUG_VALID_CLM_IND": "N",
+    "REC_MATCH_IND": null
+  }
+]
