@@ -1,0 +1,876 @@
+package com.optum.fads.caseentrybatch.api.service;
+
+import org.springframework.batch.core.JobExecution;
+
+/**
+ * @author anil wagh
+ * ICaseBatchService
+ */
+public interface ICaseBatchService {
+
+    @Deprecated
+    String createBatchCase();
+
+    JobExecution executeBatchJob();
+}
+
+package com.optum.fads.caseentrybatch.api.service.impl;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import com.microsoft.sqlserver.jdbc.SQLServerException;
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseTPK;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
+import com.optum.fads.caseentrybatch.api.snowflakeDomain.DmClaimDrugT;
+import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * @author anil wagh
+ * CaseBatchService
+ */
+
+@Service
+@Slf4j
+public class CaseBatchService  implements ICaseBatchService {
+
+    @Autowired
+    private CaUniverseBatchRepository caUniverseBatchRepository;
+
+    @Autowired
+    private	CaseBatchEmailService caseBatchEmailService;
+
+    @Autowired
+    private	ICaseBatchIndividualService iCaseBatchIndividualService;
+
+    @Autowired
+    private CaseBatchUtil caseBatchUtil;
+    
+    @Autowired
+	private DmClaimDrugRepository dmClaimDrugRepository;
+
+    @Autowired
+    private JobLauncher jobLauncher;
+
+    @Autowired
+    @Qualifier("caseEntryBatchJob")
+    private Job caseEntryBatchJob;
+
+
+    /**
+     * this method will create cases and entries in CA_UNIVERSE_T table
+     *
+     * Input - CA_UNIVERSE_BATCH_T table entries
+     */
+    @Override
+    @Deprecated
+    public String createBatchCase(){
+
+        log.info(" Run Case Batch " );
+
+        // Get a list of Batch IDs from CaUniverseBatchT
+        List<CaUniverseBatchT> caUniverseBatchTList = null;
+        List<Integer> caUniverseBatchTIdList = caUniverseBatchRepository.findDistinctBatchIds();
+
+        // Get a list of CaUniverseBatchT records for each batch sorted by participant ID
+        for (Integer caUniverseBatchTId : caUniverseBatchTIdList) {
+            log.info("Next Batch Id = " + caUniverseBatchTId);
+            caUniverseBatchTList = caUniverseBatchRepository.findAllByBatchId(caUniverseBatchTId);
+            createBatchCaseEntries(caUniverseBatchTList);
+
+        }
+
+        return CaseEntryConstants.SUCCESS_MESSAGE;
+    }	// Create Batch Case End
+
+    /**
+     * this method will create Batch Case Entries in various Case Tracking tables for a batch
+     *
+     * Parameters - List<CaUniverseBatchT> caUniverseBatchTList
+     */
+    private synchronized void createBatchCaseEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	processBatchEntries(caUniverseBatchTList);
+    }
+    
+    /**
+     * this method will create CaUniverseT List
+     *
+     * Parameters - caUniverseBatchTList
+     */
+    
+    private void  sendInvalidClaimsMail(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	
+    	HashSet<String> uniqueTcns = new HashSet<>();
+    	
+			log.error("Found invalid/Duplicate TCNs in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+            emailData.setBatchId(caUniverseBatchTList.get(0).getId().getCtBatchId());
+            emailData.setSubmittedBy(caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId());
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            StringBuilder invalidTcnsText = new StringBuilder();
+            for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+            	if (caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.NO) || caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.DUPLICATE)) {
+            		if (uniqueTcns.add(caUniverseBatchT.getHdrClmTcn())) {
+            			invalidTcnsText.append(caUniverseBatchT.getHdrClmTcn()+CaseEntryConstants.TEXT_SEPERATOR);
+            		}
+            	}
+    		}
+            invalidTcnsText.setLength(invalidTcnsText.length() - 2);
+            emailData.setErrorLog(invalidTcnsText.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	
+
+    }
+    /**
+	  * this method will create CaUniversT list and append to CaUniverseT the data from DM_CLAIM_DRUG_T
+	  * it also validates the input claims data against DM_CLAIM_DRUG_T and checks for duplicate TCN+LiNum records
+	  * Parameters - caUniverseBatchTList
+	  */
+	public List<CaUniverseT> createCaUniverseTList(List<CaUniverseBatchT> caUniverseBatchTList) {
+		
+		log.info("Start Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		boolean validBatch = true;
+		List<CaUniverseT> caUniverseTList = new ArrayList<>();
+		LocalDateTime currentSqlDate = LocalDateTime.now(caseBatchUtil.getZoneId());
+		DmClaimDrugT dmClaimDrugT = null;
+		
+		// Get a map of TCN + Line Number and their occurrences
+		Map<Pair<String, String>, Long> tcnLiNumsMapPairs = caUniverseBatchTList.stream()
+		        .collect(Collectors.groupingBy(e -> Pair.of(e.getHdrClmTcn(), e.getLiNum()), Collectors.counting()));
+
+		// case ID, caSequenceId, clmSeqNum set in CaseBatchIndividual Service
+		
+		for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+			
+//			Date dtHdrClaimPaidDate = caUniverseBatchT.getId().getHdrClmPdDt();
+			Date dtHdrClaimPaidDate = caUniverseBatchT.getHdrClmPdDt();
+			LocalDate localHdrClaimPdDate = dtHdrClaimPaidDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+			caUniverseBatchT.setRecMatchInd(CaseEntryConstants.YES);
+			
+			// Check if duplicate
+			Pair<String, String> pair = Pair.of(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum());
+			if (tcnLiNumsMapPairs.containsKey(pair) && tcnLiNumsMapPairs.get(pair) > 1) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.DUPLICATE);
+					validBatch = false;
+			} else {
+				dmClaimDrugT = dmClaimDrugRepository.findClaimDrugTbyId(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum(), localHdrClaimPdDate);
+					
+				if (dmClaimDrugT == null) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+					validBatch = false;
+				} else {			// Provider ID or Recipient ID must match participant ID
+					String origId =  CaseEntryConstants.BLANK_STR;
+					if (CaseEntryConstants.MEMBER.equals(caUniverseBatchT.getCaseTypeCd())) {
+							origId = dmClaimDrugT.getHdrRecipOrigId();
+					} else {
+						switch (caUniverseBatchT.getProvRole()) {
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_ATTENDING:
+					        	origId = dmClaimDrugT.getHdrAttendProvId();
+					                 break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_BILLING:
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+					               break;
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_REFERRING:
+					        	origId = dmClaimDrugT.getHdrReferProvId();
+					                 break;
+					        case CaseEntryConstants.PROVIDER_ROLE_TREATING:
+					        	 origId = dmClaimDrugT.getLiTreatProvId();
+					                  break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_PRESCRIBING:
+					        	origId = dmClaimDrugT.getHdrPrescrProvId();
+					              break;
+					        default: 
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+				                  break;
+						}	
+					}
+					if (!origId.equals(caUniverseBatchT.getParticipantId()) || dmClaimDrugT.getHdrRecipFullNm() == null) {
+						caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+						validBatch = false;
+					}
+				}
+			}
+			if (validBatch) {
+				CaUniverseT	caUniverseT = CaUniverseT.builder().id(CaUniverseTPK.builder().ctBatchId(caUniverseBatchT.getId().getCtBatchId()).ctBatchDate(currentSqlDate)
+//		                      .hdrClmTcn(caUniverseBatchT.getId().getHdrClmTcn()).liNum(caUniverseBatchT.getId().getLiNum()).hdrClmPdDt(caUniverseBatchT.getId().getHdrClmPdDt()).build())
+		        		.hdrClmTcn(caUniverseBatchT.getHdrClmTcn()).liNum(caUniverseBatchT.getLiNum()).hdrClmPdDt(caUniverseBatchT.getHdrClmPdDt()).build())
+		                .uiUserBase(UiUserBase.builder().uiSystemId(caUniverseBatchT.getUiUserBase().getUiSystemId()).build())
+		                .caseTypeCd(caUniverseBatchT.getCaseTypeCd()).provRole(caUniverseBatchT.getProvRole()).caPrmNodeCd(caUniverseBatchT.getCaPrmNodeCd())
+		                .caYearId(caUniverseBatchT.getCaYearId()).projectStatus(caUniverseBatchT.getProjectStatus()).invstTypeCd(caUniverseBatchT.getInvstTypeCd())
+		                .caseSourceCd(caUniverseBatchT.getCaseSourceCd()).caseStatusCd(caUniverseBatchT.getCaseStatusCd()).caseStatusDt(caUniverseBatchT.getCaseStatusDt())
+		                .issueCd(caUniverseBatchT.getIssueCd()).assignUsr(caUniverseBatchT.getAssignUsr()).assignSectionCd(caUniverseBatchT.getAssignSectionCd())
+		                .assignDate(caUniverseBatchT.getAssignDate()).participantId(caUniverseBatchT.getParticipantId()).liDrugValidClmInd(caUniverseBatchT.getLiDrugValidClmInd()).build();
+		        
+			    caUniverseT.setHdrClmAdjStsCd(dmClaimDrugT.getHdrClmAdjStsCd());
+				caUniverseT.setClaimjStatusDesc(dmClaimDrugT.getClaimjStatusDesc());
+				caUniverseT.setHdrPayToProvId(dmClaimDrugT.getHdrPayToProvId());
+				caUniverseT.setHdrPayToProvNm(dmClaimDrugT.getHdrPayToProvNm());
+				caUniverseT.setHdrPrescrProvId(dmClaimDrugT.getHdrPrescrProvId());
+				caUniverseT.setHdrPrescrProvNpi(dmClaimDrugT.getHdrPrescrProvNpi());
+				caUniverseT.setHdrCosCd(dmClaimDrugT.getHdrCosCd());
+				caUniverseT.setCosDesc(dmClaimDrugT.getCosDesc());
+				caUniverseT.setHdrRecipOrigId(dmClaimDrugT.getHdrRecipOrigId());
+				caUniverseT.setHdrRecipFullNm(dmClaimDrugT.getHdrRecipFullNm());
+				caUniverseT.setHdrClmTcnOld(dmClaimDrugT.getHdrClmTcnOld());
+				caUniverseT.setLiSrvFromDt(dmClaimDrugT.getLiSrvFromDt());
+				caUniverseT.setLiDrugPrescrNum(dmClaimDrugT.getLiDrugPrescrNum());
+				caUniverseT.setLiDrugRefillNum(dmClaimDrugT.getLiDrugRefillNum());
+				caUniverseT.setLiDrugPrescrDt(dmClaimDrugT.getLiDrugPrescrDt());
+				caUniverseT.setLiDrugNdc(dmClaimDrugT.getLiDrugNdc());
+				caUniverseT.setNdcDesc(dmClaimDrugT.getNdcDesc());
+				caUniverseT.setLiDrugSpecTheraClsCd(dmClaimDrugT.getLiDrugSpecTheraClsCd());
+				caUniverseT.setTheraClassSpecDesc(dmClaimDrugT.getTheraClassSpecDesc());
+				caUniverseT.setLiDrugDaysSupply(dmClaimDrugT.getLiDrugDaysSupply());
+				caUniverseT.setLiBillUosQty(dmClaimDrugT.getLiBillUosQty());
+				caUniverseT.setLiPdUosQty(dmClaimDrugT.getLiPdUosQty());
+				caUniverseT.setHdrBillAmt(dmClaimDrugT.getHdrBillAmt());
+				caUniverseT.setLiBillAmt(dmClaimDrugT.getLiBillAmt());
+				caUniverseT.setLiPdAmt(dmClaimDrugT.getLiPdAmt());
+				if (caUniverseT.getId().getLiNum().equals(CaseEntryConstants.ONE_STR)) {
+					caUniverseT.setHdrPdAmt(dmClaimDrugT.getHdrPdAmt());
+				} else {
+					caUniverseT.setHdrPdAmt(BigDecimal.valueOf(CaseEntryConstants.ZERO));
+				}
+				caUniverseT.setHdrCleanClmInd(dmClaimDrugT.getHdrCleanClmInd());
+				caUniverseT.setLiCleanClmInd(dmClaimDrugT.getLiCleanClmInd());
+				caUniverseT.setHdrClmTypeCd(dmClaimDrugT.getHdrClmTypeCd());
+				caUniverseT.setHdrClmTypeDesc(dmClaimDrugT.getHdrClmTypeDesc());
+				caUniverseT.setHdrPayToProvNpiId(dmClaimDrugT.getHdrPayToProvNpiId());
+				caUniverseT.setGcnDesc(dmClaimDrugT.getGcnDesc());
+				caUniverseT.setHdrRecipCurrId(dmClaimDrugT.getHdrRecipCurrId());
+				caUniverseT.setHdrEncounterCd(dmClaimDrugT.getHdrEncounterCd());
+				caUniverseT.setLiMcoShadowPrice(dmClaimDrugT.getLiMcoShadowPrice());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoTcn());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoId());
+				caUniverseT.setHdrMcoNm(dmClaimDrugT.getHdrMcoNm());
+				caUniverseT.setHdrMcoPdDt(dmClaimDrugT.getHdrMcoPdDt());
+				caUniverseT.setHdrMcoShadowPrice(dmClaimDrugT.getHdrMcoShadowPrice());
+				caUniverseT.setHdrPayToProvTyCd(dmClaimDrugT.getHdrPayToProvTyCd());
+				caUniverseT.setHdrPayToProvTyDesc(dmClaimDrugT.getHdrPayToProvTyDesc());
+				caUniverseT.setHdrPayToProvSpecCd(dmClaimDrugT.getHdrPayToProvSpecCd());
+				caUniverseT.setHdrPayToProvSpecDesc(dmClaimDrugT.getHdrPayToProvSpecDesc());
+				caUniverseT.setProvFein(dmClaimDrugT.getProvFein());
+				caUniverseT.setProvPracAddrLine1(dmClaimDrugT.getProvPracAddrLine1());
+				caUniverseT.setProvPracAddrLine2(dmClaimDrugT.getProvPracAddrLine2());
+				caUniverseT.setHdrPrescrProvNm(dmClaimDrugT.getHdrPrescrProvNm());
+				caUniverseT.setHdrPrescrProvTyCd(dmClaimDrugT.getHdrPrescrProvTyCd());
+				caUniverseT.setHdrPrescrProvTyDesc(dmClaimDrugT.getHdrPrescrProvTyDesc());
+				caUniverseT.setHdrPrescrProvSpecCd(dmClaimDrugT.getHdrPrescrProvSpecCd());
+				caUniverseT.setHdrPrescrProvSpecDesc(dmClaimDrugT.getHdrPrescrProvSpecDesc());
+				caUniverseT.setHdrRecipAgeMthsQty(dmClaimDrugT.getHdrRecipAgeMthsQty());
+				caUniverseT.setHdrRecipAgeYrsQty(dmClaimDrugT.getHdrRecipAgeYrsQty());
+				caUniverseT.setRecipBirthDt(dmClaimDrugT.getRecipBirthDt());
+				caUniverseT.setRecipDeathDt(dmClaimDrugT.getRecipDeathDt());
+				caUniverseT.setRecipCntyCd(dmClaimDrugT.getRecipCntyCd());
+				caUniverseT.setRecipCntyDesc(dmClaimDrugT.getRecipCntyDesc());
+				caUniverseT.setRecipCityNm(dmClaimDrugT.getRecipCityNm());
+				caUniverseT.setRecipStateCd(dmClaimDrugT.getRecipStateCd());
+				caUniverseT.setRecipZipCd(dmClaimDrugT.getRecipZipCd());
+				caUniverseT.setRecipGenderCd(dmClaimDrugT.getRecipGenderCd());
+				caUniverseT.setRecipGenderDesc(dmClaimDrugT.getRecipGenderDesc());
+				caUniverseT.setRecipAddrLine1(dmClaimDrugT.getRecipAddrLine1());
+				caUniverseT.setRecipAddrLine2(dmClaimDrugT.getRecipAddrLine2());
+				caUniverseT.setHdrRecipMcareId(dmClaimDrugT.getHdrRecipMcareId());
+				caUniverseT.setRecipTefraInd(dmClaimDrugT.getRecipTefraInd());
+				caUniverseT.setRecipBnftPlanCd(dmClaimDrugT.getRecipBnftPlanCd());
+				caUniverseT.setRecipBnftPlanDesc(dmClaimDrugT.getRecipBnftPlanDesc());
+				caUniverseT.setHdrDrugNhInd(dmClaimDrugT.getHdrDrugNhInd());
+				caUniverseT.setHdrSrvFromDt(dmClaimDrugT.getHdrSrvFromDt());
+				caUniverseT.setHdrCopayAmt(dmClaimDrugT.getHdrCopayAmt());
+				caUniverseT.setHdrTplAmt(dmClaimDrugT.getHdrTplAmt());
+				caUniverseT.setHdrDrugDispensingFee(dmClaimDrugT.getHdrDrugDispensingFee());
+				caUniverseT.setLiTplAmt(dmClaimDrugT.getLiTplAmt());
+				caUniverseT.setLiDrugCompoundInd(dmClaimDrugT.getLiDrugCompoundInd());
+				caUniverseT.setLiDrugGcn(dmClaimDrugT.getLiDrugGcn());
+				caUniverseT.setLiDrugDosageFormDesc(dmClaimDrugT.getLiDrugDosageFormDesc());
+				caUniverseT.setRPackageSize(dmClaimDrugT.getRPackageSize());
+				caUniverseT.setRStrengthDesc(dmClaimDrugT.getRStrengthDesc());
+				caUniverseT.setRClassCd(dmClaimDrugT.getRClassCd());
+				caUniverseT.setRDrugCat(dmClaimDrugT.getRDrugCat());
+				caUniverseT.setRDrugDea(dmClaimDrugT.getRDrugDea());
+				caUniverseT.setRRouteDesc(dmClaimDrugT.getRRouteDesc());
+				caUniverseT.setLiHeaderPayInd(dmClaimDrugT.getLiHeaderPayInd());
+				caUniverseT.setLiClmAdjStsCd(dmClaimDrugT.getLiClmAdjStsCd());
+				caUniverseT.setLiCoeCd(dmClaimDrugT.getLiCoeCd());
+				caUniverseT.setLiCopayAmt1(dmClaimDrugT.getLiCopayAmt1());
+				caUniverseT.setHdrFundCd(dmClaimDrugT.getHdrFundCd());
+				caUniverseT.setFundDesc(dmClaimDrugT.getFundDesc());
+	//			caUniverseT.setFinFundCd(dmClaimDrugT.getFinFundCd()); - not needed
+				caUniverseT.setCompDrugIngredCount(dmClaimDrugT.getCompDrugIngredCount());
+				caUniverseT.setCompDrugProductIdQlfr(dmClaimDrugT.getCompDrugProductIdQlfr());
+				caUniverseT.setCompDrugIngredQty(dmClaimDrugT.getCompDrugIngredQty());
+				caUniverseT.setCompDrugIngredCost(dmClaimDrugT.getCompDrugIngredCost());
+				caUniverseTList.add(caUniverseT);
+			}
+	       }
+		log.info("End Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		return caUniverseTList;
+	}
+	
+	public void processBatchEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
+
+
+        boolean batchFailed = false;
+        List<CaUniverseT> caUniverseTList;
+        Integer caseUniverseBatchIdin = caUniverseBatchTList.get(0).getId().getCtBatchId();
+        String userId = caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId();
+        try {
+        	caUniverseTList = createCaUniverseTList(caUniverseBatchTList);
+        	if (caUniverseTList.size() == caUniverseBatchTList.size()) {	
+        		iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
+        	} else {
+        		caUniverseBatchRepository.saveAll(caUniverseBatchTList);	// DB Operation 1
+                caUniverseBatchRepository.flush();					// DB Operation
+        		sendInvalidClaimsMail(caUniverseBatchTList);
+        		batchFailed = true;	
+        	}
+        	caUniverseTList.clear();
+        } catch (Exception e) {
+            batchFailed = true;
+            log.error(" Case Batch Processing failed for Batch ID " + caseUniverseBatchIdin);
+            log.info(e.getMessage());
+            log.error("Exception Trace: ", e);
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
+            emailData.setBatchId(caseUniverseBatchIdin);
+            emailData.setSubmittedBy(userId);
+            StringBuilder exceptionMessage = new StringBuilder();
+            if (e.getMessage() != null) {
+                if (e.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                    exceptionMessage.append(e.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                } else {
+                    exceptionMessage.append(e.getMessage().substring(0, e.getMessage().length()));
+                }
+            } else {
+                exceptionMessage.append("Exception message is null.");
+            }
+            if (e.getCause() != null) {
+                if (e.getCause().getCause() instanceof SQLServerException) {
+                    exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
+                    SQLServerException sqlServerException = (SQLServerException) e.getCause().getCause();
+                    log.info(sqlServerException.getMessage());
+                    if (sqlServerException.getMessage() != null) {
+                        if (sqlServerException.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                        } else {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, sqlServerException.getMessage().length()));
+                        }
+                    } else {
+                        exceptionMessage.append("SqlServerException message is null.");
+                    }
+                }
+            }
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            emailData.setErrorLog(exceptionMessage.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to User
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to admin
+        } // try
+        if (!batchFailed) {
+            log.info(" Delete caUniverseBatchT entries in Batch ID " + caseUniverseBatchIdin);
+            caUniverseBatchRepository.deleteByBatchId(caseUniverseBatchIdin); // DB Operation 2
+        }
+
+    
+	}
+	
+    @Override
+    public JobExecution executeBatchJob() {
+        try {
+            JobParameters params = new JobParametersBuilder()
+                    .addLong("startTime", System.currentTimeMillis())
+                    .toJobParameters();
+            return jobLauncher.run(caseEntryBatchJob, params);
+        } catch (Exception e) {
+            log.error("Failed to execute batch job", e);
+            throw new RuntimeException("Failed to execute batch job", e);
+        }
+    }
+	
+	
+	
+    
+}
+
+package com.optum.fads.caseentrybatch.api.job;
+
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.quartz.QuartzJobBean;
+
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+public class CaseEntryBatchJob extends QuartzJobBean {
+
+	 @Autowired
+	private ICaseBatchService iCaseBatchService;
+
+	@Override
+	protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
+		log.info("Create Batch Case job is starting...");
+		iCaseBatchService.executeBatchJob();
+		log.info("Create Batch Case job end...");
+	}
+
+	
+
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.item.ItemStreamException;
+import org.springframework.batch.item.ItemStreamReader;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@Slf4j
+public class BatchIdItemReader implements ItemStreamReader<List<CaUniverseBatchT>> {
+
+    private final CaUniverseBatchRepository caUniverseBatchRepository;
+    private List<Integer> batchIds;
+    private int currentIndex = 0;
+
+    public BatchIdItemReader(CaUniverseBatchRepository caUniverseBatchRepository) {
+        this.caUniverseBatchRepository = caUniverseBatchRepository;
+    }
+
+    @Override
+    public void open(ExecutionContext executionContext) throws ItemStreamException {
+        batchIds = caUniverseBatchRepository.findDistinctBatchIds();
+        if (executionContext.containsKey("batch.reader.current.index")) {
+            currentIndex = executionContext.getInt("batch.reader.current.index");
+        } else {
+            currentIndex = 0;
+        }
+        log.info("Batch reader opened. totalBatchIds={}, startIndex={}", batchIds.size(), currentIndex);
+    }
+
+    @Override
+    public List<CaUniverseBatchT> read() {
+        if (batchIds != null && currentIndex < batchIds.size()) {
+            Integer batchId = batchIds.get(currentIndex++);
+            List<CaUniverseBatchT> batchList = caUniverseBatchRepository.findAllByBatchId(batchId);
+            log.info("Read batchId={}, rows={}", batchId, batchList.size());
+            return batchList;
+        }
+        return null;
+    }
+
+    @Override
+    public void update(ExecutionContext executionContext) throws ItemStreamException {
+        executionContext.putInt("batch.reader.current.index", currentIndex);
+    }
+
+    @Override
+    public void close() throws ItemStreamException {
+        log.info("Batch reader closed at index={}", currentIndex);
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import lombok.Getter;
+
+import java.util.List;
+
+@Getter
+public class BatchProcessingResult {
+    private final boolean valid;
+    private final List<CaUniverseT> validRecords;
+    private final List<CaUniverseBatchT> invalidRecords;
+
+    private BatchProcessingResult(boolean valid, List<CaUniverseT> validRecords, List<CaUniverseBatchT> invalidRecords) {
+        this.valid = valid;
+        this.validRecords = validRecords;
+        this.invalidRecords = invalidRecords;
+    }
+
+    public static BatchProcessingResult valid(List<CaUniverseT> records) {
+        return new BatchProcessingResult(true, records, null);
+    }
+
+    public static BatchProcessingResult invalid(List<CaUniverseBatchT> records) {
+        return new BatchProcessingResult(false, null, records);
+    }
+}
+
+
+
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.ItemProcessor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@Slf4j
+public class ValidatingBatchProcessor implements ItemProcessor<List<CaUniverseBatchT>, BatchProcessingResult> {
+
+    private final CaseBatchService caseBatchService;
+
+    public ValidatingBatchProcessor(CaseBatchService caseBatchService) {
+        this.caseBatchService = caseBatchService;
+    }
+
+    @Override
+    public BatchProcessingResult process(List<CaUniverseBatchT> batchList) {
+        if (batchList == null || batchList.isEmpty()) {
+            return null;
+        }
+
+        Integer batchId = batchList.get(0).getId().getCtBatchId();
+        List<CaUniverseT> validList = caseBatchService.createCaUniverseTList(batchList);
+
+        if (validList.size() == batchList.size()) {
+            log.info("Batch {} valid. records={}", batchId, validList.size());
+            return BatchProcessingResult.valid(validList);
+        }
+
+        log.warn("Batch {} invalid. validRecords={}, totalRecords={}", batchId, validList.size(), batchList.size());
+        return BatchProcessingResult.invalid(batchList);
+    }
+}
+
+
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.microsoft.sqlserver.jdbc.SQLServerException;
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@Slf4j
+public class CaseEntryBatchWriter implements ItemWriter<List<CaUniverseT>> {
+
+    private final ICaseBatchIndividualService iCaseBatchIndividualService;
+    private final CaUniverseBatchRepository caUniverseBatchRepository;
+    private final CaseBatchEmailService caseBatchEmailService;
+    private final CaseBatchUtil caseBatchUtil;
+
+    public CaseEntryBatchWriter(ICaseBatchIndividualService iCaseBatchIndividualService,
+                                CaUniverseBatchRepository caUniverseBatchRepository,
+                                CaseBatchEmailService caseBatchEmailService,
+                                CaseBatchUtil caseBatchUtil) {
+        this.iCaseBatchIndividualService = iCaseBatchIndividualService;
+        this.caUniverseBatchRepository = caUniverseBatchRepository;
+        this.caseBatchEmailService = caseBatchEmailService;
+        this.caseBatchUtil = caseBatchUtil;
+    }
+
+    @Override
+    public void write(Chunk<? extends List<CaUniverseT>> chunk) {
+        for (List<CaUniverseT> caUniverseTList : chunk.getItems()) {
+            if (caUniverseTList == null || caUniverseTList.isEmpty()) {
+                continue;
+            }
+
+            Integer batchId = caUniverseTList.get(0).getId().getCtBatchId();
+            String userId = caUniverseTList.get(0).getUiUserBase().getUiSystemId();
+            boolean failed = false;
+
+            try {
+                iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
+            } catch (Exception e) {
+                failed = true;
+                log.error("Batch write failed. batchId={}", batchId, e);
+                handleBatchFailure(batchId, userId, e);
+            }
+
+            if (!failed) {
+                caUniverseBatchRepository.deleteByBatchId(batchId);
+                log.info("Batch {} processed and removed from queue", batchId);
+            }
+        }
+    }
+
+    private void handleBatchFailure(Integer batchId, String userId, Exception e) {
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
+        emailData.setBatchId(batchId);
+        emailData.setSubmittedBy(userId);
+
+        StringBuilder exceptionMessage = new StringBuilder();
+        if (e.getMessage() != null) {
+            String msg = e.getMessage();
+            exceptionMessage.append(msg, 0, Math.min(msg.length(), CaseEntryConstants.ERROR_LOG_LENGTH));
+        } else {
+            exceptionMessage.append("Exception message is null.");
+        }
+
+        if (e.getCause() != null && e.getCause().getCause() instanceof SQLServerException) {
+            exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
+            SQLServerException sql = (SQLServerException) e.getCause().getCause();
+            if (sql.getMessage() != null) {
+                String msg = sql.getMessage();
+                exceptionMessage.append(msg, 0, Math.min(msg.length(), CaseEntryConstants.ERROR_LOG_LENGTH));
+            } else {
+                exceptionMessage.append("SqlServerException message is null.");
+            }
+        }
+
+        EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+        emailData.setErrorLog(exceptionMessage.toString());
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
+
+        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@Component
+@Slf4j
+public class InvalidClaimsBatchWriter implements ItemWriter<List<CaUniverseBatchT>> {
+
+    private final CaUniverseBatchRepository caUniverseBatchRepository;
+    private final CaseBatchEmailService caseBatchEmailService;
+    private final CaseBatchUtil caseBatchUtil;
+
+    public InvalidClaimsBatchWriter(CaUniverseBatchRepository caUniverseBatchRepository,
+                                    CaseBatchEmailService caseBatchEmailService,
+                                    CaseBatchUtil caseBatchUtil) {
+        this.caUniverseBatchRepository = caUniverseBatchRepository;
+        this.caseBatchEmailService = caseBatchEmailService;
+        this.caseBatchUtil = caseBatchUtil;
+    }
+
+    @Override
+    public void write(Chunk<? extends List<CaUniverseBatchT>> chunk) {
+        for (List<CaUniverseBatchT> list : chunk.getItems()) {
+            if (list == null || list.isEmpty()) {
+                continue;
+            }
+
+            Integer batchId = list.get(0).getId().getCtBatchId();
+            caUniverseBatchRepository.saveAll(list);
+            caUniverseBatchRepository.flush();
+            sendInvalidClaimsMail(list);
+            log.warn("Invalid batch persisted. batchId={}", batchId);
+        }
+    }
+
+    private void sendInvalidClaimsMail(List<CaUniverseBatchT> list) {
+        Set<String> uniqueTcns = new HashSet<>();
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+        emailData.setBatchId(list.get(0).getId().getCtBatchId());
+        emailData.setSubmittedBy(list.get(0).getUiUserBase().getUiSystemId());
+
+        StringBuilder invalidTcns = new StringBuilder();
+        for (CaUniverseBatchT row : list) {
+            if (CaseEntryConstants.NO.equals(row.getRecMatchInd())
+                    || CaseEntryConstants.DUPLICATE.equals(row.getRecMatchInd())) {
+                if (uniqueTcns.add(row.getHdrClmTcn())) {
+                    invalidTcns.append(row.getHdrClmTcn()).append(CaseEntryConstants.TEXT_SEPERATOR);
+                }
+            }
+        }
+
+        if (invalidTcns.length() <= 2) {
+            log.warn("No invalid TCN details generated for batch {}", emailData.getBatchId());
+            return;
+        }
+
+        invalidTcns.setLength(invalidTcns.length() - 2);
+        emailData.setErrorLog(invalidTcns.toString());
+
+        EmailSpecification specs = caseBatchUtil.getEmailSpecs();
+        caseBatchEmailService.postBatchProcessMail(emailData, specs);
+    }
+}
+
+
+
+package com.optum.fads.caseentrybatch.api.batch;
+
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.item.Chunk;
+import org.springframework.batch.item.ItemWriter;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+@Slf4j
+public class CompositeRoutingWriter implements ItemWriter<BatchProcessingResult> {
+
+    private final CaseEntryBatchWriter validWriter;
+    private final InvalidClaimsBatchWriter invalidWriter;
+
+    public CompositeRoutingWriter(CaseEntryBatchWriter validWriter,
+                                  InvalidClaimsBatchWriter invalidWriter) {
+        this.validWriter = validWriter;
+        this.invalidWriter = invalidWriter;
+    }
+
+    @Override
+    public void write(Chunk<? extends BatchProcessingResult> chunk) throws Exception {
+        Chunk<List<CaUniverseT>> validChunk = new Chunk<>();
+        Chunk<List<CaUniverseBatchT>> invalidChunk = new Chunk<>();
+
+        for (BatchProcessingResult result : chunk.getItems()) {
+            if (result == null) {
+                continue;
+            }
+            if (result.isValid()) {
+                validChunk.add(result.getValidRecords());
+            } else {
+                invalidChunk.add(result.getInvalidRecords());
+            }
+        }
+
+        if (!validChunk.isEmpty()) {
+            validWriter.write(validChunk);
+        }
+        if (!invalidChunk.isEmpty()) {
+            invalidWriter.write(invalidChunk);
+        }
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.config;
+
+import com.optum.fads.caseentrybatch.api.batch.BatchIdItemReader;
+import com.optum.fads.caseentrybatch.api.batch.BatchProcessingResult;
+import com.optum.fads.caseentrybatch.api.batch.CompositeRoutingWriter;
+import com.optum.fads.caseentrybatch.api.batch.ValidatingBatchProcessor;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.support.SynchronizedItemStreamReader;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import java.util.List;
+
+@Configuration
+public class CaseEntryBatchConfiguration {
+
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+    private final BatchIdItemReader batchIdItemReader;
+    private final ValidatingBatchProcessor validatingBatchProcessor;
+    private final CompositeRoutingWriter compositeRoutingWriter;
+
+    public CaseEntryBatchConfiguration(JobRepository jobRepository,
+                                       PlatformTransactionManager transactionManager,
+                                       BatchIdItemReader batchIdItemReader,
+                                       ValidatingBatchProcessor validatingBatchProcessor,
+                                       CompositeRoutingWriter compositeRoutingWriter) {
+        this.jobRepository = jobRepository;
+        this.transactionManager = transactionManager;
+        this.batchIdItemReader = batchIdItemReader;
+        this.validatingBatchProcessor = validatingBatchProcessor;
+        this.compositeRoutingWriter = compositeRoutingWriter;
+    }
+
+    @Bean(name = "caseEntryBatchJob")
+    public Job caseEntryBatchJob() {
+        return new JobBuilder("caseEntryBatchJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(processBatchStep())
+                .build();
+    }
+
+    @Bean
+    public Step processBatchStep() {
+        return new StepBuilder("processBatchStep", jobRepository)
+                .<List<CaUniverseBatchT>, BatchProcessingResult>chunk(1, transactionManager)
+                .reader(synchronizedReader())
+                .processor(validatingBatchProcessor)
+                .writer(compositeRoutingWriter)
+                .build();
+    }
+
+    @Bean
+    public SynchronizedItemStreamReader<List<CaUniverseBatchT>> synchronizedReader() {
+        SynchronizedItemStreamReader<List<CaUniverseBatchT>> reader = new SynchronizedItemStreamReader<>();
+        reader.setDelegate(batchIdItemReader);
+        return reader;
+    }
+}
+
