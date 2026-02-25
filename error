@@ -1,30 +1,412 @@
-org.jkiss.dbeaver.model.sql.DBSQLException: SQL Error [1003] [42000]: SQL compilation error:
-syntax error line 33 at position 0 unexpected 'INSERT'.
-	at org.jkiss.dbeaver.model.impl.jdbc.exec.JDBCStatementImpl.executeStatement(JDBCStatementImpl.java:130)
-	at org.jkiss.dbeaver.ui.editors.sql.execute.SQLQueryJob.executeStatement(SQLQueryJob.java:653)
-	at org.jkiss.dbeaver.ui.editors.sql.execute.SQLQueryJob.lambda$2(SQLQueryJob.java:546)
-	at org.jkiss.dbeaver.ui.editors.sql.execute.SQLQueryJob.executeSingleQuery(SQLQueryJob.java:568)
-	at org.jkiss.dbeaver.ui.editors.sql.execute.SQLQueryJob.extractData(SQLQueryJob.java:1039)
-	at org.jkiss.dbeaver.ui.editors.sql.SQLEditor$QueryResultsContainer.readData(SQLEditor.java:4326)
-	at org.jkiss.dbeaver.ui.controls.resultset.ResultSetJobDataRead.lambda$0(ResultSetJobDataRead.java:128)
-	at org.jkiss.dbeaver.model.exec.DBExecUtils.tryExecuteRecover(DBExecUtils.java:189)
-	at org.jkiss.dbeaver.ui.controls.resultset.ResultSetJobDataRead.run(ResultSetJobDataRead.java:126)
-	at org.jkiss.dbeaver.ui.controls.resultset.ResultSetViewer$ResultSetDataPumpJob.run(ResultSetViewer.java:5112)
-	at org.jkiss.dbeaver.model.runtime.AbstractJob.run(AbstractJob.java:119)
-	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63)
-Caused by: net.snowflake.client.jdbc.SnowflakeSQLException: SQL compilation error:
-syntax error line 33 at position 0 unexpected 'INSERT'.
-	at net.snowflake.client.jdbc.SnowflakeUtil.checkErrorAndThrowExceptionSub(SnowflakeUtil.java:171)
-	at net.snowflake.client.jdbc.SnowflakeUtil.checkErrorAndThrowException(SnowflakeUtil.java:103)
-	at net.snowflake.client.core.StmtUtil.pollForOutput(StmtUtil.java:487)
-	at net.snowflake.client.core.StmtUtil.execute(StmtUtil.java:393)
-	at net.snowflake.client.core.SFStatement.executeHelper(SFStatement.java:502)
-	at net.snowflake.client.core.SFStatement.executeQueryInternal(SFStatement.java:211)
-	at net.snowflake.client.core.SFStatement.executeQuery(SFStatement.java:145)
-	at net.snowflake.client.core.SFStatement.execute(SFStatement.java:779)
-	at net.snowflake.client.core.SFStatement.execute(SFStatement.java:697)
-	at net.snowflake.client.jdbc.SnowflakeStatementV1.executeInternal(SnowflakeStatementV1.java:350)
-	at net.snowflake.client.jdbc.SnowflakeStatementV1.execute(SnowflakeStatementV1.java:425)
-	at org.jkiss.dbeaver.model.impl.jdbc.exec.JDBCStatementImpl.execute(JDBCStatementImpl.java:344)
-	at org.jkiss.dbeaver.model.impl.jdbc.exec.JDBCStatementImpl.executeStatement(JDBCStatementImpl.java:128)
-	... 11 more
+package com.optum.fads.caseentrybatch.api.service.impl;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import com.microsoft.sqlserver.jdbc.SQLServerException;
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseTPK;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
+import com.optum.fads.caseentrybatch.api.snowflakeDomain.DmClaimDrugT;
+import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * @author anil wagh
+ * CaseBatchService
+ */
+
+@Service
+@Slf4j
+public class CaseBatchService  implements ICaseBatchService {
+
+    @Autowired
+    private CaUniverseBatchRepository caUniverseBatchRepository;
+
+    @Autowired
+    private	CaseBatchEmailService caseBatchEmailService;
+
+    @Autowired
+    private	ICaseBatchIndividualService iCaseBatchIndividualService;
+
+    @Autowired
+    private CaseBatchUtil caseBatchUtil;
+    
+    @Autowired
+	private DmClaimDrugRepository dmClaimDrugRepository;
+    
+    @Autowired
+    private org.springframework.batch.core.launch.JobLauncher jobLauncher;
+
+    @Autowired
+    @Qualifier("caseEntryBatchJob")
+    private org.springframework.batch.core.Job caseEntryBatchJob;
+
+
+    /**
+     * this method will create cases and entries in CA_UNIVERSE_T table
+     *
+     * Input - CA_UNIVERSE_BATCH_T table entries
+     */
+    public String createBatchCase(){
+
+        log.info(" Run Case Batch " );
+
+        // Get a list of Batch IDs from CaUniverseBatchT
+        List<CaUniverseBatchT> caUniverseBatchTList = null;
+        List<Integer> caUniverseBatchTIdList = caUniverseBatchRepository.findDistinctBatchIds();
+
+        // Get a list of CaUniverseBatchT records for each batch sorted by participant ID
+        for (Integer caUniverseBatchTId : caUniverseBatchTIdList) {
+            log.info("Next Batch Id = " + caUniverseBatchTId);
+            caUniverseBatchTList = caUniverseBatchRepository.findAllByBatchId(caUniverseBatchTId);
+            createBatchCaseEntries(caUniverseBatchTList);
+
+        }
+
+        return CaseEntryConstants.SUCCESS_MESSAGE;
+    }	// Create Batch Case End
+
+    /**
+     * this method will create Batch Case Entries in various Case Tracking tables for a batch
+     *
+     * Parameters - List<CaUniverseBatchT> caUniverseBatchTList
+     */
+    private synchronized void createBatchCaseEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	processBatchEntries(caUniverseBatchTList);
+    }
+    
+    /**
+     * this method will create CaUniverseT List
+     *
+     * Parameters - caUniverseBatchTList
+     */
+    
+    private void  sendInvalidClaimsMail(List<CaUniverseBatchT> caUniverseBatchTList) {
+    	
+    	HashSet<String> uniqueTcns = new HashSet<>();
+    	
+			log.error("Found invalid/Duplicate TCNs in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+            emailData.setBatchId(caUniverseBatchTList.get(0).getId().getCtBatchId());
+            emailData.setSubmittedBy(caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId());
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            StringBuilder invalidTcnsText = new StringBuilder();
+            for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+            	if (caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.NO) || caUniverseBatchT.getRecMatchInd().equals(CaseEntryConstants.DUPLICATE)) {
+            		if (uniqueTcns.add(caUniverseBatchT.getHdrClmTcn())) {
+            			invalidTcnsText.append(caUniverseBatchT.getHdrClmTcn()+CaseEntryConstants.TEXT_SEPERATOR);
+            		}
+            	}
+    		}
+            invalidTcnsText.setLength(invalidTcnsText.length() - 2);
+            emailData.setErrorLog(invalidTcnsText.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	
+
+    }
+    /**
+	  * this method will create CaUniversT list and append to CaUniverseT the data from DM_CLAIM_DRUG_T
+	  * it also validates the input claims data against DM_CLAIM_DRUG_T and checks for duplicate TCN+LiNum records
+	  * Parameters - caUniverseBatchTList
+	  */
+	public List<CaUniverseT> createCaUniverseTList(List<CaUniverseBatchT> caUniverseBatchTList) {
+		
+		log.info("Start Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		boolean validBatch = true;
+		List<CaUniverseT> caUniverseTList = new ArrayList<>();
+		LocalDateTime currentSqlDate = LocalDateTime.now(caseBatchUtil.getZoneId());
+		DmClaimDrugT dmClaimDrugT = null;
+		
+		// Get a map of TCN + Line Number and their occurrences
+		Map<Pair<String, String>, Long> tcnLiNumsMapPairs = caUniverseBatchTList.stream()
+		        .collect(Collectors.groupingBy(e -> Pair.of(e.getHdrClmTcn(), e.getLiNum()), Collectors.counting()));
+
+		// case ID, caSequenceId, clmSeqNum set in CaseBatchIndividual Service
+		
+		for (CaUniverseBatchT caUniverseBatchT : caUniverseBatchTList) {
+			
+//			Date dtHdrClaimPaidDate = caUniverseBatchT.getId().getHdrClmPdDt();
+			Date dtHdrClaimPaidDate = caUniverseBatchT.getHdrClmPdDt();
+			LocalDate localHdrClaimPdDate = dtHdrClaimPaidDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+			caUniverseBatchT.setRecMatchInd(CaseEntryConstants.YES);
+			
+			// Check if duplicate
+			Pair<String, String> pair = Pair.of(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum());
+			if (tcnLiNumsMapPairs.containsKey(pair) && tcnLiNumsMapPairs.get(pair) > 1) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.DUPLICATE);
+					validBatch = false;
+			} else {
+				dmClaimDrugT = dmClaimDrugRepository.findClaimDrugTbyId(caUniverseBatchT.getHdrClmTcn(), caUniverseBatchT.getLiNum(), localHdrClaimPdDate);
+					
+				if (dmClaimDrugT == null) {
+					caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+					validBatch = false;
+				} else {			// Provider ID or Recipient ID must match participant ID
+					String origId =  CaseEntryConstants.BLANK_STR;
+					if (CaseEntryConstants.MEMBER.equals(caUniverseBatchT.getCaseTypeCd())) {
+							origId = dmClaimDrugT.getHdrRecipOrigId();
+					} else {
+						switch (caUniverseBatchT.getProvRole()) {
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_ATTENDING:
+					        	origId = dmClaimDrugT.getHdrAttendProvId();
+					                 break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_BILLING:
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+					               break;
+					    /*    case CaseEntryConstants.PROVIDER_ROLE_REFERRING:
+					        	origId = dmClaimDrugT.getHdrReferProvId();
+					                 break;
+					        case CaseEntryConstants.PROVIDER_ROLE_TREATING:
+					        	 origId = dmClaimDrugT.getLiTreatProvId();
+					                  break; */
+					        case CaseEntryConstants.PROVIDER_ROLE_PRESCRIBING:
+					        	origId = dmClaimDrugT.getHdrPrescrProvId();
+					              break;
+					        default: 
+					        	origId = dmClaimDrugT.getHdrPayToProvId();
+				                  break;
+						}	
+					}
+					if (!origId.equals(caUniverseBatchT.getParticipantId()) || dmClaimDrugT.getHdrRecipFullNm() == null) {
+						caUniverseBatchT.setRecMatchInd(CaseEntryConstants.NO);
+						validBatch = false;
+					}
+				}
+			}
+			if (validBatch) {
+				CaUniverseT	caUniverseT = CaUniverseT.builder().id(CaUniverseTPK.builder().ctBatchId(caUniverseBatchT.getId().getCtBatchId()).ctBatchDate(currentSqlDate)
+//		                      .hdrClmTcn(caUniverseBatchT.getId().getHdrClmTcn()).liNum(caUniverseBatchT.getId().getLiNum()).hdrClmPdDt(caUniverseBatchT.getId().getHdrClmPdDt()).build())
+		        		.hdrClmTcn(caUniverseBatchT.getHdrClmTcn()).liNum(caUniverseBatchT.getLiNum()).hdrClmPdDt(caUniverseBatchT.getHdrClmPdDt()).build())
+		                .uiUserBase(UiUserBase.builder().uiSystemId(caUniverseBatchT.getUiUserBase().getUiSystemId()).build())
+		                .caseTypeCd(caUniverseBatchT.getCaseTypeCd()).provRole(caUniverseBatchT.getProvRole()).caPrmNodeCd(caUniverseBatchT.getCaPrmNodeCd())
+		                .caYearId(caUniverseBatchT.getCaYearId()).projectStatus(caUniverseBatchT.getProjectStatus()).invstTypeCd(caUniverseBatchT.getInvstTypeCd())
+		                .caseSourceCd(caUniverseBatchT.getCaseSourceCd()).caseStatusCd(caUniverseBatchT.getCaseStatusCd()).caseStatusDt(caUniverseBatchT.getCaseStatusDt())
+		                .issueCd(caUniverseBatchT.getIssueCd()).assignUsr(caUniverseBatchT.getAssignUsr()).assignSectionCd(caUniverseBatchT.getAssignSectionCd())
+		                .assignDate(caUniverseBatchT.getAssignDate()).participantId(caUniverseBatchT.getParticipantId()).liDrugValidClmInd(caUniverseBatchT.getLiDrugValidClmInd()).build();
+		        
+			    caUniverseT.setHdrClmAdjStsCd(dmClaimDrugT.getHdrClmAdjStsCd());
+				caUniverseT.setClaimjStatusDesc(dmClaimDrugT.getClaimjStatusDesc());
+				caUniverseT.setHdrPayToProvId(dmClaimDrugT.getHdrPayToProvId());
+				caUniverseT.setHdrPayToProvNm(dmClaimDrugT.getHdrPayToProvNm());
+				caUniverseT.setHdrPrescrProvId(dmClaimDrugT.getHdrPrescrProvId());
+				caUniverseT.setHdrPrescrProvNpi(dmClaimDrugT.getHdrPrescrProvNpi());
+				caUniverseT.setHdrCosCd(dmClaimDrugT.getHdrCosCd());
+				caUniverseT.setCosDesc(dmClaimDrugT.getCosDesc());
+				caUniverseT.setHdrRecipOrigId(dmClaimDrugT.getHdrRecipOrigId());
+				caUniverseT.setHdrRecipFullNm(dmClaimDrugT.getHdrRecipFullNm());
+				caUniverseT.setHdrClmTcnOld(dmClaimDrugT.getHdrClmTcnOld());
+				caUniverseT.setLiSrvFromDt(dmClaimDrugT.getLiSrvFromDt());
+				caUniverseT.setLiDrugPrescrNum(dmClaimDrugT.getLiDrugPrescrNum());
+				caUniverseT.setLiDrugRefillNum(dmClaimDrugT.getLiDrugRefillNum());
+				caUniverseT.setLiDrugPrescrDt(dmClaimDrugT.getLiDrugPrescrDt());
+				caUniverseT.setLiDrugNdc(dmClaimDrugT.getLiDrugNdc());
+				caUniverseT.setNdcDesc(dmClaimDrugT.getNdcDesc());
+				caUniverseT.setLiDrugSpecTheraClsCd(dmClaimDrugT.getLiDrugSpecTheraClsCd());
+				caUniverseT.setTheraClassSpecDesc(dmClaimDrugT.getTheraClassSpecDesc());
+				caUniverseT.setLiDrugDaysSupply(dmClaimDrugT.getLiDrugDaysSupply());
+				caUniverseT.setLiBillUosQty(dmClaimDrugT.getLiBillUosQty());
+				caUniverseT.setLiPdUosQty(dmClaimDrugT.getLiPdUosQty());
+				caUniverseT.setHdrBillAmt(dmClaimDrugT.getHdrBillAmt());
+				caUniverseT.setLiBillAmt(dmClaimDrugT.getLiBillAmt());
+				caUniverseT.setLiPdAmt(dmClaimDrugT.getLiPdAmt());
+				if (caUniverseT.getId().getLiNum().equals(CaseEntryConstants.ONE_STR)) {
+					caUniverseT.setHdrPdAmt(dmClaimDrugT.getHdrPdAmt());
+				} else {
+					caUniverseT.setHdrPdAmt(BigDecimal.valueOf(CaseEntryConstants.ZERO));
+				}
+				caUniverseT.setHdrCleanClmInd(dmClaimDrugT.getHdrCleanClmInd());
+				caUniverseT.setLiCleanClmInd(dmClaimDrugT.getLiCleanClmInd());
+				caUniverseT.setHdrClmTypeCd(dmClaimDrugT.getHdrClmTypeCd());
+				caUniverseT.setHdrClmTypeDesc(dmClaimDrugT.getHdrClmTypeDesc());
+				caUniverseT.setHdrPayToProvNpiId(dmClaimDrugT.getHdrPayToProvNpiId());
+				caUniverseT.setGcnDesc(dmClaimDrugT.getGcnDesc());
+				caUniverseT.setHdrRecipCurrId(dmClaimDrugT.getHdrRecipCurrId());
+				caUniverseT.setHdrEncounterCd(dmClaimDrugT.getHdrEncounterCd());
+				caUniverseT.setLiMcoShadowPrice(dmClaimDrugT.getLiMcoShadowPrice());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoTcn());
+				caUniverseT.setHdrMcoTcn(dmClaimDrugT.getHdrMcoId());
+				caUniverseT.setHdrMcoNm(dmClaimDrugT.getHdrMcoNm());
+				caUniverseT.setHdrMcoPdDt(dmClaimDrugT.getHdrMcoPdDt());
+				caUniverseT.setHdrMcoShadowPrice(dmClaimDrugT.getHdrMcoShadowPrice());
+				caUniverseT.setHdrPayToProvTyCd(dmClaimDrugT.getHdrPayToProvTyCd());
+				caUniverseT.setHdrPayToProvTyDesc(dmClaimDrugT.getHdrPayToProvTyDesc());
+				caUniverseT.setHdrPayToProvSpecCd(dmClaimDrugT.getHdrPayToProvSpecCd());
+				caUniverseT.setHdrPayToProvSpecDesc(dmClaimDrugT.getHdrPayToProvSpecDesc());
+				caUniverseT.setProvFein(dmClaimDrugT.getProvFein());
+				caUniverseT.setProvPracAddrLine1(dmClaimDrugT.getProvPracAddrLine1());
+				caUniverseT.setProvPracAddrLine2(dmClaimDrugT.getProvPracAddrLine2());
+				caUniverseT.setHdrPrescrProvNm(dmClaimDrugT.getHdrPrescrProvNm());
+				caUniverseT.setHdrPrescrProvTyCd(dmClaimDrugT.getHdrPrescrProvTyCd());
+				caUniverseT.setHdrPrescrProvTyDesc(dmClaimDrugT.getHdrPrescrProvTyDesc());
+				caUniverseT.setHdrPrescrProvSpecCd(dmClaimDrugT.getHdrPrescrProvSpecCd());
+				caUniverseT.setHdrPrescrProvSpecDesc(dmClaimDrugT.getHdrPrescrProvSpecDesc());
+				caUniverseT.setHdrRecipAgeMthsQty(dmClaimDrugT.getHdrRecipAgeMthsQty());
+				caUniverseT.setHdrRecipAgeYrsQty(dmClaimDrugT.getHdrRecipAgeYrsQty());
+				caUniverseT.setRecipBirthDt(dmClaimDrugT.getRecipBirthDt());
+				caUniverseT.setRecipDeathDt(dmClaimDrugT.getRecipDeathDt());
+				caUniverseT.setRecipCntyCd(dmClaimDrugT.getRecipCntyCd());
+				caUniverseT.setRecipCntyDesc(dmClaimDrugT.getRecipCntyDesc());
+				caUniverseT.setRecipCityNm(dmClaimDrugT.getRecipCityNm());
+				caUniverseT.setRecipStateCd(dmClaimDrugT.getRecipStateCd());
+				caUniverseT.setRecipZipCd(dmClaimDrugT.getRecipZipCd());
+				caUniverseT.setRecipGenderCd(dmClaimDrugT.getRecipGenderCd());
+				caUniverseT.setRecipGenderDesc(dmClaimDrugT.getRecipGenderDesc());
+				caUniverseT.setRecipAddrLine1(dmClaimDrugT.getRecipAddrLine1());
+				caUniverseT.setRecipAddrLine2(dmClaimDrugT.getRecipAddrLine2());
+				caUniverseT.setHdrRecipMcareId(dmClaimDrugT.getHdrRecipMcareId());
+				caUniverseT.setRecipTefraInd(dmClaimDrugT.getRecipTefraInd());
+				caUniverseT.setRecipBnftPlanCd(dmClaimDrugT.getRecipBnftPlanCd());
+				caUniverseT.setRecipBnftPlanDesc(dmClaimDrugT.getRecipBnftPlanDesc());
+				caUniverseT.setHdrDrugNhInd(dmClaimDrugT.getHdrDrugNhInd());
+				caUniverseT.setHdrSrvFromDt(dmClaimDrugT.getHdrSrvFromDt());
+				caUniverseT.setHdrCopayAmt(dmClaimDrugT.getHdrCopayAmt());
+				caUniverseT.setHdrTplAmt(dmClaimDrugT.getHdrTplAmt());
+				caUniverseT.setHdrDrugDispensingFee(dmClaimDrugT.getHdrDrugDispensingFee());
+				caUniverseT.setLiTplAmt(dmClaimDrugT.getLiTplAmt());
+				caUniverseT.setLiDrugCompoundInd(dmClaimDrugT.getLiDrugCompoundInd());
+				caUniverseT.setLiDrugGcn(dmClaimDrugT.getLiDrugGcn());
+				caUniverseT.setLiDrugDosageFormDesc(dmClaimDrugT.getLiDrugDosageFormDesc());
+				caUniverseT.setRPackageSize(dmClaimDrugT.getRPackageSize());
+				caUniverseT.setRStrengthDesc(dmClaimDrugT.getRStrengthDesc());
+				caUniverseT.setRClassCd(dmClaimDrugT.getRClassCd());
+				caUniverseT.setRDrugCat(dmClaimDrugT.getRDrugCat());
+				caUniverseT.setRDrugDea(dmClaimDrugT.getRDrugDea());
+				caUniverseT.setRRouteDesc(dmClaimDrugT.getRRouteDesc());
+				caUniverseT.setLiHeaderPayInd(dmClaimDrugT.getLiHeaderPayInd());
+				caUniverseT.setLiClmAdjStsCd(dmClaimDrugT.getLiClmAdjStsCd());
+				caUniverseT.setLiCoeCd(dmClaimDrugT.getLiCoeCd());
+				caUniverseT.setLiCopayAmt1(dmClaimDrugT.getLiCopayAmt1());
+				caUniverseT.setHdrFundCd(dmClaimDrugT.getHdrFundCd());
+				caUniverseT.setFundDesc(dmClaimDrugT.getFundDesc());
+	//			caUniverseT.setFinFundCd(dmClaimDrugT.getFinFundCd()); - not needed
+				caUniverseT.setCompDrugIngredCount(dmClaimDrugT.getCompDrugIngredCount());
+				caUniverseT.setCompDrugProductIdQlfr(dmClaimDrugT.getCompDrugProductIdQlfr());
+				caUniverseT.setCompDrugIngredQty(dmClaimDrugT.getCompDrugIngredQty());
+				caUniverseT.setCompDrugIngredCost(dmClaimDrugT.getCompDrugIngredCost());
+				caUniverseTList.add(caUniverseT);
+			}
+	       }
+		log.info("End Create CaUniverseT list in Batch ID " + caUniverseBatchTList.get(0).getId().getCtBatchId());
+		return caUniverseTList;
+	}
+	
+	public void processBatchEntries(List<CaUniverseBatchT> caUniverseBatchTList) {
+
+
+        boolean batchFailed = false;
+        List<CaUniverseT> caUniverseTList;
+        Integer caseUniverseBatchIdin = caUniverseBatchTList.get(0).getId().getCtBatchId();
+        String userId = caUniverseBatchTList.get(0).getUiUserBase().getUiSystemId();
+        try {
+        	caUniverseTList = createCaUniverseTList(caUniverseBatchTList);
+        	if (caUniverseTList.size() == caUniverseBatchTList.size()) {	
+        		iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
+        	} else {
+        		caUniverseBatchRepository.saveAll(caUniverseBatchTList);	// DB Operation 1
+                caUniverseBatchRepository.flush();					// DB Operation
+        		sendInvalidClaimsMail(caUniverseBatchTList);
+        		batchFailed = true;	
+        	}
+        	caUniverseTList.clear();
+        } catch (Exception e) {
+            batchFailed = true;
+            log.error(" Case Batch Processing failed for Batch ID " + caseUniverseBatchIdin);
+            log.info(e.getMessage());
+            log.error("Exception Trace: ", e);
+            EmailData emailData = new EmailData();
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
+            emailData.setBatchId(caseUniverseBatchIdin);
+            emailData.setSubmittedBy(userId);
+            StringBuilder exceptionMessage = new StringBuilder();
+            if (e.getMessage() != null) {
+                if (e.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                    exceptionMessage.append(e.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                } else {
+                    exceptionMessage.append(e.getMessage().substring(0, e.getMessage().length()));
+                }
+            } else {
+                exceptionMessage.append("Exception message is null.");
+            }
+            if (e.getCause() != null) {
+                if (e.getCause().getCause() instanceof SQLServerException) {
+                    exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
+                    SQLServerException sqlServerException = (SQLServerException) e.getCause().getCause();
+                    log.info(sqlServerException.getMessage());
+                    if (sqlServerException.getMessage() != null) {
+                        if (sqlServerException.getMessage().length() > CaseEntryConstants.ERROR_LOG_LENGTH) {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, CaseEntryConstants.ERROR_LOG_LENGTH));
+                        } else {
+                            exceptionMessage.append(sqlServerException.getMessage().substring(0, sqlServerException.getMessage().length()));
+                        }
+                    } else {
+                        exceptionMessage.append("SqlServerException message is null.");
+                    }
+                }
+            }
+            EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
+            emailData.setErrorLog(exceptionMessage.toString());
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to User
+            emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+            caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);	// Upon fail/exception send email to admin
+        } // try
+        if (!batchFailed) {
+            log.info(" Delete caUniverseBatchT entries in Batch ID " + caseUniverseBatchIdin);
+            caUniverseBatchRepository.deleteByBatchId(caseUniverseBatchIdin); // DB Operation 2
+        }
+
+    
+	}
+	
+	
+	@Override
+	public JobExecution executeBatchJob() {
+	    try {
+	        JobParameters params = new JobParametersBuilder()
+	                .addLong("startTime", System.currentTimeMillis())
+	                .toJobParameters();
+	        return jobLauncher.run(caseEntryBatchJob, params);
+	    } catch (Exception e) {
+	        throw new RuntimeException("Failed to execute batch job", e);
+	    }
+	}
+
+    
+}
+
+
+package com.optum.fads.caseentrybatch.api.service;
+
+import org.springframework.batch.core.JobExecution;
+
+public interface ICaseBatchService {
+
+    String createBatchCase();
+
+    JobExecution executeBatchJob();
+}
