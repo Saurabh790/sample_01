@@ -1,41 +1,67 @@
-ss transformer
-2026-02-25T20:27:34.324+05:30  INFO 23960 --- [           main] o.h.b.i.BytecodeProviderInitiator        : HHH000021: Bytecode provider name : bytebuddy
-2026-02-25T20:27:35.891+05:30  INFO 23960 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
-2026-02-25T20:27:35.893+05:30  INFO 23960 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
-2026-02-25T20:27:36.305+05:30  WARN 23960 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'caseEntryBatchConfiguration' defined in file [C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batch\target\classes\com\optum\fads\caseentrybatch\api\config\CaseEntryBatchConfiguration.class]: Unsatisfied dependency expressed through constructor parameter 2: No qualifying bean of type 'com.optum.fads.caseentrybatch.batch.BatchIdItemReader' available: expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {}
-2026-02-25T20:27:36.306+05:30  INFO 23960 --- [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
-2026-02-25T20:27:36.308+05:30  INFO 23960 --- [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
-2026-02-25T20:27:36.321+05:30  INFO 23960 --- [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
-2026-02-25T20:27:36.378+05:30  INFO 23960 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+package com.optum.fads.caseentrybatch.api.config;
 
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-02-25T20:27:36.619+05:30 ERROR 23960 --- [           main] o.s.b.d.LoggingFailureAnalysisReporter   :
+import java.util.List;
 
-***************************
-APPLICATION FAILED TO START
-***************************
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.support.SynchronizedItemStreamReader;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
 
-Description:
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.batch.BatchIdItemReader;
+import com.optum.fads.caseentrybatch.batch.BatchProcessingResult;
+import com.optum.fads.caseentrybatch.batch.CompositeRoutingWriter;
+import com.optum.fads.caseentrybatch.batch.ValidatingBatchProcessor;
 
-Parameter 2 of constructor in com.optum.fads.caseentrybatch.api.config.CaseEntryBatchConfiguration required a bean of type 'com.optum.fads.caseentrybatch.batch.BatchIdItemReader' that could not be found.
+@Configuration
+public class CaseEntryBatchConfiguration {
 
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+    private final BatchIdItemReader batchIdItemReader;
+    private final ValidatingBatchProcessor validatingBatchProcessor;
+    private final CompositeRoutingWriter compositeRoutingWriter;
 
-Action:
+    public CaseEntryBatchConfiguration(JobRepository jobRepository,
+                                       PlatformTransactionManager transactionManager,
+                                       BatchIdItemReader batchIdItemReader,
+                                       ValidatingBatchProcessor validatingBatchProcessor,
+                                       CompositeRoutingWriter compositeRoutingWriter) {
+        this.jobRepository = jobRepository;
+        this.transactionManager = transactionManager;
+        this.batchIdItemReader = batchIdItemReader;
+        this.validatingBatchProcessor = validatingBatchProcessor;
+        this.compositeRoutingWriter = compositeRoutingWriter;
+    }
 
-Consider defining a bean of type 'com.optum.fads.caseentrybatch.batch.BatchIdItemReader' in your configuration.
+    @Bean(name = "caseEntryBatchJob")
+    public Job caseEntryBatchJob() {
+        return new JobBuilder("caseEntryBatchJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(processBatchStep())
+                .build();
+    }
 
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  01:24 min
-[INFO] Finished at: 2026-02-25T20:27:37+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.8:run (default-cli) on project fads-case-entry-batch: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+    @Bean
+    public Step processBatchStep() {
+        return new StepBuilder("processBatchStep", jobRepository)
+                .<List<CaUniverseBatchT>, BatchProcessingResult>chunk(1, transactionManager)
+                .reader(synchronizedReader())
+                .processor(validatingBatchProcessor)
+                .writer(compositeRoutingWriter)
+                .build();
+    }
 
-C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batch>
+    @Bean
+    public SynchronizedItemStreamReader<List<CaUniverseBatchT>> synchronizedReader() {
+        SynchronizedItemStreamReader<List<CaUniverseBatchT>> reader = new SynchronizedItemStreamReader<>();
+        reader.setDelegate(batchIdItemReader);
+        return reader;
+    }
+}
