@@ -1,35 +1,13 @@
-WITH input_claims AS (
-    SELECT * FROM VALUES
-      ('2520207004713','1','2020-08-06'::DATE,'206887407'),
-      ('2520207005248','1','2020-08-06'::DATE,'206887407'),
-      ('2520207005560','1','2020-08-06'::DATE,'206887407'),
-      ('2520207005567','1','2020-08-06'::DATE,'206887407'),
-      ('2520207008736','1','2020-08-06'::DATE,'206887407'),
-      ('2520207008805','1','2020-08-06'::DATE,'206887407')
-) AS i(HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT, PARTICIPANT_ID)
+2026-02-26T11:57:24.348+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail start
 
-SELECT
-    i.HDR_CLM_TCN,
-    i.LI_NUM,
-    i.HDR_CLM_PD_DT,
-    i.PARTICIPANT_ID,
-    d.HDR_PAY_TO_PROV_ID,
-    d.HDR_RECIP_FULL_NM,
-    CASE
-        WHEN d.HDR_CLM_TCN IS NULL THEN 'NO_DM_CLAIM_DRUG_ROW'
-        WHEN TRIM(d.HDR_PAY_TO_PROV_ID) <> TRIM(i.PARTICIPANT_ID) THEN 'PROVIDER_MISMATCH'
-        WHEN d.HDR_RECIP_FULL_NM IS NULL THEN 'RECIP_NAME_NULL'
-        ELSE 'VALID'
-    END AS VALIDATION_STATUS
-FROM input_claims i
-LEFT JOIN DM_CLAIM_DRUG_T d
-  ON TRIM(d.HDR_CLM_TCN) = TRIM(i.HDR_CLM_TCN)
- AND TRIM(d.LI_NUM)      = TRIM(i.LI_NUM)
- AND d.HDR_CLM_PD_DT     = i.HDR_CLM_PD_DT
-ORDER BY i.HDR_CLM_TCN;
-
-
-UPDATE CA_UNIVERSE_BATCH_T
-SET REC_MATCH_IND = 'N'
-WHERE CT_BATCH_ID = 451
-  AND REC_MATCH_IND IS NULL;
+2026-02-26T11:57:24.424+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.a.s.impl.CaseBatchEmailService   : emailSubject: Case Batch ID 451 Completed Successfully
+2026-02-26T11:57:24.458+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.api.util.CaseBatchUtil           : CaseBatchUtil:createJsonInput {"EmailSubject":"Case Batch ID 451 Completed Successfully","EmailText":"Case Batch ID 451 created case(s) MAU-2025-00010.","SendTo":"agupt313@optumsgs.onmicrosoft.com"}
+2026-02-26T11:57:24.458+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.api.util.CaseBatchUtil           : sendMailLogicAppPost - use HttpPost to send email
+2026-02-26T11:57:25.258+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.a.s.impl.CaseBatchEmailService   : saveEmailBatchT Batch Id 451 Notice ID NBS toEmail agupt313@optumsgs.onmicrosoft.com User ID ca88510043 Email Type Success
+2026-02-26T11:57:25.310+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.a.s.impl.CaseBatchEmailService   : CaseBatchEmailService: postBatchProcessMail end
+2026-02-26T11:57:25.311+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.a.s.i.CaseBatchIndividualService :  Number of Cases created = 1, Case ID(s) 9670 to 9670
+2026-02-26T11:57:25.390+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.api.batch.CaseEntryBatchWriter   : Batch 451 processed and removed from queue
+2026-02-26T11:57:25.692+05:30  INFO 24212 --- [eduler_Worker-3] o.s.batch.core.step.AbstractStep         : Step: [processBatchStep] executed in 24s812ms
+2026-02-26T11:57:25.967+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.api.batch.BatchIdItemReader      : Batch reader closed at index=1
+2026-02-26T11:57:26.237+05:30  INFO 24212 --- [eduler_Worker-3] o.s.b.c.l.s.TaskExecutorJobLauncher      : Job: [SimpleJob: [name=caseEntryBatchJob]] completed with the following parameters: [{'startTime':'{value=1772087220003, type=class java.lang.Long, identifying=true}'}] and the following status: [COMPLETED] in 25s730ms
+2026-02-26T11:57:26.238+05:30  INFO 24212 --- [eduler_Worker-3] c.o.f.c.api.job.CaseEntryBatchJob        : Create Batch Case job end...
