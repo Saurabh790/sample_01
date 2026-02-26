@@ -1,37 +1,96 @@
+package com.optum.fads.caseentrybatch.api.job;
 
-2026-02-26T10:52:21.659+05:30  INFO 2516 --- [           main] c.o.f.c.api.CaseEntryBatchApplication    : Starting CaseEntryBatchApplication using Java 17.0.10 with PID 2516 (C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batch\target\classes started by sgupt664 in C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batch)
-2026-02-26T10:52:21.711+05:30  INFO 2516 --- [           main] c.o.f.c.api.CaseEntryBatchApplication    : No active profile set, falling back to 1 default profile: "default"
-2026-02-26T10:52:28.877+05:30  INFO 2516 --- [           main] o.s.b.c.c.annotation.BatchRegistrar      : Finished Spring Batch infrastructure beans configuration in 34 ms.
-2026-02-26T10:52:28.879+05:30  WARN 2516 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.support.BeanDefinitionOverrideException: Invalid bean definition with name 'caseEntryBatchJob' defined in class path resource [com/optum/fads/caseentrybatch/api/config/CaseEntryBatchConfiguration.class]: Cannot register bean definition [Root bean: class=null; scope=; abstract=false; lazyInit=null; autowireMode=3; dependencyCheck=0; autowireCandidate=true; primary=false; fallback=false; factoryBeanName=caseEntryBatchConfiguration; factoryMethodName=caseEntryBatchJob; initMethodNames=null; destroyMethodNames=[(inferred)]; defined in class path resource [com/optum/fads/caseentrybatch/api/config/CaseEntryBatchConfiguration.class]] for bean 'caseEntryBatchJob' since there is already [Root bean: class=null; scope=; abstract=false; lazyInit=null; autowireMode=3; dependencyCheck=0; autowireCandidate=true; primary=false; fallback=false; factoryBeanName=caseBatchJobConfig; factoryMethodName=caseEntryBatchJob; initMethodNames=null; destroyMethodNames=[(inferred)]; defined in class path resource [com/optum/fads/caseentrybatch/api/batch/CaseBatchJobConfig.class]] bound.
-2026-02-26T10:52:28.910+05:30  INFO 2516 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.quartz.QuartzJobBean;
 
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-02-26T10:52:29.129+05:30 ERROR 2516 --- [           main] o.s.b.d.LoggingFailureAnalysisReporter   :
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
 
-***************************
-APPLICATION FAILED TO START
-***************************
+import lombok.extern.slf4j.Slf4j;
 
-Description:
+@Slf4j
+public class CaseEntryBatchJob extends QuartzJobBean {
 
-The bean 'caseEntryBatchJob', defined in class path resource [com/optum/fads/caseentrybatch/api/config/CaseEntryBatchConfiguration.class], could not be registered. A bean with that name has already been defined in class path resource [com/optum/fads/caseentrybatch/api/batch/CaseBatchJobConfig.class] and overriding is disabled.
+	 @Autowired
+	private ICaseBatchService iCaseBatchService;
 
-Action:
+	@Override
+	protected void executeInternal(JobExecutionContext context) throws JobExecutionException {
+		log.info("Create Batch Case job is starting...");
+		iCaseBatchService.executeBatchJob();
+		log.info("Create Batch Case job end...");
+	}
 
-Consider renaming one of the beans or enabling overriding by setting spring.main.allow-bean-definition-overriding=true
+	
 
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  01:50 min
-[INFO] Finished at: 2026-02-26T10:52:29+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.8:run (default-cli) on project fads-case-entry-batch: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+}
 
-C:\Users\sgupt664\Desktop\backup_behavior app\fads-case-entry-batc
+
+package com.optum.fads.caseentrybatch.api.config;
+
+import java.util.List;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.support.SynchronizedItemStreamReader;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+
+import com.optum.fads.caseentrybatch.api.batch.BatchIdItemReader;
+import com.optum.fads.caseentrybatch.api.batch.BatchProcessingResult;
+import com.optum.fads.caseentrybatch.api.batch.CompositeRoutingWriter;
+import com.optum.fads.caseentrybatch.api.batch.ValidatingBatchProcessor;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+
+@Configuration
+public class CaseEntryBatchConfiguration {
+
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+    private final BatchIdItemReader batchIdItemReader;
+    private final ValidatingBatchProcessor validatingBatchProcessor;
+    private final CompositeRoutingWriter compositeRoutingWriter;
+
+    public CaseEntryBatchConfiguration(JobRepository jobRepository,
+                                       PlatformTransactionManager transactionManager,
+                                       BatchIdItemReader batchIdItemReader,
+                                       ValidatingBatchProcessor validatingBatchProcessor,
+                                       CompositeRoutingWriter compositeRoutingWriter) {
+        this.jobRepository = jobRepository;
+        this.transactionManager = transactionManager;
+        this.batchIdItemReader = batchIdItemReader;
+        this.validatingBatchProcessor = validatingBatchProcessor;
+        this.compositeRoutingWriter = compositeRoutingWriter;
+    }
+
+    @Bean(name = "caseEntryBatchJob")
+    public Job caseEntryBatchJob() {
+        return new JobBuilder("caseEntryBatchJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(processBatchStep())
+                .build();
+    }
+
+    @Bean
+    public Step processBatchStep() {
+        return new StepBuilder("processBatchStep", jobRepository)
+                .<List<CaUniverseBatchT>, BatchProcessingResult>chunk(1, transactionManager)
+                .reader(synchronizedReader())
+                .processor(validatingBatchProcessor)
+                .writer(compositeRoutingWriter)
+                .build();
+    }
+
+    @Bean
+    public SynchronizedItemStreamReader<List<CaUniverseBatchT>> synchronizedReader() {
+        SynchronizedItemStreamReader<List<CaUniverseBatchT>> reader = new SynchronizedItemStreamReader<>();
+        reader.setDelegate(batchIdItemReader);
+        return reader;
+    }
+}
