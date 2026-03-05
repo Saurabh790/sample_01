@@ -1,6 +1,5 @@
 package com.optum.fads.casereminders.api.config;
 
-
 import java.security.PrivateKey;
 import java.util.HashMap;
 import java.util.Properties;
@@ -45,6 +44,7 @@ public class ServiceConfigSNFK {
     @Value("${spring.datasource.snfk.jdbcUrl}")
     private String url;
 
+    // These values are KeyVault secret NAMES (not real values)
     @Value("${spring.datasource.snfk.userName}")
     private String username;
 
@@ -89,11 +89,14 @@ public class ServiceConfigSNFK {
     private DataSource createCertDataSource() throws Exception {
         logger.info("Snowflake auth using certificate PEM from Key Vault.");
 
-        String pem = secretClient.getSecret(certKeySecret).getValue();
+        // certKey contains the secret NAME that holds PEM content
+        String pem = secretClient.getSecret(certKey).getValue();
+
         char[] passChars = resolvePassphraseChars();
         PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pem, passChars);
 
-        String user = secretClient.getSecret(usernameSecret).getValue();
+        // username contains the secret NAME that holds actual username
+        String userValue = secretClient.getSecret(username).getValue();
 
         SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
         sf.setUrl(url);
@@ -103,7 +106,7 @@ public class ServiceConfigSNFK {
         if (account != null && !account.isBlank()) sf.setAccount(account);
         if (role != null && !role.isBlank()) sf.setRole(role);
 
-        sf.setUser(user);
+        sf.setUser(userValue);
         sf.setPrivateKey(privateKey);
 
         HikariDataSource hikari = new HikariDataSource();
@@ -114,12 +117,12 @@ public class ServiceConfigSNFK {
     private DataSource createPasswordDataSource() {
         logger.info("Snowflake auth using username/password from Key Vault.");
 
-        String user = secretClient.getSecret(usernameSecret).getValue();
-        String pass = secretClient.getSecret(passwordSecret).getValue();
+        String userValue = secretClient.getSecret(username).getValue();
+        String passValue = secretClient.getSecret(password).getValue();
 
         Properties props = new Properties();
-        props.put("user", user);
-        props.put("password", pass);
+        props.put("user", userValue);
+        props.put("password", passValue);
         props.put("database", database);
         props.put("schema", schema);
         props.put("warehouse", warehouse);
@@ -130,21 +133,20 @@ public class ServiceConfigSNFK {
     }
 
     private char[] resolvePassphraseChars() {
-        if (passphraseSecret == null || passphraseSecret.isBlank()) return null;
-        String pass = secretClient.getSecret(passphraseSecret).getValue();
-        return (pass == null || pass.isBlank()) ? null : pass.toCharArray();
+        // passphrase contains the secret NAME holding the passphrase value
+        if (passphrase == null || passphrase.isBlank()) return null;
+        String passValue = secretClient.getSecret(passphrase).getValue();
+        return (passValue == null || passValue.isBlank()) ? null : passValue.toCharArray();
     }
 
     @Bean(name = "snfkEntityManagerFactory")
     public LocalContainerEntityManagerFactoryBean snfkEntityManagerFactory(
-            @Qualifier("fadsSNFKDataSource") DataSource ds) throws Exception {
+            @Qualifier("fadsSNFKDataSource") DataSource ds) {
 
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(ds);
         em.setPackagesToScan("com.optum.fads.casereminders.api.snowflakeDomain");
-
-        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        em.setJpaVendorAdapter(vendorAdapter);
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
 
         HashMap<String, Object> properties = new HashMap<>();
         properties.put("hibernate.allow_update_outside_transaction", true);
@@ -159,7 +161,6 @@ public class ServiceConfigSNFK {
             @Qualifier("snfkEntityManagerFactory") EntityManagerFactory snfkEntityManagerFactory) {
 
         JpaTransactionManager txManager = new JpaTransactionManager();
-        // FIXED: do NOT call snfkEntityManagerFactory() again
         txManager.setEntityManagerFactory(snfkEntityManagerFactory);
         return txManager;
     }
@@ -169,42 +170,3 @@ public class ServiceConfigSNFK {
         return new JdbcTemplate(ds);
     }
 }
-
-
-
-[INFO] Finished at: 2026-03-05T19:56:50+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.8.1:compile (default-compile) on project fads-case-reminders-api: Compilation failure: Compilation failure:
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[92,45] cannot find symbol
-[ERROR]   symbol:   variable certKeySecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[96,46] cannot find symbol
-[ERROR]   symbol:   variable usernameSecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[117,46] cannot find symbol
-[ERROR]   symbol:   variable usernameSecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[118,46] cannot find symbol
-[ERROR]   symbol:   variable passwordSecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[133,13] cannot find symbol
-[ERROR]   symbol:   variable passphraseSecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[133,41] cannot find symbol
-[ERROR]   symbol:   variable passphraseSecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[134,46] cannot find symbol
-[ERROR]   symbol:   variable passphraseSecret
-[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
-
-C:\Users\sgupt664\BE_Projects\fads-case-reminders-api>
-
-
-
