@@ -1,19 +1,411 @@
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  11.699 s
-[INFO] Finished at: 2026-03-05T14:21:57+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.8.1:compile (default-compile) on project fads-case-reminders-api: Compilation failure: Compilation failure:
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[31,33] package net.snowflake.client.jdbc does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[11,34] package org.bouncycastle.asn1.pkcs does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[12,37] package org.bouncycastle.jce.provider does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[13,32] package org.bouncycastle.openssl does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[14,32] package org.bouncycastle.openssl does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[15,32] package org.bouncycastle.openssl does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[16,39] package org.bouncycastle.openssl.jcajce does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[17,39] package org.bouncycastle.openssl.jcajce does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[18,33] package org.bouncycastle.operator does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/PemKeyLoader.java:[19,29] package org.bouncycastle.pkcs does not exist
-[ERROR] -> [Help 1]
-[ERROR]
+package com.optum.fads.casealerts.api.config;
+
+import java.io.StringReader;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.RSAPrivateCrtKeySpec;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMEncryptedKeyPair;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
+
+public class PemKeyLoader {
+    private static final Logger logger = LoggerFactory.getLogger(PemKeyLoader.class);
+
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+
+    public static PrivateKey loadPrivateKeyPem(String pemContent, char[] passphrase) throws Exception {
+        try (PEMParser pemParser = new PEMParser(new StringReader(pemContent))) {
+            Object pemObject = pemParser.readObject();
+            PrivateKeyInfo privateKeyInfo;
+
+            if (pemObject instanceof PKCS8EncryptedPrivateKeyInfo) {
+                if (passphrase == null) {
+                    throw new IllegalArgumentException("Encrypted key found but no passphrase provided.");
+                }
+                PKCS8EncryptedPrivateKeyInfo encInfo = (PKCS8EncryptedPrivateKeyInfo) pemObject;
+                InputDecryptorProvider decProv =
+                        new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
+                privateKeyInfo = encInfo.decryptPrivateKeyInfo(decProv);
+
+            } else if (pemObject instanceof PrivateKeyInfo) {
+                privateKeyInfo = (PrivateKeyInfo) pemObject;
+
+            } else if (pemObject instanceof PEMEncryptedKeyPair) {
+                throw new IllegalStateException("Old-format encrypted PEM key pair detected (not implemented).");
+
+            } else {
+                throw new IllegalStateException("Unknown PEM object type: " +
+                        (pemObject == null ? "null" : pemObject.getClass().getName()));
+            }
+
+            PrivateKey bcKey = new JcaPEMKeyConverter()
+                    .setProvider(BouncyCastleProvider.PROVIDER_NAME)
+                    .getPrivateKey(privateKeyInfo);
+
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            RSAPrivateCrtKey rsaKey = (RSAPrivateCrtKey) bcKey;
+
+            RSAPrivateCrtKeySpec keySpec = new RSAPrivateCrtKeySpec(
+                    rsaKey.getModulus(),
+                    rsaKey.getPublicExponent(),
+                    rsaKey.getPrivateExponent(),
+                    rsaKey.getPrimeP(),
+                    rsaKey.getPrimeQ(),
+                    rsaKey.getPrimeExponentP(),
+                    rsaKey.getPrimeExponentQ(),
+                    rsaKey.getCrtCoefficient()
+            );
+
+            logger.debug("Converted PEM private key to JDK RSA key successfully.");
+            return keyFactory.generatePrivate(keySpec);
+        }
+    }
+}
+package com.optum.fads.casealerts.api.config;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+
+import jakarta.persistence.EntityManagerFactory;
+
+@Configuration
+@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
+@EnableTransactionManagement
+@EnableJpaRepositories(
+        entityManagerFactoryRef = "sqlEntityManagerFactory",
+        transactionManagerRef = "txManagerSQL",
+        basePackages = "com.optum.fads.casealerts.api.repo"
+)
+public class ServiceConfigSQL {
+
+    @Value("${spring.datasource.sql.userName}")
+    private String userNameSecret;
+
+    @Value("${spring.datasource.sql.password}")
+    private String passwordSecret;
+
+    @Value("${spring.datasource.sql.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.sql.driverClassName}")
+    private String driverClassName;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfigSQL(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsSQLDataSource")
+    public DataSource fadsSQLDataSource() {
+        String user = secretClient.getSecret(userNameSecret).getValue();
+        String pass = secretClient.getSecret(passwordSecret).getValue();
+
+        DriverManagerDataSource ds = new DriverManagerDataSource();
+        ds.setDriverClassName(driverClassName);
+        ds.setUrl(url);
+        ds.setUsername(user);
+        ds.setPassword(pass);
+        return ds;
+    }
+
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory(
+            @Qualifier("fadsSQLDataSource") DataSource ds) {
+
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(ds);
+        em.setPackagesToScan("com.optum.fads.casealerts.api.domain");
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        return em;
+    }
+
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(
+            @Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
+
+        JpaTransactionManager tx = new JpaTransactionManager();
+        // FIX: use injected parameter, do not call method again
+        tx.setEntityManagerFactory(sqlEntityManagerFactory);
+        return tx;
+    }
+}
+
+package com.optum.fads.casealerts.api.config;
+
+import java.security.PrivateKey;
+import java.util.HashMap;
+import java.util.Properties;
+
+import javax.sql.DataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.zaxxer.hikari.HikariDataSource;
+
+import jakarta.persistence.EntityManagerFactory;
+import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
+
+@Configuration
+@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
+@EnableTransactionManagement
+@EnableJpaRepositories(
+        entityManagerFactoryRef = "snfkEntityManagerFactory",
+        transactionManagerRef = "txManagerSNFK",
+        basePackages = { "com.optum.fads.casealerts.api.snowflakeRepo" } // <-- adjust if needed
+)
+public class ServiceConfigSNFK {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfigSNFK.class);
+
+    @Value("${spring.datasource.snfk.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.snfk.userName}")
+    private String usernameSecret;
+
+    @Value("${spring.datasource.snfk.password}")
+    private String passwordSecret;
+
+    @Value("${spring.datasource.snfk.certKey:}")
+    private String certKeySecret;
+
+    @Value("${spring.datasource.snfk.passphrase:}")
+    private String passphraseSecret;
+
+    @Value("${spring.datasource.snfk.database}")
+    private String database;
+
+    @Value("${spring.datasource.snfk.schema}")
+    private String schema;
+
+    @Value("${spring.datasource.snfk.warehouse}")
+    private String warehouse;
+
+    @Value("${spring.datasource.snfk.account:}")
+    private String account;
+
+    @Value("${spring.datasource.snfk.role:}")
+    private String role;
+
+    @Value("${db.snfk-login.useCert:false}")
+    private Boolean useCert;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfigSNFK(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsSNFKDataSource")
+    public DataSource snfkDataSource() throws Exception {
+
+        if (Boolean.TRUE.equals(useCert)) {
+            logger.info("Snowflake auth using certificate PEM from Key Vault.");
+
+            String pem = secretClient.getSecret(certKeySecret).getValue();
+
+            char[] passChars = null;
+            if (passphraseSecret != null && !passphraseSecret.isBlank()) {
+                String pass = secretClient.getSecret(passphraseSecret).getValue();
+                if (pass != null && !pass.isBlank()) {
+                    passChars = pass.toCharArray();
+                }
+            }
+
+            PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pem, passChars);
+            String user = secretClient.getSecret(usernameSecret).getValue();
+
+            SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
+            sf.setUrl(url);
+            sf.setDatabaseName(database);
+            sf.setSchema(schema);
+            sf.setWarehouse(warehouse);
+            if (account != null && !account.isBlank()) sf.setAccount(account);
+            if (role != null && !role.isBlank()) sf.setRole(role);
+
+            sf.setUser(user);
+            sf.setPrivateKey(privateKey);
+
+            HikariDataSource hikari = new HikariDataSource();
+            hikari.setDataSource(sf);
+            return hikari;
+
+        } else {
+            logger.info("Snowflake auth using username/password from Key Vault.");
+
+            String user = secretClient.getSecret(usernameSecret).getValue();
+            String pass = secretClient.getSecret(passwordSecret).getValue();
+
+            Properties props = new Properties();
+            props.put("user", user);
+            props.put("password", pass);
+            props.put("database", database);
+            props.put("schema", schema);
+            props.put("warehouse", warehouse);
+            if (role != null && !role.isBlank()) props.put("role", role);
+            if (account != null && !account.isBlank()) props.put("account", account);
+
+            return new DriverManagerDataSource(url, props);
+        }
+    }
+
+    @Bean(name = "snfkEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean snfkEntityManagerFactory(
+            @Qualifier("fadsSNFKDataSource") DataSource ds) throws Exception {
+
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(ds);
+        em.setPackagesToScan("com.optum.fads.casealerts.api.snowflakeDomain"); // <-- adjust if needed
+        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+
+        HashMap<String, Object> props = new HashMap<>();
+        props.put("hibernate.allow_update_outside_transaction", true);
+        props.put("hibernate.dialect", "com.optum.fads.casealerts.api.config.SnowflakeDialect");
+        em.setJpaPropertyMap(props);
+
+        return em;
+    }
+
+    @Bean(name = "txManagerSNFK")
+    public PlatformTransactionManager txManagerSNFK(
+            @Qualifier("snfkEntityManagerFactory") EntityManagerFactory snfkEntityManagerFactory) {
+
+        JpaTransactionManager tx = new JpaTransactionManager();
+        tx.setEntityManagerFactory(snfkEntityManagerFactory);
+        return tx;
+    }
+
+    @Bean(name = "jdbcSnowflake")
+    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSNFKDataSource") DataSource ds) {
+        return new JdbcTemplate(ds);
+    }
+}
+server:
+  port: 8080
+  servlet:
+    contextPath: /casealerts
+
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring:
+  application:
+    name: casealerts
+
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: ${AZURE_KV_URL}
+        credential:
+          client-id: ${AZURE_KV_CLIENT_ID}
+          client-secret: ${AZURE_KV_CLIENT_SECRET}
+          tenant-id: ${AZURE_TENANT_ID}
+
+  datasource:
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+
+    sql:
+      jdbcUrl: ${DB_URL}
+      driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+      userName: ${DB_USR}     # KeyVault secret name
+      password: ${DB_PWD}     # KeyVault secret name
+
+    snfk:
+      jdbcUrl: ${SNFK_DB_URL}
+      driverClassName: net.snowflake.client.jdbc.SnowflakeDriver
+
+      database: ${SNFK_DATABASE}
+      schema: ${SNFK_SCHEMA}
+      warehouse: ${SNFK_WAREHOUSE}
+      role: ${SNFK_ROLE:}
+      account: ${SNFK_ACCOUNT:}
+
+      # --- choose one login mode ---
+      # If USE_CERT=false -> username/password secrets used:
+      userName: ${SNFK_USR}      # KeyVault secret name
+      password: ${SNFK_PWD}      # KeyVault secret name
+
+      # If USE_CERT=true -> certKey/passphrase secrets used:
+      certKey: ${SNFK_CERT_KEY:}            # KeyVault secret name containing PEM private key
+      passphrase: ${SNFK_CERT_PASSPHRASE:}  # KeyVault secret name containing passphrase (optional)
+
+db:
+  snfk-login:
+    useCert: ${USE_CERT:false}
+
+spring:
+  quartz:
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 3
+
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
