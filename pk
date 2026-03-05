@@ -1,345 +1,193 @@
-<dependency>
-  <groupId>net.snowflake</groupId>
-  <artifactId>snowflake-jdbc</artifactId>
-  <version>3.16.0</version>
-</dependency>
-<dependency>
-  <groupId>com.azure</groupId>
-  <artifactId>azure-security-keyvault-secrets</artifactId>
-</dependency>
-
-<dependency>
-  <groupId>com.azure</groupId>
-  <artifactId>azure-identity</artifactId>
-</dependency>
-
-
-package com.optum.fads.casereminders.api.config;
-
-import java.io.StringReader;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.Security;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.spec.RSAPrivateCrtKeySpec;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMEncryptedKeyPair;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-
-public class PemKeyLoader {
-    private static final Logger logger = LoggerFactory.getLogger(PemKeyLoader.class);
-
-    static {
-        Security.addProvider(new BouncyCastleProvider());
-    }
-
-    public static PrivateKey loadPrivateKeyPem(String pemContent, char[] passphrase) throws Exception {
-        logger.debug("Parsing PEM content...");
-        try (PEMParser pemParser = new PEMParser(new StringReader(pemContent))) {
-            Object pemObject = pemParser.readObject();
-            PrivateKeyInfo privateKeyInfo = null;
-
-            if (pemObject instanceof PKCS8EncryptedPrivateKeyInfo) {
-                if (passphrase == null) {
-                    throw new IllegalArgumentException("Encrypted key found but no passphrase provided.");
-                }
-                logger.debug("Detected PKCS#8 encrypted key.");
-                PKCS8EncryptedPrivateKeyInfo encInfo = (PKCS8EncryptedPrivateKeyInfo) pemObject;
-                InputDecryptorProvider decProv =
-                        new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
-                privateKeyInfo = encInfo.decryptPrivateKeyInfo(decProv);
-
-            } else if (pemObject instanceof PEMEncryptedKeyPair) {
-                throw new IllegalStateException("Old-format encrypted PEM key pair detected (not implemented).");
-
-            } else if (pemObject instanceof PrivateKeyInfo) {
-                logger.debug("Detected unencrypted PKCS#8 key.");
-                privateKeyInfo = (PrivateKeyInfo) pemObject;
-
-            } else {
-                throw new IllegalStateException("Unknown PEM object type: " +
-                        (pemObject == null ? "null" : pemObject.getClass().getName()));
-            }
-
-            JcaPEMKeyConverter converter = new JcaPEMKeyConverter()
-                    .setProvider(BouncyCastleProvider.PROVIDER_NAME);
-            PrivateKey bcKey = converter.getPrivateKey(privateKeyInfo);
-
-            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            RSAPrivateCrtKey rsaKey = (RSAPrivateCrtKey) bcKey;
-
-            RSAPrivateCrtKeySpec keySpec = new RSAPrivateCrtKeySpec(
-                    rsaKey.getModulus(),
-                    rsaKey.getPublicExponent(),
-                    rsaKey.getPrivateExponent(),
-                    rsaKey.getPrimeP(),
-                    rsaKey.getPrimeQ(),
-                    rsaKey.getPrimeExponentP(),
-                    rsaKey.getPrimeExponentQ(),
-                    rsaKey.getCrtCoefficient()
-            );
-
-            return keyFactory.generatePrivate(keySpec);
-        }
-    }
-}
-
-package com.optum.fads.casereminders.api.config;
-
-import java.io.IOException;
-import java.security.PrivateKey;
-import java.util.HashMap;
-import java.util.Properties;
-
-import javax.sql.DataSource;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.zaxxer.hikari.HikariDataSource;
-
-import jakarta.persistence.EntityManagerFactory;
-import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
-
-@Configuration
-@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
-@EnableTransactionManagement
-@EnableJpaRepositories(
-        entityManagerFactoryRef = "snfkEntityManagerFactory",
-        transactionManagerRef = "txManagerSNFK",
-        basePackages = { "com.optum.fads.casereminders.api.snowflakeRepo" }
-)
-public class ServiceConfigSNFK {
-
-    private static final Logger logger = LoggerFactory.getLogger(ServiceConfigSNFK.class);
-
-    @Value("${spring.datasource.snfk.jdbcUrl}")
-    private String url;
-
-    @Value("${spring.datasource.snfk.userName}")
-    private String username;
-
-    @Value("${spring.datasource.snfk.password}")
-    private String password;
-
-    @Value("${spring.datasource.snfk.certKey:}")
-    private String certKey;
-
-    @Value("${spring.datasource.snfk.passphrase:}")
-    private String passphrase;
-
-    @Value("${spring.datasource.snfk.database}")
-    private String database;
-
-    @Value("${spring.datasource.snfk.schema}")
-    private String schema;
-
-    @Value("${spring.datasource.snfk.warehouse}")
-    private String warehouse;
-
-    @Value("${spring.datasource.snfk.account:}")
-    private String account;
-
-    @Value("${spring.datasource.snfk.role:}")
-    private String role;
-
-    @Value("${db.snfk-login.useCert:false}")
-    private Boolean useCert;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfigSNFK(SecretClient secretClient) {
-        this.secretClient = secretClient;
-    }
-
-    @Bean(name = "fadsSNFKDataSource")
-    public DataSource snfkDataSource() throws Exception, IOException {
-
-        if (Boolean.TRUE.equals(useCert)) {
-            logger.info("Snowflake login using certificate (PEM from Key Vault secret).");
-
-            String pemContent = secretClient.getSecret(certKey).getValue();
-            char[] passChars = null;
-
-            if (passphrase != null && !passphrase.isBlank()) {
-                String passValue = secretClient.getSecret(passphrase).getValue();
-                if (passValue != null && !passValue.isBlank()) {
-                    passChars = passValue.toCharArray();
-                }
-            }
-
-            PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pemContent, passChars);
-
-            // treat username property as a KeyVault secret name (same as your sample style)
-            String userValue = secretClient.getSecret(username).getValue();
-
-            SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
-            sf.setUrl(url);
-            sf.setDatabaseName(database);
-            sf.setSchema(schema);
-            sf.setWarehouse(warehouse);
-            if (account != null && !account.isBlank()) sf.setAccount(account);
-            if (role != null && !role.isBlank()) sf.setRole(role);
-
-            sf.setUser(userValue);
-            sf.setPrivateKey(privateKey);
-
-            HikariDataSource hikariDs = new HikariDataSource();
-            hikariDs.setDataSource(sf);
-            return hikariDs;
-
-        } else {
-            logger.info("Snowflake login using username/password from Key Vault secrets.");
-
-            String userValue = secretClient.getSecret(username).getValue();
-            String passValue = secretClient.getSecret(password).getValue();
-
-            Properties props = new Properties();
-            props.put("user", userValue);
-            props.put("password", passValue);
-            props.put("database", database);
-            props.put("schema", schema);
-            props.put("warehouse", warehouse);
-            if (role != null && !role.isBlank()) props.put("role", role);
-            if (account != null && !account.isBlank()) props.put("account", account);
-
-            return new DriverManagerDataSource(url, props);
-        }
-    }
-
-    @Bean(name = "snfkEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean snfkEntityManagerFactory(
-            @Qualifier("fadsSNFKDataSource") DataSource ds) throws Exception {
-
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(ds);
-        em.setPackagesToScan("com.optum.fads.casereminders.api.snowflakeDomain");
-
-        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        em.setJpaVendorAdapter(vendorAdapter);
-
-        HashMap<String, Object> properties = new HashMap<>();
-        properties.put("hibernate.allow_update_outside_transaction", true);
-        properties.put("hibernate.dialect", "com.optum.fads.casereminders.api.config.SnowflakeDialect");
-        em.setJpaPropertyMap(properties);
-
-        return em;
-    }
-
-    @Bean(name = "txManagerSNFK")
-    public PlatformTransactionManager txManagerSNFK(
-            @Qualifier("snfkEntityManagerFactory") EntityManagerFactory snfkEntityManagerFactory) {
-
-        JpaTransactionManager txManager = new JpaTransactionManager();
-        // FIXED: do NOT call snfkEntityManagerFactory() again
-        txManager.setEntityManagerFactory(snfkEntityManagerFactory);
-        return txManager;
-    }
-
-    @Bean(name = "jdbcSnowflake")
-    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSNFKDataSource") DataSource ds) {
-        return new JdbcTemplate(ds);
-    }
-}
-server:
-  port: 8080
-  servlet:
-    contextPath: /casereminders
-
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
-
-spring:
-  application:
-    name: casereminders
-
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: ${AZURE_KV_URL}
-        credential:
-          client-id: ${AZURE_KV_CLIENT_ID}
-          client-secret: ${AZURE_KV_CLIENT_SECRET}
-          tenant-id: ${AZURE_TENANT_ID}
-
-  datasource:
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-
-    sql:
-      jdbcUrl: ${DB_URL}
-      userName: ${DB_USR}     # KeyVault secret name
-      password: ${DB_PWD}     # KeyVault secret name
-      driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-
-    snfk:
-      jdbcUrl: ${SNFK_DB_URL}
-      database: ${SNFK_DATABASE}
-      schema: ${SNFK_SCHEMA}
-      warehouse: ${SNFK_WAREHOUSE}
-      role: ${SNFK_ROLE:}
-      account: ${SNFK_ACCOUNT:}
-
-      userName: ${SNFK_USR}          # KeyVault secret name
-      password: ${SNFK_PWD}          # KeyVault secret name (used when USE_CERT=false)
-      certKey: ${SNFK_CERT_KEY:}     # KeyVault secret name holding PEM content (used when USE_CERT=true)
-      passphrase: ${SNFK_CERT_PASSPHRASE:}  # KeyVault secret name (optional)
-
-db:
-  snfk-login:
-    useCert: ${USE_CERT:false}
-
-management:
-  endpoint:
-    metrics.enabled: true
-    prometheus.enabled: true
-  endpoints:
-    web:
-      exposure:
-        include:
-          - health
-          - info
-          - prometheus
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-
-spring:
-  quartz:
-    properties:
-      org:
-        quartz:
-          threadPool:
-            class: org.quartz.simpl.SimpleThreadPool
-            threadCount: 3
+.Final","classpath-netty-version-io.netty:netty-handler":"4.1.128.Final","classpath-netty-version-io.netty:netty-handler-proxy":"4.1.128.Final","classpath-netty-version-io.netty:netty-buffer":"4.1.128.Final","classpath-netty-version-io.netty:netty-codec":"4.1.128.Final","classpath-netty-version-io.netty:netty-codec-http":"4.1.128.Final","classpath-netty-version-io.netty:netty-codec-http2":"4.1.128.Final","classpath-netty-version-io.netty:netty-transport-native-unix-common":"4.1.128.Final","classpath-netty-version-io.netty:netty-transport-native-epoll":"4.1.128.Final","classpath-netty-version-io.netty:netty-transport-native-kqueue":"4.1.128.Final","classpath-native-netty-version-io.netty:netty-tcnative-boringssl-static":"2.0.74.Final"}
+2026-03-05T16:14:28.733+05:30  INFO 24904 --- [           main] c.o.f.c.api.config.ServiceConfigSNFK     : Snowflake auth using username/password from Key Vault.
+2026-03-05T16:14:30.211+05:30  INFO 24904 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-05T16:14:30.284+05:30  INFO 24904 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.33.Final
+2026-03-05T16:14:30.345+05:30  INFO 24904 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-03-05T16:14:31.033+05:30  INFO 24904 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-03-05T16:14:32.603+05:30  WARN 24904 --- [           main] o.h.e.j.e.i.JdbcEnvironmentInitiator     : HHH000342: Could not obtain connection to query metadata
+
+org.hibernate.boot.registry.selector.spi.StrategySelectionException: Unable to resolve name [com.optum.fads.casealerts.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.selectStrategyImplementor(StrategySelectorImpl.java:154)
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.resolveStrategy(StrategySelectorImpl.java:236)
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.resolveStrategy(StrategySelectorImpl.java:189)
+        at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.constructDialect(DialectFactoryImpl.java:123)
+        at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.buildDialect(DialectFactoryImpl.java:88)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$1.execute(JdbcEnvironmentInitiator.java:367)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator$1.execute(JdbcEnvironmentInitiator.java:335)
+        at org.hibernate.jdbc.WorkExecutor.executeReturningWork(WorkExecutor.java:58)
+        at org.hibernate.jdbc.AbstractReturningWork.accept(AbstractReturningWork.java:34)
+        at org.hibernate.resource.transaction.backend.jdbc.internal.JdbcIsolationDelegate.delegateWork(JdbcIsolationDelegate.java:70)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.getJdbcEnvironmentUsingJdbcMetadata(JdbcEnvironmentInitiator.java:334)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:129)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:81)
+        at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:130)
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:263)
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:238)
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:215)
+        at org.hibernate.boot.model.relational.Database.<init>(Database.java:45)
+        at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.getDatabase(InFlightMetadataCollectorImpl.java:226)
+        at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.<init>(InFlightMetadataCollectorImpl.java:194)
+        at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:171)
+        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.metadata(EntityManagerFactoryBuilderImpl.java:1442)
+        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1513)
+        at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66)
+        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:400)
+        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1873)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1822)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.casealerts.api.AlertsApplication.main(AlertsApplication.java:29)
+Caused by: org.hibernate.boot.registry.classloading.spi.ClassLoadingException: Unable to load class [com.optum.fads.casealerts.api.config.SnowflakeDialect]
+        at org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl.classForName(ClassLoaderServiceImpl.java:126)
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.selectStrategyImplementor(StrategySelectorImpl.java:150)
+        ... 44 common frames omitted
+Caused by: java.lang.ClassNotFoundException: Could not load requested class : com.optum.fads.casealerts.api.config.SnowflakeDialect
+        at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:216)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:592)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+        at java.base/java.lang.Class.forName0(Native Method)
+        at java.base/java.lang.Class.forName(Class.java:467)
+        at org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl.classForName(ClassLoaderServiceImpl.java:123)
+        ... 45 common frames omitted
+Caused by: java.lang.Throwable: null
+        at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:209)
+        ... 50 common frames omitted
+        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casealerts.api.config.SnowflakeDialect
+                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
+                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:206)
+                ... 50 common frames omitted
+        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casealerts.api.config.SnowflakeDialect
+                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
+                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:206)
+                ... 50 common frames omitted
+        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casealerts.api.config.SnowflakeDialect
+                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
+                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:206)
+                ... 50 common frames omitted
+
+2026-03-05T16:14:32.611+05:30 ERROR 24904 --- [           main] j.LocalContainerEntityManagerFactoryBean : Failed to initialize JPA EntityManagerFactory: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to resolve name [com.optum.fads.casealerts.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
+2026-03-05T16:14:32.612+05:30  WARN 24904 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'snfkEntityManagerFactory' defined in class path resource [com/optum/fads/casealerts/api/config/ServiceConfigSNFK.class]: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to resolve name [com.optum.fads.casealerts.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
+2026-03-05T16:14:32.615+05:30  INFO 24904 --- [           main] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-03-05T16:14:32.646+05:30  INFO 24904 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-03-05T16:14:32.664+05:30 ERROR 24904 --- [           main] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'snfkEntityManagerFactory' defined in class path resource [com/optum/fads/casealerts/api/config/ServiceConfigSNFK.class]: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to resolve name [com.optum.fads.casealerts.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1826)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.casealerts.api.AlertsApplication.main(AlertsApplication.java:29)
+Caused by: org.hibernate.service.spi.ServiceException: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to resolve name [com.optum.fads.casealerts.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:276)
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:238)
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:215)
+        at org.hibernate.boot.model.relational.Database.<init>(Database.java:45)
+        at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.getDatabase(InFlightMetadataCollectorImpl.java:226)
+        at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.<init>(InFlightMetadataCollectorImpl.java:194)
+        at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:171)
+        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.metadata(EntityManagerFactoryBuilderImpl.java:1442)
+        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1513)
+        at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66)
+        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419)
+        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:400)
+        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1873)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1822)
+        ... 15 common frames omitted
+Caused by: org.hibernate.boot.registry.selector.spi.StrategySelectionException: Unable to resolve name [com.optum.fads.casealerts.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.selectStrategyImplementor(StrategySelectorImpl.java:154)
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.resolveStrategy(StrategySelectorImpl.java:236)
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.resolveStrategy(StrategySelectorImpl.java:189)
+        at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.constructDialect(DialectFactoryImpl.java:123)
+        at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.buildDialect(DialectFactoryImpl.java:88)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.getJdbcEnvironmentWithDefaults(JdbcEnvironmentInitiator.java:186)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.getJdbcEnvironmentUsingJdbcMetadata(JdbcEnvironmentInitiator.java:410)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:129)
+        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:81)
+        at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:130)
+        at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:263)
+        ... 30 common frames omitted
+Caused by: org.hibernate.boot.registry.classloading.spi.ClassLoadingException: Unable to load class [com.optum.fads.casealerts.api.config.SnowflakeDialect]
+        at org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl.classForName(ClassLoaderServiceImpl.java:126)
+        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.selectStrategyImplementor(StrategySelectorImpl.java:150)
+        ... 40 common frames omitted
+Caused by: java.lang.ClassNotFoundException: Could not load requested class : com.optum.fads.casealerts.api.config.SnowflakeDialect
+        at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:216)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:592)
+        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+        at java.base/java.lang.Class.forName0(Native Method)
+        at java.base/java.lang.Class.forName(Class.java:467)
+        at org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl.classForName(ClassLoaderServiceImpl.java:123)
+        ... 41 common frames omitted
+Caused by: java.lang.Throwable: null
+        at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:209)
+        ... 46 common frames omitted
+        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casealerts.api.config.SnowflakeDialect
+                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
+                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:206)
+                ... 46 common frames omitted
+        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casealerts.api.config.SnowflakeDialect
+                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
+                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:206)
+                ... 46 common frames omitted
+        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casealerts.api.config.SnowflakeDialect
+                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
+                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
+                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
+                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:206)
+                ... 46 common frames omitted
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  16.821 s
+[INFO] Finished at: 2026-03-05T16:14:34+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.7:run (default-cli) on project fads-case-alerts-api: Process terminated with exit code: 1 -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+C:\Users\sgupt664\BE_Projects\fads-case-alerts-api>
