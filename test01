@@ -1,53 +1,210 @@
-@Bean(name = "fadsSNFKDataSource")
-public DataSource snfkDataSource() throws Exception {
-    return Boolean.TRUE.equals(useCert) ? createCertDataSource() : createPasswordDataSource();
+package com.optum.fads.casereminders.api.config;
+
+
+import java.security.PrivateKey;
+import java.util.HashMap;
+import java.util.Properties;
+
+import javax.sql.DataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.zaxxer.hikari.HikariDataSource;
+
+import jakarta.persistence.EntityManagerFactory;
+import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
+
+@Configuration
+@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
+@EnableTransactionManagement
+@EnableJpaRepositories(
+        entityManagerFactoryRef = "snfkEntityManagerFactory",
+        transactionManagerRef = "txManagerSNFK",
+        basePackages = { "com.optum.fads.casereminders.api.snowflakeRepo" }
+)
+public class ServiceConfigSNFK {
+
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfigSNFK.class);
+
+    @Value("${spring.datasource.snfk.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.snfk.userName}")
+    private String username;
+
+    @Value("${spring.datasource.snfk.password}")
+    private String password;
+
+    @Value("${spring.datasource.snfk.certKey:}")
+    private String certKey;
+
+    @Value("${spring.datasource.snfk.passphrase:}")
+    private String passphrase;
+
+    @Value("${spring.datasource.snfk.database}")
+    private String database;
+
+    @Value("${spring.datasource.snfk.schema}")
+    private String schema;
+
+    @Value("${spring.datasource.snfk.warehouse}")
+    private String warehouse;
+
+    @Value("${spring.datasource.snfk.account:}")
+    private String account;
+
+    @Value("${spring.datasource.snfk.role:}")
+    private String role;
+
+    @Value("${db.snfk-login.useCert:false}")
+    private Boolean useCert;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfigSNFK(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsSNFKDataSource")
+    public DataSource snfkDataSource() throws Exception {
+        return Boolean.TRUE.equals(useCert) ? createCertDataSource() : createPasswordDataSource();
+    }
+
+    private DataSource createCertDataSource() throws Exception {
+        logger.info("Snowflake auth using certificate PEM from Key Vault.");
+
+        String pem = secretClient.getSecret(certKeySecret).getValue();
+        char[] passChars = resolvePassphraseChars();
+        PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pem, passChars);
+
+        String user = secretClient.getSecret(usernameSecret).getValue();
+
+        SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
+        sf.setUrl(url);
+        sf.setDatabaseName(database);
+        sf.setSchema(schema);
+        sf.setWarehouse(warehouse);
+        if (account != null && !account.isBlank()) sf.setAccount(account);
+        if (role != null && !role.isBlank()) sf.setRole(role);
+
+        sf.setUser(user);
+        sf.setPrivateKey(privateKey);
+
+        HikariDataSource hikari = new HikariDataSource();
+        hikari.setDataSource(sf);
+        return hikari;
+    }
+
+    private DataSource createPasswordDataSource() {
+        logger.info("Snowflake auth using username/password from Key Vault.");
+
+        String user = secretClient.getSecret(usernameSecret).getValue();
+        String pass = secretClient.getSecret(passwordSecret).getValue();
+
+        Properties props = new Properties();
+        props.put("user", user);
+        props.put("password", pass);
+        props.put("database", database);
+        props.put("schema", schema);
+        props.put("warehouse", warehouse);
+        if (role != null && !role.isBlank()) props.put("role", role);
+        if (account != null && !account.isBlank()) props.put("account", account);
+
+        return new DriverManagerDataSource(url, props);
+    }
+
+    private char[] resolvePassphraseChars() {
+        if (passphraseSecret == null || passphraseSecret.isBlank()) return null;
+        String pass = secretClient.getSecret(passphraseSecret).getValue();
+        return (pass == null || pass.isBlank()) ? null : pass.toCharArray();
+    }
+
+    @Bean(name = "snfkEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean snfkEntityManagerFactory(
+            @Qualifier("fadsSNFKDataSource") DataSource ds) throws Exception {
+
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(ds);
+        em.setPackagesToScan("com.optum.fads.casereminders.api.snowflakeDomain");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put("hibernate.allow_update_outside_transaction", true);
+        properties.put("hibernate.dialect", "com.optum.fads.casereminders.api.config.SnowflakeDialect");
+        em.setJpaPropertyMap(properties);
+
+        return em;
+    }
+
+    @Bean(name = "txManagerSNFK")
+    public PlatformTransactionManager txManagerSNFK(
+            @Qualifier("snfkEntityManagerFactory") EntityManagerFactory snfkEntityManagerFactory) {
+
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        // FIXED: do NOT call snfkEntityManagerFactory() again
+        txManager.setEntityManagerFactory(snfkEntityManagerFactory);
+        return txManager;
+    }
+
+    @Bean(name = "jdbcSnowflake")
+    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSNFKDataSource") DataSource ds) {
+        return new JdbcTemplate(ds);
+    }
 }
 
-private DataSource createCertDataSource() throws Exception {
-    logger.info("Snowflake auth using certificate PEM from Key Vault.");
 
-    String pem = secretClient.getSecret(certKeySecret).getValue();
-    char[] passChars = resolvePassphraseChars();
-    PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pem, passChars);
 
-    String user = secretClient.getSecret(usernameSecret).getValue();
+[INFO] Finished at: 2026-03-05T19:56:50+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.8.1:compile (default-compile) on project fads-case-reminders-api: Compilation failure: Compilation failure:
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[92,45] cannot find symbol
+[ERROR]   symbol:   variable certKeySecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[96,46] cannot find symbol
+[ERROR]   symbol:   variable usernameSecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[117,46] cannot find symbol
+[ERROR]   symbol:   variable usernameSecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[118,46] cannot find symbol
+[ERROR]   symbol:   variable passwordSecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[133,13] cannot find symbol
+[ERROR]   symbol:   variable passphraseSecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[133,41] cannot find symbol
+[ERROR]   symbol:   variable passphraseSecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-reminders-api/src/main/java/com/optum/fads/casereminders/api/config/ServiceConfigSNFK.java:[134,46] cannot find symbol
+[ERROR]   symbol:   variable passphraseSecret
+[ERROR]   location: class com.optum.fads.casereminders.api.config.ServiceConfigSNFK
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-    SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
-    sf.setUrl(url);
-    sf.setDatabaseName(database);
-    sf.setSchema(schema);
-    sf.setWarehouse(warehouse);
-    if (account != null && !account.isBlank()) sf.setAccount(account);
-    if (role != null && !role.isBlank()) sf.setRole(role);
+C:\Users\sgupt664\BE_Projects\fads-case-reminders-api>
 
-    sf.setUser(user);
-    sf.setPrivateKey(privateKey);
 
-    HikariDataSource hikari = new HikariDataSource();
-    hikari.setDataSource(sf);
-    return hikari;
-}
 
-private DataSource createPasswordDataSource() {
-    logger.info("Snowflake auth using username/password from Key Vault.");
-
-    String user = secretClient.getSecret(usernameSecret).getValue();
-    String pass = secretClient.getSecret(passwordSecret).getValue();
-
-    Properties props = new Properties();
-    props.put("user", user);
-    props.put("password", pass);
-    props.put("database", database);
-    props.put("schema", schema);
-    props.put("warehouse", warehouse);
-    if (role != null && !role.isBlank()) props.put("role", role);
-    if (account != null && !account.isBlank()) props.put("account", account);
-
-    return new DriverManagerDataSource(url, props);
-}
-
-private char[] resolvePassphraseChars() {
-    if (passphraseSecret == null || passphraseSecret.isBlank()) return null;
-    String pass = secretClient.getSecret(passphraseSecret).getValue();
-    return (pass == null || pass.isBlank()) ? null : pass.toCharArray();
-}
