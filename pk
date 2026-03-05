@@ -1,316 +1,345 @@
-package com.optum.fads.caseentrybatch.api.batch;
+<dependency>
+  <groupId>net.snowflake</groupId>
+  <artifactId>snowflake-jdbc</artifactId>
+  <version>3.16.0</version>
+</dependency>
+<dependency>
+  <groupId>com.azure</groupId>
+  <artifactId>azure-security-keyvault-secrets</artifactId>
+</dependency>
 
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
-import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemStreamException;
-import org.springframework.batch.item.ItemStreamReader;
-import org.springframework.stereotype.Component;
+<dependency>
+  <groupId>com.azure</groupId>
+  <artifactId>azure-identity</artifactId>
+</dependency>
 
-import java.util.List;
 
-@Component
-@Slf4j
-public class BatchIdItemReader implements ItemStreamReader<List<CaUniverseBatchT>> {
+package com.optum.fads.casereminders.api.config;
 
-    private final CaUniverseBatchRepository caUniverseBatchRepository;
-    private List<Integer> batchIds;
+import java.io.StringReader;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.interfaces.RSAPrivateCrtKey;
+import java.security.spec.RSAPrivateCrtKeySpec;
 
-    public BatchIdItemReader(CaUniverseBatchRepository caUniverseBatchRepository) {
-        this.caUniverseBatchRepository = caUniverseBatchRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMEncryptedKeyPair;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
+import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
+
+public class PemKeyLoader {
+    private static final Logger logger = LoggerFactory.getLogger(PemKeyLoader.class);
+
+    static {
+        Security.addProvider(new BouncyCastleProvider());
     }
 
-    @Override
-    public void open(ExecutionContext executionContext) throws ItemStreamException {
-        // Query the DB dynamically for remaining items; no context index persisted
-        batchIds = caUniverseBatchRepository.findDistinctBatchIds();
-        log.info("Batch reader opened. totalRemainingBatchIds={}", batchIds != null ? batchIds.size() : 0);
-    }
+    public static PrivateKey loadPrivateKeyPem(String pemContent, char[] passphrase) throws Exception {
+        logger.debug("Parsing PEM content...");
+        try (PEMParser pemParser = new PEMParser(new StringReader(pemContent))) {
+            Object pemObject = pemParser.readObject();
+            PrivateKeyInfo privateKeyInfo = null;
 
-    @Override
-    public List<CaUniverseBatchT> read() {
-        if (batchIds != null && !batchIds.isEmpty()) {
-            Integer batchId = batchIds.remove(0);
-            List<CaUniverseBatchT> batchList = caUniverseBatchRepository.findAllByBatchId(batchId);
-            log.info("Read batchId={}, rows={}", batchId, batchList.size());
-            return batchList;
-        }
-        return null; // Return null when stream exhausted
-    }
+            if (pemObject instanceof PKCS8EncryptedPrivateKeyInfo) {
+                if (passphrase == null) {
+                    throw new IllegalArgumentException("Encrypted key found but no passphrase provided.");
+                }
+                logger.debug("Detected PKCS#8 encrypted key.");
+                PKCS8EncryptedPrivateKeyInfo encInfo = (PKCS8EncryptedPrivateKeyInfo) pemObject;
+                InputDecryptorProvider decProv =
+                        new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
+                privateKeyInfo = encInfo.decryptPrivateKeyInfo(decProv);
 
-    @Override
-    public void update(ExecutionContext executionContext) throws ItemStreamException {
-        // No execution context state changes required to support stateless restarts
-    }
+            } else if (pemObject instanceof PEMEncryptedKeyPair) {
+                throw new IllegalStateException("Old-format encrypted PEM key pair detected (not implemented).");
 
-    @Override
-    public void close() throws ItemStreamException {
-        log.info("Batch reader closed.");
-    }
-}
+            } else if (pemObject instanceof PrivateKeyInfo) {
+                logger.debug("Detected unencrypted PKCS#8 key.");
+                privateKeyInfo = (PrivateKeyInfo) pemObject;
 
-
-
-package com.optum.fads.caseentrybatch.api.batch;
-
-import com.microsoft.sqlserver.jdbc.SQLServerException;
-import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
-import com.optum.fads.caseentrybatch.api.dto.EmailData;
-import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
-import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
-import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService;
-import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.stereotype.Component;
-
-import java.util.List;
-
-@Component
-@Slf4j
-public class ValidatingBatchProcessor implements ItemProcessor<List<CaUniverseBatchT>, BatchProcessingResult> {
-
-    private final CaseBatchService caseBatchService;
-    private final CaseBatchEmailService caseBatchEmailService;
-    private final CaseBatchUtil caseBatchUtil;
-
-    public ValidatingBatchProcessor(CaseBatchService caseBatchService, CaseBatchEmailService caseBatchEmailService, CaseBatchUtil caseBatchUtil) {
-        this.caseBatchService = caseBatchService;
-        this.caseBatchEmailService = caseBatchEmailService;
-        this.caseBatchUtil = caseBatchUtil;
-    }
-
-    @Override
-    public BatchProcessingResult process(List<CaUniverseBatchT> batchList) {
-        if (batchList == null || batchList.isEmpty()) {
-            return null;
-        }
-
-        Integer batchId = batchList.get(0).getId().getCtBatchId();
-        String userId = batchList.get(0).getUiUserBase().getUiSystemId();
-        
-        try {
-            List<CaUniverseT> validList = caseBatchService.createCaUniverseTList(batchList);
-
-            if (validList.size() == batchList.size()) {
-                log.info("Batch {} valid. records={}", batchId, validList.size());
-                return BatchProcessingResult.valid(validList);
-            }
-
-            log.warn("Batch {} invalid. validRecords={}, totalRecords={}", batchId, validList.size(), batchList.size());
-            return BatchProcessingResult.invalid(batchList);
-            
-        } catch (Exception e) {
-            log.error("Batch processing failed. batchId={}", batchId, e);
-            handleBatchFailure(batchId, userId, e);
-            throw new RuntimeException("Batch processing failed for Batch ID: " + batchId, e);
-        }
-    }
-
-    private void handleBatchFailure(Integer batchId, String userId, Exception e) {
-        EmailData emailData = new EmailData();
-        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
-        emailData.setBatchId(batchId);
-        emailData.setSubmittedBy(userId);
-
-        StringBuilder exceptionMessage = new StringBuilder();
-        if (e.getMessage() != null) {
-            String msg = e.getMessage();
-            exceptionMessage.append(msg, 0, Math.min(msg.length(), CaseEntryConstants.ERROR_LOG_LENGTH));
-        } else {
-            exceptionMessage.append("Exception message is null.");
-        }
-
-        if (e.getCause() != null && e.getCause().getCause() instanceof SQLServerException) {
-            exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
-            SQLServerException sql = (SQLServerException) e.getCause().getCause();
-            if (sql.getMessage() != null) {
-                String msg = sql.getMessage();
-                exceptionMessage.append(msg, 0, Math.min(msg.length(), CaseEntryConstants.ERROR_LOG_LENGTH));
             } else {
-                exceptionMessage.append("SqlServerException message is null.");
+                throw new IllegalStateException("Unknown PEM object type: " +
+                        (pemObject == null ? "null" : pemObject.getClass().getName()));
             }
+
+            JcaPEMKeyConverter converter = new JcaPEMKeyConverter()
+                    .setProvider(BouncyCastleProvider.PROVIDER_NAME);
+            PrivateKey bcKey = converter.getPrivateKey(privateKeyInfo);
+
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            RSAPrivateCrtKey rsaKey = (RSAPrivateCrtKey) bcKey;
+
+            RSAPrivateCrtKeySpec keySpec = new RSAPrivateCrtKeySpec(
+                    rsaKey.getModulus(),
+                    rsaKey.getPublicExponent(),
+                    rsaKey.getPrivateExponent(),
+                    rsaKey.getPrimeP(),
+                    rsaKey.getPrimeQ(),
+                    rsaKey.getPrimeExponentP(),
+                    rsaKey.getPrimeExponentQ(),
+                    rsaKey.getCrtCoefficient()
+            );
+
+            return keyFactory.generatePrivate(keySpec);
         }
-
-        EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
-        emailData.setErrorLog(exceptionMessage.toString());
-        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
-
-        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
-        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
     }
 }
 
+package com.optum.fads.casereminders.api.config;
 
+import java.io.IOException;
+import java.security.PrivateKey;
+import java.util.HashMap;
+import java.util.Properties;
 
+import javax.sql.DataSource;
 
-package com.optum.fads.caseentrybatch.api.batch;
-
-import com.microsoft.sqlserver.jdbc.SQLServerException;
-import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
-import com.optum.fads.caseentrybatch.api.dto.EmailData;
-import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
-import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
-import com.optum.fads.caseentrybatch.api.service.ICaseBatchIndividualService;
-import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
-import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.item.Chunk;
-import org.springframework.batch.item.ItemWriter;
-import org.springframework.stereotype.Component;
-
-import java.util.List;
-
-@Component
-@Slf4j
-public class CaseEntryBatchWriter implements ItemWriter<List<CaUniverseT>> {
-
-    private final ICaseBatchIndividualService iCaseBatchIndividualService;
-    private final CaUniverseBatchRepository caUniverseBatchRepository;
-    private final CaseBatchEmailService caseBatchEmailService;
-    private final CaseBatchUtil caseBatchUtil;
-
-    public CaseEntryBatchWriter(ICaseBatchIndividualService iCaseBatchIndividualService,
-                                CaUniverseBatchRepository caUniverseBatchRepository,
-                                CaseBatchEmailService caseBatchEmailService,
-                                CaseBatchUtil caseBatchUtil) {
-        this.iCaseBatchIndividualService = iCaseBatchIndividualService;
-        this.caUniverseBatchRepository = caUniverseBatchRepository;
-        this.caseBatchEmailService = caseBatchEmailService;
-        this.caseBatchUtil = caseBatchUtil;
-    }
-
-    @Override
-    public void write(Chunk<? extends List<CaUniverseT>> chunk) {
-        for (List<CaUniverseT> caUniverseTList : chunk.getItems()) {
-            if (caUniverseTList == null || caUniverseTList.isEmpty()) {
-                continue;
-            }
-
-            Integer batchId = caUniverseTList.get(0).getId().getCtBatchId();
-            String userId = caUniverseTList.get(0).getUiUserBase().getUiSystemId();
-            boolean failed = false;
-
-            try {
-                iCaseBatchIndividualService.createIndBatchCaseEntries(caUniverseTList);
-            } catch (Exception e) {
-                failed = true;
-                log.error("Batch write failed. batchId={}", batchId, e);
-                handleBatchFailure(batchId, userId, e);
-                throw new RuntimeException("Batch write failed for Batch ID: " + batchId, e);
-            }
-
-            if (!failed) {
-                caUniverseBatchRepository.deleteByBatchId(batchId);
-                log.info("Batch {} processed and removed from queue", batchId);
-            }
-        }
-    }
-
-    private void handleBatchFailure(Integer batchId, String userId, Exception e) {
-        EmailData emailData = new EmailData();
-        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_USER);
-        emailData.setBatchId(batchId);
-        emailData.setSubmittedBy(userId);
-
-        StringBuilder exceptionMessage = new StringBuilder();
-        if (e.getMessage() != null) {
-            String msg = e.getMessage();
-            exceptionMessage.append(msg, 0, Math.min(msg.length(), CaseEntryConstants.ERROR_LOG_LENGTH));
-        } else {
-            exceptionMessage.append("Exception message is null.");
-        }
-
-        if (e.getCause() != null && e.getCause().getCause() instanceof SQLServerException) {
-            exceptionMessage.append(CaseEntryConstants.TEXT_SEPERATOR);
-            SQLServerException sql = (SQLServerException) e.getCause().getCause();
-            if (sql.getMessage() != null) {
-                String msg = sql.getMessage();
-                exceptionMessage.append(msg, 0, Math.min(msg.length(), CaseEntryConstants.ERROR_LOG_LENGTH));
-            } else {
-                exceptionMessage.append("SqlServerException message is null.");
-            }
-        }
-
-        EmailSpecification emailSpecs = caseBatchUtil.getEmailSpecs();
-        emailData.setErrorLog(exceptionMessage.toString());
-        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
-
-        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
-        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecs);
-    }
-}
-
-
-
-package com.optum.fads.caseentrybatch.api.config;
-
-import com.optum.fads.caseentrybatch.api.batch.BatchIdItemReader;
-import com.optum.fads.caseentrybatch.api.batch.BatchProcessingResult;
-import com.optum.fads.caseentrybatch.api.batch.CompositeRoutingWriter;
-import com.optum.fads.caseentrybatch.api.batch.ValidatingBatchProcessor;
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
-import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.item.support.SynchronizedItemStreamReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import java.util.List;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.zaxxer.hikari.HikariDataSource;
+
+import jakarta.persistence.EntityManagerFactory;
+import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
 
 @Configuration
-public class CaseEntryBatchConfiguration {
+@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
+@EnableTransactionManagement
+@EnableJpaRepositories(
+        entityManagerFactoryRef = "snfkEntityManagerFactory",
+        transactionManagerRef = "txManagerSNFK",
+        basePackages = { "com.optum.fads.casereminders.api.snowflakeRepo" }
+)
+public class ServiceConfigSNFK {
 
-    private final JobRepository jobRepository;
-    private final PlatformTransactionManager transactionManager;
-    private final BatchIdItemReader batchIdItemReader;
-    private final ValidatingBatchProcessor validatingBatchProcessor;
-    private final CompositeRoutingWriter compositeRoutingWriter;
+    private static final Logger logger = LoggerFactory.getLogger(ServiceConfigSNFK.class);
 
-    public CaseEntryBatchConfiguration(JobRepository jobRepository,
-                                       PlatformTransactionManager transactionManager,
-                                       BatchIdItemReader batchIdItemReader,
-                                       ValidatingBatchProcessor validatingBatchProcessor,
-                                       CompositeRoutingWriter compositeRoutingWriter) {
-        this.jobRepository = jobRepository;
-        this.transactionManager = transactionManager;
-        this.batchIdItemReader = batchIdItemReader;
-        this.validatingBatchProcessor = validatingBatchProcessor;
-        this.compositeRoutingWriter = compositeRoutingWriter;
+    @Value("${spring.datasource.snfk.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.snfk.userName}")
+    private String username;
+
+    @Value("${spring.datasource.snfk.password}")
+    private String password;
+
+    @Value("${spring.datasource.snfk.certKey:}")
+    private String certKey;
+
+    @Value("${spring.datasource.snfk.passphrase:}")
+    private String passphrase;
+
+    @Value("${spring.datasource.snfk.database}")
+    private String database;
+
+    @Value("${spring.datasource.snfk.schema}")
+    private String schema;
+
+    @Value("${spring.datasource.snfk.warehouse}")
+    private String warehouse;
+
+    @Value("${spring.datasource.snfk.account:}")
+    private String account;
+
+    @Value("${spring.datasource.snfk.role:}")
+    private String role;
+
+    @Value("${db.snfk-login.useCert:false}")
+    private Boolean useCert;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfigSNFK(SecretClient secretClient) {
+        this.secretClient = secretClient;
     }
 
-    @Bean(name = "caseEntryBatchJob")
-    public Job caseEntryBatchJob() {
-        return new JobBuilder("caseEntryBatchJob", jobRepository)
-                .incrementer(new RunIdIncrementer())
-                .start(processBatchStep())
-                .build();
+    @Bean(name = "fadsSNFKDataSource")
+    public DataSource snfkDataSource() throws Exception, IOException {
+
+        if (Boolean.TRUE.equals(useCert)) {
+            logger.info("Snowflake login using certificate (PEM from Key Vault secret).");
+
+            String pemContent = secretClient.getSecret(certKey).getValue();
+            char[] passChars = null;
+
+            if (passphrase != null && !passphrase.isBlank()) {
+                String passValue = secretClient.getSecret(passphrase).getValue();
+                if (passValue != null && !passValue.isBlank()) {
+                    passChars = passValue.toCharArray();
+                }
+            }
+
+            PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pemContent, passChars);
+
+            // treat username property as a KeyVault secret name (same as your sample style)
+            String userValue = secretClient.getSecret(username).getValue();
+
+            SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
+            sf.setUrl(url);
+            sf.setDatabaseName(database);
+            sf.setSchema(schema);
+            sf.setWarehouse(warehouse);
+            if (account != null && !account.isBlank()) sf.setAccount(account);
+            if (role != null && !role.isBlank()) sf.setRole(role);
+
+            sf.setUser(userValue);
+            sf.setPrivateKey(privateKey);
+
+            HikariDataSource hikariDs = new HikariDataSource();
+            hikariDs.setDataSource(sf);
+            return hikariDs;
+
+        } else {
+            logger.info("Snowflake login using username/password from Key Vault secrets.");
+
+            String userValue = secretClient.getSecret(username).getValue();
+            String passValue = secretClient.getSecret(password).getValue();
+
+            Properties props = new Properties();
+            props.put("user", userValue);
+            props.put("password", passValue);
+            props.put("database", database);
+            props.put("schema", schema);
+            props.put("warehouse", warehouse);
+            if (role != null && !role.isBlank()) props.put("role", role);
+            if (account != null && !account.isBlank()) props.put("account", account);
+
+            return new DriverManagerDataSource(url, props);
+        }
     }
 
-    @Bean
-    public Step processBatchStep() {
-        return new StepBuilder("processBatchStep", jobRepository)
-                .<List<CaUniverseBatchT>, BatchProcessingResult>chunk(5, transactionManager)
-                .reader(synchronizedReader())
-                .processor(validatingBatchProcessor)
-                .writer(compositeRoutingWriter)
-                .build();
+    @Bean(name = "snfkEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean snfkEntityManagerFactory(
+            @Qualifier("fadsSNFKDataSource") DataSource ds) throws Exception {
+
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(ds);
+        em.setPackagesToScan("com.optum.fads.casereminders.api.snowflakeDomain");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put("hibernate.allow_update_outside_transaction", true);
+        properties.put("hibernate.dialect", "com.optum.fads.casereminders.api.config.SnowflakeDialect");
+        em.setJpaPropertyMap(properties);
+
+        return em;
     }
 
-    @Bean
-    public SynchronizedItemStreamReader<List<CaUniverseBatchT>> synchronizedReader() {
-        SynchronizedItemStreamReader<List<CaUniverseBatchT>> reader = new SynchronizedItemStreamReader<>();
-        reader.setDelegate(batchIdItemReader);
-        return reader;
+    @Bean(name = "txManagerSNFK")
+    public PlatformTransactionManager txManagerSNFK(
+            @Qualifier("snfkEntityManagerFactory") EntityManagerFactory snfkEntityManagerFactory) {
+
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        // FIXED: do NOT call snfkEntityManagerFactory() again
+        txManager.setEntityManagerFactory(snfkEntityManagerFactory);
+        return txManager;
+    }
+
+    @Bean(name = "jdbcSnowflake")
+    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSNFKDataSource") DataSource ds) {
+        return new JdbcTemplate(ds);
     }
 }
+server:
+  port: 8080
+  servlet:
+    contextPath: /casereminders
 
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring:
+  application:
+    name: casereminders
+
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: ${AZURE_KV_URL}
+        credential:
+          client-id: ${AZURE_KV_CLIENT_ID}
+          client-secret: ${AZURE_KV_CLIENT_SECRET}
+          tenant-id: ${AZURE_TENANT_ID}
+
+  datasource:
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+
+    sql:
+      jdbcUrl: ${DB_URL}
+      userName: ${DB_USR}     # KeyVault secret name
+      password: ${DB_PWD}     # KeyVault secret name
+      driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+    snfk:
+      jdbcUrl: ${SNFK_DB_URL}
+      database: ${SNFK_DATABASE}
+      schema: ${SNFK_SCHEMA}
+      warehouse: ${SNFK_WAREHOUSE}
+      role: ${SNFK_ROLE:}
+      account: ${SNFK_ACCOUNT:}
+
+      userName: ${SNFK_USR}          # KeyVault secret name
+      password: ${SNFK_PWD}          # KeyVault secret name (used when USE_CERT=false)
+      certKey: ${SNFK_CERT_KEY:}     # KeyVault secret name holding PEM content (used when USE_CERT=true)
+      passphrase: ${SNFK_CERT_PASSPHRASE:}  # KeyVault secret name (optional)
+
+db:
+  snfk-login:
+    useCert: ${USE_CERT:false}
+
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+spring:
+  quartz:
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 3
