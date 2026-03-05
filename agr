@@ -1,137 +1,426 @@
-Spring Batch Migration Changes Document
-1. Objective
-This document outlines all code and architectural changes made in transitioning from the legacy Quartz-based batch processing design to the final Spring Batch implementation.
-2. Architectural Flow Change
-Legacy Flow: A raw Quartz Job triggered a standard Spring Service that sequentially queried, validated, and saved batches via loops. Exceptions were handled manually, and chunks were processed one-by-one inside a large synchronous block.
-New Flow (Spring Batch): The Quartz Scheduler is kept strictly as a trigger. Execution is handed off to Spring Batch which utilizes a Reader, Processor, and Writer paradigm. This improves transaction management, chunk-based reliability, and standardizes error handling/reruns.
-3. Code Level Changes
-3.1. ICaseBatchService & CaseBatchService
-• The original createBatchCase() method was marked @Deprecated.
-• Added a new executeBatchJob() method returning a JobExecution to allow the Quartz job to directly launch the Spring Batch framework.
-• The core data validation method (createCaUniverseTList) was refactored and detached from the transactional DB save logic so it could be strictly used for data validation inside the ItemProcessor.
-3.2. Addition of Spring Batch Components
-• BatchIdItemReader: Reads distinct Batch IDs from the Database dynamically and acts as the entrypoint for the Step stream. Refactored to drop execution context state indexing to resolve restart/skipping bugs.
-• ValidatingBatchProcessor: Manages the business logic validation mappings using the legacy verification checks. Now wrapped in a try-catch block to correctly log failures and dispatch failure warning emails organically upon data exceptions.
-• BatchProcessingResult: A data wrapper to route valid items directly to standard processors, and corrupted batches directly to Invalid routing destinations.
-• CaseEntryBatchWriter & InvalidClaimsBatchWriter: Segmented database operations allowing valid chunks to commit efficiently to individual DB queues via iCaseBatchIndividualService, while invalid chunks cleanly isolate themselves via caUniverseBatchRepository and trigger Invalid data emails to admins. Exceptions here are correctly escalated (thrown) to flag Spring Batch statuses as FAILED.
-3.3. Configuration Management
-• CaseEntryBatchConfiguration: Ties the Reader, Processor, and routing Writers together into a definitive Spring Batch Step with customizable chunk bounds (e.g. chunk size = 5).
-• application.yml modified to spring.batch.job.enabled: false to avoid accidental launch on startup.
-3.4. Metadata & Database Dependencies
-• Eliminated legacy circular dependencies by utilizing @Lazy Job loading.
-• Removed redundant & outdated obsolete classes (BatchIdProcessor, BatchIdReader, and CaseBatchJobConfig).
-4. Database Scripts & Verification Queries
-To correctly support Spring Batch State tracking and verify data integrity before and after the batch logic, the following metadata schema and diagnostic SQL queries have been utilized:
-4.1. Spring Batch Metadata Object Creation (DDL)
-CREATE TABLE BATCH_JOB_INSTANCE (
-  JOB_INSTANCE_ID BIGINT NOT NULL PRIMARY KEY,
-  VERSION BIGINT NULL,
-  JOB_NAME VARCHAR(100) NOT NULL,
-  JOB_KEY VARCHAR(32) NOT NULL,
-  CONSTRAINT JOB_INST_UN UNIQUE (JOB_NAME, JOB_KEY)
-);
-
-CREATE TABLE BATCH_JOB_EXECUTION (
-  JOB_EXECUTION_ID BIGINT NOT NULL PRIMARY KEY,
-  VERSION BIGINT NULL,
-  JOB_INSTANCE_ID BIGINT NOT NULL,
-  CREATE_TIME DATETIME NOT NULL,
-  START_TIME DATETIME NULL,
-  END_TIME DATETIME NULL,
-  STATUS VARCHAR(10) NULL,
-  EXIT_CODE VARCHAR(2500) NULL,
-  EXIT_MESSAGE VARCHAR(2500) NULL,
-  LAST_UPDATED DATETIME NULL,
-  CONSTRAINT JOB_INST_EXEC_FK FOREIGN KEY (JOB_INSTANCE_ID)
-    REFERENCES BATCH_JOB_INSTANCE(JOB_INSTANCE_ID)
-);
-
-CREATE TABLE BATCH_JOB_EXECUTION_PARAMS (
-  JOB_EXECUTION_ID BIGINT NOT NULL,
-  PARAMETER_NAME VARCHAR(100) NOT NULL,
-  PARAMETER_TYPE VARCHAR(100) NOT NULL,
-  PARAMETER_VALUE VARCHAR(2500) NULL,
-  IDENTIFYING CHAR(1) NOT NULL,
-  CONSTRAINT JOB_EXEC_PARAMS_FK FOREIGN KEY (JOB_EXECUTION_ID)
-    REFERENCES BATCH_JOB_EXECUTION(JOB_EXECUTION_ID)
-);
-
-CREATE TABLE BATCH_STEP_EXECUTION (
-  STEP_EXECUTION_ID BIGINT NOT NULL PRIMARY KEY,
-  VERSION BIGINT NOT NULL,
-  STEP_NAME VARCHAR(100) NOT NULL,
-  JOB_EXECUTION_ID BIGINT NOT NULL,
-  CREATE_TIME DATETIME NOT NULL,
-  START_TIME DATETIME NULL,
-  END_TIME DATETIME NULL,
-  STATUS VARCHAR(10) NULL,
-  COMMIT_COUNT BIGINT NULL,
-  READ_COUNT BIGINT NULL,
-  FILTER_COUNT BIGINT NULL,
-  WRITE_COUNT BIGINT NULL,
-  READ_SKIP_COUNT BIGINT NULL,
-  WRITE_SKIP_COUNT BIGINT NULL,
-  PROCESS_SKIP_COUNT BIGINT NULL,
-  ROLLBACK_COUNT BIGINT NULL,
-  EXIT_CODE VARCHAR(2500) NULL,
-  EXIT_MESSAGE VARCHAR(2500) NULL,
-  LAST_UPDATED DATETIME NULL,
-  CONSTRAINT JOB_EXEC_STEP_FK FOREIGN KEY (JOB_EXECUTION_ID)
-    REFERENCES BATCH_JOB_EXECUTION(JOB_EXECUTION_ID)
-);
-
-CREATE TABLE BATCH_STEP_EXECUTION_CONTEXT (
-  STEP_EXECUTION_ID BIGINT NOT NULL PRIMARY KEY,
-  SHORT_CONTEXT VARCHAR(2500) NOT NULL,
-  SERIALIZED_CONTEXT VARCHAR(MAX) NULL,
-  CONSTRAINT STEP_EXEC_CTX_FK FOREIGN KEY (STEP_EXECUTION_ID)
-    REFERENCES BATCH_STEP_EXECUTION(STEP_EXECUTION_ID)
-);
-
-CREATE TABLE BATCH_JOB_EXECUTION_CONTEXT (
-  JOB_EXECUTION_ID BIGINT NOT NULL PRIMARY KEY,
-  SHORT_CONTEXT VARCHAR(2500) NOT NULL,
-  SERIALIZED_CONTEXT VARCHAR(MAX) NULL,
-  CONSTRAINT JOB_EXEC_CTX_FK FOREIGN KEY (JOB_EXECUTION_ID)
-    REFERENCES BATCH_JOB_EXECUTION(JOB_EXECUTION_ID)
-);
-
-CREATE SEQUENCE BATCH_STEP_EXECUTION_SEQ START WITH 0 MINVALUE 0 NO CYCLE NO CACHE;
-CREATE SEQUENCE BATCH_JOB_EXECUTION_SEQ START WITH 0 MINVALUE 0 NO CYCLE NO CACHE;
-CREATE SEQUENCE BATCH_JOB_SEQ START WITH 0 MINVALUE 0 NO CYCLE NO CACHE;
-
-4.2. Operational & Verification Queries
-Used to inspect the state of intelligent keys, provider history, assignments, and structural components of a batch run:
--- Validate Case creation and assignments
-SELECT * FROM CA_INTELLIGENT_KEY_T WHERE CASE_ID = 9669;
-SELECT * FROM CA_GENERAL_T  WHERE CASE_ID = 9669;
-SELECT * FROM CA_PROVIDER_T WHERE CASE_ID = 9669;
-
--- Validate Full-scale and historical associations
-SELECT * FROM CA_INVST_FULLSCALE_T   WHERE CASE_ID = 9669;
-SELECT * FROM CA_INVST_FS_HIST_T     WHERE CASE_ID = 9669;
-SELECT * FROM CA_INVST_FS_STATUS_HIST_T WHERE CASE_ID = 9669;
-SELECT * FROM CA_INVST_FS_ISSUE_T    WHERE CASE_ID = 9669;
-SELECT * FROM CA_INVST_FS_ISSUE_HIST_T WHERE CASE_ID = 9669;
-SELECT * FROM CA_INVST_FS_ASSIGN_T   WHERE CASE_ID = 9669;
-SELECT * FROM CA_INVST_FS_ASSIGN_HIST_T WHERE CASE_ID = 9669;
-
--- Validate Claims processing counts
-SELECT COUNT(*) FROM CA_CLAIM_LIST_T              WHERE CASE_ID = 9669;
-SELECT COUNT(*) FROM CA_CLAIM_CORRECTIONS_T       WHERE CASE_ID = 9669;
-SELECT COUNT(*) FROM CA_CLAIM_CORRECTIONS_HIST_T  WHERE CASE_ID = 9669;
-
--- Universe target rows & queue deletion checks
-SELECT COUNT(*) FROM CA_UNIVERSE_T WHERE CT_BATCH_ID = 452;
-SELECT COUNT(*) FROM CA_UNIVERSE_BATCH_T WHERE CT_BATCH_ID = 452;
-
--- Validate Metadata Job Exection
-SELECT TOP 10 * FROM BATCH_JOB_INSTANCE ORDER BY JOB_INSTANCE_ID DESC;
-SELECT TOP 10 * FROM BATCH_JOB_EXECUTION ORDER BY JOB_EXECUTION_ID DESC;
-SELECT TOP 10 * FROM BATCH_STEP_EXECUTION ORDER BY STEP_EXECUTION_ID DESC;
-
--- Email Audit Delivery
-SELECT * FROM CA_EMAILS_BATCH_T WHERE CT_BATCH_ID = 451 ORDER BY EMAIL_DT DESC;
+I am doing key vault chnages azure one below is the situation where i need help 
 
 
+server:
+  port: 8080
+  servlet:
+    contextPath: /casereminders
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
 
+spring: 
+  application:
+   name: casereminders
+  jpa:
+    database-platform: com.optum.fads.casereminders.api.config.SnowflakeDialect
+    
+  datasource:
+     hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+     sql:
+       type: com.zaxxer.hikari.HikariDataSource
+       jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+       userName: fads_dev
+       password: qAut9fM.S!g3?385
+       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+       jpa:
+           database-platform: org.hibernate.dialect.SQLServer2016Dialect
+           database: SQL_SERVER 
+           format-sql: true
+           globally_quoted_identifiers: true
+           show-sql: true
+           hibernate:
+              use-new-id-generator-mappings: true
+              globally_quoted_identifiers: true
+              hibernate.allow_update_outside_transaction: true
+              naming:
+                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+     snfk:
+        type: com.zaxxer.hikari.HikariDataSource
+        jdbcUrl: jdbc:snowflake://uhgdwaas.east-us-2.azure.snowflakecomputing.com/?warehouse=${warehouse}&db=${db}&schema=${schema}&TIMEZONE=${snowflake.timezone:UTC}&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true&CLIENT_TIMESTAMP_TYPE_MAPPING=TIMESTAMP_NTZ
+        db: jdbc:snowflake://ew98463.east-us-2.azure.snowflakecomputing.com:443/?TIMEZONE=UTC&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true
+        driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
+        userName: pi-sf-usr-dev
+        passphrase: pi-sf-key-dev-pw
+        privateKeyPath: src/main/resources/
+        privateKeyName: rsa_key.p8
+        schema: FADS
+        warehouse: SGS_PI_DEMO_XSMALL_WH
+        role: 
+        password: pi-sf-usr-dev-pw
+        account: 
+        jpa:
+            database-platform: com.optum.fads.casereminders.api.config.SnowflakeDialect
+            database: default 
+            format-sql: true
+            globally_quoted_identifiers: true
+            show-sql: true
+            hibernate:
+               use-new-id-generator-mappings: true
+               globally_quoted_identifiers: true
+               naming:
+                     implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                     physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+  quartz:
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 3      
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          jwk-set-uri: ${JWKS_URL}
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+
+
+this is my current yaml file which has to be something like below 
+
+
+server:
+  port: 8080
+  servlet:
+    contextPath: /peergroup
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring: 
+  application:
+   name: peergroup
+   
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net
+        credential:
+          client-id: ce5962ff-06f5-4911-be66-e51b86531710
+          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
+          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1   
+   
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServer2016Dialect
+    database: SQL_SERVER
+    show-sql: false
+    hibernate:
+       naming:
+            implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+            physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
+    userName: sql-admin-user
+    password: sql-admin-password
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}    
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL}
+          jws-algorithms: ${JWS_ALG:RS256}
+          unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+
+
+
+
+package com.optum.fads.casereminders.api.config;
+
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.persistence.EntityManagerFactory;
+
+/**
+ * @author sbajaj8
+ *
+ */
+@Configuration
+@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
+						transactionManagerRef = "txManagerSQL",
+						basePackages = "com.optum.fads.casereminders.api.repo" )
+		public class ServiceConfigSQL 
+		{
+			@Bean(name = "fadsSQLDataSource")
+			@ConfigurationProperties("spring.datasource.sql") 
+				public DataSource fadsSQLDataSource() {
+					return DataSourceBuilder.create().build(); 
+			}
+	
+			@Bean(name = "sqlEntityManagerFactory")
+				public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
+					{
+						LocalContainerEntityManagerFactoryBean em
+								= new LocalContainerEntityManagerFactoryBean();
+						em.setDataSource(fadsSQLDataSource());
+						em.setPackagesToScan(
+								new String[] { "com.optum.fads.casereminders.api.domain" });
+						HibernateJpaVendorAdapter vendorAdapter
+							= new HibernateJpaVendorAdapter();
+						em.setJpaVendorAdapter(vendorAdapter);
+					return em;
+					}
+	 
+	 
+	 @Bean(name = "txManagerSQL")
+	 public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
+	 {
+		 JpaTransactionManager txManager = new JpaTransactionManager();
+	        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+	        return txManager;
+	 }
+	 
+	}
+
+
+	
+
+this is current state this also has to be like below 
+
+
+package com.optum.fads.pgp.jobs.api.config;
+
+import jakarta.persistence.EntityManagerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+
+import javax.sql.DataSource;
+
+/**
+ * @author sbajaj8
+ */
+@Configuration
+@EnableAutoConfiguration(exclude = {DataSourceAutoConfiguration.class})
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
+        transactionManagerRef = "txManagerSQL",
+        basePackages = "com.optum.fads.pgp.jobs.api.repo")
+public class ServiceConfigSQL {
+
+    @Value("${spring.datasource.sql.userName}")
+    private String userName;
+
+    @Value("${spring.datasource.sql.password}")
+    private String password;
+
+    @Value("${spring.datasource.sql.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.sql.driverClassName}")
+    private String driverClassName;
+
+    private final SecretClient secretClient;
+
+    public ServiceConfigSQL(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+    @Bean(name = "fadsSQLDataSource")
+    @Primary
+    public DataSource fadsSQLDataSource() {
+        System.out.println("Establishing sql connection");
+        String userNameValue;
+        String passwordValue;
+
+        try {
+            userNameValue = secretClient.getSecret(userName).getValue();
+            passwordValue = secretClient.getSecret(password).getValue();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to retrieve secrets from Azure Key Vault", e);
+        }
+        System.out.println("UserName: " + userNameValue);
+        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource.setDriverClassName(driverClassName);
+        dataSource.setUsername(userNameValue);
+        dataSource.setPassword(passwordValue);
+        dataSource.setUrl(url);
+
+        return dataSource;
+    }
+
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(fadsSQLDataSource());
+        em.setPackagesToScan("com.optum.fads.pgp.jobs.api.domain");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+
+        // Set Hibernate properties
+        java.util.Properties properties = new java.util.Properties();
+        properties.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQLDialect"); 
+        em.setJpaProperties(properties);
+
+        return em;
+    }
+
+
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+        return txManager;
+    }
+
+}
+
+
+	
+
+
+
+
+
+below is one common java file which is already i made changes I guess its fine 
+
+/*
+//***********************************************
+// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
+// This software and documentation contain confidential and
+// proprietary information owned by UnitedHealth Group Corporation.
+// Unauthorized use and distribution are prohibited.
+//***********************************************
+*/
+
+package com.optum.fads.casereminders.api.config;
+
+import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
+
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+
+import com.azure.identity.ClientSecretCredential;
+import com.azure.identity.ClientSecretCredentialBuilder;
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.SecretClientBuilder;
+
+/**
+ * The CommonConfig holds spring based configuration
+ */
+@Configuration
+public class CommonConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
+
+    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
+    private String azureKeyVaultUrl;
+    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
+    private String azureKeyVaultTenant;
+    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
+    private String azureKeyVaultSecret;
+    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
+    private String azureKeyVaultClientId;
+
+    /**
+     * Model Mapper for mapping objects
+     *
+     * @return modelMapper
+     */
+    @Bean
+    @Scope(SCOPE_PROTOTYPE)
+    public ModelMapper modelMapper() {
+        final var modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+        return modelMapper;
+    }
+    @Bean
+    public SecretClient secretClient() {
+        logger.info("Initializing Azure Key Vault SecretClient...");
+        logger.debug("Azure Key Vault URL: {}", azureKeyVaultUrl);
+        logger.debug("Azure Key Vault Tenant ID: {}", azureKeyVaultTenant);
+        logger.debug("Azure Key Vault Client ID: {}", azureKeyVaultClientId);
+
+        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
+                .clientId(azureKeyVaultClientId)
+                .clientSecret(azureKeyVaultSecret)
+                .tenantId(azureKeyVaultTenant)
+                .build();
+
+        return new SecretClientBuilder()
+                .vaultUrl(azureKeyVaultUrl)
+                .credential(clientSecretCredential)
+                .buildClient();
+    }
+}
