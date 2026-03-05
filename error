@@ -1,98 +1,162 @@
-r starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-03-05T14:47:45.780+05:30 ERROR 23592 --- [           main] o.s.boot.SpringApplication               : Application run failed
+package com.optum.fads.casealerts.api.config;
 
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'snfkEntityManagerFactory' defined in class path resource [com/optum/fads/casereminders/api/config/ServiceConfigSNFK.class]: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to resolve name [com.optum.fads.casereminders.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1826)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:607)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
-        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
-        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
-        at com.optum.fads.casereminders.api.RemindersApplication.main(RemindersApplication.java:29)
-Caused by: org.hibernate.service.spi.ServiceException: Unable to create requested service [org.hibernate.engine.jdbc.env.spi.JdbcEnvironment] due to: Unable to resolve name [com.optum.fads.casereminders.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
-        at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:277)
-        at org.hibernate.service.internal.AbstractServiceRegistryImpl.initializeService(AbstractServiceRegistryImpl.java:239)
-        at org.hibernate.service.internal.AbstractServiceRegistryImpl.getService(AbstractServiceRegistryImpl.java:216)
-        at org.hibernate.boot.model.relational.Database.<init>(Database.java:45)
-        at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.getDatabase(InFlightMetadataCollectorImpl.java:230)
-        at org.hibernate.boot.internal.InFlightMetadataCollectorImpl.<init>(InFlightMetadataCollectorImpl.java:198)
-        at org.hibernate.boot.model.process.spi.MetadataBuildingProcess.complete(MetadataBuildingProcess.java:166)
-        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.metadata(EntityManagerFactoryBuilderImpl.java:1380)
-        at org.hibernate.jpa.boot.internal.EntityManagerFactoryBuilderImpl.build(EntityManagerFactoryBuilderImpl.java:1451)
-        at org.springframework.orm.jpa.vendor.SpringHibernateJpaPersistenceProvider.createContainerEntityManagerFactory(SpringHibernateJpaPersistenceProvider.java:66)
-        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.createNativeEntityManagerFactory(LocalContainerEntityManagerFactoryBean.java:390)
-        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.buildNativeEntityManagerFactory(AbstractEntityManagerFactoryBean.java:419)
-        at org.springframework.orm.jpa.AbstractEntityManagerFactoryBean.afterPropertiesSet(AbstractEntityManagerFactoryBean.java:400)
-        at org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean.afterPropertiesSet(LocalContainerEntityManagerFactoryBean.java:366)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.invokeInitMethods(AbstractAutowireCapableBeanFactory.java:1873)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.initializeBean(AbstractAutowireCapableBeanFactory.java:1822)
-        ... 15 common frames omitted
-Caused by: org.hibernate.boot.registry.selector.spi.StrategySelectionException: Unable to resolve name [com.optum.fads.casereminders.api.config.SnowflakeDialect] as strategy [org.hibernate.dialect.Dialect]
-        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.selectStrategyImplementor(StrategySelectorImpl.java:154)
-        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.resolveStrategy(StrategySelectorImpl.java:236)
-        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.resolveStrategy(StrategySelectorImpl.java:189)
-        at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.constructDialect(DialectFactoryImpl.java:123)
-        at org.hibernate.engine.jdbc.dialect.internal.DialectFactoryImpl.buildDialect(DialectFactoryImpl.java:86)
-        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:274)
-        at org.hibernate.engine.jdbc.env.internal.JdbcEnvironmentInitiator.initiateService(JdbcEnvironmentInitiator.java:34)
-        at org.hibernate.boot.registry.internal.StandardServiceRegistryImpl.initiateService(StandardServiceRegistryImpl.java:119)
-        at org.hibernate.service.internal.AbstractServiceRegistryImpl.createService(AbstractServiceRegistryImpl.java:264)
-        ... 30 common frames omitted
-Caused by: org.hibernate.boot.registry.classloading.spi.ClassLoadingException: Unable to load class [com.optum.fads.casereminders.api.config.SnowflakeDialect]
-        at org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl.classForName(ClassLoaderServiceImpl.java:123)
-        at org.hibernate.boot.registry.selector.internal.StrategySelectorImpl.selectStrategyImplementor(StrategySelectorImpl.java:150)
-        ... 38 common frames omitted
-Caused by: java.lang.ClassNotFoundException: Could not load requested class : com.optum.fads.casereminders.api.config.SnowflakeDialect
-        at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:215)
-        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:592)
-        at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
-        at java.base/java.lang.Class.forName0(Native Method)
-        at java.base/java.lang.Class.forName(Class.java:467)
-        at org.hibernate.boot.registry.classloading.internal.ClassLoaderServiceImpl.classForName(ClassLoaderServiceImpl.java:120)
-        ... 39 common frames omitted
-Caused by: java.lang.Throwable: null
-        at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:208)
-        ... 44 common frames omitted
-        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casereminders.api.config.SnowflakeDialect
-                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
-                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
-                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
-                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:205)
-                ... 44 common frames omitted
-        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casereminders.api.config.SnowflakeDialect
-                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
-                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
-                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
-                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:205)
-                ... 44 common frames omitted
-        Suppressed: java.lang.ClassNotFoundException: com.optum.fads.casereminders.api.config.SnowflakeDialect
-                at java.base/jdk.internal.loader.BuiltinClassLoader.loadClass(BuiltinClassLoader.java:641)
-                at java.base/jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(ClassLoaders.java:188)
-                at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:525)
-                at org.hibernate.boot.registry.classloading.internal.AggregatedClassLoader.findClass(AggregatedClassLoader.java:205)
-                ... 44 common frames omitted
+import javax.sql.DataSource;
 
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  18.158 s
-[INFO] Finished at: 2026-03-05T14:47:47+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.9:run (default-cli) on project fads-case-reminders-api: Process terminated with exit code: 1 -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-C:\Users\sgupt664\BE_Projects\fads-case-reminders-api>
+import jakarta.persistence.EntityManagerFactory;
+
+/**
+ * @author sbajaj8
+ *
+ */
+@Configuration
+@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
+						transactionManagerRef = "txManagerSQL",
+						basePackages = "com.optum.fads.casealerts.api.repo" )
+		public class ServiceConfigSQL 
+		{
+			@Bean(name = "fadsSQLDataSource")
+			@ConfigurationProperties("spring.datasource.sql") 
+				public DataSource fadsSQLDataSource() {
+					return DataSourceBuilder.create().build(); 
+			}
+	
+			@Bean(name = "sqlEntityManagerFactory")
+				public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
+					{
+						LocalContainerEntityManagerFactoryBean em
+								= new LocalContainerEntityManagerFactoryBean();
+						em.setDataSource(fadsSQLDataSource());
+						em.setPackagesToScan(
+								new String[] { "com.optum.fads.casealerts.api.domain" });
+						HibernateJpaVendorAdapter vendorAdapter
+							= new HibernateJpaVendorAdapter();
+						em.setJpaVendorAdapter(vendorAdapter);
+					return em;
+					}
+	 
+	 
+	 @Bean(name = "txManagerSQL")
+	 public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
+	 {
+		 JpaTransactionManager txManager = new JpaTransactionManager();
+	        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+	        return txManager;
+	 }
+	 
+	}
+
+
+	
+
+server:
+  port: 8080
+  servlet:
+    contextPath: /casealerts
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+
+spring: 
+  application:
+   name: casealerts
+  jpa:
+    database-platform: com.optum.fads.casealerts.api.config.SnowflakeDialect
+    
+  datasource:
+     hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+     sql:
+       type: com.zaxxer.hikari.HikariDataSource
+       jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+       userName: fads_dev
+       password: qAut9fM.S!g3?385
+       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+       jpa:
+           database-platform: org.hibernate.dialect.SQLServer2016Dialect
+           database: SQL_SERVER 
+           format-sql: true
+           globally_quoted_identifiers: true
+           show-sql: true
+           hibernate:
+              use-new-id-generator-mappings: true
+              globally_quoted_identifiers: true
+              hibernate.allow_update_outside_transaction: true
+              naming:
+                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+     snfk:
+        type: com.zaxxer.hikari.HikariDataSource
+        jdbcUrl: jdbc:snowflake://uhgdwaas.east-us-2.azure.snowflakecomputing.com/?warehouse=${warehouse}&db=${db}&schema=${schema}&TIMEZONE=${snowflake.timezone:UTC}&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true&CLIENT_TIMESTAMP_TYPE_MAPPING=TIMESTAMP_NTZ
+        db: jdbc:snowflake://ew98463.east-us-2.azure.snowflakecomputing.com:443/?TIMEZONE=UTC&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true
+        driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
+        userName: pi-sf-usr-dev
+        passphrase: pi-sf-key-dev-pw
+        privateKeyPath: src/main/resources/
+        privateKeyName: rsa_key.p8
+        schema: FADS
+        warehouse: SGS_PI_DEMO_XSMALL_WH
+        role: 
+        password: pi-sf-usr-dev-pw
+        account: 
+        jpa:
+            database-platform: com.optum.fads.casealerts.api.config.SnowflakeDialect
+            database: default 
+            format-sql: true
+            globally_quoted_identifiers: true
+            show-sql: true
+            hibernate:
+               use-new-id-generator-mappings: true
+               globally_quoted_identifiers: true
+               naming:
+                     implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                     physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+  quartz:
+    properties:
+      org:
+        quartz:
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 3      
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+#  security:
+#    oauth2:
+#      resourceserver:
+#        jwt:
+#          jwk-set-uri: ${JWKS_URL}
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
+
+
+there is one more repo case alert same tings are therre cna u provide the suggestion for this also complet classes 
