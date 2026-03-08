@@ -1,172 +1,347 @@
-package com.optum.fads.casereminders.api.config;
+server:
+  port: 8080
+management:
+  endpoint:
+    gateway:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+        exclude: caches, scheduledtasks, mappings, beans, heapdump, env, metrics,threaddump, loggers, configprops, conditions
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+logging:
+  level:
+    org.springframework: INFO
+    org.springframework.web.HttpLogging: INFO
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO
+    org.springframework.cloud.gateway: DEBUG
 
-import java.security.PrivateKey;
-import java.util.HashMap;
-import java.util.Properties;
+spring:
+  application:
+    name: fads-api-gateway
+  autoconfigure:
+    exclude: 
+      - org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
+  # Comment out or remove the entire security section
+  # security:
+  #   oauth2:
+  #     client:
+  #       registration:
+  #         azure:
+  #           client-id: 3B353DE824744C2F8C0024AD5D7F22A9
+  #           client-secret: 5f07509a1aa6e28615cae49a352df69b95fd5e5280a5ee9d70c35f890552f43e
+  #           scope: openid,profile,email
+  #       provider:
+  #         azure:
+  #           jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+  #     resourceserver:
+  #       jwt:
+  #         jwk-set-uri: https://login.microsoftonline.com/fbe00597-ca09-441a-836a-eb0dcb7c14e1/discovery/v2.0/keys
+  #         jws-algorithms:
+  cloud:
+    gateway:
+      x-forwarded:
+        enabled: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        # Remove TokenRelay since we're disabling security
+        # - TokenRelay=
+      routes:
+        - id: authorization
+          uri: https://as-pi-dev-authorization.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/authorization/**
+          filters:
+            - RewritePath=/api/v1.0/authorization/(?<segment>/?.*), /authorization/$\{segment}
+        - id: datarules
+          uri: https://as-pi-dev-datarules.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/datarules/**
+          filters:
+            - RewritePath=/api/v1.0/datarules/(?<segment>/?.*), /datarules/$\{segment}
+        - id: behavior
+          uri: https://as-pi-dev-behavior.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/behavior/**
+          filters:
+            - RewritePath=/api/v1.0/behavior/(?<segment>/?.*), /behavior/$\{segment}
+        - id: reportgroup
+          uri: https://as-pi-dev-reportgroup.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/reportgroup/**
+          filters:
+            - RewritePath=/api/v1.0/reportgroup/(?<segment>/?.*), /reportgroup/$\{segment}
+        - id: study
+          uri: https://as-pi-dev-study.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/study/**
+          filters:
+            - RewritePath=/api/v1.0/study/(?<segment>/?.*), /study/$\{segment}
+        - id: jobmonitor
+          uri: https://as-pi-dev-jobmonitor.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/jobmonitor/**
+          filters:
+            - RewritePath=/api/v1.0/jobmonitor/(?<segment>/?.*), /jobmonitor/$\{segment}
+        - id: peergroup
+          uri: https://as-pi-dev-peergroup.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/peergroup/**
+          filters:
+            - RewritePath=/api/v1.0/peergroup/(?<segment>/?.*), /peergroup/$\{segment}
+        - id: casetracking
+          uri: https://as-pi-dev-casetracking.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/casetracking/**
+          filters:
+            - RewritePath=/api/v1.0/casetracking/(?<segment>/?.*), /casetracking/$\{segment}
+        - id: caseentry
+          uri: https://as-pi-dev-caseentry.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/caseentry/**
+          filters:
+            - RewritePath=/api/v1.0/caseentry/(?<segment>/?.*), /caseentry/$\{segment}
+        - id: caseClaimCorrections
+          uri: https://as-pi-dev-casecorrection.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/case-claim-corrections/**
+          filters:
+            - RewritePath=/api/v1.0/case-claim-corrections/(?<segment>/?.*), /case-claim-corrections/$\{segment}
+        - id: userroles
+          uri: https://as-pi-dev-userroles.azurewebsites.net
+          predicates:
+            - Path=/api/v1.0/userroles/**
+          filters:
+            - RewritePath=/api/v1.0/userroles/(?<segment>/?.*), /userroles/$\{segment}
+        
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          "[/**]":
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+resilience4j.circuitbreaker:
+  instances:
+    gatewayCircuitBreaker:
+      registerHealthIndicator: true
+      slidingWindowType: COUNT_BASED
+      slidingWindowSize: 5
+      minimumNumberOfCalls: 5
+      permittedNumberOfCallsInHalfOpenState: 3
+      waitDurationInOpenState: 30s
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 5
+      automaticTransitionFromOpenToHalfOpenEnabled: true
+resilience4j.timelimiter:
+  instances:
+    gatewayCircuitBreaker:
+      timeoutDuration: 30s
+      cancelRunningFuture: true
 
-import javax.sql.DataSource;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
 
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.zaxxer.hikari.HikariDataSource;
+up applying filter {_genkey_0=/api/v1.0/peergroup/(?<segment>/?.*), _genkey_1=/peergroup/$\{segment}} to RewritePath
+2026-03-08T12:24:52.528+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition matched: peergroup
+2026-03-08T12:24:52.529+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition casetracking applying {_genkey_0=/api/v1.0/casetracking/**} to Path
+2026-03-08T12:24:52.529+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition casetracking applying filter {_genkey_0=/api/v1.0/casetracking/(?<segment>/?.*), _genkey_1=/casetracking/$\{segment}} to RewritePath
+2026-03-08T12:24:52.529+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition matched: casetracking
+2026-03-08T12:24:52.529+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition caseentry applying {_genkey_0=/api/v1.0/caseentry/**} to Path
+2026-03-08T12:24:52.531+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition caseentry applying filter {_genkey_0=/api/v1.0/caseentry/(?<segment>/?.*), _genkey_1=/caseentry/$\{segment}} to RewritePath
+2026-03-08T12:24:52.532+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition matched: caseentry
+2026-03-08T12:24:52.532+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition caseClaimCorrections applying {_genkey_0=/api/v1.0/case-claim-corrections/**} to Path
+2026-03-08T12:24:52.532+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition caseClaimCorrections applying filter {_genkey_0=/api/v1.0/case-claim-corrections/(?<segment>/?.*), _genkey_1=/case-claim-corrections/$\{segment}} to RewritePath
+2026-03-08T12:24:52.532+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition matched: caseClaimCorrections
+2026-03-08T12:24:52.534+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition userroles applying {_genkey_0=/api/v1.0/userroles/**} to Path
+2026-03-08T12:24:52.534+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition userroles applying filter {_genkey_0=/api/v1.0/userroles/(?<segment>/?.*), _genkey_1=/userroles/$\{segment}} to RewritePath
+2026-03-08T12:24:52.535+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.r.RouteDefinitionRouteLocator    : RouteDefinition matched: userroles
+2026-03-08T12:24:52.546+05:30 DEBUG 1148 --- [fads-api-gateway] [           main] o.s.c.g.filter.GatewayMetricsFilter      : New routes count: 11
+2026-03-08T12:24:52.550+05:30  INFO 1148 --- [fads-api-gateway] [           main] c.o.fads.gateway.FadsGatewayApplication  : Started FadsGatewayApplication in 4.029 seconds (process running for 4.692)
+2026-03-08T12:24:52.557+05:30  WARN 1148 --- [fads-api-gateway] [           main] ServerWebfluxPropertiesMigrationListener :
+The use of configuration keys that have been renamed was found in the environment:
 
-import jakarta.persistence.EntityManagerFactory;
-import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
+Property source 'Config resource 'class path resource [application.yml]' via location 'optional:classpath:/'':
+        Key: spring.cloud.gateway.routes[0].id
+                Line: 59
+                Replacement: spring.cloud.gateway.server.webflux.routes[0].id
+        Key: spring.cloud.gateway.routes[0].uri
+                Line: 60
+                Replacement: spring.cloud.gateway.server.webflux.routes[0].uri
+        Key: spring.cloud.gateway.routes[0].predicates[0]
+                Line: 62
+                Replacement: spring.cloud.gateway.server.webflux.routes[0].predicates[0]
+        Key: spring.cloud.gateway.routes[0].filters[0]
+                Line: 64
+                Replacement: spring.cloud.gateway.server.webflux.routes[0].filters[0]
+        Key: spring.cloud.gateway.routes[1].id
+                Line: 65
+                Replacement: spring.cloud.gateway.server.webflux.routes[1].id
+        Key: spring.cloud.gateway.routes[1].uri
+                Line: 66
+                Replacement: spring.cloud.gateway.server.webflux.routes[1].uri
+        Key: spring.cloud.gateway.routes[1].predicates[0]
+                Line: 68
+                Replacement: spring.cloud.gateway.server.webflux.routes[1].predicates[0]
+        Key: spring.cloud.gateway.routes[1].filters[0]
+                Line: 70
+                Replacement: spring.cloud.gateway.server.webflux.routes[1].filters[0]
+        Key: spring.cloud.gateway.routes[2].id
+                Line: 71
+                Replacement: spring.cloud.gateway.server.webflux.routes[2].id
+        Key: spring.cloud.gateway.routes[2].uri
+                Line: 72
+                Replacement: spring.cloud.gateway.server.webflux.routes[2].uri
+        Key: spring.cloud.gateway.routes[2].predicates[0]
+                Line: 74
+                Replacement: spring.cloud.gateway.server.webflux.routes[2].predicates[0]
+        Key: spring.cloud.gateway.routes[2].filters[0]
+                Line: 76
+                Replacement: spring.cloud.gateway.server.webflux.routes[2].filters[0]
+        Key: spring.cloud.gateway.routes[3].id
+                Line: 77
+                Replacement: spring.cloud.gateway.server.webflux.routes[3].id
+        Key: spring.cloud.gateway.routes[3].uri
+                Line: 78
+                Replacement: spring.cloud.gateway.server.webflux.routes[3].uri
+        Key: spring.cloud.gateway.routes[3].predicates[0]
+                Line: 80
+                Replacement: spring.cloud.gateway.server.webflux.routes[3].predicates[0]
+        Key: spring.cloud.gateway.routes[3].filters[0]
+                Line: 82
+                Replacement: spring.cloud.gateway.server.webflux.routes[3].filters[0]
+        Key: spring.cloud.gateway.routes[4].id
+                Line: 83
+                Replacement: spring.cloud.gateway.server.webflux.routes[4].id
+        Key: spring.cloud.gateway.routes[4].uri
+                Line: 84
+                Replacement: spring.cloud.gateway.server.webflux.routes[4].uri
+        Key: spring.cloud.gateway.routes[4].predicates[0]
+                Line: 86
+                Replacement: spring.cloud.gateway.server.webflux.routes[4].predicates[0]
+        Key: spring.cloud.gateway.routes[4].filters[0]
+                Line: 88
+                Replacement: spring.cloud.gateway.server.webflux.routes[4].filters[0]
+        Key: spring.cloud.gateway.routes[5].id
+                Line: 89
+                Replacement: spring.cloud.gateway.server.webflux.routes[5].id
+        Key: spring.cloud.gateway.routes[5].uri
+                Line: 90
+                Replacement: spring.cloud.gateway.server.webflux.routes[5].uri
+        Key: spring.cloud.gateway.routes[5].predicates[0]
+                Line: 92
+                Replacement: spring.cloud.gateway.server.webflux.routes[5].predicates[0]
+        Key: spring.cloud.gateway.routes[5].filters[0]
+                Line: 94
+                Replacement: spring.cloud.gateway.server.webflux.routes[5].filters[0]
+        Key: spring.cloud.gateway.routes[6].id
+                Line: 95
+                Replacement: spring.cloud.gateway.server.webflux.routes[6].id
+        Key: spring.cloud.gateway.routes[6].uri
+                Line: 96
+                Replacement: spring.cloud.gateway.server.webflux.routes[6].uri
+        Key: spring.cloud.gateway.routes[6].predicates[0]
+                Line: 98
+                Replacement: spring.cloud.gateway.server.webflux.routes[6].predicates[0]
+        Key: spring.cloud.gateway.routes[6].filters[0]
+                Line: 100
+                Replacement: spring.cloud.gateway.server.webflux.routes[6].filters[0]
+        Key: spring.cloud.gateway.routes[7].id
+                Line: 101
+                Replacement: spring.cloud.gateway.server.webflux.routes[7].id
+        Key: spring.cloud.gateway.routes[7].uri
+                Line: 102
+                Replacement: spring.cloud.gateway.server.webflux.routes[7].uri
+        Key: spring.cloud.gateway.routes[7].predicates[0]
+                Line: 104
+                Replacement: spring.cloud.gateway.server.webflux.routes[7].predicates[0]
+        Key: spring.cloud.gateway.routes[7].filters[0]
+                Line: 106
+                Replacement: spring.cloud.gateway.server.webflux.routes[7].filters[0]
+        Key: spring.cloud.gateway.routes[8].id
+                Line: 107
+                Replacement: spring.cloud.gateway.server.webflux.routes[8].id
+        Key: spring.cloud.gateway.routes[8].uri
+                Line: 108
+                Replacement: spring.cloud.gateway.server.webflux.routes[8].uri
+        Key: spring.cloud.gateway.routes[8].predicates[0]
+                Line: 110
+                Replacement: spring.cloud.gateway.server.webflux.routes[8].predicates[0]
+        Key: spring.cloud.gateway.routes[8].filters[0]
+                Line: 112
+                Replacement: spring.cloud.gateway.server.webflux.routes[8].filters[0]
+        Key: spring.cloud.gateway.routes[9].id
+                Line: 113
+                Replacement: spring.cloud.gateway.server.webflux.routes[9].id
+        Key: spring.cloud.gateway.routes[9].uri
+                Line: 114
+                Replacement: spring.cloud.gateway.server.webflux.routes[9].uri
+        Key: spring.cloud.gateway.routes[9].predicates[0]
+                Line: 116
+                Replacement: spring.cloud.gateway.server.webflux.routes[9].predicates[0]
+        Key: spring.cloud.gateway.routes[9].filters[0]
+                Line: 118
+                Replacement: spring.cloud.gateway.server.webflux.routes[9].filters[0]
+        Key: spring.cloud.gateway.routes[10].id
+                Line: 119
+                Replacement: spring.cloud.gateway.server.webflux.routes[10].id
+        Key: spring.cloud.gateway.routes[10].uri
+                Line: 120
+                Replacement: spring.cloud.gateway.server.webflux.routes[10].uri
+        Key: spring.cloud.gateway.routes[10].predicates[0]
+                Line: 122
+                Replacement: spring.cloud.gateway.server.webflux.routes[10].predicates[0]
+        Key: spring.cloud.gateway.routes[10].filters[0]
+                Line: 124
+                Replacement: spring.cloud.gateway.server.webflux.routes[10].filters[0]
 
-@Configuration
-@EnableAutoConfiguration(exclude = { DataSourceAutoConfiguration.class })
-@EnableTransactionManagement
-@EnableJpaRepositories(
-        entityManagerFactoryRef = "snfkEntityManagerFactory",
-        transactionManagerRef = "txManagerSNFK",
-        basePackages = { "com.optum.fads.casereminders.api.snowflakeRepo" }
-)
-public class ServiceConfigSNFK {
 
-    private static final Logger logger = LoggerFactory.getLogger(ServiceConfigSNFK.class);
+Each configuration key has been temporarily mapped to its replacement for your convenience. To silence this warning, please update your configuration to use the new keys.
 
-    @Value("${spring.datasource.snfk.jdbcUrl}")
-    private String url;
+2026-03-08T12:24:52.560+05:30  WARN 1148 --- [fads-api-gateway] [           main] o.s.b.c.p.m.PropertiesMigrationListener  :
+The use of configuration keys that have been renamed was found in the environment:
 
-    // These values are KeyVault secret NAMES (not real values)
-    @Value("${spring.datasource.snfk.userName}")
-    private String username;
+Property source 'Config resource 'class path resource [application.yml]' via location 'optional:classpath:/'':
+        Key: spring.cloud.gateway.globalcors.add-to-simple-url-handler-mapping
+                Line: 127
+                Replacement: spring.cloud.gateway.server.webflux.globalcors.add-to-simple-url-handler-mapping
+        Key: spring.cloud.gateway.globalcors.cors-configurations[/**].allowedorigins
+                Line: 130
+                Replacement: spring.cloud.gateway.server.webflux.globalcors.cors-configurations[/**].allowedorigins
+        Key: spring.cloud.gateway.globalcors.cors-configurations[/**].allowedmethods
+                Line: 131
+                Replacement: spring.cloud.gateway.server.webflux.globalcors.cors-configurations[/**].allowedmethods
+        Key: spring.cloud.gateway.globalcors.cors-configurations[/**].allowedheaders
+                Line: 132
+                Replacement: spring.cloud.gateway.server.webflux.globalcors.cors-configurations[/**].allowedheaders
+        Key: spring.cloud.gateway.x-forwarded.enabled
+                Line: 53
+                Replacement: spring.cloud.gateway.server.webflux.x-forwarded.enabled
 
-    @Value("${spring.datasource.snfk.password}")
-    private String password;
 
-    @Value("${spring.datasource.snfk.certKey:}")
-    private String certKey;
+Each configuration key has been temporarily mapped to its replacement for your convenience. To silence this warning, please update your configuration to use the new keys.
 
-    @Value("${spring.datasource.snfk.passphrase:}")
-    private String passphrase;
+2026-03-08T12:24:52.562+05:30 ERROR 1148 --- [fads-api-gateway] [           main] o.s.b.c.p.m.PropertiesMigrationListener  :
+The use of configuration keys that are no longer supported was found in the environment:
 
-    @Value("${spring.datasource.snfk.database}")
-    private String database;
+Property source 'Config resource 'class path resource [application.yml]' via location 'optional:classpath:/'':
+        Key: management.endpoint.gateway.enabled
+                Line: 6
+                Reason: Replacement key 'management.endpoint.gateway.access' uses an incompatible target type
 
-    @Value("${spring.datasource.snfk.schema}")
-    private String schema;
 
-    @Value("${spring.datasource.snfk.warehouse}")
-    private String warehouse;
+Please refer to the release notes or reference guide for potential alternatives.
 
-    @Value("${spring.datasource.snfk.account:}")
-    private String account;
 
-    @Value("${spring.datasource.snfk.role:}")
-    private String role;
 
-    @Value("${db.snfk-login.useCert:false}")
-    private Boolean useCert;
 
-    private final SecretClient secretClient;
 
-    public ServiceConfigSNFK(SecretClient secretClient) {
-        this.secretClient = secretClient;
-    }
-
-    @Bean(name = "fadsSNFKDataSource")
-    public DataSource snfkDataSource() throws Exception {
-        return Boolean.TRUE.equals(useCert) ? createCertDataSource() : createPasswordDataSource();
-    }
-
-    private DataSource createCertDataSource() throws Exception {
-        logger.info("Snowflake auth using certificate PEM from Key Vault.");
-
-        // certKey contains the secret NAME that holds PEM content
-        String pem = secretClient.getSecret(certKey).getValue();
-
-        char[] passChars = resolvePassphraseChars();
-        PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pem, passChars);
-
-        // username contains the secret NAME that holds actual username
-        String userValue = secretClient.getSecret(username).getValue();
-
-        SnowflakeBasicDataSource sf = new SnowflakeBasicDataSource();
-        sf.setUrl(url);
-        sf.setDatabaseName(database);
-        sf.setSchema(schema);
-        sf.setWarehouse(warehouse);
-        if (account != null && !account.isBlank()) sf.setAccount(account);
-        if (role != null && !role.isBlank()) sf.setRole(role);
-
-        sf.setUser(userValue);
-        sf.setPrivateKey(privateKey);
-
-        HikariDataSource hikari = new HikariDataSource();
-        hikari.setDataSource(sf);
-        return hikari;
-    }
-
-    private DataSource createPasswordDataSource() {
-        logger.info("Snowflake auth using username/password from Key Vault.");
-
-        String userValue = secretClient.getSecret(username).getValue();
-        String passValue = secretClient.getSecret(password).getValue();
-
-        Properties props = new Properties();
-        props.put("user", userValue);
-        props.put("password", passValue);
-        props.put("database", database);
-        props.put("schema", schema);
-        props.put("warehouse", warehouse);
-        if (role != null && !role.isBlank()) props.put("role", role);
-        if (account != null && !account.isBlank()) props.put("account", account);
-
-        return new DriverManagerDataSource(url, props);
-    }
-
-    private char[] resolvePassphraseChars() {
-        // passphrase contains the secret NAME holding the passphrase value
-        if (passphrase == null || passphrase.isBlank()) return null;
-        String passValue = secretClient.getSecret(passphrase).getValue();
-        return (passValue == null || passValue.isBlank()) ? null : passValue.toCharArray();
-    }
-
-    @Bean(name = "snfkEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean snfkEntityManagerFactory(
-            @Qualifier("fadsSNFKDataSource") DataSource ds) {
-
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(ds);
-        em.setPackagesToScan("com.optum.fads.casereminders.api.snowflakeDomain");
-        em.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
-
-        HashMap<String, Object> properties = new HashMap<>();
-        properties.put("hibernate.allow_update_outside_transaction", true);
-        properties.put("hibernate.dialect", "com.optum.fads.casereminders.api.config.SnowflakeDialect");
-        em.setJpaPropertyMap(properties);
-
-        return em;
-    }
-
-    @Bean(name = "txManagerSNFK")
-    public PlatformTransactionManager txManagerSNFK(
-            @Qualifier("snfkEntityManagerFactory") EntityManagerFactory snfkEntityManagerFactory) {
-
-        JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(snfkEntityManagerFactory);
-        return txManager;
-    }
-
-    @Bean(name = "jdbcSnowflake")
-    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSNFKDataSource") DataSource ds) {
-        return new JdbcTemplate(ds);
-    }
-}
+any issue I am not ab;le to understgtand
