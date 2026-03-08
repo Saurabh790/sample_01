@@ -1,1289 +1,721 @@
-package com.optum.fads.casetracking.dao.impl;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import java.util.LinkedHashMap;
-
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.query.Query;
-import org.hibernate.transform.Transformers;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Repository;
-
-import com.optum.fads.casetracking.common.CaseConstants;
-import com.optum.fads.casetracking.common.CaseListAssociationsColumnsEnum;
-import com.optum.fads.casetracking.common.CasesForAssociationsColumnsEnum;
-import com.optum.fads.casetracking.dao.CaseAssociationListDAO;
-import com.optum.fads.casetracking.dto.AssociationListItem;
-import com.optum.fads.casetracking.util.CaseGlobalConstants;
-
-@Repository
-public class CaseAssociationListDAOImpl implements CaseAssociationListDAO  {
-	private final Logger log = Logger.getLogger(this.getClass().getName());
-	@Autowired
-	private SessionFactory sessionFactory;
-
-	public static CaseAssociationListDAO getFromApplicationContext(
-			ApplicationContext ctx) {
-		return (CaseAssociationListDAO) ctx.getBean("caseAssociationListDAO");
-	}
-
-	public void setSessionFactory(SessionFactory sessionFactory) {
-		this.sessionFactory = sessionFactory;
-	}
-
-	private Session getCurrentSession() {
-		return sessionFactory.getCurrentSession();
-	}
-
-	protected void initDao() {
-		// do nothing
-	}
-	
-	private Map<String, String> buildSafeParamMap(Map<String, String> filterConditions) {
-		Map<String, String> safe = new LinkedHashMap<>();
-		if (filterConditions == null || filterConditions.isEmpty()) {
-			return safe;
-		}
-		int i = 0;
-		for (String key : filterConditions.keySet()) {
-			safe.put(key, "p" + i++);
-		}
-		return safe;
-	}
-
-	private void setLikeParam(Query query, String safeParam, String rawValue) {
-		query.setString(safeParam, "%" + StringUtils.lowerCase(rawValue) + "%");
-	}
-
-    // for new table scenarios when using UITK 3 components
-    @Override
-    public int findAllCaseAssociationsTotalCount(Map<String,String> filterConditions, String[] nodes) {
-        StringBuilder sb = new StringBuilder();
-        getFindTotalCountQuerySelectFrom(sb);
-        sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
-
-		//log.info("---------------------CaseAssociationListDAOImpl findAllCaseAssociationsTotalCount - nodes.length: " + nodes.length + "---------------------");
-		if (ArrayUtils.isNotEmpty(nodes)) {
-			sb.append(" and c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd IN (:nodeList) ");
-		}
-
-		// CODEQL FIX START
-		
-        Map<String, String> safeParams = buildSafeParamMap(filterConditions);
-        getFindAllQueryFilters(sb, filterConditions, safeParams);
-        // CODEQL FIX END
-
-        final String queryString = sb.toString();
-        int resultListSize = 0;
-        try {
-            Query query = getCurrentSession().createQuery(queryString);
-
-			if (ArrayUtils.isNotEmpty(nodes)) {
-				query.setParameterList("nodeList", nodes);
-			}
-
-			// CODEQL FIX START
-            setFindAllQueryFilters(query, filterConditions, safeParams);
-            // CODEQL FIX END
-
-            resultListSize = query.list().size();
-        } catch (Exception e) {
-            log.error("Exception in findAllCaseAssociationsTotalCount: ", e);
-            throw e;
-        }
-
-        return resultListSize;
-    }
-
-    // for new table scenarios when using UITK 3 components
-    @Override
-    public List<AssociationListItem> findAllCaseAssociations(Map<String,String> filterConditions,
-                                           Map<String,String> sortConditions,
-                                           final int firstRecord, final int maxRecords, String[] nodes) {
-        StringBuilder sb = new StringBuilder();
-        getFindAllQuerySelectFrom(sb);
-
-        sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
-
-		//log.info("---------------------CaseAssociationListDAOImpl findAllCaseAssociations - nodes.length: " + nodes.length + "---------------------");
-		if (ArrayUtils.isNotEmpty(nodes)) {
-			sb.append(" and c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd IN (:nodeList) ");
-		}
-
-		// CODEQL FIX START
-        Map<String, String> safeParams = buildSafeParamMap(filterConditions);
-        getFindAllQueryFilters(sb, filterConditions, safeParams);
-        // CODEQL FIX END
-
-        getFindAllQueryOrderBy(sb, sortConditions);
-
-        final String queryString = sb.toString();
-        List<AssociationListItem> resultList = new ArrayList<>();
-        try {
-            Query query = getCurrentSession().createQuery(queryString);
-
-			if (ArrayUtils.isNotEmpty(nodes)) {
-				query.setParameterList("nodeList", nodes);
-			}
-
-			setFindAllQueryFilters(query, filterConditions, safeParams);
-            query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-            query.setFirstResult(firstRecord);
-            query.setMaxResults(maxRecords);
-
-            resultList = query.list();
-        } catch (Exception e) {
-            log.error("Exception in findAllCaseAssociations: ", e);
-            throw e;
-        }
-
-        return resultList;
-    }
-
-	// for new table scenarios when using UITK 3 components
-	private void getFindAllQueryFilters(StringBuilder sb, Map<String, String> filterConditions,
-			Map<String, String> safeParams) {
-		if (filterConditions != null && !filterConditions.isEmpty()) {
-			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-				for (CaseListAssociationsColumnsEnum col : CaseListAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-
-						String paramName = safeParams.get(entry.getKey()); 
-
-						if (col.isColumnDropDownForSearch()) {
-							sb.append(" and ").append(col.getColumnStringSearchOrderBy()).append(" = :")
-									.append(paramName);
-
-						} else if ("intelligentKey".equals(entry.getKey())) {
-							sb.append(" and lower(c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd || '-' || ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd || '-' || ");
-							}
-							sb.append(" c.caIntelligentKeyTByCaseId.caYearId || '-' || ");
-							sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000')) like :")
-									.append(paramName);
-
-						} else if ("associatedIntelligentKey".equals(entry.getKey())) {
-							sb.append(" and lower(c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ")
-									.append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ||'-'|| ");
-							}
-							sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ||'-'|| ");
-							sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :")
-									.append(paramName);
-
-						} else {
-							sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like :")
-									.append(paramName);
-
-							if (StringUtils.containsAny(entry.getValue(), '%', '_')) {
-								sb.append(" ESCAPE '\\' ");
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	private void setFindAllQueryFilters(Query query, Map<String, String> filterConditions,
-			Map<String, String> safeParams) {
-		if (filterConditions != null && !filterConditions.isEmpty()) {
-			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-				for (CaseListAssociationsColumnsEnum col : CaseListAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-
-						String paramName = safeParams.get(entry.getKey());
-
-						if (col.isColumnDropDownForSearch()) {
-							query.setString(paramName, entry.getValue());
-
-						} else {
-									
-							String escString = entry.getValue();
-							if (StringUtils.containsAny(escString, '%', '_')) {
-								escString = StringUtils.replace(StringUtils.replace(escString, "%", "\\%"), "_", "\\_");
-							}
-							query.setString(paramName, getLowerSearchString(escString));
-						}
-					}
-				}
-			}
-		}
-	}
-
-    // for new table scenarios when using UITK 3 components
-    private String getLowerSearchString(String searchInput){
-        return "%" + StringUtils.lowerCase(searchInput) + "%";
-    }
-
-	private String escapeSingleQuote(String searchInput){
-		return StringUtils.replace(searchInput, "'", "''");
-	}
-
-    // for new table scenarios when using UITK 3 components
-    private void getFindAllQueryOrderBy(StringBuilder sb, Map<String, String> sortConditions) {
-        if (sortConditions != null && !sortConditions.isEmpty()) {
-            sb.append(" order by");
-
-            for (Map.Entry<String, String> entry : sortConditions.entrySet()) {
-                for (CaseListAssociationsColumnsEnum col : CaseListAssociationsColumnsEnum.values()) {
-                    if (col.getColumnId().equals(entry.getKey())) {
-                        if (col.isColumnStringTypeForOrderBy()) {
-                            sb.append(" lower(").append(col.getColumnStringSearchOrderBy()).append(")");
-                        } else {
-                            sb.append(" ").append(col.getColumnQueryOrder());
-                        }
-                        break;
-                    }
-                }
-
-                if ("-1".equals(entry.getValue())) {
-                    sb.append(" DESC NULLS LAST,");
-                } else if ("1".equals(entry.getValue())) {
-                    sb.append(" ASC NULLS FIRST,");
-                }
-
-                if (!"intelligentKey".equals(entry.getKey())) {
-                    sb.append(" ").append(CaseListAssociationsColumnsEnum.CASE_ID.getColumnQueryOrder());
-                } else {
-                    sb.delete(sb.length() - 1, sb.length());
-                }
-            }
-        }
-    }
-
-    private void getFindAllQuerySelectFrom(StringBuilder sb) {
-        sb.append(" select c.id.caseId  as caseId,");
-        sb.append(" c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd as primaryNode ,");
-        sb.append(" c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-        sb.append( "||'-'|| ");
-
-        if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-            sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-            sb.append(" ||'-'|| ");
-        }
-
-        sb.append(" c.caIntelligentKeyTByCaseId.caYearId ");
-        sb.append(" ||'-'|| ");
-        sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000') as intelligentKey ,");
-
-        sb.append(" caGeneralT.protectStatus as protectStatus, ");
-        sb.append(" caGeneralT.caseName as caseName, ");
-
-        sb.append(" caLuCaseTypeT.typeCd as caseType, ");
-        sb.append(" caLuCaseTypeT.typeDesc as caseTypeDesc, ");
-
-        sb.append(" caGeneralT.participantId as participantId, ");
-        sb.append(" caGeneralT.participantName as participantName, ");
-
-        sb.append(" c.caIntelligentKeyTByAssociateCaseId.caseId as associatedCaseId, ");
-
-        sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-        //sb.append( "||'-'|| ");
-        sb.append( " || ");
-        sb.append( "NVL2(c.caIntelligentKeyTByAssociateCaseId.caseId, '-', '')");
-        sb.append( " || ");
-
-        if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-            sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-            //sb.append(" ||'-'|| ");
-            sb.append( " || ");
-            sb.append( "NVL2(c.caIntelligentKeyTByAssociateCaseId.caseId, '-', '')");
-            sb.append( " || ");
-        }
-
-        sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ");
-        //sb.append( "||'-'|| ");
-        sb.append( " || ");
-        sb.append( "NVL2(c.caIntelligentKeyTByAssociateCaseId.caseId, '-', '')");
-        sb.append( " || ");
-        sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000') as associatedIntelligentKey, ");
-
-        sb.append(" ccaLuCaseTypeT.typeCd AS associatedCaseType, ");
-        sb.append(" ccaLuCaseTypeT.typeDesc AS associatedTypeDesc, ");
-
-        sb.append(" c.associateCaseName as associatedName,  ");
-        sb.append(" c.associateId as associatedParticipantId, ");
-        sb.append(" c.associateName as associatedParticipantName,  ");
-        sb.append(" c.associateComment as comments ");
-        sb.append(" from CaAssociateT c ");
-        sb.append(" left outer join c.caIntelligentKeyTByCaseId  ");
-        sb.append(" left outer join c.caIntelligentKeyTByCaseId.caGeneralT  as caGeneralT");
-        sb.append(" left outer join c.caIntelligentKeyTByCaseId.caLuCaseTypeT as caLuCaseTypeT");
-        sb.append(" left outer join c.caIntelligentKeyTByAssociateCaseId ");
-        sb.append(" left outer join c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT as  ccaLuCaseTypeT");
-    }
-
-    /* (non-Javadoc)
-	 * @see com.optum.fads.casetracking.dao.impl.CaseAssociationListDAO#findAll(java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, int)
-	 */
-	@Override
-	public List<AssociationListItem> findAll(final String caseType,
-			final String searchValue, final String sortBy,
-			final String sortDirection, final int firstRecord,
-			final int maxRecords) {
-		log.debug("finding all CaseAssociationListDAO instances");
-		log.info("CaseAssociationListDAO.findAll() starts ");
-		try {
-			StringBuilder sb = new StringBuilder();
-            getFindAllQuerySelectFrom(sb);
-
-			sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
-			if (caseType != null){
-					sb.append(" and caLuCaseTypeT.typeCd = :caseType ");
-			   }
-			 if(searchValue!=null){
-				sb.append(" and (lower(c.associateCaseName) like :searchValue ");
-				sb.append(" or lower(c.associateId) like :searchValue ");
-				sb.append(" or lower(c.associateName) like :searchValue ");
-				sb.append(" or lower(caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append("or lower(c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-				sb.append( "||'-'|| ");
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-				sb.append(" c.caIntelligentKeyTByCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000')) like :searchValue ");
-
-				sb.append(" or lower(caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append("or lower( c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-				sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :searchValue  ");
-
-				sb.append(" or lower( caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append(" or lower( caGeneralT.caseName) like :searchValue ");
-				sb.append(" or lower( caGeneralT.participantId) like :searchValue ");
-				sb.append(" or lower( caGeneralT.participantName) like :searchValue )");
-
-			}
-
-
-
-
-			 if(sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_RESTRICT)){
-				// sb.append(" order by  c.caIntelligentKeyTByCaseId.caGeneralT.protectStatus  ");
-				 sb.append(" order by  caGeneralT.protectStatus  ");
-				 sb.append("  ");
-				 sb.append(sortDirection);
-			 }
-
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_CASE_TYPE)) {
-			//	sb.append(" order by c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeDesc ) ");
-				sb.append(" order by caLuCaseTypeT.typeDesc  ");
-
-				sb.append("  ");
-				sb.append(sortDirection);
-				sb.append(" ) ");
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_INTELLIGENT_KEY)) {
-				sb.append(" order by  ");
-				sb.append(" c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-						sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-							sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" c.caIntelligentKeyTByCaseId.caYearId ");
-						sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000') ");
-				sb.append("  ");
-				sb.append(sortDirection);
-
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_CASE_NAME)) {
-				sb.append(" order by lower( caGeneralT.caseName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_PARTICIPANT_ID)) {
-				sb.append(" order by lower( caGeneralT.participantId ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_PARTICIPANT_NAME)) {
-				sb.append(" order by lower( caGeneralT.participantName  )");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_CASE_TYPE)) {
-				sb.append(" order by lower( ccaLuCaseTypeT.typeDesc ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_INTELLIGENT_KEY)) {
-				sb.append(" order by  ");
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-						sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-							sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ");
-						sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')  ");
-				sb.append("  ");
-				sb.append(sortDirection);
-
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_CASE_NAME)) {
-				sb.append(" order by lower(c.associateCaseName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_PARTICIPANT_ID)) {
-				sb.append(" order by lower(c.associateId )");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_PARTICIPANT_NAME)) {
-				sb.append(" order by lower(c.associateName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			final String queryString = sb.toString();
-							Query query = getCurrentSession().createQuery(queryString);
-							query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-							query.setFirstResult(firstRecord);
-							query.setMaxResults(maxRecords);
-
-
-							 if(searchValue!=null){
-									String lsearchValue="%"+ searchValue.toLowerCase()+ "%";
-									query.setParameter("searchValue", lsearchValue);
-							}
-							if (caseType != null){
-								query.setParameter("caseType", caseType);
-							}
-							List<AssociationListItem> aliasToValueMapList = query.list();
-
-							return aliasToValueMapList;
-
-
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-
-	}
-
-    private void getFindTotalCountQuerySelectFrom(StringBuilder sb) {
-        sb.append(" select c.id.caseId  as caseId ");
-        sb.append(" from CaAssociateT c ");
-        sb.append(" left outer join c.caIntelligentKeyTByCaseId  as caIntelligentKeyTByCaseId");
-        sb.append(" left outer join c.caIntelligentKeyTByCaseId.caGeneralT  as caGeneralT");
-        sb.append(" left outer join c.caIntelligentKeyTByCaseId.caLuCaseTypeT as caLuCaseTypeT");
-        sb.append(" left outer join c.caIntelligentKeyTByAssociateCaseId as caIntelligentKeyTByAssociateCaseId");
-        sb.append(" left outer join c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT  as ccaLuCaseTypeT");
-    }
-
-	/* (non-Javadoc)
-	 * @see com.optum.fads.casetracking.dao.impl.CaseAssociationListDAO#findTotalAssociationsCount(java.lang.String, java.lang.String)
-	 */
-	@Override
-	public Integer findTotalAssociationsCount(final String caseType,final String searchValue) {
-	log.debug("finding all CaseAssociationListDAO instances");
-	try {
-		StringBuilder sb = new StringBuilder();
-        getFindTotalCountQuerySelectFrom(sb);
-		sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
-		if (caseType != null){
-			sb.append(" and c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeCd = :caseType ");
-		}
-		 if(searchValue!=null){
-				sb.append(" and (lower(c.associateCaseName) like :searchValue ");
-				sb.append(" or lower(c.associateId) like :searchValue ");
-				sb.append(" or lower(c.associateName) like :searchValue ");
-				sb.append(" or lower(caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append("or lower(caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-				sb.append( "||'-'|| ");
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-				sb.append(" caIntelligentKeyTByCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(caIntelligentKeyTByCaseId.caSequenceId,'FM00000')) like :searchValue ");
-
-				sb.append(" or lower( ccaLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append("or lower( caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-				sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" caIntelligentKeyTByAssociateCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :searchValue  ");
-
-				sb.append(" or lower( ccaLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append(" or lower( caGeneralT.caseName) like :searchValue ");
-				sb.append(" or lower( caGeneralT.participantId) like :searchValue ");
-				sb.append(" or lower( caGeneralT.participantName) like :searchValue )");
-		 }
-
-
-		final String queryString = sb.toString();
-
-						Query query = getCurrentSession().createQuery(queryString);
-					//	query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-
-						if (searchValue != null) {
-							final String lsearchValue="%"+searchValue.toLowerCase()+"%";
-							query.setParameter("searchValue", lsearchValue);
-						}
-						if (caseType != null)
-						{
-							query.setParameter("caseType", caseType);
-						}
-						Integer listSize = query.list().size();
-						return listSize;
-
-
-	} catch (RuntimeException re) {
-		log.error("find all failed", re);
-		throw re;
-	}
-
-}
-
-	// for new table scenarios on Detail - Associations page when using UITK 3 components
-	@Override
-	public int findCasesForAssociationsTotalCount(Map<String,String> filterConditions, Integer caseId, String[] nodes) {
-        StringBuilder sb = new StringBuilder();
-        getFindCasesForAssocTotalCountQuerySelectFrom(sb);
-        sb.append(" where  c.deleteFlag is null   ");
-
-		//log.info("---------------------CaseAssociationListDAOImpl findCasesForAssociationsTotalCount - nodes.length: " + nodes.length + "---------------------");
-		if (ArrayUtils.isNotEmpty(nodes)) {
-			sb.append(" and c.caLuPrmNodeT.nodeCd IN (:nodeList) ");
-		}
-
-		//sb.append(" and ( c.caseId <> ");
-        //sb.append(caseId);
-		sb.append(" and ( c.caseId <> :cid");
-        sb.append(" )");
-        Map<String, String> safeParams = buildSafeParamMap(filterConditions);
-        getCasesForAssocQueryFilters(sb, filterConditions, safeParams);
-        sb.append(" ) ");
-		final String queryString = sb.toString();
-
-        int resultListSize = 0;
-        try {
-            Query query = getCurrentSession().createQuery(queryString);
-
-			if (ArrayUtils.isNotEmpty(nodes)) {
-				query.setParameterList("nodeList", nodes);
-			}
-
-			query.setInteger("cid", caseId);
-			// CODEQL FIX START
-            setCasesForAssocQueryFilters(query, filterConditions, safeParams);
-            // CODEQL FIX END
-
-            final Long longVal = (Long) query.uniqueResult();
-            resultListSize = longVal.intValue();
-
-        } catch (Exception e) {
-            log.error("Exception in findCasesForAssociationsTotalCount: ", e);
-            throw e;
-        }
-
-		return resultListSize;
-	}
-
-    // for new table scenarios on Detail - Associations page when using UITK 3 components
-    @Override
-    public List<AssociationListItem> findCasesForAssociations(Map<String, String> filterConditions,
-                                                              Map<String, String> sortConditions,
-                                                              final int firstRecord, final int maxRecords,
-                                                              Integer caseId, String[] nodes) {
-        StringBuilder sb = new StringBuilder();
-        getFindCasesForAssocQuerySelectFrom(sb);
-
-        sb.append(" where c.deleteFlag is null   ");
-
-		//log.info("---------------------CaseAssociationListDAOImpl findCasesForAssociations - nodes.length: " + nodes.length + "---------------------");
-		if (ArrayUtils.isNotEmpty(nodes)) {
-			sb.append(" and c.caLuPrmNodeT.nodeCd IN (:nodeList) ");
-		}
-
-		//sb.append(" and ( c.caseId <> ");
-        //sb.append(caseId);
-		sb.append(" and ( c.caseId <> :cid");
-		sb.append(" )");
-
-		 // CODEQL FIX START
-        Map<String, String> safeParams = buildSafeParamMap(filterConditions);
-        getCasesForAssocQueryFilters(sb, filterConditions, safeParams);
-        // CODEQL FIX END
-
-		getCasesForAssocQueryOrderBy(sb, sortConditions);
-
-		final String queryString = sb.toString();
-		List<AssociationListItem> resultList = new ArrayList<>();
-		try {
-			Query query = getCurrentSession().createQuery(queryString);
-
-			if (ArrayUtils.isNotEmpty(nodes)) {
-				query.setParameterList("nodeList", nodes);
-			}
-
-			query.setInteger("cid", caseId);
-			// CODEQL FIX START
-            setCasesForAssocQueryFilters(query, filterConditions, safeParams);
-            // CODEQL FIX END
-
-			query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-			query.setFirstResult(firstRecord);
-			query.setMaxResults(maxRecords);
-
-			resultList = query.list();
-
-		} catch (Exception e) {
-			log.error("Exception in findCasesForAssociations: ", e);
-			throw e;
-		}
-
-		return resultList;
-	}
-
-	private void getFindCasesForAssocQuerySelectFrom(StringBuilder sb) {
-		sb.append(" SELECT c.caseId  as caseId,");
-		sb.append(" c.caLuPrmNodeT.nodeCd ");
-		sb.append(" ||'-'|| ");
-
-		if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-			sb.append(" c.caLuScndNodeT.nodeCd ");
-			sb.append(" ||'-'|| ");
-		}
-
-		sb.append(" c.caYearId ");
-		sb.append(" ||'-'|| ");
-		sb.append(" to_char(c.caSequenceId,'FM00000') as intelligentKey ,");
-
-		sb.append(" caGeneralT.protectStatus as protectStatus, ");
-		sb.append(" caLuCaseTypeT.typeCd as caseType, ");
-		sb.append(" caLuCaseTypeT.typeDesc as caseTypeDesc, ");
-		sb.append(" caGeneralT.caseName as caseName ,");
-		sb.append(" caGeneralT.participantId as participantId, ");
-		sb.append(" caGeneralT.participantName as participantName, ");
-		sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caseId as associatedCaseId ,");
-
-		//avoid to show empty -- for associatedIntelligentKey (case id) column in table
-		sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-		//sb.append( " ||'-'|| ");
-		sb.append( " || ");
-		sb.append( "NVL2(assoc.caIntelligentKeyTByAssociateCaseId.caseId, '-', '')");
-		sb.append( " || ");
-
-		if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-			sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-			//sb.append( " ||'-'|| ");
-			sb.append( " || ");
-			sb.append( "NVL2(assoc.caIntelligentKeyTByAssociateCaseId.caseId, '-', '')");
-			sb.append( " || ");
-		}
-
-		sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
-		//sb.append(  " ||'-'|| ");
-		sb.append( " || ");
-		sb.append( "NVL2(assoc.caIntelligentKeyTByAssociateCaseId.caseId, '-', '')");
-		sb.append( " || ");
-		sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000') as associatedIntelligentKey, ");
-
-		sb.append(" assocCaLuCaseTypeT.typeCd AS associatedCaseType, ");
-		sb.append(" assocCaLuCaseTypeT.typeDesc AS associatedTypeDesc, ");
-
-		sb.append(" assoc.associateCaseName as associatedName , ");
-		sb.append(" assoc.associateId as associatedParticipantId , ");
-		sb.append(" assoc.associateName as associatedParticipantName ");
-
-		//	sb.append(" ,assoc.associateComment as comments ");
-		sb.append(" FROM CaIntelligentKeyT c ");
-		sb.append(" left outer join c.caGeneralT as caGeneralT");
-		sb.append(" left outer join c.caLuCaseTypeT as caLuCaseTypeT");
-		sb.append(" left outer join c.caAssociateTsForCaseId as assoc");
-		sb.append(" left outer join assoc.caIntelligentKeyTByAssociateCaseId.caGeneralT as assocCaGeneralT ");
-		sb.append(" left outer join assoc.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT as assocCaLuCaseTypeT ");
-	}
-
-	// for new Detail - Associations page
-	private void getCasesForAssocQueryFilters(StringBuilder sb, Map<String, String> filterConditions,
-			Map<String, String> safeParams) {
-		if (filterConditions != null && !filterConditions.isEmpty()) {
-			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-
-						String paramName = safeParams.get(entry.getKey());
-
-						if ("intelligentKey".equals(entry.getKey())) {
-							sb.append(" and lower(c.caLuPrmNodeT.nodeCd ").append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" c.caLuScndNodeT.nodeCd ||'-'|| ");
-							}
-							sb.append(" c.caYearId ||'-'|| ");
-							sb.append(" to_char(c.caSequenceId,'FM00000')) like :").append(paramName);
-
-						} else if ("associatedIntelligentKey".equals(entry.getKey())) {
-							sb.append(" and lower(assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ")
-									.append("||'-'|| ");
-							if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-								sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ||'-'|| ");
-							}
-							sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ||'-'|| ");
-							sb.append(
-									" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :")
-									.append(paramName);
-
-						} else {
-							sb.append(" and lower(").append(col.getColumnStringSearchOrderBy()).append(") like :")
-									.append(paramName);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	private void setCasesForAssocQueryFilters(Query query, Map<String, String> filterConditions,
-			Map<String, String> safeParams) {
-		if (filterConditions != null && !filterConditions.isEmpty()) {
-			for (Map.Entry<String, String> entry : filterConditions.entrySet()) {
-				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-						String paramName = safeParams.get(entry.getKey());
-						query.setString(paramName, getLowerSearchString(entry.getValue()));
-					}
-				}
-			}
-		}
-	}
-
-	// for new Detail - Associations page
-	private void getCasesForAssocQueryOrderBy(StringBuilder sb, Map<String,String> sortConditions) {
-		if (sortConditions != null && !sortConditions.isEmpty()) {
-			sb.append(" order by");
-
-			for (Map.Entry<String, String> entry : sortConditions.entrySet()) {
-				for (CasesForAssociationsColumnsEnum col : CasesForAssociationsColumnsEnum.values()) {
-					if (col.getColumnId().equals(entry.getKey())) {
-						if (col.isColumnStringTypeForOrderBy()){
-							sb.append(" lower(").append(col.getColumnStringSearchOrderBy()).append(")");
-						} else {
-							sb.append(" ").append(col.getColumnQueryOrder());
-						}
-						break;
-					}
-				}
-
-				if ("-1".equals(entry.getValue())) {
-					sb.append(" DESC,");    // NULLS LAST
-				} else if ("1".equals(entry.getValue())) {
-					sb.append(" ASC,");		// NULLS FIRST
-				}
-
-                if (! "intelligentKey".equals(entry.getKey())){
-                    sb.append(" ").append(CasesForAssociationsColumnsEnum.CASE_ID.getColumnQueryOrder());
-                } else {
-                    sb.delete(sb.length()-1, sb.length());
-                }
-			}
-		}
-	}
-
-	/* (non-Javadoc)
-	 * @see com.optum.fads.casetracking.dao.impl.CaseAssociationListDAO#findAllCasesWithAssociations(java.lang.Integer, java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, int)
-	 */
-	@Override
-	public List<AssociationListItem>  findAllCasesWithAssociations(final Integer caseId,final String caseType,
-			final String searchValue, final String sortBy,
-			final String sortDirection, final int firstRecord,
-			final int maxRecords) {
-		log.debug("finding all CaseAssociationListDAO instances");
-		try {
-			StringBuilder sb = new StringBuilder();
-			getFindCasesForAssocQuerySelectFrom(sb);
-			sb.append(" where  c.deleteFlag is null   ");
-		//	sb.append(" and ( c.caseId <> :caseId or assoc.caIntelligentKeyTByAssociateCaseId.caseId <> :caseId )");
-			sb.append(" and ( c.caseId <> :caseId  )");
-			if (caseType != null){
-				sb.append(" and caLuCaseTypeT.typeCd = :caseType ");
-			}
-			 if(searchValue!=null){
-					sb.append(" and ( ");
-					sb.append(" lower(caLuCaseTypeT.typeDesc) like :searchValue ");
-					sb.append(" or lower( c.caLuPrmNodeT.nodeCd  ");
-							sb.append( "||'-'|| ");
-					if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-						sb.append(" c.caLuScndNodeT.nodeCd ");
-								sb.append( " ||'-'|| ");
-					}
-					sb.append(" c.caYearId ");
-					sb.append(" ||'-'|| ");
-					sb.append(" to_char(c.caSequenceId,'FM00000')) like :searchValue ");
-					sb.append(" or lower(caGeneralT.caseName) like :searchValue ");
-					sb.append(" or lower(caGeneralT.participantId ) like :searchValue ");
-					sb.append(" or lower(caGeneralT.participantName ) like :searchValue ");
-
-					sb.append(" or lower(assocCaLuCaseTypeT.typeDesc) like :searchValue ");
-					sb.append("or lower( assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd  ");
-							sb.append( "||'-'|| ");
-					if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-						sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-								sb.append( " ||'-'|| ");
-					}
-					sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
-					sb.append( "||'-'|| ");
-					sb.append(" to_char( assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :searchValue  ");
-					sb.append(" or lower( assoc.associateCaseName) like :searchValue ");
-					sb.append(" or lower( assoc.associateId) like :searchValue ");
-					sb.append(" or lower( assoc.associateName) like :searchValue ");
-					sb.append(" )");
-
-			 		}
-
-				if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_CASE_TYPE)) {
-					sb.append(" order by caLuCaseTypeT.typeDesc  ");
-					sb.append("  ");
-					sb.append(sortDirection);
-				}
-
-				if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_INTELLIGENT_KEY)) {
-					sb.append(" order by  ");
-					sb.append(" c.caLuPrmNodeT.nodeCd ");
-					sb.append( "||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caLuScndNodeT.nodeCd ");
-					sb.append( " ||'-'|| ");
-				}
-
-					sb.append(" c.caYearId ");
-					sb.append( "||'-'|| ");
-					sb.append(" to_char(c.caSequenceId,'FM00000') ");
-					sb.append("  ");
-					sb.append(sortDirection);
-
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_CASE_NAME)) {
-					sb.append(" order by lower( caGeneralT.caseName ) ");
-					sb.append("  ");
-					sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_PARTICIPANT_ID)) {
-					sb.append(" order by lower( caGeneralT.participantId) ");
-					sb.append("  ");
-					sb.append(sortDirection);
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_PARTICIPANT_NAME)) {
-					sb.append(" order by lower(caGeneralT.participantName ) ");
-					sb.append("  ");
-					sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_CASE_TYPE)) {
-					sb.append(" order by  assocCaLuCaseTypeT.typeDesc  ");
-					sb.append("  ");
-					sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_INTELLIGENT_KEY)) {
-					sb.append(" order by  ");
-					sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')  ");
-				sb.append("  ");
-				sb.append(sortDirection);
-
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_CASE_NAME)) {
-				sb.append(" order by lower(assoc.associateCaseName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_PARTICIPANT_ID)) {
-				sb.append(" order by lower(assoc.associateId) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_PARTICIPANT_NAME)) {
-				sb.append(" order by lower( assoc.associateName )");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-
-			final String queryString = sb.toString();
-
-							Query query =  getCurrentSession().createQuery(queryString);
-							query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-							query.setFirstResult(firstRecord);
-							query.setMaxResults(maxRecords);
-							if(caseId!=null){
-								query.setParameter("caseId", caseId);
-							}
-							if(searchValue != null) {
-								String lsearchVal="%"+ searchValue.toLowerCase() + "%";
-								query.setParameter("searchValue",lsearchVal );
-							}
-							if(caseType != null) {
-								query.setParameter("caseType", caseType);
-							}
-
-							List<AssociationListItem> aliasToValueMapList = query.list();
-							return aliasToValueMapList;
-
-
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-
-	}
-
-    private void getFindCasesForAssocTotalCountQuerySelectFrom(StringBuilder sb) {
-        //sb.append(" select count(*) from CaIntelligentKeyT intKey where intKey.caseId in ( ");
-        //sb.append(" SELECT c.caseId  as caseId");
-		sb.append(" select count(1) ");
-		sb.append(" FROM CaIntelligentKeyT c ");
-        sb.append(" left outer join c.caGeneralT as caGeneralT");
-        sb.append(" left outer join c.caLuCaseTypeT as caLuCaseTypeT");
-        sb.append(" left outer join c.caAssociateTsForCaseId as assoc");
-        sb.append(" left outer join assoc.caIntelligentKeyTByAssociateCaseId.caGeneralT as assocCaGeneralT ");
-        sb.append(" left outer join assoc.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT as assocCaLuCaseTypeT ");
-    }
-	
-    /* (non-Javadoc)
-	 * @see com.optum.fads.casetracking.dao.impl.CaseAssociationListDAO#findAllTotalCasesWithAssociationsCount(java.lang.Integer, java.lang.String, java.lang.String)
-	 */
-	@Override
-	public Integer findAllTotalCasesWithAssociationsCount(final Integer caseId,final String caseType,final String searchValue) {
-		log.debug("finding all CaseAssociationListDAO instances");
-		try {
-			StringBuilder sb = new StringBuilder();
-            getFindCasesForAssocTotalCountQuerySelectFrom(sb);
-			sb.append(" where  c.deleteFlag is null   ");
-		//	sb.append(" and ( c.caseId <> :caseId or assoc.caIntelligentKeyTByAssociateCaseId.caseId <> :caseId )");
-			sb.append(" and ( c.caseId <> :caseId  )");
-			if (caseType != null){
-				sb.append(" and caLuCaseTypeT.typeCd = :caseType ");
-			}
-			 if(searchValue!=null){
-					sb.append(" and ( ");
-					sb.append(" lower(caLuCaseTypeT.typeDesc) like :searchValue ");
-					sb.append(" or lower( c.caLuPrmNodeT.nodeCd  ");
-							sb.append( "||'-'|| ");
-					if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-						sb.append(" c.caLuScndNodeT.nodeCd ");
-								sb.append( " ||'-'|| ");
-					}
-					sb.append(" c.caYearId ");
-					sb.append(" ||'-'|| ");
-					sb.append(" to_char(c.caSequenceId,'FM00000')) like :searchValue ");
-					sb.append(" or lower(caGeneralT.caseName) like :searchValue ");
-					sb.append(" or lower(caGeneralT.participantId ) like :searchValue ");
-					sb.append(" or lower(caGeneralT.participantName ) like :searchValue ");
-
-					sb.append(" or lower(assocCaLuCaseTypeT.typeDesc) like :searchValue ");
-					sb.append("or lower( assoc.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd  ");
-							sb.append( "||'-'|| ");
-					if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-						sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-								sb.append( " ||'-'|| ");
-					}
-					sb.append(" assoc.caIntelligentKeyTByAssociateCaseId.caYearId ");
-					sb.append( "||'-'|| ");
-					sb.append(" to_char( assoc.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :searchValue  ");
-					sb.append(" or lower( assoc.associateCaseName) like :searchValue ");
-					sb.append(" or lower( assoc.associateId) like :searchValue ");
-					sb.append(" or lower( assoc.associateName) like :searchValue ");
-					sb.append(" )");
-             }
-            sb.append(" ) ");
-
-            final String queryString = sb.toString();
-
-							Query query =  getCurrentSession().createQuery(queryString);
-					//		query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-							if(caseId!=null){
-								query.setParameter("caseId", caseId);
-							}
-							 if(searchValue!=null){
-								 String lsearchVal="%"+ searchValue.toLowerCase() + "%";
-								query.setParameter("searchValue",lsearchVal );
-
-							}
-							if (caseType != null) {
-								query.setParameter("caseType", caseType);
-							}
-							/*Integer listSize=query.list().size();
-							return listSize;
-							*/
-							final Long longVal=(Long) query.uniqueResult();//.size();
-							final Integer intVal= longVal.intValue();
-							return intVal;
-
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-
-	}
-
-	/*
-	 public List<AssociationListItem> findAll(final String caseType,
-			final String searchValue, final String sortBy,
-			final String sortDirection, final int firstRecord,
-			final int maxRecords) {
-		log.debug("finding all CaseAssociationListDAO instances");
-		log.info("CaseAssociationListDAO.findAll() starts ");
-		try {
-			StringBuilder sb = new StringBuilder();
-			sb.append(" select c.id.caseId  as caseId,");
-			sb.append(" c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-			sb.append( "||'-'|| ");
-
-			if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-				sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-				sb.append(" ||'-'|| ");
-			}
-
-			sb.append(" c.caIntelligentKeyTByCaseId.caYearId ");
-			sb.append(" ||'-'|| ");
-			sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000') as intelligentKey ,");
-
-			sb.append(" c.caIntelligentKeyTByCaseId.caGeneralT.protectStatus as protectStatus, ");
-			sb.append(" c.caIntelligentKeyTByCaseId.caGeneralT.caseName as caseName, ");
-
-			sb.append(" c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeCd as caseType, ");
-			sb.append(" c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeDesc as caseTypeDesc, ");
-
-			sb.append(" c.caIntelligentKeyTByCaseId.caGeneralT.participantId as participantId, ");
-			sb.append(" c.caIntelligentKeyTByCaseId.caGeneralT.participantName as participantName, ");
-
-			sb.append(" c.caIntelligentKeyTByAssociateCaseId.caseId as associatedCaseId, ");
-			sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-			sb.append( "||'-'|| ");
-
-			if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-						sb.append(" ||'-'|| ");
-			}
-
-			sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ");
-			sb.append( "||'-'|| ");
-			sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000') as associatedIntelligentKey, ");
-
-			sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT.typeCd AS associatedCaseType, ");
-			sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT.typeDesc AS associatedTypeDesc, ");
-
-			sb.append(" c.associateCaseName as associatedName,  ");
-			sb.append(" c.associateId as associatedParticipantId, ");
-			sb.append(" c.associateName as associatedParticipantName,  ");
-			sb.append(" c.associateComment as comments ");
-			sb.append(" from CaAssociateT c ");
-			sb.append(" left outer join c.caIntelligentKeyTByCaseId  as caIntelligentKeyTByCaseId");
-			sb.append(" left outer join c.caIntelligentKeyTByCaseId.caGeneralT  as caGeneralT");
-			sb.append(" left outer join c.caIntelligentKeyTByCaseId.caLuCaseTypeT as caLuCaseTypeT");
-			sb.append(" left outer join c.caIntelligentKeyTByAssociateCaseId as caIntelligentKeyTByAssociateCaseId");
-			sb.append(" left outer join c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT  as cccaLuCaseTypeT");
-			sb.append(" where c.caIntelligentKeyTByCaseId.deleteFlag is null  ");
-			if (caseType != null){
-					sb.append(" and c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeCd = :caseType ");
-			}
-			 if(searchValue!=null){
-				sb.append(" and (lower(c.associateCaseName) like :searchValue ");
-				sb.append(" or lower(c.associateId) like :searchValue ");
-				sb.append(" or lower(c.associateName) like :searchValue ");
-				sb.append(" or lower(c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append("or lower(c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-				sb.append( "||'-'|| ");
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-				sb.append(" c.caIntelligentKeyTByCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000')) like :searchValue ");
-
-				sb.append(" or lower( c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append("or lower( c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-				sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-					sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ");
-				sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')) like :searchValue  ");
-
-				sb.append(" or lower( c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT.typeDesc) like :searchValue ");
-				sb.append(" or lower(  c.caIntelligentKeyTByCaseId.caGeneralT.caseName) like :searchValue ");
-				sb.append(" or lower( c.caIntelligentKeyTByCaseId.caGeneralT.participantId) like :searchValue ");
-				sb.append(" or lower( c.caIntelligentKeyTByCaseId.caGeneralT.participantName) like :searchValue )");
-
-			}
-
-
-
-
-			 if(sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_RESTRICT)){
-				 sb.append(" order by  c.caIntelligentKeyTByCaseId.caGeneralT.protectStatus  ");
-				 sb.append("  ");
-				 sb.append(sortDirection);
-			 }
-
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_CASE_TYPE)) {
-				sb.append(" order by c.caIntelligentKeyTByCaseId.caLuCaseTypeT.typeDesc ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_INTELLIGENT_KEY)) {
-				sb.append(" order by  ");
-				sb.append(" c.caIntelligentKeyTByCaseId.caLuPrmNodeT.nodeCd ");
-						sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByCaseId.caLuScndNodeT.nodeCd ");
-							sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" c.caIntelligentKeyTByCaseId.caYearId ");
-						sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByCaseId.caSequenceId,'FM00000') ");
-				sb.append("  ");
-				sb.append(sortDirection);
-
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_CASE_NAME)) {
-				sb.append(" order by lower( c.caIntelligentKeyTByCaseId.caGeneralT.caseName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_PARTICIPANT_ID)) {
-				sb.append(" order by lower( c.caIntelligentKeyTByCaseId.caGeneralT.participantId ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_PARTICIPANT_NAME)) {
-				sb.append(" order by lower( c.caIntelligentKeyTByCaseId.caGeneralT.participantName  )");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_CASE_TYPE)) {
-				sb.append(" order by lower( c.caIntelligentKeyTByAssociateCaseId.caLuCaseTypeT.typeDesc ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_INTELLIGENT_KEY)) {
-				sb.append(" order by  ");
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuPrmNodeT.nodeCd ");
-						sb.append(" ||'-'|| ");
-
-				if (CaseGlobalConstants.SCND_NODE_VISIBLE.equalsIgnoreCase("Y")) {
-					sb.append(" c.caIntelligentKeyTByAssociateCaseId.caLuScndNodeT.nodeCd ");
-							sb.append(" ||'-'|| ");
-				}
-
-				sb.append(" c.caIntelligentKeyTByAssociateCaseId.caYearId ");
-						sb.append(" ||'-'|| ");
-				sb.append(" to_char(c.caIntelligentKeyTByAssociateCaseId.caSequenceId,'FM00000')  ");
-				sb.append("  ");
-				sb.append(sortDirection);
-
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_CASE_NAME)) {
-				sb.append(" order by lower(c.associateCaseName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_PARTICIPANT_ID)) {
-				sb.append(" order by lower(c.associateId )");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-			if (sortBy.equalsIgnoreCase(CaseConstants.SORT_BY_ASC_PARTICIPANT_NAME)) {
-				sb.append(" order by lower(c.associateName ) ");
-				sb.append("  ");
-				sb.append(sortDirection);
-			}
-
-			final String queryString = sb.toString();
-							Query query = getCurrentSession().createQuery(queryString);
-							query.setResultTransformer(Transformers.aliasToBean(AssociationListItem.class));
-							query.setFirstResult(firstRecord);
-							query.setMaxResults(maxRecords);
-
-
-							 if(searchValue!=null){
-									String lsearchValue="%"+ searchValue.toLowerCase()+ "%";
-									query.setParameter("searchValue", lsearchValue);
-							}
-							if (caseType != null){
-								query.setParameter("caseType", caseType);
-							}
-							List<AssociationListItem> aliasToValueMapList = query.list();
-
-							return aliasToValueMapList;
-
-
-		} catch (RuntimeException re) {
-			log.error("find all failed", re);
-			throw re;
-		}
-
-	}
-	 */
-}
+is this version fine
+] Scanning for projects...
+[INFO]
+[INFO] -----------------< com.optum.fads:fads-case-entry-api >-----------------
+[INFO] Building fads-case-entry-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- dependency:3.8.1:tree (default-cli) @ fads-case-entry-api ---
+[INFO] com.optum.fads:fads-case-entry-api:jar:1.0.0
+[INFO] +- org.springframework.boot:spring-boot-starter:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.9:compile
+[INFO] |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile
+[INFO] |  |  \- org.slf4j:jul-to-slf4j:jar:2.0.17:compile
+[INFO] |  +- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile
+[INFO] |  \- org.springframework:spring-core:jar:6.2.15:compile
+[INFO] |     \- org.springframework:spring-jcl:jar:6.2.15:compile
+[INFO] +- ch.qos.logback:logback-classic:jar:1.5.32:compile
+[INFO] |  +- ch.qos.logback:logback-core:jar:1.5.32:compile
+[INFO] |  \- org.slf4j:slf4j-api:jar:2.0.17:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-validation:jar:3.5.9:compile
+[INFO] |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:10.1.50:compile
+[INFO] |  \- org.hibernate.validator:hibernate-validator:jar:8.0.3.Final:compile
+[INFO] |     +- jakarta.validation:jakarta.validation-api:jar:3.0.2:compile
+[INFO] |     +- org.jboss.logging:jboss-logging:jar:3.6.1.Final:compile
+[INFO] |     \- com.fasterxml:classmate:jar:1.7.1:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-web:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-json:jar:3.5.9:compile
+[INFO] |  |  +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:jar:2.19.4:compile
+[INFO] |  |  +- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.4:compile
+[INFO] |  |  \- com.fasterxml.jackson.module:jackson-module-parameter-names:jar:2.19.4:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-tomcat:jar:3.5.9:compile
+[INFO] |  |  +- org.apache.tomcat.embed:tomcat-embed-core:jar:10.1.50:compile
+[INFO] |  |  \- org.apache.tomcat.embed:tomcat-embed-websocket:jar:10.1.50:compile
+[INFO] |  +- org.springframework:spring-web:jar:6.2.15:compile
+[INFO] |  \- org.springframework:spring-webmvc:jar:6.2.15:compile
+[INFO] |     \- org.springframework:spring-expression:jar:6.2.15:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-webflux:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-reactor-netty:jar:3.5.9:compile
+[INFO] |  \- org.springframework:spring-webflux:jar:6.2.15:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-data-jpa:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.9:compile
+[INFO] |  |  +- com.zaxxer:HikariCP:jar:6.3.3:compile
+[INFO] |  |  \- org.springframework:spring-jdbc:jar:6.2.15:compile
+[INFO] |  +- org.hibernate.orm:hibernate-core:jar:6.6.39.Final:compile
+[INFO] |  |  +- jakarta.persistence:jakarta.persistence-api:jar:3.1.0:compile
+[INFO] |  |  +- jakarta.transaction:jakarta.transaction-api:jar:2.0.1:compile
+[INFO] |  |  +- org.hibernate.common:hibernate-commons-annotations:jar:7.0.3.Final:runtime
+[INFO] |  |  +- io.smallrye:jandex:jar:3.2.0:runtime
+[INFO] |  |  +- org.glassfish.jaxb:jaxb-runtime:jar:4.0.6:runtime
+[INFO] |  |  |  \- org.glassfish.jaxb:jaxb-core:jar:4.0.6:runtime
+[INFO] |  |  |     +- org.eclipse.angus:angus-activation:jar:2.0.3:runtime
+[INFO] |  |  |     +- org.glassfish.jaxb:txw2:jar:4.0.6:runtime
+[INFO] |  |  |     \- com.sun.istack:istack-commons-runtime:jar:4.1.2:runtime
+[INFO] |  |  +- jakarta.inject:jakarta.inject-api:jar:2.0.1:runtime
+[INFO] |  |  \- org.antlr:antlr4-runtime:jar:4.13.0:compile
+[INFO] |  +- org.springframework.data:spring-data-jpa:jar:3.5.7:compile
+[INFO] |  |  +- org.springframework:spring-orm:jar:6.2.15:compile
+[INFO] |  |  \- org.springframework:spring-tx:jar:6.2.15:compile
+[INFO] |  \- org.springframework:spring-aspects:jar:6.2.15:compile
+[INFO] |     \- org.aspectj:aspectjweaver:jar:1.9.25.1:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-security:jar:3.5.9:compile
+[INFO] |  +- org.springframework:spring-aop:jar:6.2.15:compile
+[INFO] |  +- org.springframework.security:spring-security-config:jar:6.5.7:compile
+[INFO] |  \- org.springframework.security:spring-security-web:jar:6.5.7:compile
+[INFO] +- org.springframework.security:spring-security-oauth2-resource-server:jar:6.5.7:compile
+[INFO] |  +- org.springframework.security:spring-security-core:jar:6.5.7:compile
+[INFO] |  |  \- org.springframework.security:spring-security-crypto:jar:6.5.7:compile
+[INFO] |  \- org.springframework.security:spring-security-oauth2-core:jar:6.5.7:compile
+[INFO] +- org.springframework.security:spring-security-oauth2-jose:jar:6.5.7:compile
+[INFO] |  \- com.nimbusds:nimbus-jose-jwt:jar:9.37.4:compile
+[INFO] |     \- com.github.stephenc.jcip:jcip-annotations:jar:1.0-1:compile
+[INFO] +- org.springframework.boot:spring-boot-starter-actuator:jar:3.5.9:compile
+[INFO] |  +- org.springframework.boot:spring-boot-actuator-autoconfigure:jar:3.5.9:compile
+[INFO] |  |  \- org.springframework.boot:spring-boot-actuator:jar:3.5.9:compile
+[INFO] |  +- io.micrometer:micrometer-observation:jar:1.15.7:compile
+[INFO] |  |  \- io.micrometer:micrometer-commons:jar:1.15.7:compile
+[INFO] |  \- io.micrometer:micrometer-jakarta9:jar:1.15.7:compile
+[INFO] |     \- io.micrometer:micrometer-core:jar:1.15.7:compile
+[INFO] |        +- org.hdrhistogram:HdrHistogram:jar:2.2.2:runtime
+[INFO] |        \- org.latencyutils:LatencyUtils:jar:2.0.3:runtime
+[INFO] +- org.modelmapper:modelmapper:jar:3.2.2:compile
+[INFO] +- com.fasterxml.jackson.core:jackson-databind:jar:2.19.4:compile
+[INFO] +- com.fasterxml.jackson.core:jackson-core:jar:2.19.4:compile
+[INFO] +- com.fasterxml.jackson.core:jackson-annotations:jar:2.19.4:compile
+[INFO] +- com.google.guava:guava:jar:32.1.2-jre:compile
+[INFO] |  +- com.google.guava:failureaccess:jar:1.0.1:compile
+[INFO] |  +- com.google.guava:listenablefuture:jar:9999.0-empty-to-avoid-conflict-with-guava:compile
+[INFO] |  +- com.google.code.findbugs:jsr305:jar:3.0.2:compile
+[INFO] |  +- org.checkerframework:checker-qual:jar:3.33.0:compile
+[INFO] |  +- com.google.errorprone:error_prone_annotations:jar:2.18.0:compile
+[INFO] |  \- com.google.j2objc:j2objc-annotations:jar:2.8:compile
+[INFO] +- org.apache.commons:commons-lang3:jar:3.18.0:compile
+[INFO] +- org.projectlombok:lombok:jar:1.18.28:provided
+[INFO] +- org.apache.poi:poi-ooxml:jar:5.4.0:compile
+[INFO] |  +- org.apache.poi:poi:jar:5.4.0:compile
+[INFO] |  |  +- commons-codec:commons-codec:jar:1.18.0:compile
+[INFO] |  |  +- org.apache.commons:commons-math3:jar:3.6.1:compile
+[INFO] |  |  \- com.zaxxer:SparseBitSet:jar:1.3:compile
+[INFO] |  +- org.apache.poi:poi-ooxml-lite:jar:5.4.0:compile
+[INFO] |  +- org.apache.xmlbeans:xmlbeans:jar:5.3.0:compile
+[INFO] |  +- org.apache.commons:commons-compress:jar:1.27.1:compile
+[INFO] |  +- commons-io:commons-io:jar:2.18.0:compile
+[INFO] |  +- com.github.virtuald:curvesapi:jar:1.08:compile
+[INFO] |  +- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile
+[INFO] |  \- org.apache.commons:commons-collections4:jar:4.4:compile
+[INFO] +- net.snowflake:snowflake-jdbc:jar:3.23.1:compile
+[INFO] +- net.logstash.logback:logstash-logback-encoder:jar:7.4:runtime
+[INFO] +- org.codehaus.janino:janino:jar:3.1.12:runtime
+[INFO] |  \- org.codehaus.janino:commons-compiler:jar:3.1.12:runtime
+[INFO] +- org.springframework.boot:spring-boot-starter-test:jar:3.5.9:test
+[INFO] |  +- org.springframework.boot:spring-boot-test:jar:3.5.9:test
+[INFO] |  +- org.springframework.boot:spring-boot-test-autoconfigure:jar:3.5.9:test
+[INFO] |  +- com.jayway.jsonpath:json-path:jar:2.9.0:test
+[INFO] |  +- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.4:runtime
+[INFO] |  |  \- jakarta.activation:jakarta.activation-api:jar:2.1.4:runtime
+[INFO] |  +- org.assertj:assertj-core:jar:3.27.6:test
+[INFO] |  +- org.awaitility:awaitility:jar:4.2.2:test
+[INFO] |  +- org.hamcrest:hamcrest:jar:3.0:test
+[INFO] |  +- org.junit.jupiter:junit-jupiter:jar:5.12.2:test
+[INFO] |  |  +- org.junit.jupiter:junit-jupiter-api:jar:5.12.2:test
+[INFO] |  |  |  +- org.opentest4j:opentest4j:jar:1.3.0:test
+[INFO] |  |  |  +- org.junit.platform:junit-platform-commons:jar:1.12.2:test
+[INFO] |  |  |  \- org.apiguardian:apiguardian-api:jar:1.1.2:test
+[INFO] |  |  +- org.junit.jupiter:junit-jupiter-params:jar:5.12.2:test
+[INFO] |  |  \- org.junit.jupiter:junit-jupiter-engine:jar:5.12.2:test
+[INFO] |  |     \- org.junit.platform:junit-platform-engine:jar:1.12.2:test
+[INFO] |  +- org.mockito:mockito-junit-jupiter:jar:5.17.0:test
+[INFO] |  +- org.skyscreamer:jsonassert:jar:1.5.3:test
+[INFO] |  |  \- com.vaadin.external.google:android-json:jar:0.0.20131108.vaadin1:test
+[INFO] |  +- org.springframework:spring-test:jar:6.2.15:test
+[INFO] |  \- org.xmlunit:xmlunit-core:jar:2.10.4:test
+[INFO] +- junit:junit:jar:4.13.2:test
+[INFO] |  \- org.hamcrest:hamcrest-core:jar:3.0:test
+[INFO] +- org.mockito:mockito-core:jar:5.17.0:test
+[INFO] |  +- net.bytebuddy:byte-buddy:jar:1.17.8:runtime
+[INFO] |  +- net.bytebuddy:byte-buddy-agent:jar:1.17.8:test
+[INFO] |  \- org.objenesis:objenesis:jar:3.3:test
+[INFO] +- org.bitbucket.radistao.test:before-after-spring-test-runner:jar:0.1.0:test
+[INFO] +- io.rest-assured:rest-assured:jar:5.5.6:test
+[INFO] |  +- org.apache.groovy:groovy:jar:4.0.29:test
+[INFO] |  +- org.apache.groovy:groovy-xml:jar:4.0.29:test
+[INFO] |  +- org.apache.httpcomponents:httpclient:jar:4.5.13:test
+[INFO] |  |  +- org.apache.httpcomponents:httpcore:jar:4.4.16:test
+[INFO] |  |  \- commons-logging:commons-logging:jar:1.2:test
+[INFO] |  +- org.apache.httpcomponents:httpmime:jar:4.5.13:test
+[INFO] |  +- org.ccil.cowan.tagsoup:tagsoup:jar:1.2.1:test
+[INFO] |  +- io.rest-assured:json-path:jar:5.5.6:test
+[INFO] |  |  +- org.apache.groovy:groovy-json:jar:4.0.29:test
+[INFO] |  |  \- io.rest-assured:rest-assured-common:jar:5.5.6:test
+[INFO] |  \- io.rest-assured:xml-path:jar:5.5.6:test
+[INFO] +- org.springframework.data:spring-data-commons:jar:3.5.7:compile
+[INFO] |  \- org.springframework:spring-beans:jar:6.2.15:compile
+[INFO] +- org.springframework:spring-context-support:jar:6.2.15:compile
+[INFO] |  \- org.springframework:spring-context:jar:6.2.15:compile
+[INFO] +- com.microsoft.sqlserver:mssql-jdbc:jar:13.2.1.jre11:compile
+[INFO] +- org.yaml:snakeyaml:jar:2.4:compile
+[INFO] +- net.minidev:json-smart:jar:2.5.2:test
+[INFO] +- net.minidev:accessors-smart:jar:2.5.2:test
+[INFO] |  \- org.ow2.asm:asm:jar:9.7.1:test
+[INFO] +- io.projectreactor.netty:reactor-netty-http:jar:1.2.9:compile
+[INFO] |  \- io.projectreactor:reactor-core:jar:3.7.14:compile
+[INFO] |     \- org.reactivestreams:reactive-streams:jar:1.0.4:compile
+[INFO] +- io.projectreactor.netty:reactor-netty-core:jar:1.2.9:compile
+[INFO] +- io.netty:netty-codec-http2:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-codec-http:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-handler:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-handler-proxy:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-codec-socks:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-resolver-dns:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-common:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-buffer:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-transport:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-codec:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-resolver:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-codec-dns:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-transport-native-unix-common:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-transport-classes-epoll:jar:4.1.131.Final:compile
+[INFO] +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.131.Final:compile
+[INFO] +- io.netty:netty-resolver-dns-classes-macos:jar:4.1.131.Final:compile
+[INFO] \- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.131.Final:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.604 s
+[INFO] Finished at: 2026-03-08T14:23:53+05:30
+[INFO] ------------------------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+        xmlns="http://maven.apache.org/POM/4.0.0">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-case-entry-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.9</version>
+        <relativePath/>
+    </parent>
+
+    <repositories>
+        <repository>
+             <id>central</id>
+			<name>centraluhg.jfrog.io-releases</name>
+			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
+
+
+    <properties>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <surefire.skip>${skipTests}</surefire.skip>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+		<reactor-netty.version>1.2.9</reactor-netty.version>
+        <java.version>17</java.version>
+        <spring.cloud.version>2025.0.1</spring.cloud.version>
+        <jackson.version>2.16.3</jackson.version>
+        <spring-cloud-azure.version>4.0.0</spring-cloud-azure.version>
+        <jasypt.version>2.1.1</jasypt.version>
+        <jwt.version>4.0.0</jwt.version>
+        <modelmapper.version>3.2.2</modelmapper.version>
+        <jacoco.version>0.8.10</jacoco.version>
+        <springrunner.version>0.1.0</springrunner.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>7.4</logback.encoder.version>
+        <lombok.version>1.18.28</lombok.version>
+        <restassured.version>5.4.0</restassured.version>
+        <log4j.version>2.24.3</log4j.version>
+        <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <bcp.version>1.67</bcp.version>
+        <snakeyaml.version>2.4</snakeyaml.version>
+        <spring-security-jwt.version>1.1.1.RELEASE</spring-security-jwt.version>
+        <sonar.coverage.exclusions>
+            **/com/optum/fads/caseentry.api/**,
+        </sonar.coverage.exclusions>
+        <netty.version>4.1.131.Final</netty.version>
+        <logback.version>1.5.32</logback.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+
+
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring.cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+          
+			  <dependency>
+			      <groupId>io.netty</groupId>
+			      <artifactId>netty-bom</artifactId>
+			      <version>${netty.version}</version>
+			      <type>pom</type>
+			      <scope>import</scope>
+			    </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- Spring Boot Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+       
+
+
+        <!-- Model Mapper -->
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+
+        <!-- Jackson -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+
+        <!--Used in Getter/Setter Verifier @NonNull  -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+        
+         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+        
+        <!-- Lombok -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.poi/POI -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.4.0</version>
+        </dependency>
+
+
+        <!-- Snowflake dependency -->
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
+        </dependency>
+
+        <!-- JSON logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Before After Spring Test Runner -->
+        <dependency>
+            <groupId>org.bitbucket.radistao.test</groupId>
+            <artifactId>before-after-spring-test-runner</artifactId>
+            <version>${springrunner.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Before After Spring Test Runner -->
+
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-commons</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context-support</artifactId>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc -->
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version> 
+        </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>${snakeyaml.version}</version>
+        </dependency>
+        
+        <dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>json-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>net.minidev</groupId>
+			<artifactId>accessors-smart</artifactId>
+			<version>2.5.2</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-http</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.projectreactor.netty</groupId>
+			<artifactId>reactor-netty-core</artifactId>
+			<version>${reactor-netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http2</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-http</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-handler-proxy</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-socks</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-buffer</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-codec-dns</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-unix-common</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-classes-epoll</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+
+		<!-- Native classifiers that Reactor Netty pulls in -->
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-transport-native-epoll</artifactId>
+			<version>${netty.version}</version>
+			<classifier>linux-x86_64</classifier>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-classes-macos</artifactId>
+			<version>${netty.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty-resolver-dns-native-macos</artifactId>
+			<version>${netty.version}</version>
+			<classifier>osx-x86_64</classifier>
+		</dependency>
+  
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.projectlombok</groupId>
+                    <artifactId>lombok-maven-plugin</artifactId>
+                    <version>${lombok.version}</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>3.3.9</version>
+                                </requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                </executions>
+                <configuration>
+                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                </configuration>
+            </plugin>
+            <!-- Below plugin ensures the execution of test cases during maven build-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>integration-test</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <configuration>
+                    <destFile>target/jacoco.exec</destFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>jacoco-initialize</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-site</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+</project>
