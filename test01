@@ -1,147 +1,204 @@
-server:
-  port: 8080
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+      <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.9</version>
+        <relativePath/>
+    </parent>
 
-management:
-  endpoint:
-    gateway:
-      access: read-only
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway
-        exclude: caches,scheduledtasks,mappings,beans,heapdump,env,metrics,threaddump,loggers,configprops,conditions
-  health:
-    circuitbreakers:
-      enabled: true
-    ratelimiters:
-      enabled: true
+    <repositories>
+        <repository>
+            <id>central</id>
+			<name>centraluhg.jfrog.io-releases</name>
+			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
 
-logging:
-  level:
-    org.springframework: INFO
-    org.springframework.web.HttpLogging: INFO
-    org.springframework.security: INFO
-    org.springframework.security.oauth2: INFO
-    org.springframework.cloud.gateway: DEBUG
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-gateway-api</artifactId>
+    <version>1.0.0</version>
+    <name>fads-gateway-api</name>
+    <description>FADS Gateway</description>
 
-spring:
-  application:
-    name: fads-api-gateway
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.actuate.autoconfigure.security.reactive.ReactiveManagementWebSecurityAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.reactive.ReactiveSecurityAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.oauth2.client.reactive.ReactiveOAuth2ClientAutoConfiguration
-      - org.springframework.boot.autoconfigure.security.oauth2.resource.reactive.ReactiveOAuth2ResourceServerAutoConfiguration
-  cloud:
-    gateway:
-      server:
-        webflux:
-          x-forwarded:
-            enabled: true
-          default-filters:
-            - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
-          routes:
-            - id: authorization
-              uri: https://as-pi-dev-authorization.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/authorization/**
-              filters:
-                - RewritePath=/api/v1.0/authorization/(?<segment>/?.*), /authorization/${segment}
 
-            - id: datarules
-              uri: https://as-pi-dev-datarules.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/datarules/**
-              filters:
-                - RewritePath=/api/v1.0/datarules/(?<segment>/?.*), /datarules/${segment}
+    <properties>
+        <java.version>17</java.version>
+        <spring-cloud.version>2025.0.0</spring-cloud.version>
+        <snakeyaml.version>2.2</snakeyaml.version>
+        <log4j.version>2.24.3</log4j.version>
+        <spring.boot.version>3.5.9</spring.boot.version>
+         <netty.version>4.1.130.Final</netty.version>
+		<reactor-netty.version>1.2.8</reactor-netty.version>
+    </properties>
 
-            - id: behavior
-              uri: https://as-pi-dev-behavior.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/behavior/**
-              filters:
-                - RewritePath=/api/v1.0/behavior/(?<segment>/?.*), /behavior/${segment}
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-circuitbreaker-reactor-resilience4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.nimbusds</groupId>
+                    <artifactId>nimbus-jose-jwt</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+      
+        <dependency>    
+             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-classic</artifactId>
+		</dependency>
+        <dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-core</artifactId>
+		</dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 
-            - id: reportgroup
-              uri: https://as-pi-dev-reportgroup.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/reportgroup/**
-              filters:
-                - RewritePath=/api/v1.0/reportgroup/(?<segment>/?.*), /reportgroup/${segment}
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+		<dependency>
+		    <groupId>com.nimbusds</groupId>
+		    <artifactId>nimbus-jose-jwt</artifactId>
+		    <version>9.37.4</version> <!-- Use latest stable version -->
+		</dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+        </dependency>
+     
+    </dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            
+             <dependency>
+		      <groupId>com.nimbusds</groupId>
+		      <artifactId>nimbus-jose-jwt</artifactId>
+		      <version>9.37.4</version>
+		    </dependency>
 
-            - id: study
-              uri: https://as-pi-dev-study.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/study/**
-              filters:
-                - RewritePath=/api/v1.0/study/(?<segment>/?.*), /study/${segment}
 
-            - id: jobmonitor
-              uri: https://as-pi-dev-jobmonitor.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/jobmonitor/**
-              filters:
-                - RewritePath=/api/v1.0/jobmonitor/(?<segment>/?.*), /jobmonitor/${segment}
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-bom</artifactId>
+				<version>${netty.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+        </dependencies>
+    </dependencyManagement>
 
-            - id: peergroup
-              uri: https://as-pi-dev-peergroup.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/peergroup/**
-              filters:
-                - RewritePath=/api/v1.0/peergroup/(?<segment>/?.*), /peergroup/${segment}
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 
-            - id: casetracking
-              uri: https://as-pi-dev-casetracking.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/casetracking/**
-              filters:
-                - RewritePath=/api/v1.0/casetracking/(?<segment>/?.*), /casetracking/${segment}
-
-            - id: caseentry
-              uri: https://as-pi-dev-caseentry.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/caseentry/**
-              filters:
-                - RewritePath=/api/v1.0/caseentry/(?<segment>/?.*), /caseentry/${segment}
-
-            - id: caseClaimCorrections
-              uri: https://as-pi-dev-casecorrection.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/case-claim-corrections/**
-              filters:
-                - RewritePath=/api/v1.0/case-claim-corrections/(?<segment>/?.*), /case-claim-corrections/${segment}
-
-            - id: userroles
-              uri: https://as-pi-dev-userroles.azurewebsites.net
-              predicates:
-                - Path=/api/v1.0/userroles/**
-              filters:
-                - RewritePath=/api/v1.0/userroles/(?<segment>/?.*), /userroles/${segment}
-
-          globalcors:
-            add-to-simple-url-handler-mapping: true
-            cors-configurations:
-              "[/**]":
-                allowedOrigins: "*"
-                allowedMethods: "*"
-                allowedHeaders: "*"
-
-resilience4j:
-  circuitbreaker:
-    instances:
-      gatewayCircuitBreaker:
-        registerHealthIndicator: true
-        slidingWindowType: COUNT_BASED
-        slidingWindowSize: 5
-        minimumNumberOfCalls: 5
-        permittedNumberOfCallsInHalfOpenState: 3
-        waitDurationInOpenState: 30s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 5
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-  timelimiter:
-    instances:
-      gatewayCircuitBreaker:
-        timeoutDuration: 30s
-        cancelRunningFuture: true
+</project>
+Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0
+CVE-2026-23949	1/13/2026 21:48	2026-01-31T15:53:56.1742502Z	FixAvailable	fads-gateway-api	8.6
+CVE-2026-21441	1/7/2026 0:00	2026-01-31T15:53:56.1742502Z	FixAvailable	fads-gateway-api	7.5
+CVE-2025-41253	10/16/2025 14:25	2026-02-21T09:01:02.9573637Z	FixAvailable	fads-gateway-api	7.5
+CVE-2025-41253	10/16/2025 14:25	2026-02-20T15:54:30.0890004Z	FixAvailable	fads-gateway-api	7.5
+CVE-2026-23490	1/16/2026 0:00	2026-02-20T15:54:30.0890004Z	FixAvailable	fads-gateway-api	7.5
+CVE-2026-24049	1/22/2026 0:00	2026-01-31T15:53:56.1742502Z	FixAvailable	fads-gateway-api	7.1
+CVE-2025-67735	12/15/2025 23:28	2026-01-31T15:53:56.1742502Z	FixAvailable	fads-gateway-api	6.5
+CVE-2025-67735	12/15/2025 23:28	2026-02-17T21:15:22.8547406Z	FixAvailable	fads-gateway-api	6.5
+CVE-2025-53864	7/10/2025 16:00	2026-02-17T21:15:22.8547406Z	FixAvailable	fads-gateway-api	5.8
+CVE-2025-53864	7/10/2025 16:00	2026-01-31T15:53:56.1742502Z	FixAvailable	fads-gateway-api	5.8
+CVE-2026-26007	2/10/2026 21:27	2026-02-11T21:59:12.4293197Z	FixAvailable	fads-gateway-api	
+CVE-2026-1225	1/22/2026 0:00	2026-01-31T15:53:56.1742502Z	FixAvailable	fads-gateway-api	
+CVE-2026-1225	1/22/2026 0:00	2026-02-17T21:15:22.8547406Z	FixAvailable	fads-gateway-api	
+CVE-2026-1703	2/2/2026 14:43	2026-02-04T09:57:18.9948491Z	FixAvailable	fads-gateway-api	
