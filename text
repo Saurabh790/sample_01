@@ -1,90 +1,12 @@
-server:
-  port: 8080
-  servlet:
-    context-path: /caseentrybatch
-
-quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
-
-spring:
-  application:
-    name: caseentrybatch
-
-  batch:
-    job:
-      enabled: false
-    jdbc:
-      initialize-schema: never
-
-  jpa:
-    open-in-view: false
-
-  cloud:
-    azure:
-      keyvault:
-        secrets:
-          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net/
-        credential:
-          client-id: ce5962ff-06f5-4911-be66-e51b86531710
-          client-secret: ief8Q~Qb7ddgTUinKDtPBvP3OSUxvm9UNsdm9aZw
-          tenant-id: fbe00597-ca09-441a-836a-eb0dcb7c14e1
-
-  datasource:
-    hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
-      minimum-idle: ${MIN_POOL_IDLE:1}
-      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
-      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
-      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-
-    sql:
-      type: com.zaxxer.hikari.HikariDataSource
-      jdbcUrl: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;database=pi-dev-db;user=sqladmin
-      userName: sql-admin-user
-      password: sql-admin-password
-      driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
-
-    snfk:
-      type: com.zaxxer.hikari.HikariDataSource
-      driver-class-name: net.snowflake.client.jdbc.SnowflakeDriver
-      jdbcUrl: jdbc:snowflake://ew98463.east-us-2.azure.snowflakecomputing.com:443/?TIMEZONE=UTC&CLIENT_RESULT_COLUMN_CASE_INSENSITIVE=true
-      database: PI_DEV_DB
-      userName: pi-sf-usr-dev
-      password: pi-sf-usr-dev-pw
-      certKey: pi-sf-key-dev
-      passphrase: pi-sf-key-dev-pw
-      schema: FADS
-      warehouse: SGS_PI_DEMO_XSMALL_WH
-      role:
-      account:
-
-  quartz:
-    properties:
-      org:
-        quartz:
-          threadPool:
-            class: org.quartz.simpl.SimpleThreadPool
-            threadCount: 3
-
-management:
-  endpoint:
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  endpoints:
-    web:
-      exposure:
-        include:
-          - health
-          - info
-          - prometheus
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-
-db:
-  snfk-login:
-    useCert: ${USE_CERT:false}
+| CVE ID         |              From your sheet | Maps to what                        | Fixed version / condition           | What your current setup shows       | Status              |
+| -------------- | ---------------------------: | ----------------------------------- | ----------------------------------- | ----------------------------------- | ------------------- |
+| CVE-2025-41253 |                          7.5 | Spring Cloud Gateway Server WebFlux | Fixed in 4.3.2+ on 4.3.x line       | `spring-cloud-gateway-server:4.3.3` | **Resolved**        |
+| CVE-2025-53864 |                          5.8 | `com.nimbusds:nimbus-jose-jwt`      | Fixed in 9.37.4 / 10.0.2+           | `nimbus-jose-jwt:9.37.4`            | **Resolved**        |
+| CVE-2025-67735 |                          6.5 | Netty `netty-codec-http`            | Fixed in 4.1.129.Final+ / 4.2.8+    | `netty-codec-http:4.1.131.Final`    | **Resolved**        |
+| CVE-2026-1225  | no score shown in your sheet | `logback-core`                      | Affected up to and including 1.5.24 | `logback-core:1.5.32`               | **Resolved**        |
+| CVE-2026-23949 |                          8.6 | Python `jaraco.context`             | Python package issue                | Not present in Maven tree           | **Not a POM issue** |
+| CVE-2026-21441 |                          7.5 | Python `urllib3`                    | Python package issue                | Not present in Maven tree           | **Not a POM issue** |
+| CVE-2026-23490 |                          7.5 | Python `pyasn1`                     | Python package issue                | Not present in Maven tree           | **Not a POM issue** |
+| CVE-2026-24049 |                          7.1 | Python `wheel`                      | Python package issue                | Not present in Maven tree           | **Not a POM issue** |
+| CVE-2026-26007 | no score shown in your sheet | Python `cryptography`               | Python package issue                | Not present in Maven tree           | **Not a POM issue** |
+| CVE-2026-1703  | no score shown in your sheet | Python `pip`                        | Python package issue                | Not present in Maven tree           | **Not a POM issue** |
