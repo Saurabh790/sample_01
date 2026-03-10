@@ -1,26 +1,29 @@
+Subscription name	Resource	Resource group	Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0
+93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2025-48924	7/11/2025 0:00	2026-02-10T18:41:13.9836149Z	FixAvailable	fads-pgp-engine	7.2	CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:L/A:N/E:U/RL:O/RC:C
+93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2026-26007	2/10/2026 21:27	2026-02-12T08:08:55.874182Z	FixAvailable	fads-pgp-engine		
+93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2026-1225	1/22/2026 0:00	2026-02-10T18:41:13.9836149Z	FixAvailable	fads-pgp-engine		
+
+
 <?xml version="1.0" encoding="UTF-8"?>
 <project
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0">
-
-    <modelVersion>4.0.0</modelVersion>
-
+        xmlns="http://maven.apache.org/POM/4.0.0"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  	<modelVersion>4.0.0</modelVersion>
     <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-datarules-api</artifactId>
+    <artifactId>fads-pgp-engine-service</artifactId>
     <version>1.0.0</version>
-    <packaging>jar</packaging>
-
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.9</version>
         <relativePath/>
     </parent>
+  
 
     <repositories>
         <repository>
-              <id>central</id>
+             <id>central</id>
 			<name>centraluhg.jfrog.io-releases</name>
 			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
         </repository>
@@ -32,24 +35,41 @@
     </repositories>
 
     <properties>
-<!--        <maven.test.skip>false</maven.test.skip>-->
-<!--        <skipTests>${maven.test.skip}</skipTests>-->
-<!--        &lt;!&ndash; >surefire.skip>${skipTests}</surefire.skip &ndash;&gt;-->
-<!--        <failsafe.skip>${skipTests}</failsafe.skip>-->
-
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <surefire.skip>${skipTests}</surefire.skip>
+        <failsafe.skip>${skipTests}</failsafe.skip>
         <java.version>17</java.version>
-        <spring.cloud.version>2025.0.0</spring.cloud.version>
+        <spring.boot.version>3.5.9</spring.boot.version>
+        <spring.cloud.version>2023.0.2</spring.cloud.version>
+        <jasypt.version>2.1.0</jasypt.version>
+        <jwt.version>3.8.3</jwt.version>
         <modelmapper.version>3.1.1</modelmapper.version>
         <jacoco.version>0.8.10</jacoco.version>
-        <guava.version>32.1.2-jre</guava.version>
+        <logback.encoder.version>6.0</logback.encoder.version>
         <lombok.version>1.18.28</lombok.version>
-        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-        <sonar.exclusions>**/constants/**,**/domain/**</sonar.exclusions>
-		<logback.version>1.5.32</logback.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <javax-ws-rs-api.version>2.1.1</javax-ws-rs-api.version>
+        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+        <openapi.version>1.7.0</openapi.version>
+        <msal4j.version>1.17.2</msal4j.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <jettison.version>1.5.4</jettison.version>
+        <commons.io.version>2.17.0</commons.io.version>
+        <sonar.coverage.exclusions>
+            **/com/optum/fads/pgp/engine/api/**,
+        </sonar.coverage.exclusions>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <hibernate.core.version>6.1.7.Final</hibernate.core.version>
+        <azure.datafactory.version>1.0.0-beta.30</azure.datafactory.version>
+        <javatuples.version>1.2</javatuples.version>
+        <bcp.version>1.76</bcp.version>
+         <spring-cloud-azure.version>6.1.0</spring-cloud-azure.version>
+         <netty.version>4.1.130.Final</netty.version>
     </properties>
-
     <dependencyManagement>
         <dependencies>
+            
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -57,25 +77,37 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-bom</artifactId>
-				<version>4.1.130.Final</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-			
 			<dependency>
 				<groupId>com.azure.spring</groupId>
 				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>6.1.0</version>
+				<version>${spring-cloud-azure.version}</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-            
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                 <version>3.18.0</version>
+            </dependency>
+             <dependency>
+			  <groupId>com.microsoft.azure</groupId>
+			  <artifactId>msal4j</artifactId>
+			  <version>1.17.2</version>
+			</dependency>
+			
+			
+			
+			<dependency>
+				<groupId>io.netty</groupId>
+				<artifactId>netty-bom</artifactId>
+				<version>${netty.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
         </dependencies>
     </dependencyManagement>
+
 
     <dependencies>
         <!-- Spring Boot Dependencies -->
@@ -84,10 +116,68 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-ui</artifactId>
+            <version>${openapi.version}</version>
+             <exclusions>
+			    <exclusion>
+			      <groupId>org.apache.commons</groupId>
+			      <artifactId>commons-lang3</artifactId>
+			    </exclusion>
+			  </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-task -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-task</artifactId>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.hibernate.orm/hibernate-core -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${hibernate.core.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-
+        <dependency>
+            <groupId>org.javatuples</groupId>
+            <artifactId>javatuples</artifactId>
+            <version>${javatuples.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -105,23 +195,21 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>13.2.1.jre11</version>
         </dependency>
+        <!-- snowflake dependencies -->
         <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>${snowflake-jdbc.version}</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
+            <groupId>com.microsoft.azure</groupId>
+            <artifactId>msal4j</artifactId>
+            <version>${msal4j.version}</version>
         </dependency>
 
         <!-- Model Mapper -->
@@ -131,20 +219,41 @@
             <version>${modelmapper.version}</version>
         </dependency>
 
-        <!-- Jackson -->
-
-
+        <!--Used in Getter/Setter Verifier @NonNull -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+        <!-- Common Operations -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+           <version>3.18.0</version>
+        </dependency>
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
-
+        <!-- JSON logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logback.encoder.version}</version>
+            <scope>runtime</scope>
+        </dependency>
         <dependency>
             <groupId>org.codehaus.janino</groupId>
             <artifactId>janino</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
+        <dependency>
+            <groupId>org.codehaus.jettison</groupId>
+            <artifactId>jettison</artifactId>
+            <version>${jettison.version}</version>
         </dependency>
 
         <!-- Testing -->
@@ -166,39 +275,60 @@
 
         <!-- Before After Spring Test Runner -->
         <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
+            <groupId>com.azure.resourcemanager</groupId>
+            <artifactId>azure-resourcemanager-datafactory</artifactId>
+            <version>${azure.datafactory.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>${bcp.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>13.2.1.jre11</version>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bcp.version}</version>
         </dependency>
         
-       <dependency>
-			<groupId>com.azure.spring</groupId>
-			<artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-		</dependency>
-  
-    </dependencies>
 
+        <!-- Spring Cloud Azure Starter for Key Vault Secrets. -->
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-jpa</artifactId>
+             <exclusions>
+			    <exclusion>
+			      <groupId>com.mysema.commons</groupId>
+			      <artifactId>mysema-commons-lang</artifactId>
+			    </exclusion>
+			  </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.querydsl</groupId>
+            <artifactId>querydsl-apt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${commons.io.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
     <build>
+        <finalName>${project.artifactId}</finalName>
         <pluginManagement>
             <plugins>
                 <plugin>
@@ -259,7 +389,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -271,23 +400,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
+
             <!-- Below plugin ensures the execution of test cases during maven build-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -310,43 +423,20 @@
                         </goals>
                     </execution>
                 </executions>
-<!--                <configuration>-->
-<!--                    <skip>${failsafe.skip}</skip>-->
-<!--                </configuration>-->
+                <configuration>
+                    <skip>${failsafe.skip}</skip>
+                </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
-
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>2.7.1</version>
+            </plugin>
         </plugins>
     </build>
 </project>
-
-
-
-
-Subscription name	Resource	Resource group	Vulnerability ID	Published time	Time generated	Patchable	Repository name	CVSS score 2.0	CVSS score 3.0	ImageURI
-93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2026-1225	1/22/2026 0:00	2026-02-10T18:40:04.8392145Z	FixAvailable	fads-pgp-datarules-api			/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-pgp-datarules-api-images-sha256:e0b21c3040eb48f7cf2c5c3605b2391a8b1f6c83d076cb234260b19a549a35df
-93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2026-26007	2/10/2026 21:27	2026-02-11T17:28:52.2890656Z	FixAvailable	fads-pgp-datarules-api			/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-pgp-datarules-api-images-sha256:e0b21c3040eb48f7cf2c5c3605b2391a8b1f6c83d076cb234260b19a549a35df
-93141bce-88e2-41bd-b6f7-74a493a6c0ba	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourcegroups/fads-cmn-ppd-ar/providers/microsoft.containerregistry/registries/acrfadsarppdcus001	/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar	CVE-2026-1225	1/22/2026 0:00	2026-02-17T21:34:13.1811636Z	FixAvailable	fads-pgp-datarules-api			/subscriptions/93141bce-88e2-41bd-b6f7-74a493a6c0ba/resourceGroups/fads-cmn-ppd-ar/providers/Microsoft.ContainerRegistry/registries/acrfadsarppdcus001/securityentitydata/repositories-fads-pgp-datarules-api-images-sha256:9c0a71d193437c235a6470ad21823aae900fb1de7be7b203f4795e1bbded5ab0
