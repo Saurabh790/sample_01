@@ -15,48 +15,36 @@ FROM CA_GENERAL_T
 WHERE CASE_ID_STR LIKE 'RXA-%' 
 ORDER BY CASE_ID DESC;
 
-
 INSERT INTO CA_UNIVERSE_BATCH_T (
     CT_BATCH_ID,
+    CT_BATCH_DATE,
     HDR_CLM_TCN,
     LI_NUM,
     HDR_CLM_PD_DT,
     CA_PRM_NODE_CD,
     CA_YEAR_ID,
     PARTICIPANT_ID,
-    INV_TYPE_CD,
+    INVST_TYPE_CD, 
     CASE_STATUS_CD,
     CASE_STATUS_DT,
-    HDR_PD_AMT,
-    LI_SRV_FROM_DT,
+    CASE_TYPE_CD,
     UI_SYSTEM_ID
 ) VALUES (
-    -- Let's arbitrarily set a high batch ID so it processes next
-    999, 
-    
-    -- Dummy Claim Identifiers
+    457, -- Next batch ID
+    GETDATE(), -- Added missing Batch Date!
     'TCN-RXA-0001', 
-    1, 
+    '1', 
     GETDATE(), 
-    
-    -- CRITICAL: This flags it as Pharmacy RXA!
     'RXA', 
     2026, 
     '123456789', 
-    
-    -- Investigation & Legacy mapping identifiers
     'FS', 
     'OPN', 
     GETDATE(), 
-    
-    -- Dummy Financial Paid Amount to test the SUM
-    150.75, 
-    
-    -- Dummy Service Date to test the MIN/MAX
-    '2025-10-15', 
-    
-    'SYS_ADMIN'
+    'PRV', 
+    'ca88510043' 
 );
+
 
 INSERT INTO CA_UNIVERSE_BATCH_T (
     CT_BATCH_ID,
