@@ -58,6 +58,35 @@ INSERT INTO CA_UNIVERSE_BATCH_T (
     'SYS_ADMIN'
 );
 
+INSERT INTO CA_UNIVERSE_BATCH_T (
+    CT_BATCH_ID,
+    HDR_CLM_TCN,
+    LI_NUM,
+    HDR_CLM_PD_DT,
+    CA_PRM_NODE_CD,
+    CA_YEAR_ID,
+    PARTICIPANT_ID,
+    INVST_TYPE_CD,   -- Fixed typo from INV_TYPE_CD
+    CASE_STATUS_CD,
+    CASE_STATUS_DT,
+    CASE_TYPE_CD,
+    UI_SYSTEM_ID
+) VALUES (
+    457, -- Next batch ID
+    'TCN-RXA-0001', 
+    '1', 
+    GETDATE(), 
+    'RXA', -- This triggers our new logic!
+    2026, 
+    '123456789', 
+    'FS', 
+    'OPN', 
+    GETDATE(), 
+    'PRV', -- Provider case type
+    'ca88510043' -- Using your User ID from the logs!
+);
+
+
 -- OPTIONAL: Add a second claim to the exact same participant so we can test the MIN/MAX and SUM aggregations!
 INSERT INTO CA_UNIVERSE_BATCH_T (
     CT_BATCH_ID, HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT, CA_PRM_NODE_CD, CA_YEAR_ID, PARTICIPANT_ID, INV_TYPE_CD, CASE_STATUS_CD, CASE_STATUS_DT, HDR_PD_AMT, LI_SRV_FROM_DT, UI_SYSTEM_ID
