@@ -16,6 +16,59 @@ WHERE CASE_ID_STR LIKE 'RXA-%'
 ORDER BY CASE_ID DESC;
 
 
+INSERT INTO CA_UNIVERSE_BATCH_T (
+    CT_BATCH_ID,
+    HDR_CLM_TCN,
+    LI_NUM,
+    HDR_CLM_PD_DT,
+    CA_PRM_NODE_CD,
+    CA_YEAR_ID,
+    PARTICIPANT_ID,
+    INV_TYPE_CD,
+    CASE_STATUS_CD,
+    CASE_STATUS_DT,
+    HDR_PD_AMT,
+    LI_SRV_FROM_DT,
+    UI_SYSTEM_ID
+) VALUES (
+    -- Let's arbitrarily set a high batch ID so it processes next
+    999, 
+    
+    -- Dummy Claim Identifiers
+    'TCN-RXA-0001', 
+    1, 
+    GETDATE(), 
+    
+    -- CRITICAL: This flags it as Pharmacy RXA!
+    'RXA', 
+    2026, 
+    '123456789', 
+    
+    -- Investigation & Legacy mapping identifiers
+    'FS', 
+    'OPN', 
+    GETDATE(), 
+    
+    -- Dummy Financial Paid Amount to test the SUM
+    150.75, 
+    
+    -- Dummy Service Date to test the MIN/MAX
+    '2025-10-15', 
+    
+    'SYS_ADMIN'
+);
+
+-- OPTIONAL: Add a second claim to the exact same participant so we can test the MIN/MAX and SUM aggregations!
+INSERT INTO CA_UNIVERSE_BATCH_T (
+    CT_BATCH_ID, HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT, CA_PRM_NODE_CD, CA_YEAR_ID, PARTICIPANT_ID, INV_TYPE_CD, CASE_STATUS_CD, CASE_STATUS_DT, HDR_PD_AMT, LI_SRV_FROM_DT, UI_SYSTEM_ID
+) VALUES (
+    999, 'TCN-RXA-0002', 1, GETDATE(), 'RXA', 2026, '123456789', 'FS', 'OPN', GETDATE(), 
+    200.25, -- Add $200.25 to the $150.75 above (Should equal $351.00)
+    '2025-11-20', -- This date is LATER than the one above
+    'SYS_ADMIN'
+);
+
+
 
 AR RXA BATCH - Enhancements - Batch to include Period Review Dates & Financial Totals - DEVELOPMENT
 
