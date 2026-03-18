@@ -1,4 +1,341 @@
-| Vulnerability ID   | What it stands for                                                  | Does it map to this POM? | Relevant dependency in your POM | Fixed version / threshold                                                        | What your POM currently has                                                                      | Status                           |
-| ------------------ | ------------------------------------------------------------------- | ------------------------ | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------- |
-| **CVE-2025-67735** | Netty `HttpRequestEncoder` CRLF injection / request smuggling issue | **Yes**                  | Netty / `netty-codec-http`      | Fixed in **4.1.129.Final+** or **4.2.8.Final+** ([nvd.nist.gov][1])              | `netty.version = 4.1.131.Final` and `mvn dependency:tree` shows `netty-codec-http:4.1.131.Final` | **Resolved** ([nvd.nist.gov][1]) |
-| **CVE-2026-1225**  | Logback `logback-core` config-processing vulnerability              | **Yes**                  | `ch.qos.logback:logback-core`   | Affects **up to and including 1.5.24**; fixed in **1.5.25+** ([nvd.nist.gov][2]) | `logback.version = 1.5.32` and `mvn dependency:tree` shows `logback-core:1.5.32`                 | **Resolved** ([nvd.nist.gov][2]) |
+2026-03-18T15:21:13.602+05:30  INFO 12012 --- [           main] c.o.f.p.engine.api.PgpEngineApplication  : Starting PgpEngineApplication using Java 17.0.10 with PID 12012 (C:\Users\sgupt664\BE_Projects\fads-pgp-engine\target\classes started by sgupt664 in C:\Users\sgupt664\BE_Projects\fads-pgp-engine)
+2026-03-18T15:21:13.613+05:30 DEBUG 12012 --- [           main] c.o.f.p.engine.api.PgpEngineApplication  : Running with Spring Boot v3.5.9, Spring v6.2.15
+2026-03-18T15:21:13.614+05:30  INFO 12012 --- [           main] c.o.f.p.engine.api.PgpEngineApplication  : No active profile set, falling back to 1 default profile: "default"
+2026-03-18T15:21:14.749+05:30  WARN 12012 --- [           main] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.parsing.BeanDefinitionParsingException: Configuration problem: @Bean method 'snowflakeJdbcTemplate' must not be declared as autowired; remove the method-level @Autowired annotation.
+Offending resource: class path resource [com/optum/fads/pgp/engine/api/config/DatasourceConfig.class]
+2026-03-18T15:21:14.767+05:30  INFO 12012 --- [           main] .s.b.a.l.ConditionEvaluationReportLogger :
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-03-18T15:21:14.800+05:30 ERROR 12012 --- [           main] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.beans.factory.parsing.BeanDefinitionParsingException: Configuration problem: @Bean method 'snowflakeJdbcTemplate' must not be declared as autowired; remove the method-level @Autowired annotation.
+Offending resource: class path resource [com/optum/fads/pgp/engine/api/config/DatasourceConfig.class]
+        at org.springframework.beans.factory.parsing.FailFastProblemReporter.error(FailFastProblemReporter.java:72)
+        at org.springframework.context.annotation.BeanMethod.validate(BeanMethod.java:52)
+        at org.springframework.context.annotation.ConfigurationClass.validate(ConfigurationClass.java:243)
+        at org.springframework.context.annotation.ConfigurationClassParser.validate(ConfigurationClassParser.java:228)
+        at org.springframework.context.annotation.ConfigurationClassPostProcessor.processConfigBeanDefinitions(ConfigurationClassPostProcessor.java:419)
+        at org.springframework.context.annotation.ConfigurationClassPostProcessor.postProcessBeanDefinitionRegistry(ConfigurationClassPostProcessor.java:290)
+        at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanDefinitionRegistryPostProcessors(PostProcessorRegistrationDelegate.java:349)
+        at org.springframew
+		
+		
+		ork.context.support.PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(PostProcessorRegistrationDelegate.java:118)
+        at org.springframework.context.support.AbstractApplicationContext.invokeBeanFactoryPostProcessors(AbstractApplicationContext.java:791)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:609)
+        at org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:146)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1361)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:1350)
+        at com.optum.fads.pgp.engine.api.PgpEngineApplication.main(PgpEngineApplication.java:33)
+
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  24.416 s
+[INFO] Finished at: 2026-03-18T15:21:14+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.9:run (default-cli) on project fads-pgp-engine-service: Process terminated with exit code: 1 -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+
+C:\Users\sgupt664\BE_Projects\fads-pgp-engine>
+
+
+
+
+package com.optum.fads.pgp.engine.api.config;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Properties;
+
+import javax.sql.DataSource;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.zaxxer.hikari.HikariDataSource;
+import jakarta.persistence.EntityManagerFactory;
+import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+import java.io.IOException;
+import java.security.PrivateKey;
+import java.util.HashMap;
+
+/**
+ * @author sbajaj8
+ *
+ */
+@Configuration
+@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "snfkEntityManagerFactory",
+						transactionManagerRef = "txManagerSnFk",
+						basePackages = {"com.optum.fads.pgp.engine.api.snowflakeRepo"}
+						)
+public class DatasourceConfigSnowflake 
+{
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(DatasourceConfigSnowflake.class);
+    @Value("${spring.datasource.snfk.jdbcUrl}")
+    private String url;
+
+    @Value("${spring.datasource.snfk.userName}")
+    private String username;
+
+    @Value("${spring.datasource.snfk.password}")
+    private String password;
+
+    @Value("${spring.datasource.snfk.certKey}")
+    private String certKey;
+
+    @Value("${spring.datasource.snfk.passphrase}")
+    private String passphrase;
+
+    @Value("${spring.datasource.snfk.database}")
+    private String database;
+
+    @Value("${spring.datasource.snfk.schema}")
+    private String schema;
+
+    @Value("${spring.datasource.snfk.warehouse}")
+    private String warehouse;
+
+    @Value("${spring.datasource.snfk.account}")
+    private String account;
+
+    @Value("${spring.datasource.snfk.role}")
+    private String role;
+
+    @Value("${db.snfk-login.useCert}")
+    private Boolean useCert;
+
+    private final SecretClient secretClient;
+
+    public DatasourceConfigSnowflake(SecretClient secretClient) {
+        this.secretClient = secretClient;
+    }
+
+
+    @Primary
+    @Bean(name = "fadsDataSource")
+    public DataSource customDataSource() throws Exception, IOException {
+      if(useCert){
+        String pemContent = secretClient.getSecret(certKey).getValue();
+        logger.info("Retrieved PEM from vault");
+
+        char[] password = secretClient.getSecret(passphrase).getValue()  != null ? secretClient.getSecret(passphrase).getValue().toCharArray() : null;
+        PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pemContent, password);
+        // Add more logging
+        SnowflakeBasicDataSource dataSource = new SnowflakeBasicDataSource();
+
+        dataSource.setUrl(url);
+        dataSource.setDatabaseName(database);
+        dataSource.setSchema(schema);
+        dataSource.setWarehouse(warehouse);
+        if(account != null && !account.isEmpty()) {
+            dataSource.setAccount(account);
+        }
+        if(role != null && !role.isEmpty()) {
+            dataSource.setRole(role);
+        }
+
+        dataSource.setUser(username);
+        dataSource.setPrivateKey(privateKey);
+
+        HikariDataSource hikariDs = new HikariDataSource();
+        hikariDs.setDataSource(dataSource);
+
+        return hikariDs;
+
+      } else {
+        String user = secretClient.getSecret(username).getValue();
+        String pass = secretClient.getSecret(password).getValue();
+        logger.info("snowflake login using username and password");
+        Properties props = new Properties();
+        props.put("user", user);
+        props.put("password", pass);
+        props.put("database", database);
+        props.put("schema", schema);
+        props.put("warehouse", warehouse);
+        if(role != null && !role.isEmpty()){
+            props.put("role", role);
+        }
+        if(account != null && !account.isEmpty()) {
+            props.put("account", account);
+        }
+        return new DriverManagerDataSource(url, props);
+      }
+    }
+	
+  //  @Primary
+	@Bean("snfkEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean 
+    snfkEntityManagerFactory( ) throws IOException,  Exception
+	 {
+	  LocalContainerEntityManagerFactoryBean em
+	          = new LocalContainerEntityManagerFactoryBean();
+	        em.setDataSource(customDataSource());
+	        em.setPackagesToScan(
+	          new String[] { "com.optum.fads.pgp.engine.api.snowflakeDomain" });
+	        HibernateJpaVendorAdapter vendorAdapter
+	          = new HibernateJpaVendorAdapter();
+	        em.setJpaVendorAdapter(vendorAdapter);
+	        HashMap<String, Object> properties = new HashMap<>();
+	        properties.put("hibernate.allow_update_outside_transaction",true);
+	        properties.put("hibernate.dialect", "com.optum.fads.pgp.engine.api.config.SnowflakeDialect");
+	        em.setJpaPropertyMap(properties);
+	    return em;
+	}
+	
+  //  @Primary
+	@Bean ("txManagerSnFk")
+	public PlatformTransactionManager txManagerSnFk(@Qualifier("snfkEntityManagerFactory")EntityManagerFactory snfkEntityManagerFactory) throws IOException,  Exception
+	 {
+    	JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(snfkEntityManagerFactory().getObject());
+        return txManager;
+	 }
+
+
+    @Bean(name = "jdbcSnowflake")
+    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsDataSource") DataSource dsSlave) {
+        return new JdbcTemplate(dsSlave);
+    }
+	}
+
+
+	
+
+
+
+
+
+package com.optum.fads.pgp.engine.api.config;
+
+import jakarta.persistence.EntityManagerFactory;
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.jdbc.DataSourceBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+
+
+
+@Configuration
+@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
+@EnableTransactionManagement
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
+						transactionManagerRef = "txManagerSQL",
+						basePackages = { "com.optum.fads.pgp.engine.api.repo"})
+@ComponentScan(basePackages = {"com.optum.fads.pgp.engine"} )
+public class DatasourceConfig{
+	
+	@Value("${spring.datasource.sql.userName}")
+	private String userName;
+
+	@Value("${spring.datasource.sql.password}")
+	private String password;
+
+	@Value("${spring.datasource.sql.jdbcUrl}")
+	private String url;
+
+	@Value("${spring.datasource.sql.driverClassName}")
+	private String driverClassName;
+
+	private final SecretClient secretClient;
+
+	public DatasourceConfig(SecretClient secretClient) {
+		this.secretClient = secretClient;
+	}
+
+	@Primary
+	@Bean(name = "fadsSQLDataSource")
+    public DataSource customDataSource() {
+        String userNameValue = secretClient.getSecret(userName).getValue();
+		String passwordValue = secretClient.getSecret(password).getValue();
+
+		DriverManagerDataSource dataSource = new DriverManagerDataSource();
+		dataSource.setDriverClassName(driverClassName);
+		dataSource.setUsername(userNameValue);
+		dataSource.setPassword(passwordValue);
+		dataSource.setUrl(url);
+
+		return dataSource;
+    }
+
+	@Primary
+	@Bean(name = "sqlEntityManagerFactory")
+	public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
+		{
+			LocalContainerEntityManagerFactoryBean em
+					= new LocalContainerEntityManagerFactoryBean();
+			em.setDataSource(customDataSource());
+			em.setPackagesToScan(
+					new String[] { "com.optum.fads.pgp.engine.api.domain" });
+			HibernateJpaVendorAdapter vendorAdapter
+				= new HibernateJpaVendorAdapter();
+			em.setJpaVendorAdapter(vendorAdapter);
+		return em;
+		}
+
+	@Primary
+	@Bean(name = "txManagerSQL")
+	public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
+		{
+			JpaTransactionManager txManager = new JpaTransactionManager();
+			txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
+			return txManager;
+		}
+	@Bean(name = "jdbcSQLServer")
+	@Autowired
+	public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsSQLDataSource") DataSource dsSlave) {
+		return new JdbcTemplate(dsSlave);
+	}
+}
+
