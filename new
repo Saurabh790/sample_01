@@ -1,4 +1,243 @@
-| Vulnerability ID   | What it stands for                                                  | Does it map to this POM? | Relevant dependency in your POM | Fixed version / threshold                                                        | What your POM currently has                                                                      | Status                           |
-| ------------------ | ------------------------------------------------------------------- | ------------------------ | ------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | -------------------------------- |
-| **CVE-2025-67735** | Netty `HttpRequestEncoder` CRLF injection / request smuggling issue | **Yes**                  | Netty / `netty-codec-http`      | Fixed in **4.1.129.Final+** or **4.2.8.Final+** ([nvd.nist.gov][1])              | `netty.version = 4.1.131.Final` and `mvn dependency:tree` shows `netty-codec-http:4.1.131.Final` | **Resolved** ([nvd.nist.gov][1]) |
-| **CVE-2026-1225**  | Logback `logback-core` config-processing vulnerability              | **Yes**                  | `ch.qos.logback:logback-core`   | Affects **up to and including 1.5.24**; fixed in **1.5.25+** ([nvd.nist.gov][2]) | `logback.version = 1.5.32` and `mvn dependency:tree` shows `logback-core:1.5.32`                 | **Resolved** ([nvd.nist.gov][2]) |
+@RequestMapping(method = RequestMethod.DELETE, value="/caseDetail/updateCase/{userId}",headers="Accept=application/json")
+public ResponseEntity<Void> deleteCaseDetail(@PathVariable("caseId") Integer caseId) {
+
+	try {
+		caseDetailService.deleteCaseDetail(caseId);
+	} catch (Exception e) {
+		e.printStackTrace();
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+	}
+	return ResponseEntity.ok().build();
+}
+
+
+@RequestMapping(value = "/caseDetail/printPdf/{caseId}/{ft}/{fc}/{fl}", method = RequestMethod.POST)
+public ResponseEntity<InputStreamResource> printPDF(@RequestBody PdfOptionMenu pdfOptionMenu,
+													@PathVariable("caseId") Integer caseId,
+													@PathVariable("ft") String fTermsAccess,
+													@PathVariable("fc") String fCalcAccess,
+													@PathVariable("fl") String fLedgerAccess,
+													HttpServletRequest request) throws IOException {
+
+	ServletContext ctx = request.getServletContext();
+
+	synchronized (FONT_LOCK) {
+		if (customFontProgram == null || customFontBoldProgram == null) {
+			try (InputStream fontIs = ctx.getResourceAsStream(pdfFontProp);
+				 InputStream fontBoldIs = ctx.getResourceAsStream(pdfFontBoldProp)) {
+
+				if (fontIs == null) {
+					LOGGER.error("Font resource not found at path (pdf.font): {}", pdfFontProp);
+					return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+				}
+				if (fontBoldIs == null) {
+					LOGGER.error("Font bold resource not found at path (pdf.fontbold): {}", pdfFontBoldProp);
+					return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+				}
+
+				byte[] fontBytes = IOUtils.toByteArray(fontIs);
+				byte[] fontBoldBytes = IOUtils.toByteArray(fontBoldIs);
+
+				customFontProgram = FontProgramFactory.createFont(fontBytes);
+				customFontBoldProgram = FontProgramFactory.createFont(fontBoldBytes);
+
+				LOGGER.info("Successfully loaded custom fonts from resources");
+			} catch (Exception ex) {
+				LOGGER.error("Error loading font resources", ex);
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+			}
+		}
+	}
+
+	try (InputStream logoIs = ctx.getResourceAsStream(logoUrlProp)) {
+		if (logoIs == null) {
+			LOGGER.error("Logo resource not found at path (logo.url): {}", logoUrlProp);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+		byte[] logoPath = IOUtils.toByteArray(logoIs);
+		CaseDetailDTO caseDTO = caseDetailService.findCaseDetail(caseId);
+		byte[] pdfBytes;
+		try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			 PdfWriter writer = new PdfWriter(baos);
+			 PdfDocument pdfDocument = new PdfDocument(writer);
+			 Document document = new Document(pdfDocument)) {
+
+			String trackingId = caseDTO.getGeneral().getTrackingName();
+			List<LabelValueBean> trackingNames = (List<LabelValueBean>) commonLoadService.findTrackingNames();
+			String trackingName;
+			for (LabelValueBean labelValueBean : trackingNames) {
+				if (trackingId != null && trackingId.equals(labelValueBean.getValue())) {
+					trackingName = labelValueBean.getLabel();
+					caseDTO.getGeneral().setTrackingName(trackingName);
+					break;
+				}
+			}
+
+			if (pdfOptionMenu.isGeneral()) {
+				Collection<CaseMetaBaseDto> caMetaBaseList = customFieldsLoadService.findCaseTypeMetaBaseFields(caseDTO.getIntelligentKey().getCaseType());
+
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(generalPDF.createGeneralPDF(caseDTO, caMetaBaseList));
+				if (pdfOptionMenu.isPreliminary() || pdfOptionMenu.isFullScale() || pdfOptionMenu.isNotes()
+						|| pdfOptionMenu.isEmails() || pdfOptionMenu.isPeerGroupJobs() || pdfOptionMenu.isAlgorithms() || pdfOptionMenu.isFiles()
+						|| pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals() || pdfOptionMenu.isAssociations()
+						|| pdfOptionMenu.isContacts() || pdfOptionMenu.isSpecialInfo())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+
+			if (pdfOptionMenu.isPreliminary()) {
+				Collection<CaseMetaBaseDto> prelminaryMetabaseList = customFieldsLoadService.findPreliminaryCustomFields();
+				Collection<AssignedBean> prelimAssignList = caseDetailInvestigationService.findPreliminaryAssignments(caseId).getData();
+				Collection<ReferredBean> prelimReferList = caseDetailInvestigationService.findPreliminaryReferrals(caseId).getData();
+				Collection<StatusBean> prelimStatusHistList = caseDetailInvestigationService.findPreliminaryStatusHistory(caseId).getData();
+				Collection<LabelValueBean> prelimPriorities = commonLoadService.findAllPreliminaryPriorities();
+				Collection<LabelValueBean> prelimIssues = commonLoadService.findAllInvestigationValidValues().getPreliminaryIssues();
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(investigationPDF.createCommonHeader(caseDTO));
+				document.add(investigationPDF.createPreliminaryInvestigation(caseDTO, prelimAssignList, prelimReferList, prelimStatusHistList, prelimPriorities, prelminaryMetabaseList, prelimIssues));
+				if (pdfOptionMenu.isFullScale() || pdfOptionMenu.isNotes() || pdfOptionMenu.isEmails()
+						|| pdfOptionMenu.isPeerGroupJobs() || pdfOptionMenu.isAlgorithms() || pdfOptionMenu.isFiles() || pdfOptionMenu.isFinancial()
+						|| pdfOptionMenu.isAppeals() || pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts() || pdfOptionMenu.isSpecialInfo())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isFullScale()) {
+				Collection<CaseMetaBaseDto> fullscaleMetabaseList = customFieldsLoadService.findFullscaleCustomFields();
+				Collection<AssignedBean> fullscaleAssignList = caseDetailInvestigationService.findFullscaleAssignments(caseId).getData();
+				Collection<ReferredBean> fullscaleReferList = caseDetailInvestigationService.findFullscaleReferrals(caseId).getData();
+				Collection<StatusBean> fullscaleStatusHistList = caseDetailInvestigationService.findFullscaleStatusHistory(caseId).getData();
+				Collection<LabelValueBean> fullscalePriorities = commonLoadService.findAllFullscalePriorities();
+				Collection<LabelValueBean> fullscaleIssues = commonLoadService.findAllInvestigationValidValues().getFullscaleIssues();
+
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(investigationPDF.createCommonHeader(caseDTO));
+				document.add(investigationPDF.createFullScaleInvestigation(caseDTO, fullscaleAssignList, fullscaleReferList, fullscaleStatusHistList, fullscalePriorities, fullscaleMetabaseList, fullscaleIssues));
+
+				if (pdfOptionMenu.isSpecialInfo() || pdfOptionMenu.isNotes() || pdfOptionMenu.isEmails() || pdfOptionMenu.isPeerGroupJobs() || pdfOptionMenu.isAlgorithms()
+						|| pdfOptionMenu.isFiles() || pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals()
+						|| pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isSpecialInfo()) {
+				Collection<CaseMetaBaseDto> spCustomFields = customFieldsLoadService.findSpecialInfoCustomFields();
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(SpecialInfoPDF.createSpecialInfo(caseDTO, spCustomFields));
+
+				if (pdfOptionMenu.isNotes() || pdfOptionMenu.isEmails() || pdfOptionMenu.isPeerGroupJobs() || pdfOptionMenu.isAlgorithms()
+						|| pdfOptionMenu.isFiles() || pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals()
+						|| pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+
+			if (pdfOptionMenu.isNotes()) {
+				List<NoteBean> caseNotes = caseDetailNotesService.findNotes(caseId);
+				Collection<LabelValueBean> noteTypes = commonLoadService.findAllNoteFieldTypes();
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(notesPDF.createNotesPagePDF(caseDTO, caseNotes, noteTypes));
+
+				if (pdfOptionMenu.isEmails() || pdfOptionMenu.isPeerGroupJobs() || pdfOptionMenu.isAlgorithms() || pdfOptionMenu.isFiles()
+						|| pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals()
+						|| pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isEmails()) {
+				Collection<ReminderBean> emails = reminderService.findReminders(caseId);
+
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(emailPDF.createEmailPagePDF(caseDTO, emails));
+				if (pdfOptionMenu.isPeerGroupJobs() || pdfOptionMenu.isAlgorithms() || pdfOptionMenu.isFiles() || pdfOptionMenu.isFinancial()
+						|| pdfOptionMenu.isAppeals() || pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isPeerGroupJobs()) {
+				Collection<SurJobBean> peerGroupJobs = caseDetailFindingsService.findSurJobs(caseId);
+
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(findingsPDF.createFindingsPeerGroup(caseDTO, peerGroupJobs));
+				if (pdfOptionMenu.isAlgorithms() || pdfOptionMenu.isFiles() || pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals()
+						|| pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isAlgorithms()) {
+				Collection<AnalyticBean> algorithms = caseDetailFindingsService.findAlgorithms(caseId);
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(findingsPDF.createFindingsAlgorithm(caseDTO, algorithms));
+				if (pdfOptionMenu.isFiles() || pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals()
+						|| pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isFiles()) {
+				Collection<FileBean> files = caseDetailFilesService.findFiles(caseId).getData();
+
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(filesPDF.createFiles(caseDTO, files));
+				if (pdfOptionMenu.isFinancial() || pdfOptionMenu.isAppeals() || pdfOptionMenu.isAssociations()
+						|| pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isFinancial()) {
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(financialPDF.createFinancial(caseDTO));
+				if (!CaseAccessConstants.HIDDEN.equalsIgnoreCase(fTermsAccess)) {
+					Collection<CaseMetaBaseDto> financialMetabaseFields = customFieldsLoadService.findFinancialMetaBaseFields();
+					document.add(financialPDF.createFinancialTermData(caseDTO, financialMetabaseFields));
+				}
+				if (!CaseAccessConstants.HIDDEN.equalsIgnoreCase(fCalcAccess)) {
+					document.add(financialPDF.createCalculateFinancialData(caseDTO));
+				}
+
+				if (!CaseAccessConstants.HIDDEN.equalsIgnoreCase(fLedgerAccess)) {
+					List<FinancialLedgerItem> ledgerList = financialService.findLedgerData(caseDTO.getIntelligentKey().getCaseId());
+					document.add(financialPDF.createPDFLedgerData(caseDTO, ledgerList));
+				}
+
+				if (pdfOptionMenu.isAppeals() || pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+
+			if (pdfOptionMenu.isAppeals()) {
+				List<CaseMetaBaseDto> aplCustomFields = customFieldsLoadService.findAppealsCustomFields();
+				List<AppealBean> prevAppeals = caseDetailAppealsService.findPrevAppealsList(caseId);
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(appealsPDF.createAppeals(caseDTO, prevAppeals, aplCustomFields));
+
+				if (pdfOptionMenu.isAssociations() || pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isAssociations()) {
+				Collection<AssociationListItem> associations = caseDetailAssociationsService.findAssociations(caseId).getData();
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(associationsPDF.createAssociations(caseDTO, associations));
+				if (pdfOptionMenu.isContacts())
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			}
+			if (pdfOptionMenu.isContacts()) {
+				Collection<ReferenceBean> contacts = caseDetailContactsService.findConstacts(caseId).getData();
+				document.add(commonPDFHelper.createLogo(logoPath));
+				document.add(contactsPDF.createContacts(caseDTO, contacts));
+			}
+
+			pdfBytes = baos.toByteArray();
+		}
+
+		String casePdf = CommonUtil.createIntelligentKeyId(caseDTO.getIntelligentKey()) + ".pdf";
+
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.parseMediaType("application/pdf"));
+		headers.add("Access-Control-Allow-Origin", "*");
+		headers.add("Access-Control-Allow-Methods", "GET, POST, PUT");
+		headers.add("Access-Control-Allow-Headers", "Content-Type");
+		headers.add("Content-Disposition", "filename=" + casePdf);
+		headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
+		headers.add("Pragma", "no-cache");
+		headers.add("Expires", "0");
+		headers.setContentLength(pdfBytes.length);
+
+		InputStream is = new ByteArrayInputStream(pdfBytes);
+		return ResponseEntity.ok()
+				.headers(headers)
+				.body(new InputStreamResource(is));
+	} catch (Exception e) {
+		LOGGER.error("Error at CaseDetailPdfController.printPDF", e);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+	}
+}
