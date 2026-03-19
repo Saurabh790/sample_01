@@ -1,128 +1,9 @@
-package com.optum.fads.web.config;
-
-import java.util.Properties;
-
-import javax.sql.DataSource;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import jakarta.persistence.EntityManagerFactory;
-
-@Configuration
-@EnableTransactionManagement
-@ComponentScan(basePackages = { "com.optum.fads" })
-@EnableJpaRepositories(
-    entityManagerFactoryRef = "sqlEntityManagerFactory",
-    transactionManagerRef = "txManagerSQL",
-    basePackages = {
-        "com.optum.fads.authorization.api.repo",
-        "com.optum.fads.pgp.persistence.repo"
-    }
-)
-public class ServiceConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(ServiceConfig.class);
-
-    @Value("${hibernate.connection.url}")
-    private String url;
-
-    @Value("${hibernate.connection.username}")
-    private String username;
-
-    @Value("${hibernate.connection.password}")
-    private String password;
-
-    @Value("${hibernate.connection.driver_class}")
-    private String driverClassName;
-
-    @Value("${hibernate.dialect}")
-    private String hibernateDialect;
-
-    @Value("${hibernate.format_sql}")
-    private String hibernateFormatSql;
-
-    @Value("${hibernate.show_sql}")
-    private String hibernateShowSql;
-
-    @Value("${hibernate.generate_statistics}")
-    private String hibernateGenerateStatistics;
-
-    @Primary
-    @Bean
-    public DataSource dataSource() {
-        DriverManagerDataSource ds = new DriverManagerDataSource();
-        ds.setDriverClassName(driverClassName);
-        ds.setUrl(url);
-        ds.setUsername(username);
-        ds.setPassword(password);
-        return ds;
-    }
-
-    @Primary
-    @Bean(name = "sqlEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
-        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
-        em.setDataSource(dataSource());
-        em.setPackagesToScan(
-            "com.optum.fads.authorization.api.domain",
-            "com.optum.fads.pgp.persistence.domain",
-            "com.optum.fads.caseconfig.domain",
-            "com.optum.fads.casetracking.domain",
-            "com.optum.fads.security.domain"
-        );
-
-        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        em.setJpaVendorAdapter(vendorAdapter);
-        em.setJpaProperties(getHibernateProperties());
-        return em;
-    }
-
-    @Primary
-    @Bean(name = "txManagerSQL")
-    public PlatformTransactionManager txManagerSQL(
-            @Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
-        JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
-        return txManager;
-    }
-
-    private Properties getHibernateProperties() {
-        Properties hibernateProperties = new Properties();
-        hibernateProperties.put("hibernate.dialect", hibernateDialect);
-        hibernateProperties.put("hibernate.format_sql", hibernateFormatSql);
-        hibernateProperties.put("hibernate.show_sql", hibernateShowSql);
-        hibernateProperties.put("hibernate.generate_statistics", hibernateGenerateStatistics);
-
-        log.debug("[DB] Hibernate properties prepared: dialect={}, show_sql={}, format_sql={}, stats={}",
-                hibernateDialect, hibernateShowSql, hibernateFormatSql, hibernateGenerateStatistics);
-
-        return hibernateProperties;
-    }
-
-    @Bean
-    public PlatformTransactionManager txManager(
-            @Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
-        log.info("[DB] Initializing JpaTransactionManager");
-        JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
-        return txManager;
-    }
-}
-INFO] ------------------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  03:51 min
+[INFO] Finished at: 2026-03-19T19:10:49+05:30
+[INFO] ------------------------------------------------------------------------
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project fads-web: Compilation failure
 [ERROR] /C:/Users/sgupt664/fads-monolithic-application/fads-web/src/main/java/com/optum/fads/web/config/WebConfig.java:[60,27] cannot find symbol
 [ERROR]   symbol:   method favorPathExtension(boolean)
@@ -134,7 +15,12 @@ INFO] ------------------------------------------------------------------------
 [ERROR] Re-run Maven using the -X switch to enable full debug logging.
 [ERROR]
 [ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/Moj
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR]
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :fads-web
+
+C:\Users\sgupt664\fads-monolithic-applic
 
 package com.optum.fads.web.config;
 
