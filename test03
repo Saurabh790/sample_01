@@ -1,709 +1,223 @@
-package com.optum.fads.casetracking.domain;
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:compile (default-compile) on project fads-web: Compilation failure: Compilation failure:
+[ERROR] /C:/Users/sgupt664/fads-monolithic-application/fads-web/src/main/java/com/optum/fads/web/config/ServiceConfig.java:[19,42] package org.springframework.orm.hibernate5 does not exist
+[ERROR] /C:/Users/sgupt664/fads-monolithic-application/fads-web/src/main/java/com/optum/fads/web/config/ServiceConfig.java:[20,42] package org.springframework.orm.hibernate5 does not exist
+[ERROR] /C:/Users/sgupt664/fads-monolithic-application/fads-web/src/main/java/com/optum/fads/web/security/matcher/CsrfSecurityRequestMatcher.java:[10,53] cannot find symbol
+[ERROR]   symbol:   class AntPathRequestMatcher
+[ERROR]   location: package org.springframework.security.web.util.matcher
+[ERROR] /C:/Users/sgupt664/fads-monolithic-application/fads-web/src/main/java/com/optum/fads/web/security/matcher/CsrfSecurityRequestMatcher.java:[19,13] cannot find symbol
+[ERROR]   symbol:   class AntPathRequestMatcher
+[ERROR]   location: class com.optum.fads.web.security.matcher.CsrfSecurityRequestMatcher
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR]
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :fads-web
 
-import com.optum.fads.authorization.api.domain.CaLuCaseTypeT;
-import com.optum.fads.authorization.api.domain.CaLuPrmNodeT;
-import com.optum.fads.authorization.api.domain.UiUserBase;
-import com.optum.fads.caseconfig.domain.CaLuScndNodeT;
-import jakarta.persistence.*;
-import org.hibernate.annotations.Formula;
+C:\Users\sgupt664\fads-monolithic-application
 
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Set;
+package com.optum.fads.web.config;
+
+import java.util.Properties;
+
+import javax.sql.DataSource;
+
+import org.hibernate.SessionFactory;
+import org.slf4j.Logger; // added
+import org.slf4j.LoggerFactory; // added
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBuilder;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+
+import jakarta.persistence.EntityManagerFactory;
+
+@Configuration
+@EnableTransactionManagement
+@ComponentScan(basePackages = { "com.optum.fads" })
+@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
+transactionManagerRef = "txManagerSQL",
+basePackages = {
+		"com.optum.fads.authorization.api.repo" ,
+		"com.optum.fads.pgp.persistence.repo"
+})
+public class ServiceConfig  {
+    private static final Logger log = LoggerFactory.getLogger(ServiceConfig.class); // logger
+
+    @Value("${hibernate.connection.url}")
+    private String url;
+
+    @Value("${hibernate.connection.username}")
+    private String username;
+
+    @Value("${hibernate.connection.password}")
+    private String password;
+
+    @Value("${hibernate.connection.driver_class}")
+    private String driverClassName;
+
+    @Value("${hibernate.dialect}")
+    private String hibernateDialect;
+
+    @Value("${hibernate.format_sql}")
+    private String hibernateFormatSql;
+
+    @Value("${hibernate.show_sql}")
+    private String hibernateShowSql;
+
+    @Value("${hibernate.generate_statistics}")
+    private String hibernateGenerateStatistics;
+
+
+    @Primary
+    @Bean
+    public DataSource dataSource() {
+        DriverManagerDataSource ds = new DriverManagerDataSource();
+        ds.setDriverClassName(driverClassName);
+        ds.setUrl(url);
+        ds.setUsername(username);
+        ds.setPassword(password);
+        return ds;
+    }
+
+    @Primary
+    @Bean(name = "sqlEntityManagerFactory")
+    public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory() {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource());
+        // Added additional packages so entities like CaLabelsT (in caseconfig/casetracking modules) are discovered
+        em.setPackagesToScan(
+            "com.optum.fads.authorization.api.domain",
+            "com.optum.fads.pgp.persistence.domain",
+            "com.optum.fads.caseconfig.domain",      // added
+            "com.optum.fads.casetracking.domain",            // added (covers controllers/util if any entity annotations appear)
+            "com.optum.fads.security.domain"          // added for consistency with legacy SessionFactory scan
+        );
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+        em.setJpaProperties(getHibernateProperties());
+        return em;
+    }
+
+    @Primary
+    @Bean(name = "txManagerSQL")
+    public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory") EntityManagerFactory sqlEntityManagerFactory) {
+        JpaTransactionManager txManager = new JpaTransactionManager();
+        txManager.setEntityManagerFactory(sqlEntityManagerFactory);
+        return txManager;
+    }
+
+    @Bean(name = "sessionFactory")
+    public SessionFactory sessionFactory() {
+        log.info("[DB] Building legacy SessionFactory");
+        return new LocalSessionFactoryBuilder(dataSource())
+            .scanPackages(
+                "com.optum.fads.authorization.api.domain",
+                "com.optum.fads.pgp.persistence.domain",
+                "com.optum.fads.casetracking.domain",
+                "com.optum.fads.casetracking",
+                "com.optum.fads.caseconfig",
+                "com.optum.fads.caseconfig.domain",
+                "com.optum.fads.security.domain"
+            )
+            .addProperties(getHibernateProperties())
+            .buildSessionFactory();
+    }
+
+    private Properties getHibernateProperties() {
+        Properties hibernateProperties = new Properties();
+        hibernateProperties.put("hibernate.dialect", hibernateDialect);
+        hibernateProperties.put("hibernate.format_sql", hibernateFormatSql);
+        hibernateProperties.put("hibernate.show_sql", hibernateShowSql);
+        hibernateProperties.put("hibernate.generate_statistics", hibernateGenerateStatistics);
+        log.debug("[DB] Hibernate properties prepared: dialect={}, show_sql={}, format_sql={}, stats={}",
+            hibernateDialect, hibernateShowSql, hibernateFormatSql, hibernateGenerateStatistics);
+        return hibernateProperties;
+    }
+
+    @Bean
+    public PlatformTransactionManager txManager() {
+        log.info("[DB] Initializing HibernateTransactionManager (legacy SessionFactory)");
+        return new HibernateTransactionManager(sessionFactory());
+    }
+
+    // Commented out: direct JDBC connection test, not needed with JPA
+    /*
+    public void testConnection() {
+        log.info("[DB] Testing database connectivity ...");
+        try (Connection conn = dataSource().getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT banner FROM v$version")) {
+            if (rs.next()) {
+                log.info("[DB] Connected to Oracle DB: {}", rs.getString(1));
+            } else {
+                log.warn("[DB] Test query returned no rows");
+            }
+        } catch (Exception e) {
+            log.error("[DB] Failed to connect to Oracle DB: {}", e.getMessage());
+            log.debug("[DB] Connection failure stack trace", e);
+        }
+    }
+    */
+
+}
+
+
+
 
 /**
- * AbstractCaIntelligentKeyT entity provides the base persistence definition of
- * the CaIntelligentKeyT entity.
- * 
- * @author Shyam Biry
+ * Copyright (c) Optum 2015 - All Rights Reserved.
  */
-@MappedSuperclass
-public abstract class AbstractCaIntelligentKeyT implements java.io.Serializable {
-
-	// Fields
-
-	private Integer caseId;
-	private UiUserBase uiUserBaseByActiveUser;
-	private UiUserBase uiUserBaseByCreatedBy;
-	private UiUserBase uiUserBaseByUpdatedBy;
-	private CaLuScndNodeT caLuScndNodeT;
-	private CaLuPrmNodeT caLuPrmNodeT;
-	private CaLuCaseTypeT caLuCaseTypeT;
-	private Short caYearId;
-	private Integer caSequenceId;
-	private Date createdDt;
-	private Date updatedDt;
-	private String deleteFlag;
-	private String lockFlag;
-	private Date userLoginDt;
-	private Set<CaAppealHistT> caAppealHistTs = new HashSet<CaAppealHistT>(0);
-	private Set<CaInvstFsAssignT> caInvstFsAssignTs = new HashSet<CaInvstFsAssignT>(0);
-	private Set<CaInvstFsHistT> caInvstFsHistTs = new HashSet<CaInvstFsHistT>(0);
-	private CaFinancialTermsT caFinancialTermsT;
-	private CaNatSettlementT caNatSettlementT;
-	private CaRecipientT caRecipientT;
-	private CaFinancialCalculateT caFinancialCalculateT;
-	private CaProviderT caProviderT;
-	private Set<CaInvstPrReferHistT> caInvstPrReferHistTs = new HashSet<CaInvstPrReferHistT>(0);
-	private Set<CaInvstPrReferT> caInvstPrReferTs = new HashSet<CaInvstPrReferT>(0);
-	private Set<CaFilesT> caFilesTs = new HashSet<CaFilesT>(0);
-	private Set<CaFinancialLedgerHistT> caFinancialLedgerHistTs = new HashSet<CaFinancialLedgerHistT>(0);
-	private Set<CaFinancialPayLedgerT> caFinancialPayLedgerTs = new HashSet<CaFinancialPayLedgerT>(0);
-	private Set<CaAssociateT> caAssociateTsForAssociateCaseId = new HashSet<CaAssociateT>(0);
-	private Set<CaAppealsT> caAppealsTs = new HashSet<CaAppealsT>(0);
-	private CaInvstFullscaleT caInvstFullscaleT;
-	private Set<CaInvstFsIssueHistT> caInvstFsIssueHistTs = new HashSet<CaInvstFsIssueHistT>(0);
-	private Set<CaInvstPrStatusHistT> caInvstPrStatusHistTs = new HashSet<CaInvstPrStatusHistT>(0);
-	private Set<CaInvstFsAssignHistT> caInvstFsAssignHistTs = new HashSet<CaInvstFsAssignHistT>(0);
-	private Set<CaFinancialOvrHistT> caFinancialOvrHistTs = new HashSet<CaFinancialOvrHistT>(0);
-	private Set<CaInvstPrIssueHistT> caInvstPrIssueHistTs = new HashSet<CaInvstPrIssueHistT>(0);
-	private Set<CaInvstPrAssignT> caInvstPrAssignTs = new HashSet<CaInvstPrAssignT>(0);
-	private Set<CaInvstPrAssignHistT> caInvstPrAssignHistTs = new HashSet<CaInvstPrAssignHistT>(0);
-	private Set<CaInvstPrIssueT> caInvstPrIssueTs = new HashSet<CaInvstPrIssueT>(0);
-	private Set<CaInvstFsIssueT> caInvstFsIssueTs = new HashSet<CaInvstFsIssueT>(0);
-	private Set<CaInvstFsStatusHistT> caInvstFsStatusHistTs = new HashSet<CaInvstFsStatusHistT>(0);
-	private Set<CaSpecialInfoHistT> caSpecialInfoHistTs = new HashSet<CaSpecialInfoHistT>(0);
-	private Set<CaInvstFsReferHistT> caInvstFsReferHistTs = new HashSet<CaInvstFsReferHistT>(0);
-	private Set<CaRefContactsT> caRefContactsTs = new HashSet<CaRefContactsT>(0);
-	private Set<CaRecipientLockinT> caRecipientLockinTs = new HashSet<CaRecipientLockinT>(0);
-	private Set<CaSurT> caSurTs = new HashSet<CaSurT>(0);
-	private Set<CaAssociateT> caAssociateTsForCaseId = new HashSet<CaAssociateT>(0);
-	private Set<CaInvstPrHistT> caInvstPrHistTs = new HashSet<CaInvstPrHistT>(0);
-	private CaSpecialInfoT caSpecialInfoT;
-	private Set<CaEmailsT> caEmailsTs = new HashSet<CaEmailsT>(0);
-	private CaFinancialOverPayT caFinancialOverPayT;
-	private CaInvstPreliminaryT caInvstPreliminaryT;
-	private Set<CaNotesT> caNotesTs = new HashSet<CaNotesT>(0);
-	private Set<CaAnalyticT> caAnalyticTs = new HashSet<CaAnalyticT>(0);
-	private CaGeneralT caGeneralT;
-	private Set<CaInvstFsReferT> caInvstFsReferTs = new HashSet<CaInvstFsReferT>(0);
-
-	private String caseIdPrmSecndYearSeqId;
-
-	// Constructors
-
-	/** default constructor */
-	public AbstractCaIntelligentKeyT() {
-	}
-
-	/** minimal constructor */
-	public AbstractCaIntelligentKeyT(Integer caseId, UiUserBase uiUserBaseByCreatedBy, UiUserBase uiUserBaseByUpdatedBy,
-			CaLuCaseTypeT caLuCaseTypeT, Date createdDt, Date updatedDt) {
-		this.caseId = caseId;
-		this.uiUserBaseByCreatedBy = uiUserBaseByCreatedBy;
-		this.uiUserBaseByUpdatedBy = uiUserBaseByUpdatedBy;
-		this.caLuCaseTypeT = caLuCaseTypeT;
-		this.createdDt = createdDt;
-		this.updatedDt = updatedDt;
-	}
-
-	/** full constructor */
-	public AbstractCaIntelligentKeyT(Integer caseId, UiUserBase uiUserBaseByActiveUser,
-			UiUserBase uiUserBaseByCreatedBy, UiUserBase uiUserBaseByUpdatedBy, CaLuScndNodeT caLuScndNodeT,
-			CaLuPrmNodeT caLuPrmNodeT, CaLuCaseTypeT caLuCaseTypeT, Short caYearId, Integer caSequenceId,
-			Date createdDt, Date updatedDt, String deleteFlag, String lockFlag, Date userLoginDt,
-			Set<CaAppealHistT> caAppealHistTs, Set<CaInvstFsAssignT> caInvstFsAssignTs,
-			Set<CaInvstFsHistT> caInvstFsHistTs,
-			CaFinancialTermsT caFinancialTermsT, CaNatSettlementT caNatSettlementT, CaRecipientT caRecipientT,
-			CaFinancialCalculateT caFinancialCalculateT, CaProviderT caProviderT,
-			Set<CaInvstPrReferHistT> caInvstPrReferHistTs, Set<CaInvstPrReferT> caInvstPrReferTs,
-			Set<CaFilesT> caFilesTs, Set<CaFinancialLedgerHistT> caFinancialLedgerHistTs,
-			Set<CaFinancialPayLedgerT> caFinancialPayLedgerTs, Set<CaAssociateT> caAssociateTsForAssociateCaseId,
-			Set<CaAppealsT> caAppealsTs,
-			CaInvstFullscaleT caInvstFullscaleT, Set<CaInvstFsIssueHistT> caInvstFsIssueHistTs,
-			Set<CaInvstPrStatusHistT> caInvstPrStatusHistTs, Set<CaInvstFsAssignHistT> caInvstFsAssignHistTs,
-			Set<CaFinancialOvrHistT> caFinancialOvrHistTs, Set<CaInvstPrIssueHistT> caInvstPrIssueHistTs,
-			Set<CaInvstPrAssignT> caInvstPrAssignTs, Set<CaInvstPrAssignHistT> caInvstPrAssignHistTs,
-			Set<CaInvstPrIssueT> caInvstPrIssueTs, Set<CaInvstFsIssueT> caInvstFsIssueTs,
-			Set<CaInvstFsStatusHistT> caInvstFsStatusHistTs,
-			Set<CaSpecialInfoHistT> caSpecialInfoHistTs, Set<CaInvstFsReferHistT> caInvstFsReferHistTs,
-			Set<CaRefContactsT> caRefContactsTs,
-			Set<CaRecipientLockinT> caRecipientLockinTs, Set<CaSurT> caSurTs, Set<CaAssociateT> caAssociateTsForCaseId,
-			Set<CaInvstPrHistT> caInvstPrHistTs, CaSpecialInfoT caSpecialInfoT,
-			Set<CaEmailsT> caEmailsTs, CaFinancialOverPayT caFinancialOverPayT, CaInvstPreliminaryT caInvstPreliminaryT,
-			Set<CaNotesT> caNotesTs, Set<CaAnalyticT> caAnalyticTs,
-			CaGeneralT caGeneralT, Set<CaInvstFsReferT> caInvstFsReferTs) {
-		this.caseId = caseId;
-		this.uiUserBaseByActiveUser = uiUserBaseByActiveUser;
-		this.uiUserBaseByCreatedBy = uiUserBaseByCreatedBy;
-		this.uiUserBaseByUpdatedBy = uiUserBaseByUpdatedBy;
-		this.caLuScndNodeT = caLuScndNodeT;
-		this.caLuPrmNodeT = caLuPrmNodeT;
-		this.caLuCaseTypeT = caLuCaseTypeT;
-		this.caYearId = caYearId;
-		this.caSequenceId = caSequenceId;
-		this.createdDt = createdDt;
-		this.updatedDt = updatedDt;
-		this.deleteFlag = deleteFlag;
-		this.lockFlag = lockFlag;
-		this.userLoginDt = userLoginDt;
-		this.caAppealHistTs = caAppealHistTs;
-		this.caInvstFsAssignTs = caInvstFsAssignTs;
-		this.caInvstFsHistTs = caInvstFsHistTs;
-		this.caFinancialTermsT = caFinancialTermsT;
-		this.caNatSettlementT = caNatSettlementT;
-		this.caRecipientT = caRecipientT;
-		this.caFinancialCalculateT = caFinancialCalculateT;
-		this.caProviderT = caProviderT;
-		this.caInvstPrReferHistTs = caInvstPrReferHistTs;
-		this.caInvstPrReferTs = caInvstPrReferTs;
-		this.caFilesTs = caFilesTs;
-		this.caFinancialLedgerHistTs = caFinancialLedgerHistTs;
-		this.caFinancialPayLedgerTs = caFinancialPayLedgerTs;
-		this.caAssociateTsForAssociateCaseId = caAssociateTsForAssociateCaseId;
-		this.caAppealsTs = caAppealsTs;
-		this.caInvstFullscaleT = caInvstFullscaleT;
-		this.caInvstFsIssueHistTs = caInvstFsIssueHistTs;
-		this.caInvstPrStatusHistTs = caInvstPrStatusHistTs;
-		this.caInvstFsAssignHistTs = caInvstFsAssignHistTs;
-		this.caFinancialOvrHistTs = caFinancialOvrHistTs;
-		this.caInvstPrIssueHistTs = caInvstPrIssueHistTs;
-		this.caInvstPrAssignTs = caInvstPrAssignTs;
-		this.caInvstPrAssignHistTs = caInvstPrAssignHistTs;
-		this.caInvstPrIssueTs = caInvstPrIssueTs;
-		this.caInvstFsIssueTs = caInvstFsIssueTs;
-		this.caInvstFsStatusHistTs = caInvstFsStatusHistTs;
-		this.caSpecialInfoHistTs = caSpecialInfoHistTs;
-		this.caInvstFsReferHistTs = caInvstFsReferHistTs;
-		this.caRefContactsTs = caRefContactsTs;
-		this.caRecipientLockinTs = caRecipientLockinTs;
-		this.caSurTs = caSurTs;
-		this.caAssociateTsForCaseId = caAssociateTsForCaseId;
-		this.caInvstPrHistTs = caInvstPrHistTs;
-		this.caSpecialInfoT = caSpecialInfoT;
-		this.caEmailsTs = caEmailsTs;
-		this.caFinancialOverPayT = caFinancialOverPayT;
-		this.caInvstPreliminaryT = caInvstPreliminaryT;
-		this.caNotesTs = caNotesTs;
-		this.caAnalyticTs = caAnalyticTs;
-		this.caGeneralT = caGeneralT;
-		this.caInvstFsReferTs = caInvstFsReferTs;
-	}
-
-	// Property accessors
-	@Id
-	@Column(name = "CASE_ID", unique = true, nullable = false, precision = 7, scale = 0)
-	public Integer getCaseId() {
-		return this.caseId;
-	}
-
-	public void setCaseId(Integer caseId) {
-		this.caseId = caseId;
-	}
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "ACTIVE_USER")
-	public UiUserBase getUiUserBaseByActiveUser() {
-		return this.uiUserBaseByActiveUser;
-	}
-
-	public void setUiUserBaseByActiveUser(UiUserBase uiUserBaseByActiveUser) {
-		this.uiUserBaseByActiveUser = uiUserBaseByActiveUser;
-	}
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "CREATED_BY", nullable = false)
-	public UiUserBase getUiUserBaseByCreatedBy() {
-		return this.uiUserBaseByCreatedBy;
-	}
-
-	public void setUiUserBaseByCreatedBy(UiUserBase uiUserBaseByCreatedBy) {
-		this.uiUserBaseByCreatedBy = uiUserBaseByCreatedBy;
-	}
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "UPDATED_BY", nullable = false)
-	public UiUserBase getUiUserBaseByUpdatedBy() {
-		return this.uiUserBaseByUpdatedBy;
-	}
-
-	public void setUiUserBaseByUpdatedBy(UiUserBase uiUserBaseByUpdatedBy) {
-		this.uiUserBaseByUpdatedBy = uiUserBaseByUpdatedBy;
-	}
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "CA_SCND_NODE_CD")
-	public CaLuScndNodeT getCaLuScndNodeT() {
-		return this.caLuScndNodeT;
-	}
-
-	public void setCaLuScndNodeT(CaLuScndNodeT caLuScndNodeT) {
-		this.caLuScndNodeT = caLuScndNodeT;
-	}
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "CA_PRM_NODE_CD")
-	public CaLuPrmNodeT getCaLuPrmNodeT() {
-		return this.caLuPrmNodeT;
-	}
-
-	public void setCaLuPrmNodeT(CaLuPrmNodeT caLuPrmNodeT) {
-		this.caLuPrmNodeT = caLuPrmNodeT;
-	}
-
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "CASE_TYPE_CD", nullable = false)
-	public CaLuCaseTypeT getCaLuCaseTypeT() {
-		return this.caLuCaseTypeT;
-	}
-
-	public void setCaLuCaseTypeT(CaLuCaseTypeT caLuCaseTypeT) {
-		this.caLuCaseTypeT = caLuCaseTypeT;
-	}
-
-	@Column(name = "CA_YEAR_ID", precision = 4, scale = 0)
-	public Short getCaYearId() {
-		return this.caYearId;
-	}
-
-	public void setCaYearId(Short caYearId) {
-		this.caYearId = caYearId;
-	}
-
-	@Column(name = "CA_SEQUENCE_ID", precision = 7, scale = 0)
-	public Integer getCaSequenceId() {
-		return this.caSequenceId;
-	}
-
-	public void setCaSequenceId(Integer caSequenceId) {
-		this.caSequenceId = caSequenceId;
-	}
-
-	@Column(name = "CREATED_DT", nullable = false, length = 7)
-	public Date getCreatedDt() {
-		return this.createdDt;
-	}
-
-	public void setCreatedDt(Date createdDt) {
-		this.createdDt = createdDt;
-	}
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "UPDATED_DT", nullable = false, length = 7)
-	public Date getUpdatedDt() {
-		return this.updatedDt;
-	}
-
-	public void setUpdatedDt(Date updatedDt) {
-		this.updatedDt = updatedDt;
-	}
-
-	@Column(name = "DELETE_FLAG", length = 1)
-	public String getDeleteFlag() {
-		return this.deleteFlag;
-	}
-
-	public void setDeleteFlag(String deleteFlag) {
-		this.deleteFlag = deleteFlag;
-	}
-
-	@Column(name = "LOCK_FLAG", length = 1)
-	public String getLockFlag() {
-		return this.lockFlag;
-	}
-
-	public void setLockFlag(String lockFlag) {
-		this.lockFlag = lockFlag;
-	}
-
-	@Temporal(TemporalType.DATE)
-	@Column(name = "USER_LOGIN_DT", length = 7)
-	public Date getUserLoginDt() {
-		return this.userLoginDt;
-	}
-
-	public void setUserLoginDt(Date userLoginDt) {
-		this.userLoginDt = userLoginDt;
-	}
-
-	@OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.histSeqNum DESC")
-	public Set<CaAppealHistT> getCaAppealHistTs() {
-		return this.caAppealHistTs;
-	}
-
-	public void setCaAppealHistTs(Set<CaAppealHistT> caAppealHistTs) {
-		this.caAppealHistTs = caAppealHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.assignId ASC")
-	public Set<CaInvstFsAssignT> getCaInvstFsAssignTs() {
-		return this.caInvstFsAssignTs;
-	}
-
-	public void setCaInvstFsAssignTs(Set<CaInvstFsAssignT> caInvstFsAssignTs) {
-		this.caInvstFsAssignTs = caInvstFsAssignTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.histSeqNum DESC")
-	public Set<CaInvstFsHistT> getCaInvstFsHistTs() {
-		return this.caInvstFsHistTs;
-	}
-
-	public void setCaInvstFsHistTs(Set<CaInvstFsHistT> caInvstFsHistTs) {
-		this.caInvstFsHistTs = caInvstFsHistTs;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaFinancialTermsT getCaFinancialTermsT() {
-		return this.caFinancialTermsT;
-	}
-
-	public void setCaFinancialTermsT(CaFinancialTermsT caFinancialTermsT) {
-		this.caFinancialTermsT = caFinancialTermsT;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaNatSettlementT getCaNatSettlementT() {
-		return this.caNatSettlementT;
-	}
-
-	public void setCaNatSettlementT(CaNatSettlementT caNatSettlementT) {
-		this.caNatSettlementT = caNatSettlementT;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaRecipientT getCaRecipientT() {
-		return this.caRecipientT;
-	}
-
-	public void setCaRecipientT(CaRecipientT caRecipientT) {
-		this.caRecipientT = caRecipientT;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaFinancialCalculateT getCaFinancialCalculateT() {
-		return this.caFinancialCalculateT;
-	}
-
-	public void setCaFinancialCalculateT(CaFinancialCalculateT caFinancialCalculateT) {
-		this.caFinancialCalculateT = caFinancialCalculateT;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaProviderT getCaProviderT() {
-		return this.caProviderT;
-	}
-
-	public void setCaProviderT(CaProviderT caProviderT) {
-		this.caProviderT = caProviderT;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstPrReferHistT> getCaInvstPrReferHistTs() {
-		return this.caInvstPrReferHistTs;
-	}
-
-	public void setCaInvstPrReferHistTs(Set<CaInvstPrReferHistT> caInvstPrReferHistTs) {
-		this.caInvstPrReferHistTs = caInvstPrReferHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.referId ASC")
-	public Set<CaInvstPrReferT> getCaInvstPrReferTs() {
-		return this.caInvstPrReferTs;
-	}
-
-	public void setCaInvstPrReferTs(Set<CaInvstPrReferT> caInvstPrReferTs) {
-		this.caInvstPrReferTs = caInvstPrReferTs;
-	}
-
-	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.seqNum DESC")
-	public Set<CaFilesT> getCaFilesTs() {
-		return this.caFilesTs;
-	}
-
-	public void setCaFilesTs(Set<CaFilesT> caFilesTs) {
-		this.caFilesTs = caFilesTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.histSeqNum DESC")
-	public Set<CaFinancialLedgerHistT> getCaFinancialLedgerHistTs() {
-		return this.caFinancialLedgerHistTs;
-	}
-
-	public void setCaFinancialLedgerHistTs(Set<CaFinancialLedgerHistT> caFinancialLedgerHistTs) {
-		this.caFinancialLedgerHistTs = caFinancialLedgerHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.paySeqNum DESC")
-	public Set<CaFinancialPayLedgerT> getCaFinancialPayLedgerTs() {
-		return this.caFinancialPayLedgerTs;
-	}
-
-	public void setCaFinancialPayLedgerTs(Set<CaFinancialPayLedgerT> caFinancialPayLedgerTs) {
-		this.caFinancialPayLedgerTs = caFinancialPayLedgerTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyTByAssociateCaseId")
-	public Set<CaAssociateT> getCaAssociateTsForAssociateCaseId() {
-		return this.caAssociateTsForAssociateCaseId;
-	}
-
-	public void setCaAssociateTsForAssociateCaseId(Set<CaAssociateT> caAssociateTsForAssociateCaseId) {
-		this.caAssociateTsForAssociateCaseId = caAssociateTsForAssociateCaseId;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaAppealsT> getCaAppealsTs() {
-		return this.caAppealsTs;
-	}
-
-	public void setCaAppealsTs(Set<CaAppealsT> caAppealsTs) {
-		this.caAppealsTs = caAppealsTs;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaInvstFullscaleT getCaInvstFullscaleT() {
-		return this.caInvstFullscaleT;
-	}
-
-	public void setCaInvstFullscaleT(CaInvstFullscaleT caInvstFullscaleT) {
-		this.caInvstFullscaleT = caInvstFullscaleT;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstFsIssueHistT> getCaInvstFsIssueHistTs() {
-		return this.caInvstFsIssueHistTs;
-	}
-
-	public void setCaInvstFsIssueHistTs(Set<CaInvstFsIssueHistT> caInvstFsIssueHistTs) {
-		this.caInvstFsIssueHistTs = caInvstFsIssueHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.seqNum ASC")
-	public Set<CaInvstPrStatusHistT> getCaInvstPrStatusHistTs() {
-		return this.caInvstPrStatusHistTs;
-	}
-
-	public void setCaInvstPrStatusHistTs(Set<CaInvstPrStatusHistT> caInvstPrStatusHistTs) {
-		this.caInvstPrStatusHistTs = caInvstPrStatusHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.histSeqNum DESC")
-	public Set<CaInvstFsAssignHistT> getCaInvstFsAssignHistTs() {
-		return this.caInvstFsAssignHistTs;
-	}
-
-	public void setCaInvstFsAssignHistTs(Set<CaInvstFsAssignHistT> caInvstFsAssignHistTs) {
-		this.caInvstFsAssignHistTs = caInvstFsAssignHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaFinancialOvrHistT> getCaFinancialOvrHistTs() {
-		return this.caFinancialOvrHistTs;
-	}
-
-	public void setCaFinancialOvrHistTs(Set<CaFinancialOvrHistT> caFinancialOvrHistTs) {
-		this.caFinancialOvrHistTs = caFinancialOvrHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstPrIssueHistT> getCaInvstPrIssueHistTs() {
-		return this.caInvstPrIssueHistTs;
-	}
-
-	public void setCaInvstPrIssueHistTs(Set<CaInvstPrIssueHistT> caInvstPrIssueHistTs) {
-		this.caInvstPrIssueHistTs = caInvstPrIssueHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.assignId ASC")
-	public Set<CaInvstPrAssignT> getCaInvstPrAssignTs() {
-		return this.caInvstPrAssignTs;
-	}
-
-	public void setCaInvstPrAssignTs(Set<CaInvstPrAssignT> caInvstPrAssignTs) {
-		this.caInvstPrAssignTs = caInvstPrAssignTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("remDt DESC")
-	public Set<CaEmailsT> getCaEmailsTs() {
-		return this.caEmailsTs;
-	}
-
-	public void setCaEmailsTs(Set<CaEmailsT> caEmailsTs) {
-		this.caEmailsTs = caEmailsTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstPrAssignHistT> getCaInvstPrAssignHistTs() {
-		return this.caInvstPrAssignHistTs;
-	}
-
-	public void setCaInvstPrAssignHistTs(Set<CaInvstPrAssignHistT> caInvstPrAssignHistTs) {
-		this.caInvstPrAssignHistTs = caInvstPrAssignHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstPrIssueT> getCaInvstPrIssueTs() {
-		return this.caInvstPrIssueTs;
-	}
-
-	public void setCaInvstPrIssueTs(Set<CaInvstPrIssueT> caInvstPrIssueTs) {
-		this.caInvstPrIssueTs = caInvstPrIssueTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstFsIssueT> getCaInvstFsIssueTs() {
-		return this.caInvstFsIssueTs;
-	}
-
-	public void setCaInvstFsIssueTs(Set<CaInvstFsIssueT> caInvstFsIssueTs) {
-		this.caInvstFsIssueTs = caInvstFsIssueTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.seqNum ASC")
-	public Set<CaInvstFsStatusHistT> getCaInvstFsStatusHistTs() {
-		return this.caInvstFsStatusHistTs;
-	}
-
-	public void setCaInvstFsStatusHistTs(Set<CaInvstFsStatusHistT> caInvstFsStatusHistTs) {
-		this.caInvstFsStatusHistTs = caInvstFsStatusHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaSpecialInfoHistT> getCaSpecialInfoHistTs() {
-		return this.caSpecialInfoHistTs;
-	}
-
-	public void setCaSpecialInfoHistTs(Set<CaSpecialInfoHistT> caSpecialInfoHistTs) {
-		this.caSpecialInfoHistTs = caSpecialInfoHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaInvstFsReferHistT> getCaInvstFsReferHistTs() {
-		return this.caInvstFsReferHistTs;
-	}
-
-	public void setCaInvstFsReferHistTs(Set<CaInvstFsReferHistT> caInvstFsReferHistTs) {
-		this.caInvstFsReferHistTs = caInvstFsReferHistTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.referenceId DESC")
-	public Set<CaRefContactsT> getCaRefContactsTs() {
-		return this.caRefContactsTs;
-	}
-
-	public void setCaRefContactsTs(Set<CaRefContactsT> caRefContactsTs) {
-		this.caRefContactsTs = caRefContactsTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaRecipientLockinT> getCaRecipientLockinTs() {
-		return this.caRecipientLockinTs;
-	}
-
-	public void setCaRecipientLockinTs(Set<CaRecipientLockinT> caRecipientLockinTs) {
-		this.caRecipientLockinTs = caRecipientLockinTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaSurT> getCaSurTs() {
-		return this.caSurTs;
-	}
-
-	public void setCaSurTs(Set<CaSurT> caSurTs) {
-		this.caSurTs = caSurTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyTByCaseId")
-	public Set<CaAssociateT> getCaAssociateTsForCaseId() {
-		return this.caAssociateTsForCaseId;
-	}
-
-	public void setCaAssociateTsForCaseId(Set<CaAssociateT> caAssociateTsForCaseId) {
-		this.caAssociateTsForCaseId = caAssociateTsForCaseId;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.histSeqNum desc")
-	public Set<CaInvstPrHistT> getCaInvstPrHistTs() {
-		return this.caInvstPrHistTs;
-	}
-
-	public void setCaInvstPrHistTs(Set<CaInvstPrHistT> caInvstPrHistTs) {
-		this.caInvstPrHistTs = caInvstPrHistTs;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaSpecialInfoT getCaSpecialInfoT() {
-		return this.caSpecialInfoT;
-	}
-
-	public void setCaSpecialInfoT(CaSpecialInfoT caSpecialInfoT) {
-		this.caSpecialInfoT = caSpecialInfoT;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaFinancialOverPayT getCaFinancialOverPayT() {
-		return this.caFinancialOverPayT;
-	}
-
-	public void setCaFinancialOverPayT(CaFinancialOverPayT caFinancialOverPayT) {
-		this.caFinancialOverPayT = caFinancialOverPayT;
-	}
-
-	@OneToOne(fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public CaInvstPreliminaryT getCaInvstPreliminaryT() {
-		return this.caInvstPreliminaryT;
-	}
-
-	public void setCaInvstPreliminaryT(CaInvstPreliminaryT caInvstPreliminaryT) {
-		this.caInvstPreliminaryT = caInvstPreliminaryT;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("noteDt DESC")
-	public Set<CaNotesT> getCaNotesTs() {
-		return this.caNotesTs;
-	}
-
-	public void setCaNotesTs(Set<CaNotesT> caNotesTs) {
-		this.caNotesTs = caNotesTs;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	public Set<CaAnalyticT> getCaAnalyticTs() {
-		return this.caAnalyticTs;
-	}
-
-	public void setCaAnalyticTs(Set<CaAnalyticT> caAnalyticTs) {
-		this.caAnalyticTs = caAnalyticTs;
-	}
-
-	@OneToOne(fetch = FetchType.EAGER, mappedBy = "caIntelligentKeyT")
-	public CaGeneralT getCaGeneralT() {
-		return this.caGeneralT;
-	}
-
-	public void setCaGeneralT(CaGeneralT caGeneralT) {
-		this.caGeneralT = caGeneralT;
-	}
-
-	@OneToMany(cascade = CascadeType.MERGE, fetch = FetchType.LAZY, mappedBy = "caIntelligentKeyT")
-	@OrderBy("id.referId ASC")
-	public Set<CaInvstFsReferT> getCaInvstFsReferTs() {
-		return this.caInvstFsReferTs;
-	}
-
-	public void setCaInvstFsReferTs(Set<CaInvstFsReferT> caInvstFsReferTs) {
-		this.caInvstFsReferTs = caInvstFsReferTs;
-	}
-
-//	@Formula("CA_PRM_NODE_CD ||'-'||CA_SCND_NODE_CD ||'-'|| CA_YEAR_ID ||'-'|| to_char(CA_SEQUENCE_ID,'FM00000' ")
-//
-//	public String getCaseIdPrmSecndYearSeqId() {
-//		return caseIdPrmSecndYearSeqId;
-//	}
+package com.optum.fads.web.security.matcher;
+
+import java.util.regex.Pattern;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+
+public class CsrfSecurityRequestMatcher implements RequestMatcher{
+	
+    private final Pattern allowedMethods = Pattern.compile("^(GET|HEAD|TRACE|OPTIONS)$");
+    private final RegexRequestMatcher unprotectedMatcher = new RegexRequestMatcher("/login", null);
+   
+    private AntPathRequestMatcher[] requestMatchers = {
+    	    new AntPathRequestMatcher("/login"),
+    	    new AntPathRequestMatcher("/logout"),
+    	    new AntPathRequestMatcher("/bower_components/**")
+    	  };
+
+    
+    @Override
+    public boolean matches(HttpServletRequest request) {
+        if(allowedMethods.matcher(request.getMethod()).matches()){
+            return false;
+        }
+	
+    //    return !unprotectedMatcher.matches(request);
+        for (AntPathRequestMatcher rm : requestMatchers) {
+            if (rm.matches(request)) { return false; }
+          }
+
+          return true;
+    }
 }
