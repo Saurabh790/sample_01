@@ -1,12 +1,125 @@
-@Query(" FROM PrmDrDataRuleT dr WHERE dr.drId not in "
-		+ "(Select erdr.id.drId FROM PrmErDrT erdr  WHERE erdr.id.erId = :extractRuleId) order by dr.drId")
-List<PrmDrDataRuleT> getAvailableDataRules(@Param("extractRuleId") Integer extractRuleId);
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-@Query("SELECT pd FROM PrmDrDataRuleT pd, PrmErDrT pe WHERE pe.id.erId = :extractRuleId AND pe.id.drId = pd.drId ORDER BY pd.drId")
-List<PrmDrDataRuleT> getDataRulesByErId(@Param("extractRuleId") Integer extractRuleId);
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.0</version>
+        <relativePath/>
+    </parent>
 
-@Query(" FROM PrmDrDataRuleT pd  where pd.drId in :dataruleIds ORDER BY pd.drId")
-List<PrmDrDataRuleT> retrieveDataRulesByIds(@Param("dataruleIds") List<Integer> dataruleIds );
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-monolithic-application</artifactId>
+    <version>9.0.0</version>
+    <packaging>pom</packaging>
 
-@Query(" FROM PrmDrDataRuleT pd  where pd.drId in :dataruleIds ORDER BY pd.drId")
-List<PrmDrDataRuleT> getDataRulesByIds(@Param("dataruleIds") List<Integer> dataruleIds );
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>centraluhg.jfrog.io-releases</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+
+        <modelmapper.version>3.2.5</modelmapper.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <lombok.version>1.18.30</lombok.version>
+        <org.mapstruct.version>1.6.0</org.mapstruct.version>
+        <lombok.mapstruct.binding.version>0.2.0</lombok.mapstruct.binding.version>
+        <log4j.version>2.20.0</log4j.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <itextpdf.version>8.0.3</itextpdf.version>
+        <restassured.version>5.5.0</restassured.version>
+        <poi.version>3.16</poi.version>
+        <ojdbc.version>19.8.0.0</ojdbc.version>
+        <tomcat.version>11.0.13</tomcat.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.14.1</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${org.mapstruct.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>${lombok.mapstruct.binding.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.5.2</version>
+                    <configuration>
+                        <useModulePath>false</useModulePath>
+                        <skipTests>${skipTests}</skipTests>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <modules>
+        <module>fads-autherization</module>
+        <module>fads-base-config</module>
+        <module>fads-user-roles</module>
+        <module>fads-case-config</module>
+        <module>fads-casetracking</module>
+        <module>fads-common-utils</module>
+        <module>fads-pgp-persistence</module>
+        <module>fads-pgp-datarules-api</module>
+        <module>fads-pgp-behavior-api</module>
+        <module>fads-pgp-reportsection-api</module>
+        <module>fads-pgp-peergroup-api</module>
+        <module>fads-pgp-study-api</module>
+        <module>fads-pgp-jobmonitor-api</module>
+        <module>fads-web</module>
+    </modules>
+</project>
