@@ -10,222 +10,6 @@
         <version>9.0.0</version>
     </parent>
 
-    <artifactId>fads-pgp-reportsection-api</artifactId>
-    <name>fads-pgp-reportsection-api</name>
-    <packaging>jar</packaging>
-
-    <dependencies>
-        <dependency>
-            <groupId>com.optum.fads</groupId>
-            <artifactId>fads-autherization</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.optum.fads</groupId>
-            <artifactId>fads-common-utils</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.optum.fads</groupId>
-            <artifactId>fads-pgp-persistence</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.optum.fads</groupId>
-            <artifactId>fads-pgp-behavior-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.optum.fads</groupId>
-            <artifactId>fads-pgp-peergroup-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.optum.fads</groupId>
-            <artifactId>fads-pgp-datarules-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-</project>
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
-        <relativePath/>
-    </parent>
-
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-monolithic-application</artifactId>
-    <version>9.0.0</version>
-    <packaging>pom</packaging>
-
-    <repositories>
-        <repository>
-            <id>central</id>
-            <name>centraluhg.jfrog.io-releases</name>
-            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
-        </repository>
-        <repository>
-            <id>snapshots</id>
-            <name>snapshots-repo</name>
-            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
-        </repository>
-    </repositories>
-
-    <properties>
-        <java.version>17</java.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <failsafe.skip>${skipTests}</failsafe.skip>
-
-        <modelmapper.version>3.2.5</modelmapper.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <lombok.version>1.18.30</lombok.version>
-        <org.mapstruct.version>1.6.0</org.mapstruct.version>
-        <lombok.mapstruct.binding.version>0.2.0</lombok.mapstruct.binding.version>
-        <log4j.version>2.20.0</log4j.version>
-        <snakeyaml.version>2.0</snakeyaml.version>
-        <itextpdf.version>8.0.3</itextpdf.version>
-        <restassured.version>5.5.0</restassured.version>
-        <poi.version>3.16</poi.version>
-        <ojdbc.version>19.8.0.0</ojdbc.version>
-        <tomcat.version>11.0.13</tomcat.version>
-    </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.apache.logging.log4j</groupId>
-                <artifactId>log4j-bom</artifactId>
-                <version>${log4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <release>${java.version}</release>
-                        <annotationProcessorPaths>
-                            <path>
-                                <groupId>org.projectlombok</groupId>
-                                <artifactId>lombok</artifactId>
-                                <version>${lombok.version}</version>
-                            </path>
-                            <path>
-                                <groupId>org.mapstruct</groupId>
-                                <artifactId>mapstruct-processor</artifactId>
-                                <version>${org.mapstruct.version}</version>
-                            </path>
-                            <path>
-                                <groupId>org.projectlombok</groupId>
-                                <artifactId>lombok-mapstruct-binding</artifactId>
-                                <version>${lombok.mapstruct.binding.version}</version>
-                            </path>
-                        </annotationProcessorPaths>
-                    </configuration>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.1.2</version>
-                    <configuration>
-                        <useModulePath>false</useModulePath>
-                        <skipTests>${skipTests}</skipTests>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
-
-    <modules>
-        <module>fads-autherization</module>
-        <module>fads-base-config</module>
-        <module>fads-user-roles</module>
-        <module>fads-case-config</module>
-        <module>fads-casetracking</module>
-        <module>fads-common-utils</module>
-        <module>fads-pgp-persistence</module>
-        <module>fads-pgp-datarules-api</module>
-        <module>fads-pgp-behavior-api</module>
-        <module>fads-pgp-reportsection-api</module>
-        <module>fads-pgp-peergroup-api</module>
-        <module>fads-pgp-study-api</module>
-        <module>fads-pgp-jobmonitor-api</module>
-        <module>fads-web</module>
-    </modules>
-</project>
-
-
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>com.optum.fads</groupId>
-        <artifactId>fads-monolithic-application</artifactId>
-        <version>9.0.0</version>
-    </parent>
-
     <artifactId>fads-autherization</artifactId>
     <name>fads-autherization</name>
     <packaging>jar</packaging>
@@ -314,7 +98,6 @@
 </project>
 
 
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -377,7 +160,6 @@
         </dependency>
     </dependencies>
 </project>
-
 
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -460,8 +242,6 @@
         </dependency>
     </dependencies>
 </project>
-
-
 
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -604,7 +384,6 @@
 </project>
 
 
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -663,69 +442,6 @@
         </dependency>
     </dependencies>
 </project>
-
-
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>com.optum.fads</groupId>
-        <artifactId>fads-monolithic-application</artifactId>
-        <version>9.0.0</version>
-    </parent>
-
-    <artifactId>fads-common-utils</artifactId>
-    <name>fads-common-utils</name>
-    <packaging>jar</packaging>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>${snakeyaml.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-</project>
-
-
 
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -808,8 +524,6 @@
     </dependencies>
 </project>
 
-
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -872,8 +586,6 @@
 </project>
 
 
-
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -934,9 +646,6 @@
         </dependency>
     </dependencies>
 </project>
-
-
-
 
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -1004,9 +713,6 @@
     </dependencies>
 </project>
 
-
-
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1078,7 +784,6 @@
 </project>
 
 
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1091,8 +796,8 @@
         <version>9.0.0</version>
     </parent>
 
-    <artifactId>fads-pgp-persistence</artifactId>
-    <name>fads-pgp-persistence</name>
+    <artifactId>fads-pgp-reportsection-api</artifactId>
+    <name>fads-pgp-reportsection-api</name>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -1109,49 +814,65 @@
         </dependency>
 
         <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-pgp-persistence</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-pgp-behavior-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-pgp-peergroup-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.optum.fads</groupId>
+            <artifactId>fads-pgp-datarules-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
-            <groupId>commons-lang</groupId>
-            <artifactId>commons-lang</artifactId>
-            <version>2.6</version>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${org.mapstruct.version}</version>
         </dependency>
 
         <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
-            <version>${ojdbc.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.datatype</groupId>
-            <artifactId>jackson-datatype-jsr310</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
-
-
-
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1227,8 +948,6 @@
 </project>
 
 
-
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1297,7 +1016,6 @@
         </dependency>
     </dependencies>
 </project>
-
 
 
 <?xml version="1.0" encoding="UTF-8"?>
@@ -1532,4 +1250,128 @@
             </plugin>
         </plugins>
     </build>
+</project>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-monolithic-application</artifactId>
+    <version>9.0.0</version>
+    <packaging>pom</packaging>
+
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>centraluhg.jfrog.io-releases</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+        </repository>
+        <repository>
+            <id>snapshots</id>
+            <name>snapshots-repo</name>
+            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+        </repository>
+    </repositories>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
+        <failsafe.skip>${skipTests}</failsafe.skip>
+
+        <modelmapper.version>3.2.5</modelmapper.version>
+        <guava.version>32.1.2-jre</guava.version>
+        <lombok.version>1.18.30</lombok.version>
+        <org.mapstruct.version>1.6.0</org.mapstruct.version>
+        <lombok.mapstruct.binding.version>0.2.0</lombok.mapstruct.binding.version>
+        <log4j.version>2.20.0</log4j.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <itextpdf.version>8.0.3</itextpdf.version>
+        <restassured.version>5.5.0</restassured.version>
+        <poi.version>3.16</poi.version>
+        <ojdbc.version>19.8.0.0</ojdbc.version>
+        <tomcat.version>11.0.13</tomcat.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <release>${java.version}</release>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${org.mapstruct.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>${lombok.mapstruct.binding.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.1.2</version>
+                    <configuration>
+                        <useModulePath>false</useModulePath>
+                        <skipTests>${skipTests}</skipTests>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <modules>
+        <module>fads-autherization</module>
+        <module>fads-base-config</module>
+        <module>fads-user-roles</module>
+        <module>fads-case-config</module>
+        <module>fads-casetracking</module>
+        <module>fads-common-utils</module>
+        <module>fads-pgp-persistence</module>
+        <module>fads-pgp-datarules-api</module>
+        <module>fads-pgp-behavior-api</module>
+        <module>fads-pgp-reportsection-api</module>
+        <module>fads-pgp-peergroup-api</module>
+        <module>fads-pgp-study-api</module>
+        <module>fads-pgp-jobmonitor-api</module>
+        <module>fads-web</module>
+    </modules>
 </project>
