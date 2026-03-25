@@ -1,15 +1,215 @@
-Module Name,Spring Boot Version,Spring Framework Version
-fads-common-utils,3.2.4,6.1.15
-fads-autherization,3.2.4,6.1.15
-fads-base-config,3.2.4,6.1.15
-fads-user-roles,3.2.4,6.1.15
-fads-case-config,3.2.4,6.1.15
-fads-casetracking,3.2.4,6.1.15
-fads-pgp-persistence,3.2.4,6.1.15
-fads-pgp-datarules-api,3.2.4,6.1.15
-fads-pgp-behavior-api,3.2.4,6.1.15
-fads-pgp-peergroup-api,3.2.4,6.1.15
-fads-pgp-reportsection-api,3.2.4,6.1.15
-fads-pgp-study-api,3.2.4,6.1.15
-fads-pgp-jobmonitor-api,3.2.4,6.1.15
-fads-web,3.2.4,6.1.15
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.datarules.domain.PrmDrSingleValuesT;
+import com.optum.fads.pgp.datarules.domain.PrmDrSingleValuesTPK;
+import com.optum.fads.pgp.datarules.repo.DataRuleSingleValuesRepository;
+
+
+@RunWith(SpringRunner.class) 
+@DataJpaTest 
+public class DataRuleSingleValuesRepositoryTest {
+	@Autowired 
+	private DataRuleSingleValuesRepository dataRuleSingleValuesRepository; 
+ 
+	private static final Logger logit = LoggerFactory
+			.getLogger(DataRuleSingleValuesRepository.class);
+	
+	 @Test
+	 public void testGetCodeValues() {
+	   	Integer dataruleId = 986;
+	   	List<PrmDrSingleValuesT> prmDrSingleValuesList = dataRuleSingleValuesRepository.retrieveCodeValues(dataruleId);
+	  	assertEquals(4, prmDrSingleValuesList.size() );
+	    assertEquals(prmDrSingleValuesList.get(0).getId().getDrId(), dataruleId);
+	 }
+	 
+	@Test 
+	public void deleteSingleValuesTest(){ 
+		Integer dataruleId = 986;
+		int deleteCount = dataRuleSingleValuesRepository.deleteSingleValuesByDataRuleId(dataruleId);
+		logit.info(" Code Values deleted = {}", deleteCount);
+		assertEquals(4, deleteCount);
+		
+	} 
+	
+	@Test 
+	public void saveSingleValuesTest(){
+		
+		Integer dataruleId = 999;
+		Set<PrmDrSingleValuesT> prmDrSingleValues = new HashSet<>();
+		
+		PrmDrSingleValuesT prmDrSingleValuesT1  = new PrmDrSingleValuesT();
+		PrmDrSingleValuesTPK prmDrSingleValuesTPK1 = new PrmDrSingleValuesTPK();
+		prmDrSingleValuesTPK1.setDrId(dataruleId);
+		prmDrSingleValuesTPK1.setDrValue("RF");
+		prmDrSingleValuesT1.setId(prmDrSingleValuesTPK1);
+		prmDrSingleValuesT1.setDrLabel("Referring Provider");	
+		prmDrSingleValues.add(prmDrSingleValuesT1);
+		PrmDrSingleValuesT prmDrSingleValuesT2  = new PrmDrSingleValuesT();
+		PrmDrSingleValuesTPK prmDrSingleValuesTPK2 = new PrmDrSingleValuesTPK();
+		prmDrSingleValuesTPK2.setDrId(dataruleId);
+		prmDrSingleValuesTPK2.setDrValue("RF");
+		prmDrSingleValuesT2.setId(prmDrSingleValuesTPK2);
+		prmDrSingleValuesT2.setDrLabel("Referring Provider");	
+		prmDrSingleValues.add(prmDrSingleValuesT2);
+	
+		logit.info("dataRuleSingleValuesRepository.saveAll - prmDrSingleValues Test");
+		dataRuleSingleValuesRepository.saveAll(prmDrSingleValues);	// Save the code values in batch
+		
+		PrmDrSingleValuesTPK prmDrSingleValuesTPK = new PrmDrSingleValuesTPK();
+		prmDrSingleValuesTPK.setDrId(dataruleId);
+		prmDrSingleValuesTPK.setDrValue("RF");
+		Optional<PrmDrSingleValuesT> prmDrSingleValue = dataRuleSingleValuesRepository.findById(prmDrSingleValuesTPK);
+		assertEquals("Referring Provider", prmDrSingleValue.get().getDrLabel());
+	}
+}
+
+
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import java.text.ParseException;
+import java.time.LocalDateTime;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
+import com.optum.fads.pgp.datarules.domain.PrmDrLuOperatorT;
+import com.optum.fads.pgp.datarules.domain.PrmMbMasterT;
+import com.optum.fads.pgp.datarules.domain.UiUserBase;
+import com.optum.fads.pgp.datarules.repo.DataRuleMasterRepository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class DataRulesMasterRepositoryTests {
+
+	  @Autowired
+	  private DataRuleMasterRepository dataRuleMasterRepository;
+	
+	    @Test
+	    public void testGetDataRule(){
+	    	Integer dataRuleId = 988;
+	    	PrmDrDataRuleT prmDrDataRuleT = dataRuleMasterRepository.retrieveDataRuleById(dataRuleId);
+	        assertNotNull(prmDrDataRuleT);
+	        assertEquals(prmDrDataRuleT.getDrId(), dataRuleId);
+	    }
+	    
+	    @Test
+	    public void testDeleteDataRule() {
+	    	Integer dataruleId= 986;
+	    	int deleteResult = dataRuleMasterRepository.deleteDatarule(dataruleId); 
+	    	assertEquals(1, deleteResult);   
+	    }
+	     
+	    @Test
+	    public void testUpdateDataRule() throws ParseException {
+	    	Integer dataruleId = 988;
+	    	int dataElementId = 117;
+	    	LocalDateTime modifiedDate = LocalDateTime.now();
+	    	int updateResult = dataRuleMasterRepository.updateDataRuleDb("AW:Proc cd=98940-3, Chiro Manipulation 1-4 Regions",
+	    			dataElementId, "2", "WA40122433", modifiedDate, dataruleId); 
+	    	assertEquals(1, updateResult);  
+	    	PrmDrDataRuleT prmDrDataRuleT = dataRuleMasterRepository.retrieveDataRuleById(dataruleId);
+	    	assertEquals("AW:Proc cd=98940-3, Chiro Manipulation 1-4 Regions", prmDrDataRuleT.getDataRuleName());
+	    	assertEquals("2", prmDrDataRuleT.getPrmDrLuOperatorT().getOperatorCd());
+	    }
+	    
+	    @Test
+	    public void testNewDataRule() {
+	    	Integer dataruleId = 999;		// 981 in FADS DEV DB
+	    	LocalDateTime currentDate = LocalDateTime.now();
+				
+			PrmDrDataRuleT prmDrDataRuleT = new PrmDrDataRuleT();
+			UiUserBase uiUserBase = new UiUserBase();	
+			prmDrDataRuleT.setUiUserBaseCr(uiUserBase);				// Set UiUserBase
+			prmDrDataRuleT.setUiUserBaseUpd(uiUserBase);
+			prmDrDataRuleT.getUiUserBaseCr().setUiSystemId("WA40122433");
+			
+			PrmMbMasterT prmMbMasterT = new PrmMbMasterT();
+			prmDrDataRuleT.setPrmMbMasterT(prmMbMasterT);			// Set PrmMbMasterT
+			
+			PrmDrLuOperatorT prmDrLuOperatorT= new PrmDrLuOperatorT();
+			prmDrLuOperatorT.setOperatorCd("1");
+			prmDrLuOperatorT.setOperatorDesc("Inclusive");
+			prmDrDataRuleT.setPrmDrLuOperatorT(prmDrLuOperatorT);	// Set PrmDrLuOperatorT
+				
+			prmDrDataRuleT.setDrId(dataruleId);							
+			prmDrDataRuleT.setDataRuleName("AW:Prov Role = Referring/Servicing");
+			prmDrDataRuleT.getPrmMbMasterT().setMbCtecFid(316);
+								
+			prmDrDataRuleT.setCreateDate(currentDate);
+			prmDrDataRuleT.setUpdateDate(currentDate);
+			PrmDrDataRuleT prmDrDataRuleT1 =  dataRuleMasterRepository.save(prmDrDataRuleT); 
+	    	// The save() method returns the saved entity, including the updated id field
+	    	assertEquals(prmDrDataRuleT1.getDataRuleName(), prmDrDataRuleT.getDataRuleName());
+	    	assertEquals(prmDrDataRuleT1.getPrmDrLuOperatorT().getOperatorCd(), prmDrDataRuleT.getPrmDrLuOperatorT().getOperatorCd());
+	    } 
+}
+
+
+
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.Assert.assertTrue;
+
+import java.text.ParseException;
+import java.util.List;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
+import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
+
+
+@RunWith(SpringRunner.class) 
+@DataJpaTest 
+public class DataRulesRepositoryTest {
+	@Autowired 
+	private DataRulesRepository dataRulesRepository; 
+ 
+	private static final Logger logit = LoggerFactory
+			.getLogger(DataRulesRepositoryTest.class);
+	
+	@Test 
+	public void findDataRulesTest() throws ParseException{ 		
+
+		Pageable pageable = null;
+		List<PrmDrDataRuleT> prmDrDataRuleList1 = dataRulesRepository.getDataRules(pageable);
+		logit.info(" Data Rules list #1 size = {}",prmDrDataRuleList1.size());
+		assertTrue(prmDrDataRuleList1.size() > 0); 
+		pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "createDate"));
+		List<PrmDrDataRuleT> prmDrDataRuleList2 = dataRulesRepository.getDataRulesBySearchCrit("%proc%", 
+				"%","%", pageable );
+		logit.info(" Data Rules list #2 size = {}",prmDrDataRuleList2.size());
+		assertTrue(prmDrDataRuleList2.size() > 0);
+	} 
+
+}
