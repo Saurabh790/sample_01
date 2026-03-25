@@ -1,72 +1,71 @@
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('1', 'Provider');
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('2', 'Member');
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('3', 'Claim');
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('4', 'Claim Detail');
+package com.optum.fads.pgp.datarules;
 
-INSERT INTO PRM_MB_MASTER_T (MB_CTEC_FID) VALUES (250);
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.text.ParseException;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class DataRuleMBRepositoryTests {
+
+    @Autowired
+    private DataRuleMBRepository dataRuleMBRepository;
+
+    @Test
+    void testGetDataElemntByDeId() throws ParseException {
+        List<Object[]> dataElementRS = dataRuleMBRepository.retrieveDataElementById(250);
+        assertEquals(1, dataElementRS.size());
+    }
+
+    @Test
+    void testGetDataDataSourceElements() {
+        List<FadsLuValuesT> fadsLuValuesT = dataRuleMBRepository.retrieveDataSourceElements();
+        assertEquals(4, fadsLuValuesT.size());
+        assertEquals("Provider", fadsLuValuesT.get(0).getLuLabel());
+        assertEquals("Member", fadsLuValuesT.get(1).getLuLabel());
+        assertEquals("Claim", fadsLuValuesT.get(2).getLuLabel());
+        assertEquals("Claim Detail", fadsLuValuesT.get(3).getLuLabel());
+    }
+
+    @Test
+    void testGetValidValuesByLvId() throws ParseException {
+        List<FadsLuValuesT> luValuesList = dataRuleMBRepository.retrieveLuValuesById("DR_ELEMENT_CLASS");
+        assertTrue(luValuesList.size() > 0);
+    }
+}
 
 
-CREATE TABLE FADS_LU_VALUES_T (
-    LU_ID VARCHAR(50),
-    LU_LABEL VARCHAR(100)
-);
 
-CREATE TABLE PRM_MB_MASTER_T (
-    MB_CTEC_FID INT
-);
+package com.optum.fads.pgp.datarules;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class DataRuleMBRepositoryTests {
+
+    @Autowired
+    private DataRuleMBRepository dataRuleMBRepository;
+
+    @Test
+    void testSomething() {
+        // your test
+    }
+}
 
 
-server:
-  port: 8080
-  address: 0.0.0.0
-  servlet:
-    context-path: /datarules
-
-management:
-  server:
-    port: 8081
-    address: 0.0.0.0
-  endpoints:
-    enabled-by-default: true
-    web:
-      exposure:
-        include: health,info,metrics,env,loggers
-  endpoint:
-    health:
-      enabled: true
-      show-details: always
-
-quickstart:
-  generate-order-period: 10s
-  process-order-period: 30s
-
-spring:
-  main:
-    allow-bean-definition-overriding: true
-    banner-mode: "off"
-
-  datasource:
-    url: jdbc:h2:mem:testdb;MODE=MSSQLServer;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-
-  jpa:
-    show-sql: false
-    defer-datasource-initialization: true
-    hibernate:
-      ddl-auto: none
-
-  sql:
-    init:
-      mode: always
-      platform: h2
-
-logging:
-  level:
-    org:
-      hibernate:
-        SQL: INFO
-        orm:
-          jdbc:
-            bind: INFO
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
