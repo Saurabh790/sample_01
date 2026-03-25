@@ -2,42 +2,55 @@ server:
   port: 8080
   address: 0.0.0.0
   servlet:
-    contextPath: /datarules
+    context-path: /datarules
+
 management:
-  port: 8081
-  address: 0.0.0.0
-  security: 
-    enabled: true
-endpoints:
-  enabled: true
-  health:
-    enabled: true
+  server:
+    port: 8081
+    address: 0.0.0.0
+  endpoints:
+    enabled-by-default: true
+    web:
+      exposure:
+        include: health,info,metrics,env,loggers
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+
 quickstart:
-  generateOrderPeriod: 10s
-  processOrderPeriod: 30s
+  generate-order-period: 10s
+  process-order-period: 30s
+
 spring:
-  profiles:
-    active: dev
-  main: 
+  main:
     allow-bean-definition-overriding: true
-    banner-mode: off
-  datasource: 
-    testWhileIdle: 
-      fadsone: true
-    platform: h2
-    validationQuery:
-      fadsone: SELECT 1.
+    banner-mode: "off"
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MSSQLServer
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
   jpa:
     show-sql: false
-    hibernate: 
+    hibernate:
       ddl-auto: none
-      naming:
-        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
-        physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        implicit_naming_strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
 
-#logging:
-#  level:
-#    org:
-#      hibernate:
-#        SQL: DEBUG
-#        type: TRACE
+  sql:
+    init:
+      mode: always
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: INFO
+        orm:
+          jdbc:
+            bind: INFO
