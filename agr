@@ -1,182 +1,89 @@
-SELECT REVIEW_FROM_DT, REVIEW_TO_DT, REVIEW_BASED 
-FROM CA_INVST_FULLSCALE_T 
-WHERE CASE_ID = 9675;
+server:
+  port: 8080
+  servlet:
+    context-path: /datarules
 
-SELECT REVIEW_FROM_DT, REVIEW_TO_DT, REVIEW_BASED 
-FROM CA_INVST_FS_HIST_T  
-WHERE CASE_ID = 9675;
+quickstart:
+  generate-order-period: 10s
+  process-order-period: 30s
 
+spring:
+  application:
+    name: datarules
 
-SELECT FIN_CUST_AMT_A, INFORMAL_AMT, RECOUP_AMT, TOTAL_PAID_AMT, OUTSTAND_AMT 
-FROM CA_FINANCIAL_TERMS_T 
-WHERE CASE_ID = 9675;
+  main:
+    allow-bean-definition-overriding: true
+    banner-mode: "off"
 
+  jpa:
+    database-platform: org.hibernate.dialect.SQLServerDialect
+    database: sql_server
+    show-sql: false
+    hibernate:
+      ddl-auto: none
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 
-DELETE FROM CA_UNIVERSE_BATCH_T 
-WHERE HDR_CLM_TCN = 'TCN-RXA-0001' 
-AND CA_PRM_NODE_CD = 'RXA';
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true
+    username: sql-admin-user
+    password: sql-admin-password
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:10}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL:}
+          jws-algorithms: ${JWS_ALG:RS256}
+          unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
 
-SELECT REVIEW_FROM_DT, REVIEW_TO_DT, REVIEW_BASED 
-FROM CA_INVST_FULLSCALE_T 
-WHERE CASE_ID = <YOUR_NEW_CASE_ID>;
+  sql:
+    init:
+      mode: never
 
-SELECT REVIEW_FROM_DT, REVIEW_TO_DT, REVIEW_BASED 
-FROM CA_INVST_FS_HIST_T  
-WHERE CASE_ID = <YOUR_NEW_CASE_ID>;
-
-SELECT FIN_CUST_AMT_A, INFORMAL_AMT, RECOUP_AMT, TOTAL_PAID_AMT, OUTSTAND_AMT 
-FROM CA_FINANCIAL_TERMS_T 
-WHERE CASE_ID = <YOUR_NEW_CASE_ID>;
-
-
-
-SELECT TOP 10 * 
-FROM CA_UNIVERSE_BATCH_T 
-WHERE CA_PRM_NODE_CD = 'RXA' 
-ORDER BY CT_BATCH_ID DESC;
-
-SELECT TOP 10 * 
-FROM CA_UNIVERSE_T 
-WHERE CA_PRM_NODE_CD = 'RXA' 
-ORDER BY CASE_ID DESC;
-
-
-SELECT TOP 10 * 
-FROM CA_GENERAL_T 
-WHERE CASE_ID_STR LIKE 'RXA-%' 
-ORDER BY CASE_ID DESC;
-
-INSERT INTO CA_UNIVERSE_BATCH_T (
-    CT_BATCH_ID,
-    CT_BATCH_DATE,
-    HDR_CLM_TCN,
-    LI_NUM,
-    HDR_CLM_PD_DT,
-    CA_PRM_NODE_CD,
-    CA_YEAR_ID,
-    PARTICIPANT_ID,
-    INVST_TYPE_CD, 
-    CASE_STATUS_CD,
-    CASE_STATUS_DT,
-    CASE_TYPE_CD,
-    UI_SYSTEM_ID
-) VALUES (
-    457, -- Next batch ID
-    GETDATE(), -- Added missing Batch Date!
-    'TCN-RXA-0001', 
-    '1', 
-    GETDATE(), 
-    'RXA', 
-    2026, 
-    '123456789', 
-    'FS', 
-    'OPN', 
-    GETDATE(), 
-    'PRV', 
-    'ca88510043' 
-);
+management:
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 
-INSERT INTO CA_UNIVERSE_BATCH_T (
-    CT_BATCH_ID,
-    HDR_CLM_TCN,
-    LI_NUM,
-    HDR_CLM_PD_DT,
-    CA_PRM_NODE_CD,
-    CA_YEAR_ID,
-    PARTICIPANT_ID,
-    INVST_TYPE_CD,   -- Fixed typo from INV_TYPE_CD
-    CASE_STATUS_CD,
-    CASE_STATUS_DT,
-    CASE_TYPE_CD,
-    UI_SYSTEM_ID
-) VALUES (
-    457, -- Next batch ID
-    'TCN-RXA-0001', 
-    '1', 
-    GETDATE(), 
-    'RXA', -- This triggers our new logic!
-    2026, 
-    '123456789', 
-    'FS', 
-    'OPN', 
-    GETDATE(), 
-    'PRV', -- Provider case type
-    'ca88510043' -- Using your User ID from the logs!
-);
+package com.optum.fads.pgp.datarules;
 
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 
--- OPTIONAL: Add a second claim to the exact same participant so we can test the MIN/MAX and SUM aggregations!
-INSERT INTO CA_UNIVERSE_BATCH_T (
-    CT_BATCH_ID, HDR_CLM_TCN, LI_NUM, HDR_CLM_PD_DT, CA_PRM_NODE_CD, CA_YEAR_ID, PARTICIPANT_ID, INV_TYPE_CD, CASE_STATUS_CD, CASE_STATUS_DT, HDR_PD_AMT, LI_SRV_FROM_DT, UI_SYSTEM_ID
-) VALUES (
-    999, 'TCN-RXA-0002', 1, GETDATE(), 'RXA', 2026, '123456789', 'FS', 'OPN', GETDATE(), 
-    200.25, -- Add $200.25 to the $150.75 above (Should equal $351.00)
-    '2025-11-20', -- This date is LATER than the one above
-    'SYS_ADMIN'
-);
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
 
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class DataRuleMBRepositoryTests {
 
+    @Autowired
+    private DataRuleMBRepository dataRuleMBRepository;
 
-AR RXA BATCH - Enhancements - Batch to include Period Review Dates & Financial Totals - DEVELOPMENT
-
-Note: Chak, Shirley, & I met with Anil & Shyam on 12/18 to discuss FADS needs for 2026, and this was deemed work to be done in the first quarter 2026 ranked #2 in priorities based on Anil spreadsheet. Jay has already approved the work and AR will pay for it.
-
-Who:  Software Engineer
-
-What: Update Batch process to populate case tracking fields - see info below
-
-Why:  operational support - requests came from Joey & Summer
-
-Specifications doc on TEAMS:
-
-CT Batch Case Enhancements - Technical Specs.xlsx
-
-
-
-Estimated work hours attached
-
-Need the batch process to:
-
-populate the Full Scale Investigation page Period Reviewed From & To Date fields, and the Based on = FDOS
-
-populate the Financial page RXA total amount fields
-
-RXA Total Paid Amount
-
-RXA Total Correct Amount
-
-OMIG/RXA Final Questioned Cost
-
-Final Questioned Cost 
-
-Balanced Questioned Cost
-
-
-
-Hi Guys,
- 
-Brandy and I’ve met and pulled together the requirements for the duplicate cases in FADS for the pharmacy cases.
- 
-Of course this solution is absolutely open to suggestion, but I think we’ve addressed all the primary issues that need considered.  There are some remaining details to work out, but there is a very clear direction:
- 
-Duplicate Pharmacy Cases in FADS
-Requirements:
-1. Update RXA cases with RMS data (RMS Crosswalk tab).
-2. Update RXA cases with Recoupment Claim Log Book spreadsheet (RXA Case Updates tab).
-- Update RXA to include RCLB fields where applicable (new fields).
-- Determine a unique identifier between recoupment claim log book and RXA cases.
-- Pull in the RCLB data into the RXA cases.
-3. Generate Automated Report for OMIG from both OMIG and RXA fields (Recoupment Claim Log Book-RCLB) (Auto Report tab).
- 
-I know this is after we are in place for production, but I believe this is a pressing issue for two reasons:
-It affects the ‘automation’ requirements we have from OMIG (high priority).
-It is inefficient in its current condition.
- 
-Please review and let me know if you have any questions or issues.  I need to know how this change process works moving forward.  How do we request these changes/updates/new functionality?
- 
-I look forward to talking to everyone about this process.
- 
-Thank you!
-Joey
+    @Test
+    void testSomething() {
+        // your test
+    }
+}
