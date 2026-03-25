@@ -1,1 +1,43 @@
-spring.jpa.database-platform=org.hibernate.dialect.SQLServerDialect
+server:
+  port: 8080
+  address: 0.0.0.0
+  servlet:
+    contextPath: /datarules
+management:
+  port: 8081
+  address: 0.0.0.0
+  security: 
+    enabled: true
+endpoints:
+  enabled: true
+  health:
+    enabled: true
+quickstart:
+  generateOrderPeriod: 10s
+  processOrderPeriod: 30s
+spring:
+  profiles:
+    active: dev
+  main: 
+    allow-bean-definition-overriding: true
+    banner-mode: off
+  datasource: 
+    testWhileIdle: 
+      fadsone: true
+    platform: h2
+    validationQuery:
+      fadsone: SELECT 1.
+  jpa:
+    show-sql: false
+    hibernate: 
+      ddl-auto: none
+      naming:
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+        physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy
+
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
