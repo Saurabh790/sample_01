@@ -35,6 +35,7 @@ spring:
 
   jpa:
     show-sql: false
+    defer-datasource-initialization: true
     hibernate:
       ddl-auto: none
     properties:
@@ -54,3 +55,48 @@ logging:
         orm:
           jdbc:
             bind: INFO
+
+
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.text.ParseException;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+
+@DataJpaTest
+class DataRuleMBRepositoryTests {
+
+    @Autowired
+    private DataRuleMBRepository dataRuleMBRepository;
+
+    @Test
+    void testGetDataElemntByDeId() throws ParseException {
+        List<Object[]> dataElementRS = dataRuleMBRepository.retrieveDataElementById(250);
+        assertEquals(1, dataElementRS.size());
+    }
+
+    @Test
+    void testGetDataDataSourceElements() {
+        List<FadsLuValuesT> fadsLuValuesT = dataRuleMBRepository.retrieveDataSourceElements();
+        assertEquals(4, fadsLuValuesT.size());
+        assertEquals("Provider", fadsLuValuesT.get(0).getLuLabel());
+        assertEquals("Member", fadsLuValuesT.get(1).getLuLabel());
+        assertEquals("Claim", fadsLuValuesT.get(2).getLuLabel());
+        assertEquals("Claim Detail", fadsLuValuesT.get(3).getLuLabel());
+    }
+
+    @Test
+    void testGetValidValuesByLvId() throws ParseException {
+        List<FadsLuValuesT> luValuesList = dataRuleMBRepository.retrieveLuValuesById("DR_ELEMENT_CLASS");
+        assertTrue(luValuesList.size() > 0);
+    }
+}
