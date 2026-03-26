@@ -1,15 +1,439 @@
-<dependency>
-    <groupId>com.h2database</groupId>
-    <artifactId>h2</artifactId>
-    <scope>test</scope>
-</dependency>
+package com.optum.fads.pgp.datarules;
 
-spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MSSQLServer
-spring.datasource.driver-class-name=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-spring.jpa.hibernate.ddl-auto=none
-spring.sql.init.mode=always
-spring.jpa.show-sql=false
-spring.jpa.properties.hibernate.format_sql=false
-spring.test.database.replace=any
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+
+class DataRuleMBRepositoryTests extends RepositoryJpaTestSupport {
+
+    @Autowired
+    private DataRuleMBRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        persistLuValue("DR_ELEMENT_CLASS", "1", "Claims", "1", 1);
+        persistLuValue("DR_ELEMENT_CLASS", "2", "Pharmacy", "0", 2);
+        persistMbMaster(101, 1, 1, "Member Age");
+        persistMbMaster(102, 2, 1, "Drug Code");
+        flushAndClear();
+    }
+
+    @Test
+    void testGetDataElemntByDeId() {
+        List<Object[]> result = repository.retrieveDataElementById(101);
+
+        assertEquals(1, result.size());
+        assertEquals(101, ((Number) result.get(0)[0]).intValue());
+        assertEquals("Member Age", result.get(0)[1]);
+        assertEquals("Claims", result.get(0)[5]);
+    }
+
+    @Test
+    void testGetDataDataSourceElements() {
+        List<FadsLuValuesT> result = repository.retrieveDataSourceElements();
+
+        assertEquals(1, result.size());
+        assertEquals("Claims", result.get(0).getLuLabel());
+    }
+
+    @Test
+    void testGetValidValuesByLvId() {
+        List<FadsLuValuesT> result = repository.retrieveLuValuesById("DR_ELEMENT_CLASS");
+
+        assertEquals(2, result.size());
+        assertEquals("1", result.get(0).getId().getLuValue());
+        assertEquals("2", result.get(1).getId().getLuValue());
+    }
+}
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+
+class DataRuleMBRepositoryTests extends RepositoryJpaTestSupport {
+
+    @Autowired
+    private DataRuleMBRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        persistLuValue("DR_ELEMENT_CLASS", "1", "Claims", "1", 1);
+        persistLuValue("DR_ELEMENT_CLASS", "2", "Pharmacy", "0", 2);
+        persistMbMaster(101, 1, 1, "Member Age");
+        persistMbMaster(102, 2, 1, "Drug Code");
+        flushAndClear();
+    }
+
+    @Test
+    void testGetDataElemntByDeId() {
+        List<Object[]> result = repository.retrieveDataElementById(101);
+
+        assertEquals(1, result.size());
+        assertEquals(101, ((Number) result.get(0)[0]).intValue());
+        assertEquals("Member Age", result.get(0)[1]);
+        assertEquals("Claims", result.get(0)[5]);
+    }
+
+    @Test
+    void testGetDataDataSourceElements() {
+        List<FadsLuValuesT> result = repository.retrieveDataSourceElements();
+
+        assertEquals(1, result.size());
+        assertEquals("Claims", result.get(0).getLuLabel());
+    }
+
+    @Test
+    void testGetValidValuesByLvId() {
+        List<FadsLuValuesT> result = repository.retrieveLuValuesById("DR_ELEMENT_CLASS");
+
+        assertEquals(2, result.size());
+        assertEquals("1", result.get(0).getId().getLuValue());
+        assertEquals("2", result.get(1).getId().getLuValue());
+    }
+}
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+
+class DataRuleMBRepositoryTests extends RepositoryJpaTestSupport {
+
+    @Autowired
+    private DataRuleMBRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        persistLuValue("DR_ELEMENT_CLASS", "1", "Claims", "1", 1);
+        persistLuValue("DR_ELEMENT_CLASS", "2", "Pharmacy", "0", 2);
+        persistMbMaster(101, 1, 1, "Member Age");
+        persistMbMaster(102, 2, 1, "Drug Code");
+        flushAndClear();
+    }
+
+    @Test
+    void testGetDataElemntByDeId() {
+        List<Object[]> result = repository.retrieveDataElementById(101);
+
+        assertEquals(1, result.size());
+        assertEquals(101, ((Number) result.get(0)[0]).intValue());
+        assertEquals("Member Age", result.get(0)[1]);
+        assertEquals("Claims", result.get(0)[5]);
+    }
+
+    @Test
+    void testGetDataDataSourceElements() {
+        List<FadsLuValuesT> result = repository.retrieveDataSourceElements();
+
+        assertEquals(1, result.size());
+        assertEquals("Claims", result.get(0).getLuLabel());
+    }
+
+    @Test
+    void testGetValidValuesByLvId() {
+        List<FadsLuValuesT> result = repository.retrieveLuValuesById("DR_ELEMENT_CLASS");
+
+        assertEquals(2, result.size());
+        assertEquals("1", result.get(0).getId().getLuValue());
+        assertEquals("2", result.get(1).getId().getLuValue());
+    }
+}
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import java.time.LocalDateTime;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.optum.fads.pgp.datarules.repo.DataRuleMasterRepository;
+
+class DataRulesMasterRepositoryTests extends RepositoryJpaTestSupport {
+
+    private static final int EXISTING_RULE_ID = 4001;
+
+    @Autowired
+    private DataRuleMasterRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        var creator = persistUser("creator", "Test", "Creator");
+        var updater = persistUser("updater", "Test", "Updater");
+        var operator = persistOperator("EQ", "Equals");
+        var mbMaster = persistMbMaster(701, 1, 1, "Age");
+        persistDataRule(EXISTING_RULE_ID, "existing rule", creator, updater, operator, mbMaster);
+        flushAndClear();
+    }
+
+    @Test
+    void testNewDataRule() {
+        var creator = entityManager.find(com.optum.fads.pgp.datarules.domain.UiUserBase.class, "creator");
+        var updater = entityManager.find(com.optum.fads.pgp.datarules.domain.UiUserBase.class, "updater");
+        var operator = entityManager.find(com.optum.fads.pgp.datarules.domain.PrmDrLuOperatorT.class, "EQ");
+        var mbMaster = entityManager.find(com.optum.fads.pgp.datarules.domain.PrmMbMasterT.class, 701);
+
+        persistDataRule(4002, "new rule", creator, updater, operator, mbMaster);
+        flushAndClear();
+
+        assertNotNull(repository.retrieveDataRuleById(4002));
+        assertEquals(4003, repository.retrieveNextDrId());
+    }
+
+    @Test
+    void testGetDataRule() {
+        var result = repository.retrieveDataRule(EXISTING_RULE_ID, "creator");
+
+        assertNotNull(result);
+        assertEquals("existing rule", result.getDataRuleName());
+    }
+
+    @Test
+    void testDeleteDataRule() {
+        int deleted = repository.deleteDatarule(EXISTING_RULE_ID);
+        flushAndClear();
+
+        assertEquals(1, deleted);
+        assertNull(repository.retrieveDataRuleById(EXISTING_RULE_ID));
+    }
+
+    @Test
+    void testUpdateDataRule() {
+        persistUser("newupdater", "New", "Updater");
+        persistOperator("BT", "Between");
+        persistMbMaster(702, 2, 1, "Updated Field");
+        flushAndClear();
+
+        int updated = repository.updateDataRuleDb(
+                "updated rule",
+                702,
+                "BT",
+                "newupdater",
+                LocalDateTime.of(2026, 3, 26, 11, 0),
+                EXISTING_RULE_ID);
+        flushAndClear();
+
+        var result = repository.retrieveDataRuleById(EXISTING_RULE_ID);
+        assertEquals(1, updated);
+        assertEquals("updated rule", result.getDataRuleName());
+        assertEquals(702, result.getPrmMbMasterT().getMbCtecFid());
+        assertEquals("BT", result.getPrmDrLuOperatorT().getOperatorCd());
+        assertEquals("newupdater", result.getUiUserBaseUpd().getUiSystemId());
+    }
+}
+package com.optum.fads.pgp.datarules;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+
+import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
+
+class DataRulesRepositoryTest extends RepositoryJpaTestSupport {
+
+    @Autowired
+    private DataRulesRepository repository;
+
+    @BeforeEach
+    void setUp() {
+        var creator = persistUser("creator", "Test", "Creator");
+        var updater = persistUser("updater", "Test", "Updater");
+        var operator = persistOperator("EQ", "Equals");
+        var mbMaster = persistMbMaster(801, 1, 1, "Age");
+
+        persistDataRule(5001, "alpharule", creator, updater, operator, mbMaster);
+        persistDataRule(5002, "betarule", creator, updater, operator, mbMaster);
+        persistConfig(7L, "enabled");
+        flushAndClear();
+    }
+
+    @Test
+    void findDataRulesTest() {
+        var pageRequest = PageRequest.of(0, 10);
+
+        assertEquals(2, repository.getDataRules(pageRequest).size());
+        assertEquals(1, repository.getAvailableDataRules(List.of(5002), pageRequest).size());
+        assertEquals(1, repository.getDataRulesBySearchCrit("%alpha%", "%creator%", "%updater%", pageRequest).size());
+        assertNotNull(repository.getDataRuleByName("alpharule"));
+        assertEquals("enabled", repository.getFadsConfigByOptionCode(7).getOptionValue());
+    }
+}
+package com.optum.fads.pgp.datarules;
+
+import java.time.LocalDateTime;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+
+import com.optum.fads.pgp.datarules.domain.FadsConfigT;
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesTPK;
+import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
+import com.optum.fads.pgp.datarules.domain.PrmDrLuOperatorT;
+import com.optum.fads.pgp.datarules.domain.PrmMbMasterT;
+import com.optum.fads.pgp.datarules.domain.UiUserBase;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+abstract class RepositoryJpaTestSupport {
+
+    @Autowired
+    protected TestEntityManager entityManager;
+
+    protected UiUserBase persistUser(String systemId, String firstName, String lastName) {
+        UiUserBase user = new UiUserBase();
+        user.setUiSystemId(systemId);
+        user.setUiUserId(systemId);
+        user.setUiFirstName(firstName);
+        user.setUiLastName(lastName);
+        user.setUiEMailAddress(systemId + "@example.com");
+        entityManager.persist(user);
+        return user;
+    }
+
+    protected PrmDrLuOperatorT persistOperator(String operatorCode, String description) {
+        PrmDrLuOperatorT operator = new PrmDrLuOperatorT();
+        operator.setOperatorCd(operatorCode);
+        operator.setOperatorDesc(description);
+        entityManager.persist(operator);
+        return operator;
+    }
+
+    protected PrmMbMasterT persistMbMaster(int id, int elementClass, int custFlag, String description) {
+        PrmMbMasterT master = new PrmMbMasterT();
+        master.setMbCtecFid(id);
+        master.setDrElementClass(elementClass);
+        master.setMbCustFlag(custFlag);
+        master.setMbCustDatadesc(description);
+        master.setMbCtecFtype("STRING");
+        master.setMbLuFlag(1);
+        master.setMbLuSql("select 1");
+        master.setMbBpFlag(0);
+        master.setMbBpType("GEN");
+        entityManager.persist(master);
+        return master;
+    }
+
+    protected FadsLuValuesT persistLuValue(String fieldId, String luValue, String label, String view, int sequence) {
+        FadsLuValuesTPK id = new FadsLuValuesTPK();
+        id.setFieldId(fieldId);
+        id.setLuValue(luValue);
+
+        FadsLuValuesT value = new FadsLuValuesT();
+        value.setId(id);
+        value.setLuCode(luValue);
+        value.setLuLabel(label);
+        value.setLuParent("ROOT");
+        value.setLuSeq(sequence);
+        value.setLuView(view);
+        value.setObjId(sequence);
+        entityManager.persist(value);
+        return value;
+    }
+
+    protected FadsConfigT persistConfig(long optionCode, String optionValue) {
+        FadsConfigT config = FadsConfigT.builder()
+                .optionCode(optionCode)
+                .optionValue(optionValue)
+                .description("test config")
+                .build();
+        entityManager.persist(config);
+        return config;
+    }
+
+    protected PrmDrDataRuleT persistDataRule(
+            int id,
+            String name,
+            UiUserBase createdBy,
+            UiUserBase updatedBy,
+            PrmDrLuOperatorT operator,
+            PrmMbMasterT mbMaster) {
+        PrmDrDataRuleT dataRule = new PrmDrDataRuleT();
+        dataRule.setDrId(id);
+        dataRule.setDataRuleName(name);
+        dataRule.setCreateDate(LocalDateTime.of(2026, 3, 26, 10, 0));
+        dataRule.setUpdateDate(LocalDateTime.of(2026, 3, 26, 10, 5));
+        dataRule.setUiUserBaseCr(createdBy);
+        dataRule.setUiUserBaseUpd(updatedBy);
+        dataRule.setPrmDrLuOperatorT(operator);
+        dataRule.setPrmMbMasterT(mbMaster);
+        entityManager.persist(dataRule);
+        return dataRule;
+    }
+
+    protected void insertRange(int dataRuleId, long sequence, String rangeFrom, String rangeTo) {
+        entityManager.getEntityManager()
+                .createNativeQuery(
+                        "insert into PRM_DR_RANGES_T (SEQ_NUM, DR_ID, DR_RANGE_FROM, DR_RANGE_TO) values (?, ?, ?, ?)")
+                .setParameter(1, sequence)
+                .setParameter(2, dataRuleId)
+                .setParameter(3, rangeFrom)
+                .setParameter(4, rangeTo)
+                .executeUpdate();
+    }
+
+    protected void insertSingleValue(int dataRuleId, String value, String label) {
+        entityManager.getEntityManager()
+                .createNativeQuery(
+                        "insert into PRM_DR_SINGLE_VALUES_T (DR_VALUE, DR_ID, DR_LABEL) values (?, ?, ?)")
+                .setParameter(1, value)
+                .setParameter(2, dataRuleId)
+                .setParameter(3, label)
+                .executeUpdate();
+    }
+
+    protected void flushAndClear() {
+        entityManager.flush();
+        entityManager.clear();
+    }
+}
+spring:
+  datasource:
+    url: jdbc:h2:mem:datarules;MODE=MSSQLServer;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false
+  sql:
+    init:
+      mode: never
