@@ -1,8 +1,447 @@
- DataRuleRangesRepositoryTest.java, replace:
-assertTrue(repository.findById(id).isPresent());
-assertNotNull(entityManager.find(PrmDrRangesT.class, id));
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
- DataRuleSingleValuesRepositoryTest.java, replace:
-assertTrue(repository.findById(id).isPresent());
-assertNotNull(entityManager.find(PrmDrSingleValuesT.class, id));
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-behavior-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.4</version>
+        <relativePath/>
+    </parent>
+
+    <properties>
+        <java.version>21</java.version>
+        <spring.cloud.version>2025.1.0</spring.cloud.version>
+        <spring-cloud-azure.version>7.1.0</spring-cloud-azure.version>
+        <modelmapper.version>3.2.4</modelmapper.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok.version>1.18.42</lombok.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <mssql-jdbc.version>13.4.0.jre11</mssql-jdbc.version>
+        <rest-assured.version>6.0.0</rest-assured.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.azure.spring</groupId>
+                <artifactId>spring-cloud-azure-dependencies</artifactId>
+                <version>${spring-cloud-azure.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql-jdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <release>${java.version}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+
+
+
+
+package com.optum.fads.pgp.behavior.api.repository;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.behavior.api.domain.PrmErDrT;
+import com.optum.fads.pgp.behavior.api.domain.PrmErdrTPK;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternErDrRepository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class BehaviorPatternErDrRepositoryTest {
+	
+	@Autowired
+	private BehaviorPatternErDrRepository behaviorPatternErDrRepository;
+	
+	private static final Logger logit = LoggerFactory
+			.getLogger(BehaviorPatternErDrRepositoryTest.class);
+	    @Test
+	    public void testSaveErDr() {
+	    	Integer erId = 1877;
+	    	List<PrmErDrT> prmErDrList = new ArrayList<>();
+			PrmErDrT prmErDrT1 = new PrmErDrT();
+			PrmErdrTPK prmErDrTPK1 = new PrmErdrTPK();
+			prmErDrTPK1.setErId(erId);
+			prmErDrTPK1.setDrId(507);
+			prmErDrT1.setId(prmErDrTPK1);
+			prmErDrList.add(prmErDrT1);
+			PrmErDrT prmErDrT2 = new PrmErDrT();
+			PrmErdrTPK prmErDrTPK2 = new PrmErdrTPK();
+			prmErDrTPK2.setErId(erId);
+			prmErDrTPK2.setDrId(508);
+			prmErDrT2.setId(prmErDrTPK2);
+			prmErDrList.add(prmErDrT2);
+			PrmErDrT prmErDrT3 = new PrmErDrT();
+			PrmErdrTPK prmErDrTPK3 = new PrmErdrTPK();
+			prmErDrTPK3.setErId(erId);
+			prmErDrTPK3.setDrId(509);
+			prmErDrT3.setId(prmErDrTPK3);
+			prmErDrList.add(prmErDrT3);
+			behaviorPatternErDrRepository.saveAll(prmErDrList);
+			logit.info(" {} ErDr records saved", prmErDrList.size());
+	    	assertEquals(3,prmErDrList.size());
+	    } 
+	    @Test
+	    public void testDeleteErDrById()  {
+	    	Integer erId = 1877;	// 551, 552, 553
+			int erDrRecordsDeleted = behaviorPatternErDrRepository.deleteErDrsById(erId);
+			logit.info(" {} ErDr record deleted for ID", erDrRecordsDeleted);
+	    	assertEquals(7,erDrRecordsDeleted);
+	    } 
+}
+
+
+
+package com.optum.fads.pgp.behavior.api.repository;
+
+import static org.junit.Assert.assertEquals;
+
+import java.time.LocalDateTime;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.behavior.api.domain.PrmMbMasterT;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternMasterRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
+
+@RunWith(SpringRunner.class)
+@DataJpaTest
+public class BehaviorPatternMasterRepositoryTest {
+	
+	@Autowired
+	private BehaviorPatternMasterRepository behaviorPatternMasterRepository;
+	@Autowired
+	private BehaviorPatternsRepository behaviorPatternsRepository; 
+	
+	    @Test
+	    public void testUpdateBehaviorPattern() {
+	    	Integer behaviorPatternId = 585;
+	    	String behaviorPatternName ="Dental, Rend, SSCrowns Age 0-6, #clms - current";
+	    	LocalDateTime currentDate = LocalDateTime.now();
+	    	String bAId = "4"; 	// current = 2
+	    	Integer dataElementCode = 251; // current = 295
+	    	Integer dateElementCode = 4001; // current = 4000
+	    	String userId = "PP3188253"; // current = "WA40122433"
+	    	
+	    	int updateResult = behaviorPatternMasterRepository.updateBehaviorPattern(behaviorPatternName, bAId,
+	    			dataElementCode, dateElementCode, userId, currentDate, behaviorPatternId); 
+	    	assertEquals(1, updateResult);  
+	    	PrmBpBehaviorPatsT prmBpBehaviorPatsT = behaviorPatternsRepository.getBehaviorPatternById(behaviorPatternId);
+	    	assertEquals(bAId, prmBpBehaviorPatsT.getBaId());
+	    	assertEquals(dateElementCode, prmBpBehaviorPatsT.getBpMaxCtecFieldId());
+	    	assertEquals(userId, prmBpBehaviorPatsT.getUiUserBaseUpd().getUiSystemId());
+	    	assertEquals(dataElementCode, prmBpBehaviorPatsT.getPrmMbMasterT().getMbCtecFid());
+	    }  
+	   
+	    @Test
+	    public void testNewBehaviorPattern() {
+	    	Integer behaviorPatternId = 999;		// 1876 in FADS DEV DB
+	    	LocalDateTime currentDate = LocalDateTime.now();
+				
+	    	PrmBpBehaviorPatsT prmBpBehaviorPatsT = new PrmBpBehaviorPatsT();
+			UiUserBase uiUserBase = new UiUserBase();	
+			prmBpBehaviorPatsT.setUiUserBaseCr(uiUserBase);				// Set UiUserBase
+			prmBpBehaviorPatsT.getUiUserBaseCr().setUiSystemId("WA40122433");
+			prmBpBehaviorPatsT.setUiUserBaseUpd(uiUserBase);
+			prmBpBehaviorPatsT.getUiUserBaseUpd().setUiSystemId("CS39286887");
+			
+			PrmMbMasterT prmMbMasterT = new PrmMbMasterT();
+			prmBpBehaviorPatsT.setPrmMbMasterT(prmMbMasterT);			// Set PrmMbMasterT
+										
+			prmBpBehaviorPatsT.setBehaviorPatternName("Dental, basic, treat; max daily #drecips");
+			prmBpBehaviorPatsT.getPrmMbMasterT().setMbCtecFid(251);
+			
+			prmBpBehaviorPatsT.setBpId(behaviorPatternId);
+			prmBpBehaviorPatsT.setBaId("2");
+			prmBpBehaviorPatsT.setBpMaxCtecFieldId(4000);
+			prmBpBehaviorPatsT.setCreateDate(currentDate);
+			prmBpBehaviorPatsT.setUpdateDate(currentDate);
+			PrmBpBehaviorPatsT prmBpBehaviorPatsT1 =  behaviorPatternMasterRepository.save(prmBpBehaviorPatsT); 
+	    	// The save() method returns the saved entity, including the updated id field
+	    	assertEquals(prmBpBehaviorPatsT1.getBehaviorPatternName(), prmBpBehaviorPatsT.getBehaviorPatternName());
+	    	assertEquals(prmBpBehaviorPatsT1.getBpMaxCtecFieldId(), prmBpBehaviorPatsT.getBpMaxCtecFieldId());
+	    	assertEquals(prmBpBehaviorPatsT1.getBpId(), prmBpBehaviorPatsT.getBpId());
+	    } 
+	    
+}
+
+
+
+
+package com.optum.fads.pgp.behavior.api.repository;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.text.ParseException;
+import java.util.List;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import com.optum.fads.pgp.behavior.api.domain.PrmBpBehaviorPatsT;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternMasterRepository;
+import com.optum.fads.pgp.behavior.api.repo.BehaviorPatternsRepository;
+
+
+@RunWith(SpringRunner.class) 
+@DataJpaTest 
+public class BehaviorPatternsRepositoryTest {
+	@Autowired 
+	private BehaviorPatternsRepository behaviorPatternsRepository; 
+	@Autowired
+	BehaviorPatternMasterRepository behaviorPatternMasterRepository;
+ 
+	private static final Logger logit = LoggerFactory
+			.getLogger(BehaviorPatternsRepositoryTest.class);
+	
+	@Test 
+	public void testGetBehaviorPatternsBySearchCrit() throws ParseException{ 
+		
+		Pageable pageable = null;
+		List<PrmBpBehaviorPatsT> prmBpBehaviorPatsList = behaviorPatternsRepository.getBehaviorPatterns(pageable);
+		logit.info(" Behavior Patterns list #1 size = {}",prmBpBehaviorPatsList.size());
+		for (PrmBpBehaviorPatsT prmBpBehaviorPatsT: prmBpBehaviorPatsList) {
+			logit.info(" Behavior Pattern ID {} Name = {}", prmBpBehaviorPatsT.getBpId(), prmBpBehaviorPatsT.getBehaviorPatternName());
+		}
+		assertTrue(prmBpBehaviorPatsList.size() > 0);
+		pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createDate"));
+		prmBpBehaviorPatsList = behaviorPatternsRepository.getBehaviorPatternsBySearchCrit("%dental%", 
+				"%","%", pageable );
+		logit.info(" Behavior Patterns list #2 size = {}",prmBpBehaviorPatsList.size());
+		for (PrmBpBehaviorPatsT prmBpBehaviorPatsT: prmBpBehaviorPatsList) {
+			logit.info(" Behavior Pattern ID {} Name = {}", prmBpBehaviorPatsT.getBpId(), prmBpBehaviorPatsT.getBehaviorPatternName());
+		}
+		assertTrue(prmBpBehaviorPatsList.size() > 0);
+	} 
+	
+	@Test 
+	public void testGetBehaviorPatternsBySearchCritEsc() throws ParseException{ 
+		
+		Pageable pageable = null;
+		pageable = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createDate"));
+		List<PrmBpBehaviorPatsT> prmBpBehaviorPatsList = behaviorPatternsRepository.getBehaviorPatternsBySearchCritEsc("% 80\\%%", 
+				"%","%", pageable );
+		logit.info(" Behavior Patterns list #2 size = {}",prmBpBehaviorPatsList.size());
+		for (PrmBpBehaviorPatsT prmBpBehaviorPatsT: prmBpBehaviorPatsList) {
+			logit.info(" Behavior Pattern ID {} Name = {}", prmBpBehaviorPatsT.getBpId(), prmBpBehaviorPatsT.getBehaviorPatternName());
+		}
+		assertTrue(prmBpBehaviorPatsList.size() > 0);
+	} 
+	
+	@Test
+    public void testGetBehaviorPatternById(){
+    	Integer behaviorPatternId = 585;
+    	Integer erId = 551;
+    	List<Object[]> behaviorPatternRS;
+    	PrmBpBehaviorPatsT prmBpBehaviorPatsT = behaviorPatternsRepository.getBehaviorPatternById(behaviorPatternId);
+        assertNotNull(prmBpBehaviorPatsT);
+        assertEquals(prmBpBehaviorPatsT.getBpId(), behaviorPatternId);
+
+        behaviorPatternRS =  behaviorPatternMasterRepository.retrieveBehaviorPatternById(behaviorPatternId);
+        if (!behaviorPatternRS.isEmpty()) {
+	        Object[] behaviorPatternData  = behaviorPatternRS.get(0);
+	        assertNotNull(behaviorPatternRS);
+	        assertEquals(behaviorPatternData[0], erId);
+        } else {
+        	logit.info(" behaviorPatternRS is empty");
+        }
+    }
+	
+	@Test
+    public void testDeleteBehaviorPatterns() {
+    	Integer behaviorPatternId = 585;	// 586, 587
+    	int deleteResult = behaviorPatternsRepository.deleteBehaviorPattern(behaviorPatternId); 
+    	assertEquals(1, deleteResult);   
+    }
+
+}
+
