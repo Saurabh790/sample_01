@@ -1,89 +1,477 @@
-server:
-  port: 8080
-  servlet:
-    context-path: /datarules
+package com.optum.fads.pgp.behavior.api.repo;
 
-quickstart:
-  generate-order-period: 10s
-  process-order-period: 30s
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
+
+@Transactional
+@Repository
+public interface BehaviorPatternErRepository extends JpaRepository<PrmErExtractRuleT, Integer> {
+
+    @Modifying
+    @Query("delete from PrmErExtractRuleT er where er.erId = :erId")
+    int deleteErById(@Param("erId") Integer erId);
+
+    @Query("from PrmErExtractRuleT er where er.erId = :erId")
+    PrmErExtractRuleT getExtractRuleById(@Param("erId") Integer erId);
+
+    @Query("select coalesce(max(er.erId), 0) + 1 from PrmErExtractRuleT er")
+    Integer retrieveNextErId();
+}
+
+
+
+package com.optum.fads.pgp.behavior.api.repo;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.optum.fads.pgp.behavior.api.domain.PrmErExtractRuleT;
+
+@Transactional
+@Repository
+public interface BehaviorPatternErRepository extends JpaRepository<PrmErExtractRuleT, Integer> {
+
+    @Modifying
+    @Query("delete from PrmErExtractRuleT er where er.erId = :erId")
+    int deleteErById(@Param("erId") Integer erId);
+
+    @Query("from PrmErExtractRuleT er where er.erId = :erId")
+    PrmErExtractRuleT getExtractRuleById(@Param("erId") Integer erId);
+
+    @Query("select coalesce(max(er.erId), 0) + 1 from PrmErExtractRuleT er")
+    Integer retrieveNextErId();
+}
+
+
+server:
+  port: 8081
+  servlet:
+    contextPath: /behavior
 
 spring:
   application:
-    name: datarules
-
-  main:
-    allow-bean-definition-overriding: true
-    banner-mode: "off"
-
+    name: behavior-api
+  cloud:
+    azure:
+      keyvault:
+        secrets:
+          endpoint: https://kv-anly-pi-dev-cus-001.vault.azure.net
+        credential:
+          client-id: ${AZURE_CLIENT_ID:}
+          client-secret: ${AZURE_CLIENT_SECRET:}
+          tenant-id: ${AZURE_TENANT_ID:}
   jpa:
     database-platform: org.hibernate.dialect.SQLServerDialect
-    database: sql_server
+    database: SQL_SERVER
     show-sql: false
     hibernate:
-      ddl-auto: none
       naming:
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
         physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
-
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
-    url: jdbc:sqlserver://sql-pi-dev-cus-001.database.windows.net:1433;databaseName=pi-dev-db;encrypt=true;trustServerCertificate=true
-    username: sql-admin-user
-    password: sql-admin-password
-    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    jdbcUrl: ${APP_DB_URL:jdbc:sqlserver://localhost:1433;databaseName=behaviordb}
+    userName: ${APP_DB_USERNAME:sa}
+    password: ${APP_DB_PASSWORD:password}
+    driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
     hikari:
-      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:10}
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
       minimum-idle: ${MIN_POOL_IDLE:1}
       connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
       leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
-
   security:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${JWKS_URL:}
+          jwk-set-uri: ${JWKS_URL:http://localhost/jwks}
           jws-algorithms: ${JWS_ALG:RS256}
-          unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
 
+management:
+  endpoint:
+    metrics.enabled: true
+    prometheus.enabled: true
+  endpoints.web.exposure.include:
+    - health
+    - info
+    - prometheus
+  prometheus.metrics.export.enabled: true
+
+
+package com.optum.fads.pgp.behavior.api.service.impl;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
+import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.repo.UserRepository;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserDetailsService userDetailsService;
+
+    @Test
+    void loadUserByUsername_success() {
+        UiUserBase uiUser = new UiUserBase();
+        uiUser.setUiUserId("john123");
+        uiUser.setUiSystemId("SYS001");
+        uiUser.setUiEMailAddress("john@test.com");
+
+        SeSurGrp group = new SeSurGrp();
+        group.setSurGrpId(100);
+        group.setSurGrpName("ADMIN");
+        group.setSeSurGrpModAccesses(new ArrayList<>());
+
+        SeUsrGrp usrGrp = new SeUsrGrp();
+        usrGrp.setSeSurGrp(group);
+        uiUser.setSeUsrGrp(usrGrp);
+
+        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
+                .thenReturn(Optional.of(uiUser));
+
+        UserDetails details = userDetailsService.loadUserByUsername("john123");
+
+        assertNotNull(details);
+        assertTrue(details instanceof AppUser);
+
+        AppUser appUser = (AppUser) details;
+        assertEquals("john123", appUser.getUserId());
+        assertEquals("john@test.com", appUser.getUserEmail());
+        assertEquals("SYS001", appUser.getUserSystemId());
+        assertNotNull(appUser.getRole());
+        assertEquals("ADMIN", appUser.getRole().getRoleName());
+        assertNotNull(appUser.getRole().getAllowedAccesses());
+        assertTrue(appUser.getRole().getAllowedAccesses().isEmpty());
+    }
+
+    @Test
+    void loadUserByUsername_notFound_throwsException() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername("bad"));
+    }
+}
+
+
+package com.optum.fads.pgp.behavior.api.service.impl;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
+import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.repo.UserRepository;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserDetailsService userDetailsService;
+
+    @Test
+    void loadUserByUsername_success() {
+        UiUserBase uiUser = new UiUserBase();
+        uiUser.setUiUserId("john123");
+        uiUser.setUiSystemId("SYS001");
+        uiUser.setUiEMailAddress("john@test.com");
+
+        SeSurGrp group = new SeSurGrp();
+        group.setSurGrpId(100);
+        group.setSurGrpName("ADMIN");
+        group.setSeSurGrpModAccesses(new ArrayList<>());
+
+        SeUsrGrp usrGrp = new SeUsrGrp();
+        usrGrp.setSeSurGrp(group);
+        uiUser.setSeUsrGrp(usrGrp);
+
+        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
+                .thenReturn(Optional.of(uiUser));
+
+        UserDetails details = userDetailsService.loadUserByUsername("john123");
+
+        assertNotNull(details);
+        assertTrue(details instanceof AppUser);
+
+        AppUser appUser = (AppUser) details;
+        assertEquals("john123", appUser.getUserId());
+        assertEquals("john@test.com", appUser.getUserEmail());
+        assertEquals("SYS001", appUser.getUserSystemId());
+        assertNotNull(appUser.getRole());
+        assertEquals("ADMIN", appUser.getRole().getRoleName());
+        assertNotNull(appUser.getRole().getAllowedAccesses());
+        assertTrue(appUser.getRole().getAllowedAccesses().isEmpty());
+    }
+
+    @Test
+    void loadUserByUsername_notFound_throwsException() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername("bad"));
+    }
+}
+spring:
+  datasource:
+    url: jdbc:h2:mem:behavior;MODE=MSSQLServer;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false
   sql:
     init:
       mode: never
 
-management:
-  endpoint:
-    metrics:
-      enabled: true
-    prometheus:
-      enabled: true
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-  prometheus:
-    metrics:
-      export:
-        enabled: true
 
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
-package com.optum.fads.pgp.datarules;
+    <modelVersion>4.0.0</modelVersion>
 
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
-import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+    <groupId>com.optum.fads</groupId>
+    <artifactId>fads-pgp-behavior-api</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
-import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.4</version>
+        <relativePath/>
+    </parent>
 
-@DataJpaTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class DataRuleMBRepositoryTests {
+    <properties>
+        <java.version>21</java.version>
+        <spring.cloud.version>2025.1.0</spring.cloud.version>
+        <spring-cloud-azure.version>7.1.0</spring-cloud-azure.version>
+        <modelmapper.version>3.2.4</modelmapper.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok.version>1.18.42</lombok.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
+        <mssql-jdbc.version>13.4.0.jre11</mssql-jdbc.version>
+        <rest-assured.version>6.0.0</rest-assured.version>
+    </properties>
 
-    @Autowired
-    private DataRuleMBRepository dataRuleMBRepository;
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring.cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.azure.spring</groupId>
+                <artifactId>spring-cloud-azure-dependencies</artifactId>
+                <version>${spring-cloud-azure.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-    @Test
-    void testSomething() {
-        // your test
-    }
-}
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.modelmapper</groupId>
+            <artifactId>modelmapper</artifactId>
+            <version>${modelmapper.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <version>${mssql-jdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.azure.spring</groupId>
+            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.janino</groupId>
+            <artifactId>janino</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>${rest-assured.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <release>${java.version}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.8.1</version>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                            <excludeScope>provided</excludeScope>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
