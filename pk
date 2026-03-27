@@ -1,52 +1,22 @@
-CREATE TABLE PRM_MB_MASTER_T (
-    MB_CTEC_FID INT PRIMARY KEY
-);
+l time:  12.344 s
+[INFO] Finished at: 2026-03-27T18:59:13+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.0:testCompile (default-testCompile) on project fads-pgp-behavior-api: Compilation failure: Compilation failure:
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/repository/BehaviorPatternErDrRepositoryTest.java:[13,59] package org.springframework.boot.test.autoconfigure.orm.jpa does not exist
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/repository/BehaviorPatternErDrRepositoryTest.java:[21,2] cannot find symbol
+[ERROR]   symbol: class DataJpaTest
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/repository/BehaviorPatternMasterRepositoryTest.java:[10,59] package org.springframework.boot.test.autoconfigure.orm.jpa does not exist
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/repository/BehaviorPatternMasterRepositoryTest.java:[20,2] cannot find symbol
+[ERROR]   symbol: class DataJpaTest
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/repository/BehaviorPatternsRepositoryTest.java:[15,59] package org.springframework.boot.test.autoconfigure.orm.jpa does not exist
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-pgp-behavior-api/src/test/java/com/optum/fads/pgp/behavior/api/repository/BehaviorPatternsRepositoryTest.java:[27,2] cannot find symbol
+[ERROR]   symbol: class DataJpaTest
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-CREATE TABLE FADS_LU_VALUES_T (
-    LU_ID VARCHAR(50),
-    LU_LABEL VARCHAR(100)
-);
-
-CREATE TABLE PRM_DR_LU_OPERATOR_T (
-    OPERATOR_CD VARCHAR(10) PRIMARY KEY,
-    OPERATOR_DESC VARCHAR(100)
-);
-
-CREATE TABLE UI_USER_BASE (
-    UI_SYSTEM_ID VARCHAR(25) PRIMARY KEY
-);
-
-CREATE TABLE PRM_DR_DATA_RULE_T (
-    DR_ID INT PRIMARY KEY,
-    DATA_RULE_NAME VARCHAR(255),
-    OPERATOR_CD VARCHAR(10),
-    MB_CTEC_FID INT,
-    CREATED_BY VARCHAR(25),
-    MODIFIED_BY VARCHAR(25),
-
-    CONSTRAINT FK_MB FOREIGN KEY (MB_CTEC_FID)
-        REFERENCES PRM_MB_MASTER_T(MB_CTEC_FID),
-
-    CONSTRAINT FK_OP FOREIGN KEY (OPERATOR_CD)
-        REFERENCES PRM_DR_LU_OPERATOR_T(OPERATOR_CD)
-);
-
-
-INSERT INTO PRM_MB_MASTER_T (MB_CTEC_FID) VALUES (250);
-
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('1', 'Provider');
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('2', 'Member');
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('3', 'Claim');
-INSERT INTO FADS_LU_VALUES_T (LU_ID, LU_LABEL) VALUES ('4', 'Claim Detail');
-
-INSERT INTO PRM_DR_LU_OPERATOR_T (OPERATOR_CD, OPERATOR_DESC)
-VALUES ('EQ', 'Equal');
-
-INSERT INTO UI_USER_BASE (UI_SYSTEM_ID) VALUES ('testuser');
-
-INSERT INTO PRM_DR_DATA_RULE_T (
-    DR_ID, DATA_RULE_NAME, OPERATOR_CD, MB_CTEC_FID, CREATED_BY, MODIFIED_BY
-)
-VALUES (
-    1, 'Test Rule', 'EQ', 250, 'testuser', 'testuser'
-);
+C:\Users\sgupt664\BE_Projects\fads-pgp-behavior-api>
