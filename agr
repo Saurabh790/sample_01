@@ -414,3 +414,328 @@ class DataRuleSingleValuesRepositoryTest extends RepositoryJpaTestSupport {
         assertTrue(repository.retrieveCodeValues(DATA_RULE_ID).isEmpty());
     }
 }
+
+
+
+package com.optum.fads.pgp.datarules.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.test.util.ReflectionTestUtils;
+
+class CommonConfigTest {
+
+    @Test
+    void modelMapperUsesStrictMatching() {
+        CommonConfig config = new CommonConfig();
+
+        var mapper = config.modelMapper();
+
+        assertNotNull(mapper);
+        assertTrue(mapper.getConfiguration().isAmbiguityIgnored());
+        assertEquals(MatchingStrategies.STRICT, mapper.getConfiguration().getMatchingStrategy());
+    }
+
+    @Test
+    void secretClientBeanIsCreated() {
+        CommonConfig config = new CommonConfig();
+        ReflectionTestUtils.setField(config, "azureKeyVaultUrl", "https://example.vault.azure.net/");
+        ReflectionTestUtils.setField(config, "azureKeyVaultTenant", "tenant");
+        ReflectionTestUtils.setField(config, "azureKeyVaultSecret", "secret");
+        ReflectionTestUtils.setField(config, "azureKeyVaultClientId", "client");
+
+        assertNotNull(config.secretClient());
+    }
+}
+package com.optum.fads.pgp.datarules.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import com.optum.fads.pgp.datarules.service.IUserDetailsService;
+
+class SecurityConfigTest {
+
+    @Test
+    void beanFactoryMethodsCreateExpectedBeans() {
+        IUserDetailsService userDetailsService = org.mockito.Mockito.mock(IUserDetailsService.class);
+        SecurityConfig config = new SecurityConfig(userDetailsService);
+        ReflectionTestUtils.setField(config, "uniqueIdClaims", List.of("email", "preferred_username"));
+
+        assertNotNull(config.userJwtAuthenticationConverter());
+        assertNotNull(config.passwordEncoder());
+
+        CorsConfigurationSource source = config.corsConfigurationSource();
+        CorsConfiguration cors = source.getCorsConfiguration(null);
+        assertNotNull(cors);
+        assertEquals(List.of(CorsConfiguration.ALL), cors.getAllowedOrigins());
+        assertEquals(List.of(CorsConfiguration.ALL), cors.getAllowedMethods());
+        assertEquals(List.of(CorsConfiguration.ALL), cors.getAllowedHeaders());
+    }
+
+    @Test
+    void jwtDecoderThrowsForInvalidToken() {
+        IUserDetailsService userDetailsService = org.mockito.Mockito.mock(IUserDetailsService.class);
+        SecurityConfig config = new SecurityConfig(userDetailsService);
+
+        JwtException ex = assertThrows(JwtException.class, () -> config.jwtDecoder().decode("not-a-jwt"));
+
+        assertTrue(ex.getMessage().contains("Failed to parse JWT"));
+    }
+}
+package com.optum.fads.pgp.datarules.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.mockito.Mockito.when;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
+
+class ServiceConfigTest {
+
+    @Test
+    void customDataSourceUsesSecretsFromKeyVaultClient() {
+        SecretClient secretClient = org.mockito.Mockito.mock(SecretClient.class);
+        when(secretClient.getSecret("db-user")).thenReturn(new KeyVaultSecret("db-user", "sa"));
+        when(secretClient.getSecret("db-password")).thenReturn(new KeyVaultSecret("db-password", "pwd"));
+
+        ServiceConfig config = new ServiceConfig(secretClient);
+        ReflectionTestUtils.setField(config, "userNameSecretName", "db-user");
+        ReflectionTestUtils.setField(config, "passwordSecretName", "db-password");
+        ReflectionTestUtils.setField(config, "jdbcUrl", "jdbc:h2:mem:testdb");
+        ReflectionTestUtils.setField(config, "driverClassName", "org.h2.Driver");
+
+        var dataSource = config.customDataSource();
+
+        assertInstanceOf(DriverManagerDataSource.class, dataSource);
+        DriverManagerDataSource ds = (DriverManagerDataSource) dataSource;
+        assertEquals("org.h2.Driver", ds.getDriverClassName());
+        assertEquals("jdbc:h2:mem:testdb", ds.getUrl());
+        assertEquals("sa", ds.getUsername());
+        assertEquals("pwd", ds.getPassword());
+    }
+}
+package com.optum.fads.pgp.datarules.controller;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+
+import com.optum.fads.pgp.datarules.dto.DataElementDTO;
+import com.optum.fads.pgp.datarules.dto.LUValueDTO;
+import com.optum.fads.pgp.datarules.exception.DataRulesApiException;
+import com.optum.fads.pgp.datarules.service.IDataElementDataService;
+
+@ExtendWith(MockitoExtension.class)
+class DataElementsControllerTest {
+
+    @Mock
+    private IDataElementDataService iDataElementDataService;
+
+    @InjectMocks
+    private DataElementsController controller;
+
+    @Test
+    void getDataElementsReturnsOk() {
+        DataElementDTO dto = new DataElementDTO();
+        dto.setId(1);
+        dto.setName("Age");
+        when(iDataElementDataService.getDataElements("ALL")).thenReturn(List.of(dto));
+
+        ResponseEntity response = controller.getDataElements("ALL");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    void getDataElementByIdUsesEmptySelectedItemsWhenPathVariableMissing() {
+        DataElementDTO dto = new DataElementDTO();
+        dto.setId(10);
+        when(iDataElementDataService.getdataelement(eq(10), eq(List.of()))).thenReturn(dto);
+
+        ResponseEntity response = controller.getDataElementById(10, null);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(iDataElementDataService).getdataelement(10, List.of());
+    }
+
+    @Test
+    void getDataSourceElementsReturnsBadRequestWithEmptyListOnFailure() {
+        when(iDataElementDataService.findAllDataSourceElements()).thenThrow(new DataRulesApiException("boom"));
+
+        ResponseEntity<List<LUValueDTO>> response = controller.getDataSourceElements();
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(response.getBody().isEmpty());
+    }
+
+    @Test
+    void getBpDataElementsReturnsBadRequestOnException() {
+        when(iDataElementDataService.getBpTypeDataElements("BP1")).thenThrow(new DataRulesApiException("boom"));
+
+        ResponseEntity response = controller.getBpDataElements("BP1");
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    void getAllDateElementsReturnsOk() {
+        when(iDataElementDataService.getAllDateElements()).thenReturn(List.of(new DataElementDTO()));
+
+        ResponseEntity response = controller.getallDateElements();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+}
+package com.optum.fads.pgp.datarules.controller;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.time.ZoneId;
+import java.util.List;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import com.optum.fads.pgp.datarules.common.ListTableParams;
+import com.optum.fads.pgp.datarules.common.ListTableParamsReq;
+import com.optum.fads.pgp.datarules.dto.AccessLevel;
+import com.optum.fads.pgp.datarules.dto.AppUser;
+import com.optum.fads.pgp.datarules.dto.DataRuleDTO;
+import com.optum.fads.pgp.datarules.dto.PaginationResult;
+import com.optum.fads.pgp.datarules.exception.DataRulesApiException;
+import com.optum.fads.pgp.datarules.service.IDataRuleDataService;
+
+@ExtendWith(MockitoExtension.class)
+class DataRulesControllerBranchTest {
+
+    @Mock
+    private IDataRuleDataService iDataRuleDataService;
+
+    @InjectMocks
+    private DataRulesController controller;
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void getDataRuleByIdReturnsBadRequestOnException() {
+        when(iDataRuleDataService.getDataRuleById(1)).thenThrow(new DataRulesApiException("boom"));
+
+        ResponseEntity response = controller.getDataRuleById(1);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    void getDataRulesReturnsBadRequestOnException() {
+        ListTableParamsReq req = new ListTableParamsReq();
+        req.setPageNumber(1);
+        req.setRecordsPerPage(10);
+        req.setSortBy("dataRuleName");
+        req.setSortOrder(1);
+        req.setSearchBy(List.of("dataRuleName"));
+        when(iDataRuleDataService.getDataRulesList(any(ListTableParams.class))).thenThrow(new DataRulesApiException("boom"));
+
+        ResponseEntity response = controller.getDataRules(req, "alpha");
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    void newDataRuleReturnsForbiddenWhenUserLacksStudyAccess() {
+        setAuthenticatedUser("user1", List.of(new AccessLevel("2", "JOBMONITOR", "Job Monitor", "A")));
+
+        ResponseEntity response = controller.newDataRule(new DataRuleDTO());
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    }
+
+    @Test
+    void updateDataRuleReturnsForbiddenWhenBAccessUserDidNotCreateRule() {
+        setAuthenticatedUser("user2", List.of(new AccessLevel("1", "STUDY", "Study", "B")));
+        DataRuleDTO dto = new DataRuleDTO();
+        dto.setCreatedBySystemId("someoneElse");
+
+        ResponseEntity<String> response = controller.updateDataRuleById(5, dto);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+    }
+
+    @Test
+    void getMyDataRulesReturnsOkAndUsesAuthenticatedUser() {
+        setAuthenticatedUser("user3", List.of(new AccessLevel("1", "STUDY", "Study", "A")));
+        PaginationResult paginationResult = new PaginationResult();
+        when(iDataRuleDataService.getDataRulesList(any(ListTableParams.class))).thenReturn(paginationResult);
+
+        ListTableParams params = new ListTableParams();
+        params.setPageNumber(1);
+        params.setRecordsPerPage(10);
+
+        ResponseEntity response = controller.getMyDataRules(params);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    void newDataRuleReturnsCreatedWhenAuthorized() {
+        setAuthenticatedUser("user4", List.of(new AccessLevel("1", "STUDY", "Study", "A")));
+        when(iDataRuleDataService.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(iDataRuleDataService.addDataRule(any(DataRuleDTO.class))).thenReturn(new DataRuleDTO());
+
+        ResponseEntity response = controller.newDataRule(new DataRuleDTO());
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+    }
+
+    private void setAuthenticatedUser(String userSystemId, List<AccessLevel> accesses) {
+        AppUser user = new AppUser();
+        user.setUserSystemId(userSystemId);
+        user.getRole().setAllowedAccesses(accesses);
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(user, "n/a"));
+    }
+}
