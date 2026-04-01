@@ -1,28 +1,481 @@
-r DataRuleRangesRepositoryTest.java:
 
-@Test
-void saveRangesTest() {
-    insertRange(DATA_RULE_ID, 3L, "31", "40");
-    flushAndClear();
+C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api>mvn clean verify
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-pgp-datarules-api >----------------
+[INFO] Building fads-pgp-datarules-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ fads-pgp-datarules-api ---
+[INFO] Deleting C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven) @ fads-pgp-datarules-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO]
+[INFO] --- git-commit-id:9.0.2:revision (default) @ fads-pgp-datarules-api ---
+[INFO] dotGitDirectory 'C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\.git'
+[INFO] Collected git.build.user.name with value sgupt_664
+[INFO] Collected git.build.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.branch with value dev
+[INFO] Collected git.commit.id.describe with value 80a3cb4-dirty
+[INFO] Collected git.commit.id.describe-short with value 80a3cb4-dirty
+[INFO] Collected git.commit.id with value 80a3cb467f84f9fd4dd51c0503d2129dc24529ec
+[INFO] Collected git.commit.id.abbrev with value 80a3cb4
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Gupta, Sourabh
+[INFO] Collected git.commit.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.commit.message.full with value Merge pull request #205 from optum-sgs/FixedAuthError
 
-    List<PrmDrRangesT> result = repository.retrieveRangeValues(DATA_RULE_ID);
+Remvoed Ui_PHONE from UiUserBase
+[INFO] Collected git.commit.message.short with value Merge pull request #205 from optum-sgs/FixedAuthError
+[INFO] Collected git.commit.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.author.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.committer.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.remote.origin.url with value https://github.com/optum-sgs/fads-pgp-datarules-api.git
+[INFO] Collected git.tags with value
+[INFO] Collected git.tag with value
+[INFO] Collected git.closest.tag.name with value
+[INFO] Collected git.closest.tag.commit.count with value
+[INFO] Collected git.total.commit.count with value 443
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-04-01T17:14:09+05:30
+[INFO] Collected git.build.version with value 1.0.0
+[INFO] Collected git.build.host with value vetsodi10019581
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Writing properties file [C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\classes\git.properties] (for project fads-pgp-datarules-api)...
+[INFO]
+[INFO] --- git-commit-id:9.0.2:revision (get-the-git-infos) @ fads-pgp-datarules-api ---
+[INFO] dotGitDirectory 'C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\.git'
+[INFO] Collected git.build.user.name with value sgupt_664
+[INFO] Collected git.build.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.branch with value dev
+[INFO] Collected git.commit.id.describe with value 80a3cb4-dirty
+[INFO] Collected git.commit.id.describe-short with value 80a3cb4-dirty
+[INFO] Collected git.commit.id with value 80a3cb467f84f9fd4dd51c0503d2129dc24529ec
+[INFO] Collected git.commit.id.abbrev with value 80a3cb4
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Gupta, Sourabh
+[INFO] Collected git.commit.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.commit.message.full with value Merge pull request #205 from optum-sgs/FixedAuthError
 
-    assertEquals(3, result.size());
-    assertTrue(result.stream().anyMatch(range ->
-            range.getId().getSeqNum().equals(3L)
-                    && "31".equals(range.getDrRangeFrom())
-                    && "40".equals(range.getDrRangeTo())));
-}
-For DataRuleSingleValuesRepositoryTest.java:
-@Test
-void saveSingleValuesTest() {
-    insertSingleValue(DATA_RULE_ID, "U", "Unknown");
-    flushAndClear();
+Remvoed Ui_PHONE from UiUserBase
+[INFO] Collected git.commit.message.short with value Merge pull request #205 from optum-sgs/FixedAuthError
+[INFO] Collected git.commit.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.author.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.committer.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.remote.origin.url with value https://github.com/optum-sgs/fads-pgp-datarules-api.git
+[INFO] Collected git.tags with value
+[INFO] Collected git.tag with value
+[INFO] Collected git.closest.tag.name with value
+[INFO] Collected git.closest.tag.commit.count with value
+[INFO] Collected git.total.commit.count with value 443
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-04-01T17:14:10+05:30
+[INFO] Collected git.build.version with value 1.0.0
+[INFO] Collected git.build.host with value vetsodi10019581
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\classes\git.properties] (for project fads-pgp-datarules-api)...
+[INFO] Properties file [C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\classes\git.properties] is up-to-date (for module fads-pgp-datarules-api)...
+[INFO]
+[INFO] --- jacoco:0.8.10:prepare-agent (jacoco-initialize) @ fads-pgp-datarules-api ---
+[INFO] jacoco.agent.argLine set to -javaagent:C:\\Users\\sgupt664\\.m2\\repo1\\m3-3.9.9\\org\\jacoco\\org.jacoco.agent\\0.8.10\\org.jacoco.agent-0.8.10-runtime.jar=destfile=C:\\Users\\sgupt664\\BE_Projects\\fads-pgp-datarules-api\\target\\jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/constants/**:**/exception/**:**/*Application.class
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ fads-pgp-datarules-api ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.14.1:compile (default-compile) @ fads-pgp-datarules-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 63 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ fads-pgp-datarules-api ---
+[INFO] Copying 4 resources from src\test\resources to target\test-classes
+[INFO]
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ fads-pgp-datarules-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 7 source files with javac [debug parameters release 17] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.4:test (default-test) @ fads-pgp-datarules-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests
+2026-04-01T17:14:25.653+05:30  INFO  --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests]: DataRuleMBRepositoryTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:14:25.859+05:30  INFO  --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests
 
-    List<PrmDrSingleValuesT> result = repository.retrieveCodeValues(DATA_RULE_ID);
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
 
-    assertEquals(3, result.size());
-    assertTrue(result.stream().anyMatch(value ->
-            "U".equals(value.getId().getDrValue())
-                    && "Unknown".equals(value.getDrLabel())));
-}
+ :: Spring Boot ::                (v3.5.9)
+
+2026-04-01T17:14:26.696+05:30  INFO 19856 --- [           main] c.o.f.p.d.DataRuleMBRepositoryTests      : Starting DataRuleMBRepositoryTests using Java 17.0.10 with PID 19856 (started by sgupt664 in C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api)
+2026-04-01T17:14:26.698+05:30  INFO 19856 --- [           main] c.o.f.p.d.DataRuleMBRepositoryTests      : No active profile set, falling back to 1 default profile: "default"
+2026-04-01T17:14:27.541+05:30  INFO 19856 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-01T17:14:27.829+05:30  INFO 19856 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 272 ms. Found 7 JPA repository interfaces.
+2026-04-01T17:14:27.907+05:30  INFO 19856 --- [           main] beddedDataSourceBeanFactoryPostProcessor : Replacing 'dataSource' DataSource bean with embedded version
+2026-04-01T17:14:28.093+05:30  INFO 19856 --- [           main] o.s.j.d.e.EmbeddedDatabaseFactory        : Starting embedded database: url='jdbc:h2:mem:f1ca9cc3-b32e-40a2-88b9-dcfe80a20ed2;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
+2026-04-01T17:14:28.473+05:30  INFO 19856 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-01T17:14:28.553+05:30  INFO 19856 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.39.Final
+2026-04-01T17:14:28.601+05:30  INFO 19856 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-04-01T17:14:28.989+05:30  INFO 19856 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-01T17:14:29.053+05:30  WARN 19856 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-01T17:14:29.090+05:30  INFO 19856 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+        Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory$EmbeddedDataSourceProxy@70805849']
+        Database driver: undefined/unknown
+        Database version: 2.3.232
+        Autocommit mode: undefined/unknown
+        Isolation level: undefined/unknown
+        Minimum pool size: undefined/unknown
+        Maximum pool size: undefined/unknown
+2026-04-01T17:14:30.763+05:30  INFO 19856 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-01T17:14:31.134+05:30  INFO 19856 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-01T17:14:31.551+05:30  INFO 19856 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-04-01T17:14:32.678+05:30  INFO 19856 --- [           main] c.o.f.p.d.DataRuleMBRepositoryTests      : Started DataRuleMBRepositoryTests in 6.715 seconds (process running for 8.65)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.719 s -- in com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests
+[INFO] Running com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest
+2026-04-01T17:14:33.937+05:30  INFO 19856 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest]: DataRuleRangesRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:14:34.044+05:30  INFO 19856 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.443 s -- in com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest
+[INFO] Running com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest
+2026-04-01T17:14:34.302+05:30  INFO 19856 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest]: DataRuleSingleValuesRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:14:34.340+05:30  INFO 19856 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.137 s -- in com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest
+[INFO] Running com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests
+2026-04-01T17:14:34.452+05:30  INFO 19856 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests]: DataRulesMasterRepositoryTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:14:34.477+05:30  INFO 19856 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.232 s -- in com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests
+[INFO] Running com.optum.fads.pgp.datarules.DataRulesRepositoryTest
+2026-04-01T17:14:34.707+05:30  INFO 19856 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRulesRepositoryTest]: DataRulesRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:14:34.718+05:30  INFO 19856 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRulesRepositoryTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.126 s -- in com.optum.fads.pgp.datarules.DataRulesRepositoryTest
+[INFO] Running com.optum.fads.pgp.datarules.controller.DataRulesControllerTest
+2026-04-01T17:14:35.374+05:30 ERROR 19856 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:14:35.422+05:30 ERROR 19856 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:14:35.507+05:30 ERROR 19856 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:14:35.535+05:30 ERROR 19856 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:14:35.553+05:30 ERROR 19856 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.807 s -- in com.optum.fads.pgp.datarules.controller.DataRulesControllerTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 30, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ fads-pgp-datarules-api ---
+[INFO] Building jar: C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\fads-pgp-datarules-api-1.0.0.jar
+[INFO]
+[INFO] --- spring-boot:3.5.9:repackage (repackage) @ fads-pgp-datarules-api ---
+[INFO] Replacing main artifact C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\fads-pgp-datarules-api-1.0.0.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\fads-pgp-datarules-api-1.0.0.jar.original
+[INFO]
+[INFO] --- spring-boot:3.5.9:repackage (default) @ fads-pgp-datarules-api ---
+[INFO] Replacing main artifact C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\fads-pgp-datarules-api-1.0.0.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\fads-pgp-datarules-api-1.0.0.jar.original
+[INFO]
+[INFO] --- failsafe:3.5.4:integration-test (default) @ fads-pgp-datarules-api ---
+[INFO]
+[INFO] --- failsafe:3.5.4:integration-test (integration-test) @ fads-pgp-datarules-api ---
+[INFO] Skipping execution of surefire because it has already been run for this configuration
+[INFO]
+[INFO] --- failsafe:3.5.4:verify (default) @ fads-pgp-datarules-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- failsafe:3.5.4:verify (verify) @ fads-pgp-datarules-api ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jacoco:0.8.10:report (jacoco-report) @ fads-pgp-datarules-api ---
+[INFO] Skipping JaCoCo execution due to missing execution data file.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  33.475 s
+[INFO] Finished at: 2026-04-01T17:14:38+05:30
+[INFO] ------------------------------------------------------------------------
+
+C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api>mvn clean test
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ---------------< com.optum.fads:fads-pgp-datarules-api >----------------
+[INFO] Building fads-pgp-datarules-api 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ fads-pgp-datarules-api ---
+[INFO] Deleting C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target
+[INFO]
+[INFO] --- enforcer:3.5.0:enforce (enforce-maven) @ fads-pgp-datarules-api ---
+[INFO] Rule 0: org.apache.maven.enforcer.rules.version.RequireMavenVersion passed
+[INFO]
+[INFO] --- git-commit-id:9.0.2:revision (default) @ fads-pgp-datarules-api ---
+[INFO] dotGitDirectory 'C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\.git'
+[INFO] Collected git.build.user.name with value sgupt_664
+[INFO] Collected git.build.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.branch with value dev
+[INFO] Collected git.commit.id.describe with value 80a3cb4-dirty
+[INFO] Collected git.commit.id.describe-short with value 80a3cb4-dirty
+[INFO] Collected git.commit.id with value 80a3cb467f84f9fd4dd51c0503d2129dc24529ec
+[INFO] Collected git.commit.id.abbrev with value 80a3cb4
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Gupta, Sourabh
+[INFO] Collected git.commit.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.commit.message.full with value Merge pull request #205 from optum-sgs/FixedAuthError
+
+Remvoed Ui_PHONE from UiUserBase
+[INFO] Collected git.commit.message.short with value Merge pull request #205 from optum-sgs/FixedAuthError
+[INFO] Collected git.commit.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.author.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.committer.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.remote.origin.url with value https://github.com/optum-sgs/fads-pgp-datarules-api.git
+[INFO] Collected git.tags with value
+[INFO] Collected git.tag with value
+[INFO] Collected git.closest.tag.name with value
+[INFO] Collected git.closest.tag.commit.count with value
+[INFO] Collected git.total.commit.count with value 443
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-04-01T17:16:11+05:30
+[INFO] Collected git.build.version with value 1.0.0
+[INFO] Collected git.build.host with value vetsodi10019581
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Writing properties file [C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\classes\git.properties] (for project fads-pgp-datarules-api)...
+[INFO]
+[INFO] --- git-commit-id:9.0.2:revision (get-the-git-infos) @ fads-pgp-datarules-api ---
+[INFO] dotGitDirectory 'C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\.git'
+[INFO] Collected git.build.user.name with value sgupt_664
+[INFO] Collected git.build.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.branch with value dev
+[INFO] Collected git.commit.id.describe with value 80a3cb4-dirty
+[INFO] Collected git.commit.id.describe-short with value 80a3cb4-dirty
+[INFO] Collected git.commit.id with value 80a3cb467f84f9fd4dd51c0503d2129dc24529ec
+[INFO] Collected git.commit.id.abbrev with value 80a3cb4
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Gupta, Sourabh
+[INFO] Collected git.commit.user.email with value sourabh.gupta@optum.com
+[INFO] Collected git.commit.message.full with value Merge pull request #205 from optum-sgs/FixedAuthError
+
+Remvoed Ui_PHONE from UiUserBase
+[INFO] Collected git.commit.message.short with value Merge pull request #205 from optum-sgs/FixedAuthError
+[INFO] Collected git.commit.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.author.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.commit.committer.time with value 2026-03-30T19:25:18+05:30
+[INFO] Collected git.remote.origin.url with value https://github.com/optum-sgs/fads-pgp-datarules-api.git
+[INFO] Collected git.tags with value
+[INFO] Collected git.tag with value
+[INFO] Collected git.closest.tag.name with value
+[INFO] Collected git.closest.tag.commit.count with value
+[INFO] Collected git.total.commit.count with value 443
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-04-01T17:16:12+05:30
+[INFO] Collected git.build.version with value 1.0.0
+[INFO] Collected git.build.host with value vetsodi10019581
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\classes\git.properties] (for project fads-pgp-datarules-api)...
+[INFO] Properties file [C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\classes\git.properties] is up-to-date (for module fads-pgp-datarules-api)...
+[INFO]
+[INFO] --- jacoco:0.8.10:prepare-agent (jacoco-initialize) @ fads-pgp-datarules-api ---
+[INFO] jacoco.agent.argLine set to -javaagent:C:\\Users\\sgupt664\\.m2\\repo1\\m3-3.9.9\\org\\jacoco\\org.jacoco.agent\\0.8.10\\org.jacoco.agent-0.8.10-runtime.jar=destfile=C:\\Users\\sgupt664\\BE_Projects\\fads-pgp-datarules-api\\target\\jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/constants/**:**/exception/**:**/*Application.class
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ fads-pgp-datarules-api ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.14.1:compile (default-compile) @ fads-pgp-datarules-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 63 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ fads-pgp-datarules-api ---
+[INFO] Copying 4 resources from src\test\resources to target\test-classes
+[INFO]
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ fads-pgp-datarules-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 7 source files with javac [debug parameters release 17] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.5.4:test (default-test) @ fads-pgp-datarules-api ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests
+2026-04-01T17:16:24.762+05:30  INFO  --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests]: DataRuleMBRepositoryTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:16:24.997+05:30  INFO  --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.9)
+
+2026-04-01T17:16:25.795+05:30  INFO 12872 --- [           main] c.o.f.p.d.DataRuleMBRepositoryTests      : Starting DataRuleMBRepositoryTests using Java 17.0.10 with PID 12872 (started by sgupt664 in C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api)
+2026-04-01T17:16:25.796+05:30  INFO 12872 --- [           main] c.o.f.p.d.DataRuleMBRepositoryTests      : No active profile set, falling back to 1 default profile: "default"
+2026-04-01T17:16:26.635+05:30  INFO 12872 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-01T17:16:26.903+05:30  INFO 12872 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 252 ms. Found 7 JPA repository interfaces.
+2026-04-01T17:16:26.988+05:30  INFO 12872 --- [           main] beddedDataSourceBeanFactoryPostProcessor : Replacing 'dataSource' DataSource bean with embedded version
+2026-04-01T17:16:27.176+05:30  INFO 12872 --- [           main] o.s.j.d.e.EmbeddedDatabaseFactory        : Starting embedded database: url='jdbc:h2:mem:dc9ee68f-11f5-43e1-89eb-80980247a45d;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false', username='sa'
+2026-04-01T17:16:27.544+05:30  INFO 12872 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-01T17:16:27.617+05:30  INFO 12872 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.39.Final
+2026-04-01T17:16:27.667+05:30  INFO 12872 --- [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-04-01T17:16:28.060+05:30  INFO 12872 --- [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-04-01T17:16:28.126+05:30  WARN 12872 --- [           main] org.hibernate.orm.deprecation            : HHH90000025: H2Dialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-04-01T17:16:28.154+05:30  INFO 12872 --- [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+        Database JDBC URL [Connecting through datasource 'org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseFactory$EmbeddedDataSourceProxy@775edae0']
+        Database driver: undefined/unknown
+        Database version: 2.3.232
+        Autocommit mode: undefined/unknown
+        Isolation level: undefined/unknown
+        Minimum pool size: undefined/unknown
+        Maximum pool size: undefined/unknown
+2026-04-01T17:16:29.644+05:30  INFO 12872 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-04-01T17:16:29.981+05:30  INFO 12872 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-01T17:16:30.478+05:30  INFO 12872 --- [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-04-01T17:16:31.499+05:30  INFO 12872 --- [           main] c.o.f.p.d.DataRuleMBRepositoryTests      : Started DataRuleMBRepositoryTests in 6.385 seconds (process running for 8.418)
+OpenJDK 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 8.300 s -- in com.optum.fads.pgp.datarules.DataRuleMBRepositoryTests
+[INFO] Running com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest
+2026-04-01T17:16:32.527+05:30  INFO 12872 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest]: DataRuleRangesRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:16:32.605+05:30  INFO 12872 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.218 s -- in com.optum.fads.pgp.datarules.DataRuleRangesRepositoryTest
+[INFO] Running com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest
+2026-04-01T17:16:32.748+05:30  INFO 12872 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest]: DataRuleSingleValuesRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:16:32.790+05:30  INFO 12872 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.140 s -- in com.optum.fads.pgp.datarules.DataRuleSingleValuesRepositoryTest
+[INFO] Running com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests
+2026-04-01T17:16:32.897+05:30  INFO 12872 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests]: DataRulesMasterRepositoryTests does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:16:32.930+05:30  INFO 12872 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.180 s -- in com.optum.fads.pgp.datarules.DataRulesMasterRepositoryTests
+[INFO] Running com.optum.fads.pgp.datarules.DataRulesRepositoryTest
+2026-04-01T17:16:33.085+05:30  INFO 12872 --- [           main] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.optum.fads.pgp.datarules.DataRulesRepositoryTest]: DataRulesRepositoryTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-04-01T17:16:33.104+05:30  INFO 12872 --- [           main] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.optum.fads.pgp.datarules.DataRulesApiApplication for test class com.optum.fads.pgp.datarules.DataRulesRepositoryTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.121 s -- in com.optum.fads.pgp.datarules.DataRulesRepositoryTest
+[INFO] Running com.optum.fads.pgp.datarules.controller.DataRulesControllerTest
+2026-04-01T17:16:33.738+05:30 ERROR 12872 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:16:33.771+05:30 ERROR 12872 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:16:33.894+05:30 ERROR 12872 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:16:33.916+05:30 ERROR 12872 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+2026-04-01T17:16:33.983+05:30 ERROR 12872 --- [           main] c.o.f.p.d.c.DataRulesController          : Exception occured
+[INFO] Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.783 s -- in com.optum.fads.pgp.datarules.controller.DataRulesControllerTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 30, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  27.324 s
+[INFO] Finished at: 2026-04-01T17:16:34+05:30
+[INFO] ------------------------------------------------------------------------
