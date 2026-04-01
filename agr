@@ -1,393 +1,442 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0">
+package com.optum.fads.pgp.datarules.service.impl;
 
-    <modelVersion>4.0.0</modelVersion>
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-datarules-api</artifactId>
-    <version>1.0.0</version>
-    <packaging>jar</packaging>
+import java.util.List;
+import java.util.Map;
 
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.9</version>
-        <relativePath/>
-    </parent>
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-    <repositories>
-        <repository>
-              <id>central</id>
-			<name>centraluhg.jfrog.io-releases</name>
-			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
-        </repository>
-        <repository>
-            <id>snapshots</id>
-            <name>snapshots-repo</name>
-            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
-        </repository>
-    </repositories>
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesT;
+import com.optum.fads.pgp.datarules.domain.FadsLuValuesTPK;
+import com.optum.fads.pgp.datarules.domain.PrmMbMasterT;
+import com.optum.fads.pgp.datarules.dto.DataElementDTO;
+import com.optum.fads.pgp.datarules.exception.DataRulesApiException;
+import com.optum.fads.pgp.datarules.repo.DataRuleMBRepository;
 
-    <properties>
-<!--        <maven.test.skip>false</maven.test.skip>-->
-<!--        <skipTests>${maven.test.skip}</skipTests>-->
-<!--        &lt;!&ndash; >surefire.skip>${skipTests}</surefire.skip &ndash;&gt;-->
-<!--        <failsafe.skip>${skipTests}</failsafe.skip>-->
+@ExtendWith(MockitoExtension.class)
+class DataElementDataServiceTest {
 
-        <java.version>17</java.version>
-        <spring.cloud.version>2025.0.0</spring.cloud.version>
-        <modelmapper.version>3.1.1</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <lombok.version>1.18.28</lombok.version>
-        <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.exclusions>
-            **/*DTO.java,
-            **/*Dto.java,
-            **/repo/**,
-            **/common/**,
-            **/dto/**,
-            **/domain/**,
-            **/exception/**,
-            **/*Request.java,
-            **/*Response.java,
-            **/*Application.java
-        </sonar.exclusions>
-    </properties>
+    @Mock
+    private DataRuleMBRepository dataRuleMBRepository;
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+    @Mock
+    private JdbcTemplate jdbcTemplate;
 
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-bom</artifactId>
-				<version>4.1.130.Final</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-			
-			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>6.1.0</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-            
-        </dependencies>
-    </dependencyManagement>
+    @InjectMocks
+    private DataElementDataService service;
 
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
+    @Test
+    void getdataelementLoadsLookupValuesWhenLuFlagEnabled() {
+        Object[] row = {101, "Age", "CHAR", 1, "select DATA_VALUE, DATA_LABEL from dual", "MEMBER"};
+        when(dataRuleMBRepository.retrieveDataElementById(101)).thenReturn(List.of(row));
+        when(jdbcTemplate.queryForList("select DATA_VALUE, DATA_LABEL from dual"))
+                .thenReturn(List.of(Map.of("DATA_VALUE", "A", "DATA_LABEL", "Adult")));
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-oauth2-jose</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
+        DataElementDTO dto = service.getdataelement(101, List.of());
 
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
+        assertNotNull(dto);
+        assertEquals(101, dto.getId());
+        assertEquals("Age", dto.getName());
+        assertEquals(1, dto.getAvailValues().size());
+        assertEquals("A", dto.getAvailValues().get(0).getCode());
+        assertEquals("Adult", dto.getAvailValues().get(0).getValue());
+    }
 
-        <!-- Model Mapper -->
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
+    @Test
+    void getDataElementsUsesAllQueryForAllSource() {
+        Object[] row = {201, "DOB", "DATE", 0, null, "ALL"};
+        when(dataRuleMBRepository.retrieveDataElements()).thenReturn(List.of(row));
 
-        <!-- Jackson -->
+        List<DataElementDTO> result = service.getDataElements("ALL");
 
+        assertEquals(1, result.size());
+        assertEquals("DOB", result.get(0).getName());
+        verify(dataRuleMBRepository).retrieveDataElements();
+    }
 
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
+    @Test
+    void getBpTypeDataElementsMapsRepositoryResults() {
+        PrmMbMasterT mb = new PrmMbMasterT();
+        mb.setMbCtecFid(301);
+        mb.setMbCustDatadesc("Gender");
+        when(dataRuleMBRepository.retrieveBpTypeDataElements("%BP1%")).thenReturn(List.of(mb));
 
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+        List<DataElementDTO> result = service.getBpTypeDataElements("BP1");
 
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.vintage</groupId>
-            <artifactId>junit-vintage-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
+        assertEquals(1, result.size());
+        assertEquals(301, result.get(0).getId());
+        assertEquals("Gender", result.get(0).getName());
+    }
 
-        <!-- Before After Spring Test Runner -->
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-jdk8</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>13.2.1.jre11</version>
-        </dependency>
-        
-       <dependency>
-			<groupId>com.azure.spring</groupId>
-			<artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-		</dependency>
-  
-    </dependencies>
+    @Test
+    void findAllDataSourceElementsMapsZeroValueToAll() {
+        FadsLuValuesTPK allId = new FadsLuValuesTPK();
+        allId.setFieldId("DR_ELEMENT_CLASS");
+        allId.setLuValue("0");
+        FadsLuValuesT all = new FadsLuValuesT();
+        all.setId(allId);
+        all.setLuLabel("Ignored");
+        all.setLuView("Y");
+        all.setObjId(10);
+        all.setLuSeq(1);
 
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+        FadsLuValuesTPK claimId = new FadsLuValuesTPK();
+        claimId.setFieldId("DR_ELEMENT_CLASS");
+        claimId.setLuValue("2");
+        FadsLuValuesT claim = new FadsLuValuesT();
+        claim.setId(claimId);
+        claim.setLuLabel("Claim");
+        claim.setLuView("Y");
+        claim.setObjId(20);
+        claim.setLuSeq(2);
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
-                <configuration>
-                    <argLine>${argLine}</argLine>
-                    <useModulePath>false</useModulePath>
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                        <include>**/*TestCase.java</include>
-                    </includes>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <argLine>${argLine}</argLine>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-<!--                <configuration>-->
-<!--                    <skip>${failsafe.skip}</skip>-->
-<!--                </configuration>-->
-            </plugin>
+        when(dataRuleMBRepository.retrieveDataSourceElements()).thenReturn(List.of(all, claim));
 
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>${project.build.directory}/jacoco.exec</destFile>
-                    <dataFile>${project.build.directory}/jacoco.exec</dataFile>
-                    <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
-                    <append>true</append>
-                    <excludes>
-                        <exclude>**/dto/**</exclude>
-                        <exclude>**/domain/**</exclude>
-                        <exclude>**/common/constants/**</exclude>
-                        <exclude>**/exception/**</exclude>
-                        <exclude>**/*Application.class</exclude>
-                    </excludes>
-                    <formats>
-                        <format>XML</format>
-                        <format>HTML</format>
-                    </formats>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-report</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+        var result = service.findAllDataSourceElements();
 
-        </plugins>
-    </build>
-</project>
+        assertEquals(2, result.size());
+        assertEquals("All", result.get(0).getLuValue());
+        assertEquals("All", result.get(0).getLuLabel());
+        assertEquals("2", result.get(1).getLuValue());
+        assertEquals("Claim", result.get(1).getLuLabel());
+    }
+
+    @Test
+    void getAllDateElementsThrowsWrappedExceptionWhenNoRowsFound() {
+        when(dataRuleMBRepository.retrieveDateElements("%5%")).thenReturn(List.of());
+
+        DataRulesApiException ex = assertThrows(DataRulesApiException.class, () -> service.getAllDateElements());
+
+        assertTrue(ex.getMessage().contains("Exception occured"));
+    }
+}
+package com.optum.fads.pgp.datarules.service.impl;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.optum.fads.pgp.datarules.common.ListTableParams;
+import com.optum.fads.pgp.datarules.common.constants.DataRuleConstants;
+import com.optum.fads.pgp.datarules.domain.FadsConfigT;
+import com.optum.fads.pgp.datarules.domain.PrmDrDataRuleT;
+import com.optum.fads.pgp.datarules.domain.PrmDrLuOperatorT;
+import com.optum.fads.pgp.datarules.domain.PrmDrRangesT;
+import com.optum.fads.pgp.datarules.domain.PrmDrRangesTPK;
+import com.optum.fads.pgp.datarules.domain.PrmDrSingleValuesT;
+import com.optum.fads.pgp.datarules.domain.PrmDrSingleValuesTPK;
+import com.optum.fads.pgp.datarules.domain.PrmMbMasterT;
+import com.optum.fads.pgp.datarules.domain.UiUserBase;
+import com.optum.fads.pgp.datarules.dto.DataRuleDTO;
+import com.optum.fads.pgp.datarules.dto.DrCodeValueDTO;
+import com.optum.fads.pgp.datarules.dto.DrRangeValuesDTO;
+import com.optum.fads.pgp.datarules.exception.DataRulesApiException;
+import com.optum.fads.pgp.datarules.mapper.DataRuleDetailMapper;
+import com.optum.fads.pgp.datarules.repo.DataRuleMasterRepository;
+import com.optum.fads.pgp.datarules.repo.DataRuleRangesRepository;
+import com.optum.fads.pgp.datarules.repo.DataRuleSingleValuesRepository;
+import com.optum.fads.pgp.datarules.repo.DataRulesRepository;
+import com.optum.fads.pgp.datarules.repo.FadsConfigRepository;
+
+@ExtendWith(MockitoExtension.class)
+class DataRuleDataServiceTest {
+
+    @Mock
+    private DataRuleMasterRepository dataRuleMasterRepository;
+    @Mock
+    private DataRulesRepository dataRulesRepository;
+    @Mock
+    private DataRuleSingleValuesRepository dataRuleSingleValuesRepository;
+    @Mock
+    private DataRuleRangesRepository dataRuleRangesRepository;
+    @Mock
+    private FadsConfigRepository fadsConfigRepository;
+    @Mock
+    private DataRuleDetailMapper dataRuleDetailMapper;
+
+    @InjectMocks
+    private DataRuleDataService service;
+
+    @Test
+    void getDataRuleByIdMapsDetailedData() {
+        when(dataRuleMasterRepository.retrieveDataRuleById(5001)).thenReturn(buildRule());
+
+        DataRuleDTO dto = service.getDataRuleById(5001);
+
+        assertEquals(5001, dto.getDataRuleId());
+        assertEquals("alpharule", dto.getDataRuleName());
+        assertEquals("Age", dto.getDataElementName());
+        assertEquals("EQ", dto.getOperator());
+        assertEquals("Test Creator", dto.getCreatedBy());
+        assertEquals("Test Updater", dto.getModifiedBy());
+        assertEquals(DataRuleConstants.NO_VALUE, dto.getRangeValue());
+        assertEquals(1, dto.getSelectedValues().size());
+    }
+
+    @Test
+    void loadCodeValuesByIdMapsRepositoryRows() {
+        PrmDrSingleValuesT value = new PrmDrSingleValuesT();
+        PrmDrSingleValuesTPK id = new PrmDrSingleValuesTPK();
+        id.setDrId(1);
+        id.setDrValue("A");
+        value.setId(id);
+        value.setDrLabel("Adult");
+        when(dataRuleSingleValuesRepository.retrieveCodeValues(1)).thenReturn(List.of(value));
+
+        List<DrCodeValueDTO> result = service.loadCodeValuesById(1);
+
+        assertEquals(1, result.size());
+        assertEquals("A", result.get(0).getCode());
+        assertEquals("Adult", result.get(0).getValue());
+    }
+
+    @Test
+    void loadRangeValuesByIdMapsRepositoryRows() {
+        PrmDrRangesT range = new PrmDrRangesT();
+        PrmDrRangesTPK id = new PrmDrRangesTPK();
+        id.setDrId(1);
+        id.setSeqNum(1L);
+        range.setId(id);
+        range.setDrRangeFrom("10");
+        range.setDrRangeTo("20");
+        when(dataRuleRangesRepository.retrieveRangeValues(1)).thenReturn(List.of(range));
+
+        List<DrRangeValuesDTO> result = service.loadRangeValuesById(1);
+
+        assertEquals(1, result.size());
+        assertEquals("10", result.get(0).getFrom());
+        assertEquals("20", result.get(0).getTo());
+    }
+
+    @Test
+    void getSearchCriteriaNormalizesAndEscapesInputs() {
+        ListTableParams params = new ListTableParams();
+        params.setSearchBy(List.of(
+                DataRuleConstants.DATA_RULE_NAME,
+                DataRuleConstants.CREATED_BY,
+                DataRuleConstants.MODIFIED_BY,
+                DataRuleConstants.USER_SYSTEM_ID));
+        params.setSearchInput(List.of("alpha%", "  Test   Creator ", "Test   Updater", "SYS1"));
+
+        String[] result = ReflectionTestUtils.invokeMethod(service, "getSearchCriteria", params);
+
+        assertEquals("%alpha\%%", result[0]);
+        assertEquals("%test creator%", result[1]);
+        assertEquals("%test updater%", result[2]);
+        assertEquals(DataRuleConstants.SEARCH_SP_CH_IN_NM_STR, result[3]);
+        assertEquals("sys1", result[4]);
+    }
+
+    @Test
+    void getZoneIdReturnsConfiguredTimeZone() {
+        when(fadsConfigRepository.findById(DataRuleConstants.DATE_TIME_ZONE_ID))
+                .thenReturn(Optional.of(FadsConfigT.builder().optionCode(700).optionValue("America/Chicago").build()));
+
+        ZoneId zoneId = service.getZoneId();
+
+        assertEquals(ZoneId.of("America/Chicago"), zoneId);
+    }
+
+    @Test
+    void addDataRuleReturnsNameExistsForDuplicateRule() {
+        PrmDrDataRuleT existing = buildRule();
+        when(dataRulesRepository.getDataRuleByName("alpharule")).thenReturn(existing);
+
+        DataRuleDTO input = new DataRuleDTO();
+        input.setDataRuleName(" alpharule ");
+
+        DataRuleDTO result = service.addDataRule(input);
+
+        assertEquals(DataRuleConstants.DATA_RULE_NAME_EXISTS, result.getDataRuleName());
+        assertEquals(existing.getDrId(), result.getDataRuleId());
+        assertEquals(existing.getUiUserBaseCr().getUiSystemId(), result.getCreatedBySystemId());
+        assertEquals(existing.getUiUserBaseUpd().getUiSystemId(), result.getModifiedBySystemId());
+    }
+
+    @Test
+    void deleteDataRuleDeletesWhenNoConstraintsExist() {
+        when(dataRuleMasterRepository.retrieveDataRuleById(5001)).thenReturn(buildRule());
+        when(dataRuleMasterRepository.retrieveErDrValues(5001)).thenReturn(List.of());
+        when(dataRuleMasterRepository.retrievePgDrValues(5001)).thenReturn(List.of());
+        when(dataRuleMasterRepository.deleteDatarule(5001)).thenReturn(1);
+
+        List<String> result = service.deleteDataRule(5001);
+
+        assertEquals(List.of(DataRuleConstants.DELETE_SUCCESS_MESSAGE), result);
+        verify(dataRuleRangesRepository).deleteRangesByDataRuleId(5001);
+        verify(dataRuleSingleValuesRepository).deleteSingleValuesByDataRuleId(5001);
+    }
+
+    @Test
+    void getDataRuleByIdThrowsWrappedExceptionWhenMissing() {
+        when(dataRuleMasterRepository.retrieveDataRuleById(9999)).thenReturn(null);
+
+        assertThrows(DataRulesApiException.class, () -> service.getDataRuleById(9999));
+    }
+
+    private PrmDrDataRuleT buildRule() {
+        UiUserBase creator = new UiUserBase();
+        creator.setUiSystemId("creator");
+        creator.setUiFirstName("Test");
+        creator.setUiLastName("Creator");
+
+        UiUserBase updater = new UiUserBase();
+        updater.setUiSystemId("updater");
+        updater.setUiFirstName("Test");
+        updater.setUiLastName("Updater");
+
+        PrmMbMasterT mbMaster = new PrmMbMasterT();
+        mbMaster.setMbCtecFid(801);
+        mbMaster.setMbCustDatadesc("Age");
+        mbMaster.setMbCtecFtype("CHAR");
+
+        PrmDrLuOperatorT operator = new PrmDrLuOperatorT();
+        operator.setOperatorCd("EQ");
+
+        PrmDrSingleValuesTPK singleId = new PrmDrSingleValuesTPK();
+        singleId.setDrId(5001);
+        singleId.setDrValue("A");
+        PrmDrSingleValuesT singleValue = new PrmDrSingleValuesT();
+        singleValue.setId(singleId);
+        singleValue.setDrLabel("Adult");
+
+        PrmDrRangesTPK rangeId = new PrmDrRangesTPK();
+        rangeId.setDrId(5001);
+        rangeId.setSeqNum(1L);
+        PrmDrRangesT rangeValue = new PrmDrRangesT();
+        rangeValue.setId(rangeId);
+        rangeValue.setDrRangeFrom("10");
+        rangeValue.setDrRangeTo("20");
+
+        PrmDrDataRuleT rule = new PrmDrDataRuleT();
+        rule.setDrId(5001);
+        rule.setDataRuleName("alpharule");
+        rule.setCreateDate(LocalDateTime.of(2026, 4, 1, 10, 0));
+        rule.setUpdateDate(LocalDateTime.of(2026, 4, 1, 11, 0));
+        rule.setUiUserBaseCr(creator);
+        rule.setUiUserBaseUpd(updater);
+        rule.setPrmMbMasterT(mbMaster);
+        rule.setPrmDrLuOperatorT(operator);
+        rule.setPrmDrSingleValuesTs(List.of(singleValue));
+        rule.setPrmDrRangesTs(List.of(rangeValue));
+        return rule;
+    }
+}
+package com.optum.fads.pgp.datarules.service.impl;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.pgp.datarules.domain.SeSurAccess;
+import com.optum.fads.pgp.datarules.domain.SeSurGrp;
+import com.optum.fads.pgp.datarules.domain.SeSurGrpModAccess;
+import com.optum.fads.pgp.datarules.domain.SeSurGrpModAccessPK;
+import com.optum.fads.pgp.datarules.domain.SeSurModule;
+import com.optum.fads.pgp.datarules.domain.SeUsrGrp;
+import com.optum.fads.pgp.datarules.domain.UiUserBase;
+import com.optum.fads.pgp.datarules.dto.AppUser;
+import com.optum.fads.pgp.datarules.repo.UserRepository;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserDetailsService service;
+
+    @Test
+    void loadUserByUsernameMapsNestedRoleAndAccesses() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("creator", "creator"))
+                .thenReturn(Optional.of(buildUser()));
+
+        AppUser result = (AppUser) service.loadUserByUsername("creator");
+
+        assertEquals("creator@optum.com", result.getUserEmail());
+        assertEquals("creator", result.getUserId());
+        assertEquals("SYS1", result.getUserSystemId());
+        assertEquals("7", result.getRole().getId());
+        assertEquals("Admins", result.getRole().getRoleName());
+        assertEquals(1, result.getRole().getAllowedAccesses().size());
+        assertEquals("1", result.getRole().getAllowedAccesses().get(0).getId());
+        assertEquals("STUDY", result.getRole().getAllowedAccesses().get(0).getName());
+        assertEquals("Study Module", result.getRole().getAllowedAccesses().get(0).getLabel());
+        assertEquals("RW", result.getRole().getAllowedAccesses().get(0).getValue());
+    }
+
+    @Test
+    void loadUserByUsernameThrowsWhenUserMissing() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("missing", "missing")).thenReturn(Optional.empty());
+
+        assertThrows(UsernameNotFoundException.class, () -> service.loadUserByUsername("missing"));
+    }
+
+    private UiUserBase buildUser() {
+        UiUserBase user = new UiUserBase();
+        user.setUiEMailAddress("creator@optum.com");
+        user.setUiUserId("creator");
+        user.setUiSystemId("SYS1");
+
+        SeSurAccess access = new SeSurAccess();
+        access.setSurAccessId("RW");
+
+        SeSurModule module = new SeSurModule();
+        module.setSurModuleId("1");
+        module.setSurModuleName("Study Module");
+
+        SeSurGrpModAccessPK id = new SeSurGrpModAccessPK();
+        id.setSurGrpId(7L);
+        id.setSurModuleId("1");
+
+        SeSurGrpModAccess modAccess = new SeSurGrpModAccess();
+        modAccess.setId(id);
+        modAccess.setSeSurAccess(access);
+        modAccess.setSeSurModule(module);
+
+        SeSurGrp surGrp = new SeSurGrp();
+        surGrp.setSurGrpId(7L);
+        surGrp.setSurGrpName("Admins");
+        surGrp.setSeSurGrpModAccesses(List.of(modAccess));
+
+        SeUsrGrp usrGrp = new SeUsrGrp();
+        usrGrp.setSeSurGrp(surGrp);
+        user.setSeUsrGrp(usrGrp);
+        return user;
+    }
+}
