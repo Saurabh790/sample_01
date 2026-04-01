@@ -1,22 +1,49 @@
+package com.optum.fads.pgp.datarules.config;
 
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Errors:
-[ERROR]   SecurityConfigTest.beanFactoryMethodsCreateExpectedBeans:31 » NullPointer Cannot invoke "jakarta.servlet.ServletRequest.getAttribute(String)" because "request" is null
-[INFO]
-[ERROR] Tests run: 69, Failures: 0, Errors: 1, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  44.454 s
-[INFO] Finished at: 2026-04-01T18:19:26+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-datarules-api:
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-datarules-api\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack tra
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+import com.optum.fads.pgp.datarules.service.IUserDetailsService;
+
+class SecurityConfigTest {
+
+    @Test
+    void beanFactoryMethodsCreateExpectedBeans() {
+        IUserDetailsService userDetailsService = org.mockito.Mockito.mock(IUserDetailsService.class);
+        SecurityConfig config = new SecurityConfig(userDetailsService);
+        ReflectionTestUtils.setField(config, "uniqueIdClaims", List.of("email", "preferred_username"));
+
+        assertNotNull(config.userJwtAuthenticationConverter());
+        assertNotNull(config.passwordEncoder());
+
+        CorsConfigurationSource source = config.corsConfigurationSource();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/test");
+        CorsConfiguration cors = source.getCorsConfiguration(request);
+        assertNotNull(cors);
+        assertEquals(List.of(CorsConfiguration.ALL), cors.getAllowedOrigins());
+        assertEquals(List.of(CorsConfiguration.ALL), cors.getAllowedMethods());
+        assertEquals(List.of(CorsConfiguration.ALL), cors.getAllowedHeaders());
+    }
+
+    @Test
+    void jwtDecoderThrowsForInvalidToken() {
+        IUserDetailsService userDetailsService = org.mockito.Mockito.mock(IUserDetailsService.class);
+        SecurityConfig config = new SecurityConfig(userDetailsService);
+
+        JwtException ex = assertThrows(JwtException.class, () -> config.jwtDecoder().decode("not-a-jwt"));
+
+        assertTrue(ex.getMessage().contains("Failed to parse JWT"));
+    }
+}
