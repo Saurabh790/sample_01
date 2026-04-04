@@ -4,6 +4,132 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
+import com.optum.fads.pgp.behavior.api.domain.SeSurAccess;
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
+import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccessPK;
+import com.optum.fads.pgp.behavior.api.domain.SeSurModule;
+import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
+import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
+import com.optum.fads.pgp.behavior.api.dto.AppUser;
+import com.optum.fads.pgp.behavior.api.repo.UserRepository;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserDetailsService userDetailsService;
+
+    @Test
+    void loadUserByUsername_success() {
+        UiUserBase uiUser = new UiUserBase();
+        uiUser.setUiUserId("john123");
+        uiUser.setUiSystemId("SYS001");
+        uiUser.setUiEMailAddress("john@test.com");
+
+        SeSurGrp group = new SeSurGrp();
+        group.setSurGrpId(100);
+        group.setSurGrpName("ADMIN");
+        group.setSeSurGrpModAccesses(new ArrayList<>());
+
+        SeUsrGrp usrGrp = new SeUsrGrp();
+        usrGrp.setSeSurGrp(group);
+        uiUser.setSeUsrGrp(usrGrp);
+
+        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
+                .thenReturn(Optional.of(uiUser));
+
+        UserDetails details = userDetailsService.loadUserByUsername("john123");
+
+        assertNotNull(details);
+        assertTrue(details instanceof AppUser);
+
+        AppUser appUser = (AppUser) details;
+        assertEquals("john123", appUser.getUserId());
+        assertEquals("john@test.com", appUser.getUserEmail());
+        assertEquals("SYS001", appUser.getUserSystemId());
+        assertNotNull(appUser.getRole());
+        assertEquals("ADMIN", appUser.getRole().getRoleName());
+        assertNotNull(appUser.getRole().getAllowedAccesses());
+        assertTrue(appUser.getRole().getAllowedAccesses().isEmpty());
+    }
+
+    @Test
+    void loadUserByUsername_notFound_throwsException() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(UsernameNotFoundException.class,
+                () -> userDetailsService.loadUserByUsername("bad"));
+    }
+
+    @Test
+    void loadUserByUsername_withModuleAccess_mapsAllowedAccesses() {
+        UiUserBase uiUser = new UiUserBase();
+        uiUser.setUiUserId("john123");
+        uiUser.setUiSystemId("SYS001");
+        uiUser.setUiEMailAddress("john@test.com");
+
+        SeSurGrpModAccessPK accessPk = new SeSurGrpModAccessPK();
+        accessPk.setSurGrpId(100);
+        accessPk.setSurModuleId("1");
+
+        SeSurAccess access = new SeSurAccess();
+        access.setSurAccessId("RW");
+
+        SeSurModule module = new SeSurModule();
+        module.setSurModuleId("1");
+        module.setSurModuleName("Study Module");
+
+        SeSurGrpModAccess groupAccess = new SeSurGrpModAccess();
+        groupAccess.setId(accessPk);
+        groupAccess.setSeSurAccess(access);
+        groupAccess.setSeSurModule(module);
+
+        SeSurGrp group = new SeSurGrp();
+        group.setSurGrpId(100);
+        group.setSurGrpName("ADMIN");
+        group.setSeSurGrpModAccesses(Collections.singletonList(groupAccess));
+
+        SeUsrGrp usrGrp = new SeUsrGrp();
+        usrGrp.setSeSurGrp(group);
+        uiUser.setSeUsrGrp(usrGrp);
+
+        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
+                .thenReturn(Optional.of(uiUser));
+
+        AppUser appUser = (AppUser) userDetailsService.loadUserByUsername("john123");
+
+        assertEquals(1, appUser.getRole().getAllowedAccesses().size());
+        assertEquals("1", appUser.getRole().getAllowedAccesses().get(0).getModuleId());
+        assertEquals("STUDY", appUser.getRole().getAllowedAccesses().get(0).getModuleCode());
+        assertEquals("Study Module", appUser.getRole().getAllowedAccesses().get(0).getModuleName());
+        assertEquals("RW", appUser.getRole().getAllowedAccesses().get(0).getAccess());
+    }
+}
+package com.optum.fads.pgp.behavior.api.service.impl;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -1259,132 +1385,3 @@ class BehaviorPatternDataServiceTest {
     
 }
 
-
-
-
-package com.optum.fads.pgp.behavior.api.service.impl;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrp;
-import com.optum.fads.pgp.behavior.api.domain.SeSurAccess;
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.behavior.api.domain.SeSurGrpModAccessPK;
-import com.optum.fads.pgp.behavior.api.domain.SeSurModule;
-import com.optum.fads.pgp.behavior.api.domain.SeUsrGrp;
-import com.optum.fads.pgp.behavior.api.domain.UiUserBase;
-import com.optum.fads.pgp.behavior.api.dto.AppUser;
-import com.optum.fads.pgp.behavior.api.repo.UserRepository;
-
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
-
-    @Mock
-    private UserRepository userRepository;
-
-    @InjectMocks
-    private UserDetailsService userDetailsService;
-
-    @Test
-    void loadUserByUsername_success() {
-        UiUserBase uiUser = new UiUserBase();
-        uiUser.setUiUserId("john123");
-        uiUser.setUiSystemId("SYS001");
-        uiUser.setUiEMailAddress("john@test.com");
-
-        SeSurGrp group = new SeSurGrp();
-        group.setSurGrpId(100);
-        group.setSurGrpName("ADMIN");
-        group.setSeSurGrpModAccesses(new ArrayList<>());
-
-        SeUsrGrp usrGrp = new SeUsrGrp();
-        usrGrp.setSeSurGrp(group);
-        uiUser.setSeUsrGrp(usrGrp);
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
-                .thenReturn(Optional.of(uiUser));
-
-        UserDetails details = userDetailsService.loadUserByUsername("john123");
-
-        assertNotNull(details);
-        assertTrue(details instanceof AppUser);
-
-        AppUser appUser = (AppUser) details;
-        assertEquals("john123", appUser.getUserId());
-        assertEquals("john@test.com", appUser.getUserEmail());
-        assertEquals("SYS001", appUser.getUserSystemId());
-        assertNotNull(appUser.getRole());
-        assertEquals("ADMIN", appUser.getRole().getRoleName());
-        assertNotNull(appUser.getRole().getAllowedAccesses());
-        assertTrue(appUser.getRole().getAllowedAccesses().isEmpty());
-    }
-
-    @Test
-    void loadUserByUsername_notFound_throwsException() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("bad", "bad"))
-                .thenReturn(Optional.empty());
-
-        assertThrows(UsernameNotFoundException.class,
-                () -> userDetailsService.loadUserByUsername("bad"));
-    }
-
-    @Test
-    void loadUserByUsername_withModuleAccess_mapsAllowedAccesses() {
-        UiUserBase uiUser = new UiUserBase();
-        uiUser.setUiUserId("john123");
-        uiUser.setUiSystemId("SYS001");
-        uiUser.setUiEMailAddress("john@test.com");
-
-        SeSurGrpModAccessPK accessPk = new SeSurGrpModAccessPK();
-        accessPk.setSurGrpId(100);
-        accessPk.setSurModuleId("1");
-
-        SeSurAccess access = new SeSurAccess();
-        access.setSurAccessId("RW");
-
-        SeSurModule module = new SeSurModule();
-        module.setSurModuleId("1");
-        module.setSurModuleName("Study Module");
-
-        SeSurGrpModAccess groupAccess = new SeSurGrpModAccess();
-        groupAccess.setId(accessPk);
-        groupAccess.setSeSurAccess(access);
-        groupAccess.setSeSurModule(module);
-
-        SeSurGrp group = new SeSurGrp();
-        group.setSurGrpId(100);
-        group.setSurGrpName("ADMIN");
-        group.setSeSurGrpModAccesses(Collections.singletonList(groupAccess));
-
-        SeUsrGrp usrGrp = new SeUsrGrp();
-        usrGrp.setSeSurGrp(group);
-        uiUser.setSeUsrGrp(usrGrp);
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("john123", "john123"))
-                .thenReturn(Optional.of(uiUser));
-
-        AppUser appUser = (AppUser) userDetailsService.loadUserByUsername("john123");
-
-        assertEquals(1, appUser.getRole().getAllowedAccesses().size());
-        assertEquals("1", appUser.getRole().getAllowedAccesses().get(0).getModuleId());
-        assertEquals("STUDY", appUser.getRole().getAllowedAccesses().get(0).getModuleCode());
-        assertEquals("Study Module", appUser.getRole().getAllowedAccesses().get(0).getModuleName());
-        assertEquals("RW", appUser.getRole().getAllowedAccesses().get(0).getAccess());
-    }
-}
