@@ -1,111 +1,212 @@
-FO] Finished at: 2026-04-06T17:20:41+05:30
+
+package com.optum.fads.CaseClaimCorrections.api.util;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
+import org.junit.jupiter.api.Test;
+
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimCorrectionsT;
+
+class CaClaimCorrectionsComparatorTest {
+
+    private final CaClaimCorrectionsComparator comparator = new CaClaimCorrectionsComparator();
+
+    @Test
+    void compareHandlesNullSides() {
+        assertEquals(1, comparator.compare(new CaClaimCorrectionsT(), null));
+        assertEquals(1, comparator.compare(null, new CaClaimCorrectionsT()));
+        assertEquals(0, comparator.compare(null, null));
+    }
+
+    @Test
+    void compareUsesClaimFieldsWhenBothObjectsExist() {
+        CaClaimCorrectionsT left = buildCorrection("A", "1", "ABC");
+        CaClaimCorrectionsT right = buildCorrection("B", "1", "ABC");
+
+        int result = comparator.compare(left, right);
+
+        assertTrue(result < 0);
+    }
+
+    private static CaClaimCorrectionsT buildCorrection(String tcn, String liNum, String findingsCode) {
+        CaClaimCorrectionsT correction = new CaClaimCorrectionsT();
+        correction.setHdrClmTcn(tcn);
+        correction.setLiNum(liNum);
+        correction.setHdrClmPdDt(new Date());
+        correction.setLiDrugNdc("12345678901");
+        correction.setLiPdUosQty(BigDecimal.ONE);
+        correction.setLiDrugDosageFormDesc("TAB");
+        correction.setLiDrugDaysSupply(BigDecimal.TEN);
+        correction.setHdrDrugDispensingFee(BigDecimal.ONE);
+        correction.setHdrPdAmt(BigDecimal.TEN);
+        correction.setHdrCopayAmt(BigDecimal.ONE);
+        correction.setCtIngredientCost(BigDecimal.ONE);
+        correction.setCtFindingsCd(findingsCode);
+        correction.setDocReceivedInd("Y");
+        return correction;
+    }
+}
+
+package com.optum.fads.CaseClaimCorrections.api.exception;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import com.optum.fads.caseclaimcorrections.api.exception.ErrorInfo;
+
+class GlobalExceptionHandlerTest {
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @Test
+    void handleExceptionBuildsJoinedErrorMessage() {
+        ErrorInfo first = ErrorInfo.builder().errorMessage("first error").build();
+        ErrorInfo second = ErrorInfo.builder().errorMessage("second error").build();
+        CaseClaimCorrectionException exception =
+                new CaseClaimCorrectionException(List.of(first, second), "1001", HttpStatus.CONFLICT);
+
+        var response = handler.handleException(exception);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        ErrorResponseDTO body = assertInstanceOf(ErrorResponseDTO.class, response.getBody());
+        assertEquals("409", body.getErrorCode());
+        assertEquals("first error; second error", body.getErrorMessage());
+    }
+
+    @Test
+    void handleValidationExceptionReturnsFieldMessages() throws NoSuchMethodException {
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "claimCorrectionDTO");
+        bindingResult.addError(new FieldError("claimCorrectionDTO", "caseId", "Case ID cannot be null"));
+        bindingResult.addError(new FieldError("claimCorrectionDTO", "hdrClmTcn", "Claim TCN cannot be null"));
+        MethodParameter parameter = new MethodParameter(
+                ValidationTarget.class.getDeclaredMethod("accept", String.class), 0);
+        MethodArgumentNotValidException exception = new MethodArgumentNotValidException(parameter, bindingResult);
+
+        var response = handler.handleValidationException(exception);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        @SuppressWarnings("unchecked")
+        Map<String, String> body = (Map<String, String>) response.getBody();
+        assertEquals("Case ID cannot be null", body.get("caseId"));
+        assertEquals("Claim TCN cannot be null", body.get("hdrClmTcn"));
+    }
+
+    static class ValidationTarget {
+        void accept(String value) {
+        }
+    }
+}
+
+package com.optum.fads.CaseClaimCorrections.api.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.optum.fads.caseclaimcorrections.api.security.UserJwtAuthenticationConverter;
+import com.optum.fads.caseclaimcorrections.api.service.IUserDetailsService;
+
+class SecurityConfigTest {
+
+    private final SecurityConfig config = new SecurityConfig(new NoOpUserDetailsService());
+
+    @Test
+    void jwtDecoderParsesJwtClaims() {
+        JwtDecoder decoder = config.jwtDecoder();
+        String token =
+                "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1c2VyMSIsImlhdCI6MTcxMjM2MDAwMCwiZXhwIjoxNzEyMzYzNjAwfQ.";
+
+        Jwt jwt = decoder.decode(token);
+
+        assertEquals("user1", jwt.getSubject());
+        assertInstanceOf(Instant.class, jwt.getClaim("iat"));
+        assertInstanceOf(Instant.class, jwt.getClaim("exp"));
+    }
+
+    @Test
+    void jwtDecoderRejectsInvalidToken() {
+        JwtDecoder decoder = config.jwtDecoder();
+
+        assertThrows(JwtException.class, () -> decoder.decode("not-a-jwt"));
+    }
+
+    @Test
+    void createsConverterPasswordEncoderAndCorsConfig() throws Exception {
+        Field field = SecurityConfig.class.getDeclaredField("uniqueIdClaims");
+        field.setAccessible(true);
+        field.set(config, List.of("email", "sub"));
+
+        UserJwtAuthenticationConverter converter = config.userJwtAuthenticationConverter();
+        PasswordEncoder encoder = config.passwordEncoder();
+        UrlBasedCorsConfigurationSource source =
+                (UrlBasedCorsConfigurationSource) config.corsConfigurationSource();
+        CorsConfiguration corsConfiguration = source.getCorsConfiguration(new MockHttpServletRequest());
+
+        assertNotNull(converter);
+        assertNotNull(encoder);
+        assertEquals(List.of(CorsConfiguration.ALL), corsConfiguration.getAllowedOrigins());
+        assertEquals(List.of(CorsConfiguration.ALL), corsConfiguration.getAllowedMethods());
+        assertEquals(List.of(CorsConfiguration.ALL), corsConfiguration.getAllowedHeaders());
+    }
+
+    static class NoOpUserDetailsService implements IUserDetailsService {
+        @Override
+        public org.springframework.security.core.userdetails.UserDetails loadUserByUsername(String username) {
+            return null;
+        }
+    }
+}
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  16.765 s
+[INFO] Finished at: 2026-04-06T17:53:49+05:30
 [INFO] ------------------------------------------------------------------------
 [ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.14.1:testCompile (default-testCompile) on project fads-case-claimcorrections-api: Compilation failure: Compilation failure:
 [ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/config/SecurityConfigTest.java:[27,19] cannot find symbol
 [ERROR]   symbol:   class SecurityConfig
 [ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.config.SecurityConfigTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[24,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[25,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[26,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[27,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[28,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[29,60] package com.optum.fads.CaseClaimCorrections.api.util.service does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[30,60] package com.optum.fads.CaseClaimCorrections.api.util.service does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[31,57] package com.optum.fads.CaseClaimCorrections.api.util.util does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[37,13] cannot find symbol
-[ERROR]   symbol:   class ClaimCorrectionController
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.controller.ClaimCorrectionControllerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[40,13] cannot find symbol
-[ERROR]   symbol:   class IFindingsObsService
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.controller.ClaimCorrectionControllerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/ClaimCorrectionControllerTest.java:[43,13] cannot find symbol
-[ERROR]   symbol:   class ICaseDetailClaimsService
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.controller.ClaimCorrectionControllerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[21,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[22,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[23,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[24,60] package com.optum.fads.CaseClaimCorrections.api.util.service does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[30,13] cannot find symbol
-[ERROR]   symbol:   class CustomMetabaseController
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.controller.CustomMetabaseControllerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[33,13] cannot find symbol
-[ERROR]   symbol:   class ICustomFieldService
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.controller.CustomMetabaseControllerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/controller/CustomMetabaseControllerTest.java:[67,20] cannot find symbol
-[ERROR]   symbol:   class LabelValueBean
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.controller.CustomMetabaseControllerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/exception/GlobalExceptionHandlerTest.java:[19,19] cannot find symbol
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/exception/GlobalExceptionHandlerTest.java:[21,19] cannot find symbol
 [ERROR]   symbol:   class GlobalExceptionHandler
 [ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.exception.GlobalExceptionHandlerTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/security/UserJwtAuthenticationConverterTest.java:[18,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/security/UserJwtAuthenticationConverterTest.java:[19,60] package com.optum.fads.CaseClaimCorrections.api.util.service does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/security/UserJwtAuthenticationConverterTest.java:[25,13] cannot find symbol
-[ERROR]   symbol:   class IUserDetailsService
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.security.UserJwtAuthenticationConverterTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[26,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[27,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[28,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[29,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[30,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[31,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[32,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[33,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[34,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[35,59] package com.optum.fads.CaseClaimCorrections.api.util.mapper does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[36,59] package com.optum.fads.CaseClaimCorrections.api.util.mapper does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[37,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[38,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[39,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[40,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[41,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[42,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[43,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[44,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[45,65] package com.optum.fads.CaseClaimCorrections.api.util.service.impl does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[51,13] cannot find symbol
-[ERROR]   symbol:   class CaseDetailClaimsService
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[54,13] cannot find symbol
-[ERROR]   symbol:   class CaUniverseRepository
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[57,13] cannot find symbol
-[ERROR]   symbol:   class CaClaimCorrectionsRepo
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[60,13] cannot find symbol
-[ERROR]   symbol:   class ClaimCorrectionMapper
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[63,13] cannot find symbol
-[ERROR]   symbol:   class CaClaimCorrectionsHistRepo
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[66,13] cannot find symbol
-[ERROR]   symbol:   class CaClaimFindingsObsRepo
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[69,13] cannot find symbol
-[ERROR]   symbol:   class CaClaimListRepo
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[72,13] cannot find symbol
-[ERROR]   symbol:   class CaFinancialTermsRepo
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[75,13] cannot find symbol
-[ERROR]   symbol:   class CaseConfigRepo
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[78,13] cannot find symbol
-[ERROR]   symbol:   class ClaimFindingsObsMapper
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[81,13] cannot find symbol
-[ERROR]   symbol:   class FadsConfigRepository
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CaseDetailClaimsServiceTest.java:[219,41] cannot find symbol
-[ERROR]   symbol:   class CaClaimFindingsObsT
-[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.service.CaseDetailClaimsServiceTest
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[19,62] package com.optum.fads.CaseClaimCorrections.api.util.constants does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[20,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[21,56] package com.optum.fads.CaseClaimCorrections.api.util.dto does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[22,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[23,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[24,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[25,59] package com.optum.fads.CaseClaimCorrections.api.util.entity does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[26,59] package com.optum.fads.CaseClaimCorrections.api.util.mapper does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[27,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[28,57] package com.optum.fads.CaseClaimCorrections.api.util.repo does not exist
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/service/CustomFieldServiceTest.java:[29,65] package com.optum.fads.CaseClaimCorre
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-claimcorrections-api/src/test/java/com/optum/fads/CaseClaimCorrections/api/util/CaClaimCorrectionsComparatorTest.java:[16,19] cannot find symbol
+[ERROR]   symbol:   class CaClaimCorrectionsComparator
+[ERROR]   location: class com.optum.fads.CaseClaimCorrections.api.util.CaClaimCorrectionsComparatorTest
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+C:\Users\sgupt664\BE_Projects\fads-case-claimcorrections-api>
