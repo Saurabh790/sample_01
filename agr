@@ -347,6 +347,9 @@ class CaseDetailClaimsServiceTest {
         ClaimCorrectionDTO dto = baseClaimCorrectionDto();
         CaClaimCorrectionsT existing = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(50));
         CaClaimCorrectionsT current = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(90));
+        CaClaimCorrectionsHistT history = CaClaimCorrectionsHistT.builder()
+                .id(CaClaimCorrectionsHistTId.builder().caseId(10).clmSeqNum(4).histSeqNum(0).build())
+                .build();
         CaseConfigT config = new CaseConfigT();
         config.setOptionCode("CLAIMS_CORR_FIN_UPD");
         config.setOptionValue("Y");
@@ -354,13 +357,17 @@ class CaseDetailClaimsServiceTest {
         when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(10).clmSeqNum(4).build()))
                 .thenReturn(Optional.of(existing));
         when(claimCorrectionMapper.convertToCaClaimCorrectionsT(dto)).thenReturn(current);
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsHisT(dto)).thenReturn(history);
+        when(caClaimCorrectionsHistRepo.getNextClmCorrHistSequenceId(10, 4)).thenReturn(1);
         when(caseConfigRepo.findById("CLAIMS_CORR_FIN_UPD")).thenReturn(Optional.of(config));
         when(caClaimFindingsObsRepo.findByMaxVersionMinSeq(10, "TCN-10", 4)).thenReturn(List.of());
+        doReturn(ZoneId.of("UTC")).when(caseDetailClaimsService).getZoneId();
         doNothing().when(caseDetailClaimsService).updateFinancialTerms(10);
 
         caseDetailClaimsService.updateClaimCorrection(dto, "USR5");
 
         verify(caClaimListRepo).updateClaimCorrectPdAmt(10, 4, BigDecimal.valueOf(90));
+        verify(caClaimCorrectionsHistRepo).save(any(CaClaimCorrectionsHistT.class));
         verify(caseDetailClaimsService).updateFinancialTerms(10);
     }
 
@@ -393,177 +400,5 @@ class CaseDetailClaimsServiceTest {
         } catch (ReflectiveOperationException ex) {
             throw new AssertionError(ex);
         }
-    }
-}
-
-package com.optum.fads.caseclaimcorrections.api.service;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import com.optum.fads.caseclaimcorrections.api.dto.AppUser;
-import com.optum.fads.caseclaimcorrections.api.dto.CaseRole;
-import com.optum.fads.caseclaimcorrections.api.entity.CaLuCaseTypeT;
-import com.optum.fads.caseclaimcorrections.api.entity.SeCaseAccess;
-import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrp;
-import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrpModAccess;
-import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrpNodeAccess;
-import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrpNodeAccessId;
-import com.optum.fads.caseclaimcorrections.api.entity.SeCaseModule;
-import com.optum.fads.caseclaimcorrections.api.entity.SeUsrGrp;
-import com.optum.fads.caseclaimcorrections.api.entity.UiUserBase;
-import com.optum.fads.caseclaimcorrections.api.mapper.UserDetailMapper;
-import com.optum.fads.caseclaimcorrections.api.repo.UserRepository;
-import com.optum.fads.caseclaimcorrections.api.service.impl.UserDetailsService;
-
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
-
-    @InjectMocks
-    private UserDetailsService userDetailsService;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private UserDetailMapper userDetailMapper;
-
-    @Test
-    void loadUserByUsernameThrowsWhenUserMissing() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("missing", "missing")).thenReturn(Optional.empty());
-
-        UsernameNotFoundException ex =
-                assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername("missing"));
-
-        assertTrue(ex.getMessage().contains("missing"));
-        verify(userDetailMapper, never()).toAppUser(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void loadUserByUsernameMapsCaseRoleModulesAndNodes() {
-        UiUserBase userEntity = new UiUserBase();
-        userEntity.setUiSystemId("SYS1");
-        userEntity.setUiUserId("user1");
-        userEntity.setUiEMailAddress("user1@test.com");
-
-        SeUsrGrp userGroup = new SeUsrGrp();
-        SeCaseGrp caseGroup = new SeCaseGrp();
-        caseGroup.setId(BigDecimal.valueOf(21));
-        caseGroup.setCaseGrpName("Auditor");
-        userGroup.setSeCaseGrp(caseGroup);
-        userEntity.setSeUsrGrp(userGroup);
-
-        caseGroup.setSeCaseGrpModAccesses(List.of(
-                moduleAccess("RX", "Pharmacy", BigDecimal.valueOf(1), "M1", "Module One", "RW"),
-                moduleAccess("RX", "Pharmacy", BigDecimal.valueOf(2), "M2", "Module Two", "R"),
-                moduleAccess("MED", "Medical", BigDecimal.valueOf(3), "M3", "Module Three", "RW")));
-        caseGroup.setSeCaseGrpNodeAccesses(List.of(nodeAccess(caseGroup.getId(), "N101", "RW", "Y", "N")));
-
-        AppUser mappedUser = new AppUser();
-        mappedUser.setUserSystemId("SYS1");
-        mappedUser.setRole(new com.optum.fads.caseclaimcorrections.api.dto.Role());
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("user1", "user1")).thenReturn(Optional.of(userEntity));
-        when(userDetailMapper.toAppUser(userEntity)).thenReturn(mappedUser);
-
-        AppUser result = (AppUser) userDetailsService.loadUserByUsername("user1");
-
-        assertEquals("SYS1", result.getUsername());
-        CaseRole caseRole = result.getRole().getCaseRole();
-        assertNotNull(caseRole);
-        assertEquals(BigDecimal.valueOf(21), caseRole.getGroupId());
-        assertEquals("Auditor", caseRole.getRoleName());
-        assertEquals(2, caseRole.getCaseTypeModules().size());
-        assertEquals(1, caseRole.getNodePermissions().size());
-        assertTrue(caseRole.getCaseTypeModules().stream().anyMatch(ctm ->
-                "RX".equals(ctm.getCaseTypeId()) && ctm.getModulePermissions().size() == 2));
-        assertTrue(caseRole.getCaseTypeModules().stream().anyMatch(ctm ->
-                "MED".equals(ctm.getCaseTypeId()) && ctm.getModulePermissions().size() == 1));
-        assertTrue(caseRole.getNodePermissions().stream().anyMatch(node ->
-                "N101".equals(node.getNodeId())
-                        && "RW".equals(node.getNodeAccess())
-                        && "Y".equals(node.getRestrictAccess())
-                        && "N".equals(node.getDeleteAccess())));
-    }
-
-    @Test
-    void loadUserByUsernameLeavesMappedUserUntouchedWhenNoCaseGroupExists() {
-        UiUserBase userEntity = new UiUserBase();
-        SeUsrGrp userGroup = new SeUsrGrp();
-        userEntity.setSeUsrGrp(userGroup);
-        AppUser mappedUser = new AppUser();
-        mappedUser.setRole(new com.optum.fads.caseclaimcorrections.api.dto.Role());
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("plain", "plain")).thenReturn(Optional.of(userEntity));
-        when(userDetailMapper.toAppUser(userEntity)).thenReturn(mappedUser);
-
-        AppUser result = (AppUser) userDetailsService.loadUserByUsername("plain");
-
-        assertEquals(mappedUser, result);
-        assertNull(result.getRole().getCaseRole());
-    }
-
-    private static SeCaseGrpModAccess moduleAccess(
-            String typeCd,
-            String typeDesc,
-            BigDecimal moduleId,
-            String moduleCd,
-            String moduleName,
-            String accessId) {
-        CaLuCaseTypeT caseType = new CaLuCaseTypeT();
-        caseType.setTypeCd(typeCd);
-        caseType.setTypeDesc(typeDesc);
-
-        SeCaseModule module = new SeCaseModule();
-        module.setId(moduleId);
-        module.setCaseModuleCd(moduleCd);
-        module.setCaseModuleName(moduleName);
-
-        SeCaseAccess access = new SeCaseAccess();
-        access.setAccessId(accessId);
-
-        SeCaseGrpModAccess grpModAccess = new SeCaseGrpModAccess();
-        grpModAccess.setCaLuCaseTypeT(caseType);
-        grpModAccess.setSeCaseModule(module);
-        grpModAccess.setSeCaseAccess(access);
-        return grpModAccess;
-    }
-
-    private static SeCaseGrpNodeAccess nodeAccess(
-            BigDecimal caseGroupId,
-            String nodeId,
-            String accessId,
-            String restrictAccess,
-            String deleteAccess) {
-        SeCaseAccess access = new SeCaseAccess();
-        access.setAccessId(accessId);
-
-        SeCaseGrpNodeAccessId id = new SeCaseGrpNodeAccessId();
-        id.setCaseGrpId(caseGroupId);
-        id.setCaseNodeId(nodeId);
-
-        SeCaseGrpNodeAccess nodeAccess = new SeCaseGrpNodeAccess();
-        nodeAccess.setId(id);
-        nodeAccess.setSeCaseAccess(access);
-        nodeAccess.setAnyRestrictApply(restrictAccess);
-        nodeAccess.setCanDeleteCases(deleteAccess);
-        return nodeAccess;
     }
 }
