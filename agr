@@ -1,459 +1,569 @@
+package com.optum.fads.caseclaimcorrections.api.service;
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-engine>mvn clean install
-[INFO] Scanning for projects...
-Downloading from artifactory: https://repo1.uhc.com/artifactory/repo/org/springframework/boot/spring-boot-starter-parent/3.5.13/spring-boot-starter-parent-3.5.13.pom
-[ERROR] [ERROR] Some problems were encountered while processing the POMs:
-[WARNING] 'dependencies.dependency.(groupId:artifactId:type:classifier)' must be unique: org.projectlombok:lombok:jar -> duplicate declaration of version (?) @ line 320, column 21
-[FATAL] Non-resolvable parent POM for com.optum.fads:fads-pgp-engine-service:1.0.0: The following artifacts could not be resolved: org.springframework.boot:spring-boot-starter-parent:pom:3.5.13 (absent): Could not transfer artifact org.springframework.boot:spring-boot-starter-parent:pom:3.5.13 from/to artifactory (https://repo1.uhc.com/artifactory/repo): status code: 401, reason phrase:  (401) and 'parent.relativePath' points at no local POM @ line 10, column 13
- @
-[ERROR] The build could not read 1 project -> [Help 1]
-[ERROR]
-[ERROR]   The project com.optum.fads:fads-pgp-engine-service:1.0.0 (C:\Users\sgupt664\BE_Projects\fads-pgp-engine\pom.xml) has 1 error
-[ERROR]     Non-resolvable parent POM for com.optum.fads:fads-pgp-engine-service:1.0.0: The following artifacts could not be resolved: org.springframework.boot:spring-boot-starter-parent:pom:3.5.13 (absent): Could not transfer artifact org.springframework.boot:spring-boot-starter-parent:pom:3.5.13 from/to artifactory (https://repo1.uhc.com/artifactory/repo): status code: 401, reason phrase:  (401) and 'parent.relativePath' points at no local POM @ line 10, column 13 -> [Help 2]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
-[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-C:\Users\sgupt664\BE_Projects\fads-pgp
-<?xml version="1.0" encoding="UTF-8"?>
-<project
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  	<modelVersion>4.0.0</modelVersion>
-    <groupId>com.optum.fads</groupId>
-    <artifactId>fads-pgp-engine-service</artifactId>
-    <version>1.0.0</version>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.13</version>
-        <relativePath/>
-    </parent>
-  
+import java.math.BigDecimal;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
 
-    <repositories>
-        <repository>
-             <id>central</id>
-			<name>centraluhg.jfrog.io-releases</name>
-			<url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
-        </repository>
-        <repository>
-            <id>snapshots</id>
-            <name>snapshots-repo</name>
-            <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
-        </repository>
-    </repositories>
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-    <properties>
-        <maven.test.skip>false</maven.test.skip>
-        <skipTests>${maven.test.skip}</skipTests>
-        <surefire.skip>${skipTests}</surefire.skip>
-        <failsafe.skip>${skipTests}</failsafe.skip>
-        <java.version>17</java.version>
-        <spring.boot.version>3.5.13</spring.boot.version>
-        <spring.cloud.version>2025.1.1</spring.cloud.version>
-        <jasypt.version>2.1.0</jasypt.version>
-        <jwt.version>3.8.3</jwt.version>
-        <modelmapper.version>3.1.1</modelmapper.version>
-        <jacoco.version>0.8.10</jacoco.version>
-        <logback.encoder.version>6.0</logback.encoder.version>
-        <lombok.version>1.18.28</lombok.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <javax-ws-rs-api.version>2.1.1</javax-ws-rs-api.version>
-        <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <openapi.version>1.7.0</openapi.version>
-        <msal4j.version>1.17.2</msal4j.version>
-        <guava.version>32.1.2-jre</guava.version>
-        <jettison.version>1.5.4</jettison.version>
-        <commons.io.version>2.17.0</commons.io.version>
-        <sonar.coverage.exclusions>
-            **/com/optum/fads/pgp/engine/api/**,
-        </sonar.coverage.exclusions>
-        <snakeyaml.version>2.0</snakeyaml.version>
-        <hibernate.core.version>6.1.7.Final</hibernate.core.version>
-        <azure.datafactory.version>1.0.0-beta.30</azure.datafactory.version>
-        <javatuples.version>1.2</javatuples.version>
-        <bcp.version>1.76</bcp.version>
-         <spring-cloud-azure.version>6.1.0</spring-cloud-azure.version>
-         <netty.version>4.1.130.Final</netty.version>
-         <logback.version>1.5.32</logback.version>
-    </properties>
-    <dependencyManagement>
-        <dependencies>
-            
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-			<dependency>
-				<groupId>com.azure.spring</groupId>
-				<artifactId>spring-cloud-azure-dependencies</artifactId>
-				<version>${spring-cloud-azure.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-lang3</artifactId>
-                 <version>3.18.0</version>
-            </dependency>
-             <dependency>
-			  <groupId>com.microsoft.azure</groupId>
-			  <artifactId>msal4j</artifactId>
-			  <version>1.17.2</version>
-			</dependency>
-			
-			
-			
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-bom</artifactId>
-				<version>${netty.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
+import com.optum.fads.caseclaimcorrections.api.constants.FindingOperation;
+import com.optum.fads.caseclaimcorrections.api.dto.ClaimCorrectionDTO;
+import com.optum.fads.caseclaimcorrections.api.dto.ClaimDTO;
+import com.optum.fads.caseclaimcorrections.api.dto.FindingObservation;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimCorrectionsT;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimCorrectionsHistT;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimCorrectionsHistTId;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimCorrectionsTId;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimFindingsObsT;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimFindingsObsTId;
+import com.optum.fads.caseclaimcorrections.api.entity.CaClaimListT;
+import com.optum.fads.caseclaimcorrections.api.entity.CaFinancialTermsT;
+import com.optum.fads.caseclaimcorrections.api.entity.CaUniverseT;
+import com.optum.fads.caseclaimcorrections.api.entity.CaseConfigT;
+import com.optum.fads.caseclaimcorrections.api.entity.FadsConfigT;
+import com.optum.fads.caseclaimcorrections.api.mapper.ClaimCorrectionMapper;
+import com.optum.fads.caseclaimcorrections.api.mapper.ClaimFindingsObsMapper;
+import com.optum.fads.caseclaimcorrections.api.repo.CaClaimCorrectionsHistRepo;
+import com.optum.fads.caseclaimcorrections.api.repo.CaClaimCorrectionsRepo;
+import com.optum.fads.caseclaimcorrections.api.repo.CaClaimFindingsObsRepo;
+import com.optum.fads.caseclaimcorrections.api.repo.CaClaimListRepo;
+import com.optum.fads.caseclaimcorrections.api.repo.CaFinancialTermsRepo;
+import com.optum.fads.caseclaimcorrections.api.repo.CaUniverseRepository;
+import com.optum.fads.caseclaimcorrections.api.repo.CaseConfigRepo;
+import com.optum.fads.caseclaimcorrections.api.repo.FadsConfigRepository;
+import com.optum.fads.caseclaimcorrections.api.service.impl.CaseDetailClaimsService;
 
-        </dependencies>
-    </dependencyManagement>
+@ExtendWith(MockitoExtension.class)
+class CaseDetailClaimsServiceTest {
 
+    @Spy
+    @InjectMocks
+    private CaseDetailClaimsService caseDetailClaimsService;
 
-    <dependencies>
-        <!-- Spring Boot Dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>${openapi.version}</version>
-             <exclusions>
-			    <exclusion>
-			      <groupId>org.apache.commons</groupId>
-			      <artifactId>commons-lang3</artifactId>
-			    </exclusion>
-			  </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-core</artifactId>
-        </dependency>
+    @Mock
+    private CaUniverseRepository caUniverseRepository;
 
+    @Mock
+    private CaClaimCorrectionsRepo claimCorrectionsRepo;
 
-        <!-- https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-task -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-task</artifactId>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.hibernate.orm/hibernate-core -->
-        <dependency>
-            <groupId>org.hibernate.orm</groupId>
-            <artifactId>hibernate-core</artifactId>
-            <version>${hibernate.core.version}</version>
-        </dependency>
+    @Mock
+    private ClaimCorrectionMapper claimCorrectionMapper;
 
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.javatuples</groupId>
-            <artifactId>javatuples</artifactId>
-            <version>${javatuples.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.microsoft.sqlserver</groupId>
-            <artifactId>mssql-jdbc</artifactId>
-            <version>13.2.1.jre11</version>
-        </dependency>
-        <!-- snowflake dependencies -->
-        <dependency>
-            <groupId>net.snowflake</groupId>
-            <artifactId>snowflake-jdbc</artifactId>
-            <version>${snowflake-jdbc.version}</version>
-        </dependency>
+    @Mock
+    private CaClaimCorrectionsHistRepo caClaimCorrectionsHistRepo;
 
-        <dependency>
-            <groupId>com.microsoft.azure</groupId>
-            <artifactId>msal4j</artifactId>
-            <version>${msal4j.version}</version>
-        </dependency>
+    @Mock
+    private CaClaimFindingsObsRepo caClaimFindingsObsRepo;
 
-        <!-- Model Mapper -->
-        <dependency>
-            <groupId>org.modelmapper</groupId>
-            <artifactId>modelmapper</artifactId>
-            <version>${modelmapper.version}</version>
-        </dependency>
+    @Mock
+    private CaClaimListRepo caClaimListRepo;
 
-        <!--Used in Getter/Setter Verifier @NonNull -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${guava.version}</version>
-        </dependency>
-        <!-- Common Operations -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-           <version>3.18.0</version>
-        </dependency>
-        <!-- Lombok -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <!-- JSON logging -->
-        <dependency>
-            <groupId>net.logstash.logback</groupId>
-            <artifactId>logstash-logback-encoder</artifactId>
-            <version>${logback.encoder.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.codehaus.janino</groupId>
-            <artifactId>janino</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
-        <dependency>
-            <groupId>org.codehaus.jettison</groupId>
-            <artifactId>jettison</artifactId>
-            <version>${jettison.version}</version>
-        </dependency>
+    @Mock
+    private CaFinancialTermsRepo caFinancialTermsRepo;
 
-        <!-- Testing -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <scope>test</scope>
-        </dependency>
+    @Mock
+    private CaseConfigRepo caseConfigRepo;
 
-        <!-- Before After Spring Test Runner -->
-        <dependency>
-            <groupId>org.jacoco</groupId>
-            <artifactId>jacoco-maven-plugin</artifactId>
-            <version>${jacoco.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.azure.resourcemanager</groupId>
-            <artifactId>azure-resourcemanager-datafactory</artifactId>
-            <version>${azure.datafactory.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk18on</artifactId>
-            <version>${bcp.version}</version>
-        </dependency>
-        
+    @Mock
+    private ClaimFindingsObsMapper claimFindingsObsMapper;
 
-        <!-- Spring Cloud Azure Starter for Key Vault Secrets. -->
-        <dependency>
-            <groupId>com.azure.spring</groupId>
-            <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.querydsl</groupId>
-            <artifactId>querydsl-jpa</artifactId>
-             <exclusions>
-			    <exclusion>
-			      <groupId>com.mysema.commons</groupId>
-			      <artifactId>mysema-commons-lang</artifactId>
-			    </exclusion>
-			  </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.querydsl</groupId>
-            <artifactId>querydsl-apt</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>${commons.io.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
-    <build>
-        <finalName>${project.artifactId}</finalName>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+    @Mock
+    private FadsConfigRepository fadsConfigRepository;
 
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>sonar-maven-plugin</artifactId>
-                <version>2.7.1</version>
-            </plugin>
-        </plugins>
-    </build>
-</project>
+    @Test
+    void findClaimCorrectionByCaseIdTcnLiNumUsesExistingCorrectionWhenPresent() {
+        CaUniverseT universe = new CaUniverseT();
+        CaClaimCorrectionsT correction = CaClaimCorrectionsT.builder()
+                .id(CaClaimCorrectionsTId.builder().caseId(385).clmSeqNum(1).build())
+                .hdrClmPdDt(new Date())
+                .hdrClmTcn("B0509830649171000")
+                .liNum("2")
+                .docReceivedInd("Y")
+                .build();
+        ClaimDTO sourceClaim = ClaimDTO.builder().liDrugNdc("source").build();
+        ClaimDTO auditedClaim = ClaimDTO.builder().liDrugNdc("audit").build();
+
+        when(caUniverseRepository.findByTcnLiNumCaseId("B0509830649171000", "2", 385)).thenReturn(universe);
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(385).clmSeqNum(1).build()))
+                .thenReturn(Optional.of(correction));
+        when(claimCorrectionMapper.getSourceClaim(universe)).thenReturn(sourceClaim);
+        when(claimCorrectionMapper.getAuditedClaim(correction)).thenReturn(auditedClaim);
+
+        ClaimCorrectionDTO result =
+                caseDetailClaimsService.findClaimCorrectionByCaseIdTcnLiNum(385, 1, "B0509830649171000", "2");
+
+        assertEquals(385, result.getCaseId());
+        assertEquals(1, result.getClmSeqNum());
+        assertSame(sourceClaim, result.getSourceClaim());
+        assertSame(auditedClaim, result.getAuditClaim());
+        assertEquals("Y", result.getDocReceivedInd());
+    }
+
+    @Test
+    void findClaimCorrectionByCaseIdTcnLiNumFallsBackToBlankCorrectionWhenMissing() {
+        CaUniverseT universe = new CaUniverseT();
+        ClaimDTO sourceClaim = new ClaimDTO();
+        ClaimDTO auditedClaim = new ClaimDTO();
+
+        when(caUniverseRepository.findByTcnLiNumCaseId("TCN", "1", 99)).thenReturn(universe);
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(99).clmSeqNum(7).build()))
+                .thenReturn(Optional.empty());
+        when(claimCorrectionMapper.getSourceClaim(universe)).thenReturn(sourceClaim);
+        when(claimCorrectionMapper.getAuditedClaim(any(CaClaimCorrectionsT.class))).thenReturn(auditedClaim);
+
+        ClaimCorrectionDTO result = caseDetailClaimsService.findClaimCorrectionByCaseIdTcnLiNum(99, 7, "TCN", "1");
+
+        assertEquals(99, result.getCaseId());
+        assertEquals(7, result.getClmSeqNum());
+        assertSame(auditedClaim, result.getAuditClaim());
+        assertSame(sourceClaim, result.getSourceClaim());
+    }
+
+    @Test
+    void updateFinancialTermsCreatesEntryWhenNoExistingFinancialTerms() {
+        CaClaimListT claim1 = new CaClaimListT();
+        claim1.setCtCorrectPdAmt(BigDecimal.valueOf(75));
+        claim1.setHdrPdAmt(BigDecimal.valueOf(100));
+        CaClaimListT claim2 = new CaClaimListT();
+        claim2.setCtCorrectPdAmt(BigDecimal.valueOf(50));
+        claim2.setHdrPdAmt(BigDecimal.valueOf(80));
+
+        when(caClaimListRepo.findClaimsByCaseId(10)).thenReturn(List.of(claim1, claim2));
+        when(caFinancialTermsRepo.getFinancialTermsCount(10)).thenReturn(0);
+
+        caseDetailClaimsService.updateFinancialTerms(10);
+
+        verify(caFinancialTermsRepo).save(any(CaFinancialTermsT.class));
+        verify(caFinancialTermsRepo, never()).updateFinancialTermsT(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateFinancialTermsUpdatesExistingEntryWhenPresent() {
+        CaClaimListT claim = new CaClaimListT();
+        claim.setCtCorrectPdAmt(BigDecimal.valueOf(120));
+        claim.setHdrPdAmt(BigDecimal.valueOf(150));
+        CaFinancialTermsT existing = CaFinancialTermsT.builder().caseId(15).totalPaidAmt(BigDecimal.TEN).build();
+
+        when(caClaimListRepo.findClaimsByCaseId(15)).thenReturn(List.of(claim));
+        when(caFinancialTermsRepo.getFinancialTermsCount(15)).thenReturn(1);
+        when(caFinancialTermsRepo.findById(15)).thenReturn(Optional.of(existing));
+
+        caseDetailClaimsService.updateFinancialTerms(15);
+
+        verify(caFinancialTermsRepo).updateFinancialTermsT(
+                eq(15),
+                eq(BigDecimal.valueOf(30)),
+                eq(BigDecimal.valueOf(120)),
+                eq(BigDecimal.valueOf(150)),
+                eq(BigDecimal.valueOf(20)));
+        verify(caFinancialTermsRepo, never()).save(any(CaFinancialTermsT.class));
+    }
+
+    @Test
+    void createFinancialTermsEntryBuildsAndSavesEntity() {
+        caseDetailClaimsService.createFinancialTermsEntry(
+                77,
+                BigDecimal.valueOf(12),
+                BigDecimal.valueOf(3),
+                BigDecimal.valueOf(15),
+                BigDecimal.ONE,
+                BigDecimal.valueOf(11));
+
+        verify(caFinancialTermsRepo).save(any(CaFinancialTermsT.class));
+    }
+
+    @Test
+    void getZoneIdUsesConfiguredZoneWhenPresent() {
+        FadsConfigT config = new FadsConfigT();
+        config.setOptionValue("UTC");
+        when(fadsConfigRepository.findById(700L)).thenReturn(Optional.of(config));
+
+        ZoneId result = caseDetailClaimsService.getZoneId();
+
+        assertEquals(ZoneId.of("UTC"), result);
+    }
+
+    @Test
+    void getZoneIdFallsBackToSystemDefaultWhenConfigMissing() {
+        when(fadsConfigRepository.findById(700L)).thenReturn(Optional.empty());
+
+        ZoneId result = caseDetailClaimsService.getZoneId();
+
+        assertNotNull(result);
+        assertEquals(ZoneId.systemDefault(), result);
+    }
+
+    @Test
+    void comparatorSortSupportsObservationVersionAscending() {
+        CaClaimFindingsObsT newer = new CaClaimFindingsObsT();
+        newer.setVersionSeqNum(BigDecimal.valueOf(5));
+        CaClaimFindingsObsT older = new CaClaimFindingsObsT();
+        older.setVersionSeqNum(BigDecimal.valueOf(1));
+
+        int result = readComparator().compare(newer, older);
+
+        assertTrue(result > 0);
+    }
+
+    @Test
+    void updateClaimCorrectionSavesWithoutHistoryWhenNoChangesDetected() {
+        ClaimCorrectionDTO dto = baseClaimCorrectionDto();
+        dto.getAuditClaim().setHdrPdAmt(null);
+        CaClaimCorrectionsT existing = correctionEntity(10, 4, "TCN-10", BigDecimal.ZERO);
+        CaClaimCorrectionsT current = correctionEntity(10, 4, "TCN-10", BigDecimal.ZERO);
+
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(10).clmSeqNum(4).build()))
+                .thenReturn(Optional.of(existing));
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsT(dto)).thenReturn(current);
+        when(caClaimFindingsObsRepo.findByMaxVersionMinSeq(10, "TCN-10", 4)).thenReturn(List.of());
+
+        caseDetailClaimsService.updateClaimCorrection(dto, "USR1");
+
+        assertEquals(0.0, dto.getAuditClaim().getHdrPdAmt());
+        verify(claimCorrectionsRepo).saveAndFlush(current);
+        verify(caClaimCorrectionsHistRepo, never()).save(any(CaClaimCorrectionsHistT.class));
+        verify(caClaimFindingsObsRepo, never()).save(any(CaClaimFindingsObsT.class));
+    }
+
+    @Test
+    void updateClaimCorrectionCreatesHistoryAndNewFindingWhenClaimChanges() {
+        ClaimCorrectionDTO dto = baseClaimCorrectionDto();
+        dto.setFindingObservations(List.of(FindingObservation.builder()
+                .seqNum(0)
+                .operation(FindingOperation.NEW)
+                .discrepancyTypeCd("O")
+                .versionCd("V1")
+                .typeCd("TYPE1")
+                .note("note")
+                .build()));
+
+        CaClaimCorrectionsT existing = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(50));
+        CaClaimCorrectionsT current = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(70));
+        CaClaimCorrectionsHistT history = CaClaimCorrectionsHistT.builder()
+                .id(CaClaimCorrectionsHistTId.builder().caseId(10).clmSeqNum(4).histSeqNum(0).build())
+                .build();
+        CaClaimFindingsObsT newFinding = CaClaimFindingsObsT.builder()
+                .id(CaClaimFindingsObsTId.builder().caseId(10).seqNum(BigDecimal.ZERO).build())
+                .discrepancyTypeCd("O")
+                .findingsVersionCd("V1")
+                .build();
+
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(10).clmSeqNum(4).build()))
+                .thenReturn(Optional.of(existing));
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsT(dto)).thenReturn(current);
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsHisT(dto)).thenReturn(history);
+        when(caClaimCorrectionsHistRepo.getNextClmCorrHistSequenceId(10, 4)).thenReturn(null);
+        when(claimFindingsObsMapper.convertToCaClaimFindingsObsT(dto.getFindingObservations().get(0))).thenReturn(newFinding);
+        when(caClaimFindingsObsRepo.getNextSequnceId(10)).thenReturn(null);
+        when(caClaimFindingsObsRepo.getNextObservationVersionSequnceId(10, 4)).thenReturn(null);
+        when(caseConfigRepo.findById("CLAIMS_CORR_FIN_UPD")).thenReturn(Optional.empty());
+        doReturn(ZoneId.of("UTC")).when(caseDetailClaimsService).getZoneId();
+
+        caseDetailClaimsService.updateClaimCorrection(dto, "USR2");
+
+        verify(caClaimListRepo).updateClaimCorrectPdAmt(10, 4, BigDecimal.valueOf(70));
+        verify(caClaimCorrectionsHistRepo).save(argThat(saved ->
+                saved.getId().getHistSeqNum() == 1
+                        && saved.getChangeUsr() != null
+                        && "USR2".equals(saved.getChangeUsr().getUiSystemId())
+                        && saved.getCaIntelligentKeyT() != null
+                        && saved.getCaIntelligentKeyT().getId().equals(10)));
+        verify(caClaimFindingsObsRepo).save(argThat(saved ->
+                saved.getId().getSeqNum().equals(BigDecimal.ONE)
+                        && saved.getVersionSeqNum().equals(BigDecimal.ONE)
+                        && saved.getCorrectPdAmt().equals(70.0)
+                        && "USR2".equals(saved.getFindingsObsUser().getUiSystemId())));
+    }
+
+    @Test
+    void updateClaimCorrectionMarksDeletedFindingWhenDeleteOperationProvided() {
+        ClaimCorrectionDTO dto = baseClaimCorrectionDto();
+        dto.setFindingObservations(List.of(FindingObservation.builder()
+                .seqNum(22)
+                .operation(FindingOperation.DELETE)
+                .discrepancyTypeCd("D")
+                .build()));
+        CaClaimCorrectionsT current = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(70));
+        CaClaimFindingsObsT existingFinding = CaClaimFindingsObsT.builder()
+                .id(CaClaimFindingsObsTId.builder().caseId(10).seqNum(BigDecimal.valueOf(22)).build())
+                .build();
+
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(10).clmSeqNum(4).build()))
+                .thenReturn(Optional.empty());
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsT(dto)).thenReturn(current);
+        when(caClaimFindingsObsRepo.findById(CaClaimFindingsObsTId.builder().caseId(10).seqNum(BigDecimal.valueOf(22)).build()))
+                .thenReturn(Optional.of(existingFinding));
+        when(caClaimFindingsObsRepo.findByMaxVersionMinSeq(10, "TCN-10", 4)).thenReturn(List.of());
+
+        caseDetailClaimsService.updateClaimCorrection(dto, "USR3");
+
+        verify(caClaimFindingsObsRepo).save(argThat(saved ->
+                saved == existingFinding && FindingOperation.DELETE_FLAG.equals(saved.getDeleteFlag())));
+    }
+
+    @Test
+    void updateClaimCorrectionUpdatesOldestFindingAmountWhenNoNewFindingsWereAdded() {
+        ClaimCorrectionDTO dto = baseClaimCorrectionDto();
+        dto.setFindingObservations(new ArrayList<>());
+        CaClaimCorrectionsT current = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(70));
+        CaClaimFindingsObsT laterVersion = CaClaimFindingsObsT.builder().versionSeqNum(BigDecimal.valueOf(5)).build();
+        CaClaimFindingsObsT earliestVersion = CaClaimFindingsObsT.builder().versionSeqNum(BigDecimal.valueOf(2)).build();
+
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(10).clmSeqNum(4).build()))
+                .thenReturn(Optional.empty());
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsT(dto)).thenReturn(current);
+        when(caClaimFindingsObsRepo.findByMaxVersionMinSeq(10, "TCN-10", 4))
+                .thenReturn(new ArrayList<>(List.of(laterVersion, earliestVersion)));
+
+        caseDetailClaimsService.updateClaimCorrection(dto, "USR4");
+
+        verify(caClaimFindingsObsRepo).save(argThat(saved ->
+                saved == earliestVersion && saved.getCorrectPdAmt().equals(70.0)));
+    }
+
+    @Test
+    void updateClaimCorrectionTriggersFinancialTermsRefreshWhenConfigEnabled() {
+        ClaimCorrectionDTO dto = baseClaimCorrectionDto();
+        CaClaimCorrectionsT existing = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(50));
+        CaClaimCorrectionsT current = correctionEntity(10, 4, "TCN-10", BigDecimal.valueOf(90));
+        CaseConfigT config = new CaseConfigT();
+        config.setOptionCode("CLAIMS_CORR_FIN_UPD");
+        config.setOptionValue("Y");
+
+        when(claimCorrectionsRepo.findById(CaClaimCorrectionsTId.builder().caseId(10).clmSeqNum(4).build()))
+                .thenReturn(Optional.of(existing));
+        when(claimCorrectionMapper.convertToCaClaimCorrectionsT(dto)).thenReturn(current);
+        when(caseConfigRepo.findById("CLAIMS_CORR_FIN_UPD")).thenReturn(Optional.of(config));
+        when(caClaimFindingsObsRepo.findByMaxVersionMinSeq(10, "TCN-10", 4)).thenReturn(List.of());
+        doNothing().when(caseDetailClaimsService).updateFinancialTerms(10);
+
+        caseDetailClaimsService.updateClaimCorrection(dto, "USR5");
+
+        verify(caClaimListRepo).updateClaimCorrectPdAmt(10, 4, BigDecimal.valueOf(90));
+        verify(caseDetailClaimsService).updateFinancialTerms(10);
+    }
+
+    private static ClaimCorrectionDTO baseClaimCorrectionDto() {
+        return ClaimCorrectionDTO.builder()
+                .caseId(10)
+                .clmSeqNum(4)
+                .hdrClmTcn("TCN-10")
+                .liNum("1")
+                .auditClaim(ClaimDTO.builder().hdrPdAmt(70.0).build())
+                .build();
+    }
+
+    private static CaClaimCorrectionsT correctionEntity(Integer caseId, Integer claimSeqNum, String hdrClmTcn, BigDecimal hdrPdAmt) {
+        return CaClaimCorrectionsT.builder()
+                .id(CaClaimCorrectionsTId.builder().caseId(caseId).clmSeqNum(claimSeqNum).build())
+                .hdrClmTcn(hdrClmTcn)
+                .liNum("1")
+                .hdrClmPdDt(new Date())
+                .hdrPdAmt(hdrPdAmt)
+                .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.Comparator<CaClaimFindingsObsT> readComparator() {
+        try {
+            var field = CaseDetailClaimsService.class.getDeclaredField("FINDINGS_VERSION_SEQ_ASC_ORDER");
+            field.setAccessible(true);
+            return (java.util.Comparator<CaClaimFindingsObsT>) field.get(null);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError(ex);
+        }
+    }
+}
+
+package com.optum.fads.caseclaimcorrections.api.service;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import com.optum.fads.caseclaimcorrections.api.dto.AppUser;
+import com.optum.fads.caseclaimcorrections.api.dto.CaseRole;
+import com.optum.fads.caseclaimcorrections.api.entity.CaLuCaseTypeT;
+import com.optum.fads.caseclaimcorrections.api.entity.SeCaseAccess;
+import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrp;
+import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrpModAccess;
+import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrpNodeAccess;
+import com.optum.fads.caseclaimcorrections.api.entity.SeCaseGrpNodeAccessId;
+import com.optum.fads.caseclaimcorrections.api.entity.SeCaseModule;
+import com.optum.fads.caseclaimcorrections.api.entity.SeUsrGrp;
+import com.optum.fads.caseclaimcorrections.api.entity.UiUserBase;
+import com.optum.fads.caseclaimcorrections.api.mapper.UserDetailMapper;
+import com.optum.fads.caseclaimcorrections.api.repo.UserRepository;
+import com.optum.fads.caseclaimcorrections.api.service.impl.UserDetailsService;
+
+@ExtendWith(MockitoExtension.class)
+class UserDetailsServiceTest {
+
+    @InjectMocks
+    private UserDetailsService userDetailsService;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private UserDetailMapper userDetailMapper;
+
+    @Test
+    void loadUserByUsernameThrowsWhenUserMissing() {
+        when(userRepository.findByUiEMailAddressOrUiUserId("missing", "missing")).thenReturn(Optional.empty());
+
+        UsernameNotFoundException ex =
+                assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername("missing"));
+
+        assertTrue(ex.getMessage().contains("missing"));
+        verify(userDetailMapper, never()).toAppUser(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void loadUserByUsernameMapsCaseRoleModulesAndNodes() {
+        UiUserBase userEntity = new UiUserBase();
+        userEntity.setUiSystemId("SYS1");
+        userEntity.setUiUserId("user1");
+        userEntity.setUiEMailAddress("user1@test.com");
+
+        SeUsrGrp userGroup = new SeUsrGrp();
+        SeCaseGrp caseGroup = new SeCaseGrp();
+        caseGroup.setId(BigDecimal.valueOf(21));
+        caseGroup.setCaseGrpName("Auditor");
+        userGroup.setSeCaseGrp(caseGroup);
+        userEntity.setSeUsrGrp(userGroup);
+
+        caseGroup.setSeCaseGrpModAccesses(List.of(
+                moduleAccess("RX", "Pharmacy", BigDecimal.valueOf(1), "M1", "Module One", "RW"),
+                moduleAccess("RX", "Pharmacy", BigDecimal.valueOf(2), "M2", "Module Two", "R"),
+                moduleAccess("MED", "Medical", BigDecimal.valueOf(3), "M3", "Module Three", "RW")));
+        caseGroup.setSeCaseGrpNodeAccesses(List.of(nodeAccess(caseGroup.getId(), "N101", "RW", "Y", "N")));
+
+        AppUser mappedUser = new AppUser();
+        mappedUser.setUserSystemId("SYS1");
+        mappedUser.setRole(new com.optum.fads.caseclaimcorrections.api.dto.Role());
+
+        when(userRepository.findByUiEMailAddressOrUiUserId("user1", "user1")).thenReturn(Optional.of(userEntity));
+        when(userDetailMapper.toAppUser(userEntity)).thenReturn(mappedUser);
+
+        AppUser result = (AppUser) userDetailsService.loadUserByUsername("user1");
+
+        assertEquals("SYS1", result.getUsername());
+        CaseRole caseRole = result.getRole().getCaseRole();
+        assertNotNull(caseRole);
+        assertEquals(BigDecimal.valueOf(21), caseRole.getGroupId());
+        assertEquals("Auditor", caseRole.getRoleName());
+        assertEquals(2, caseRole.getCaseTypeModules().size());
+        assertEquals(1, caseRole.getNodePermissions().size());
+        assertTrue(caseRole.getCaseTypeModules().stream().anyMatch(ctm ->
+                "RX".equals(ctm.getCaseTypeId()) && ctm.getModulePermissions().size() == 2));
+        assertTrue(caseRole.getCaseTypeModules().stream().anyMatch(ctm ->
+                "MED".equals(ctm.getCaseTypeId()) && ctm.getModulePermissions().size() == 1));
+        assertTrue(caseRole.getNodePermissions().stream().anyMatch(node ->
+                "N101".equals(node.getNodeId())
+                        && "RW".equals(node.getNodeAccess())
+                        && "Y".equals(node.getRestrictAccess())
+                        && "N".equals(node.getDeleteAccess())));
+    }
+
+    @Test
+    void loadUserByUsernameLeavesMappedUserUntouchedWhenNoCaseGroupExists() {
+        UiUserBase userEntity = new UiUserBase();
+        SeUsrGrp userGroup = new SeUsrGrp();
+        userEntity.setSeUsrGrp(userGroup);
+        AppUser mappedUser = new AppUser();
+        mappedUser.setRole(new com.optum.fads.caseclaimcorrections.api.dto.Role());
+
+        when(userRepository.findByUiEMailAddressOrUiUserId("plain", "plain")).thenReturn(Optional.of(userEntity));
+        when(userDetailMapper.toAppUser(userEntity)).thenReturn(mappedUser);
+
+        AppUser result = (AppUser) userDetailsService.loadUserByUsername("plain");
+
+        assertEquals(mappedUser, result);
+        assertNull(result.getRole().getCaseRole());
+    }
+
+    private static SeCaseGrpModAccess moduleAccess(
+            String typeCd,
+            String typeDesc,
+            BigDecimal moduleId,
+            String moduleCd,
+            String moduleName,
+            String accessId) {
+        CaLuCaseTypeT caseType = new CaLuCaseTypeT();
+        caseType.setTypeCd(typeCd);
+        caseType.setTypeDesc(typeDesc);
+
+        SeCaseModule module = new SeCaseModule();
+        module.setId(moduleId);
+        module.setCaseModuleCd(moduleCd);
+        module.setCaseModuleName(moduleName);
+
+        SeCaseAccess access = new SeCaseAccess();
+        access.setAccessId(accessId);
+
+        SeCaseGrpModAccess grpModAccess = new SeCaseGrpModAccess();
+        grpModAccess.setCaLuCaseTypeT(caseType);
+        grpModAccess.setSeCaseModule(module);
+        grpModAccess.setSeCaseAccess(access);
+        return grpModAccess;
+    }
+
+    private static SeCaseGrpNodeAccess nodeAccess(
+            BigDecimal caseGroupId,
+            String nodeId,
+            String accessId,
+            String restrictAccess,
+            String deleteAccess) {
+        SeCaseAccess access = new SeCaseAccess();
+        access.setAccessId(accessId);
+
+        SeCaseGrpNodeAccessId id = new SeCaseGrpNodeAccessId();
+        id.setCaseGrpId(caseGroupId);
+        id.setCaseNodeId(nodeId);
+
+        SeCaseGrpNodeAccess nodeAccess = new SeCaseGrpNodeAccess();
+        nodeAccess.setId(id);
+        nodeAccess.setSeCaseAccess(access);
+        nodeAccess.setAnyRestrictApply(restrictAccess);
+        nodeAccess.setCanDeleteCases(deleteAccess);
+        return nodeAccess;
+    }
+}
