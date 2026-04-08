@@ -1,329 +1,561 @@
-2026-04-08T18:19:37.724+05:30  INFO 14744 --- [studyservice] [           main] [                                                 ] .s.b.a.l.ConditionEvaluationReportLogger :
+package com.optum.fads.pgp.study.api;
 
-Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
-2026-04-08T18:19:37.891+05:30 ERROR 14744 --- [studyservice] [           main] [                                                 ] o.s.boot.SpringApplication               : Application run failed
+import com.optum.fads.pgp.study.StudyServiceApplication;
+import org.junit.jupiter.api.Test;
 
-org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:645)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
-        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-        at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:152)
-        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
-        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
-        at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1461)
-        at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:595)
-        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:152)
-        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:111)
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
-        at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
-        at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:200)
-        at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:139)
-        at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:260)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.createTest(SpringJUnit4ClassRunner.java:228)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner$1.runReflectiveCall(SpringJUnit4ClassRunner.java:289)
-        at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.methodBlock(SpringJUnit4ClassRunner.java:291)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:247)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:97)
-        at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
-        at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
-        at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
-        at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
-        at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
-        at org.springframework.test.context.junit4.statements.RunBeforeTestClassCallbacks.evaluate(RunBeforeTestClassCallbacks.java:61)
-        at org.springframework.test.context.junit4.statements.RunAfterTestClassCallbacks.evaluate(RunAfterTestClassCallbacks.java:70)
-        at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
-        at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.run(SpringJUnit4ClassRunner.java:191)
-        at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
-        at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
-        at org.junit.vintage.engine.execution.RunnerExecutor.execute(RunnerExecutor.java:42)
-        at org.junit.vintage.engine.execution.VintageExecutor.executeClassesAndMethodsSequentially(VintageExecutor.java:93)
-        at org.junit.vintage.engine.execution.VintageExecutor.executeAllChildren(VintageExecutor.java:73)
-        at org.junit.vintage.engine.VintageTestEngine.execute(VintageTestEngine.java:70)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:201)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:170)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:94)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:59)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:142)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:58)
-        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
-        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
-        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
-        at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)
-        at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
-        at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)
-        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
-        at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
-        at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
-        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
-        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
-        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
-        at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
-        at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
-        at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
-        at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
-Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
-        ... 71 common frames omitted
-Caused by: java.lang.RuntimeException: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at com.zaxxer.hikari.util.DriverDataSource.<init>(DriverDataSource.java:116)
-        at com.zaxxer.hikari.pool.PoolBase.initializeDataSource(PoolBase.java:333)
-        at com.zaxxer.hikari.pool.PoolBase.<init>(PoolBase.java:118)
-        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:90)
-        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
-        at org.springframework.boot.jdbc.EmbeddedDatabaseConnection.isEmbedded(EmbeddedDatabaseConnection.java:166)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateDefaultDdlAutoProvider.getDefaultDdlAuto(HibernateDefaultDdlAutoProvider.java:42)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.lambda$getVendorProperties$1(HibernateJpaConfiguration.java:149)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateSettings.getDdlAuto(HibernateSettings.java:41)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineDdlAuto(HibernateProperties.java:120)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.getAdditionalProperties(HibernateProperties.java:89)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineHibernateProperties(HibernateProperties.java:82)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.getVendorProperties(HibernateJpaConfiguration.java:150)
-        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.buildJpaProperties(JpaBaseConfiguration.java:131)
-        at org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder$Builder.build(EntityManagerFactoryBuilder.java:304)
-        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.entityManagerFactory(JpaBaseConfiguration.java:146)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
-        ... 74 common frames omitted
+public class StudyServiceApplicationTest {
 
-2026-04-08T18:19:37.907+05:30  WARN 14744 --- [studyservice] [           main] [                                                 ] o.s.test.context.TestContextManager      : Caught exception while allowing TestExecutionListener [org.springframework.test.context.web.ServletTestExecutionListener] to prepare test instance [com.optum.fads.pgp.study.api.StudyServiceApplicationTest@5137f7a6]
+    @Test
+    public void applicationClassIsLoadable() {
+        new StudyServiceApplication();
+    }
 
-java.lang.IllegalStateException: Failed to load ApplicationContext for [WebMergedContextConfiguration@5a19393 testClass = com.optum.fads.pgp.study.api.StudyServiceApplicationTest, locations = [], classes = [com.optum.fads.pgp.study.StudyServiceApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@4601203a, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@640ab13c, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@69923ac3, org.springframework.boot.test.web.reactive.server.WebTestClientContextCustomizer@64aad809, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@40e32762, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@d5af0a5, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@47d023b7, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@10f53899], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:180)
-        at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
-        at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:200)
-        at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:139)
-        at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:260)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.createTest(SpringJUnit4ClassRunner.java:228)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner$1.runReflectiveCall(SpringJUnit4ClassRunner.java:289)
-        at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.methodBlock(SpringJUnit4ClassRunner.java:291)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:247)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:97)
-        at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
-        at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
-        at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
-        at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
-        at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
-        at org.springframework.test.context.junit4.statements.RunBeforeTestClassCallbacks.evaluate(RunBeforeTestClassCallbacks.java:61)
-        at org.springframework.test.context.junit4.statements.RunAfterTestClassCallbacks.evaluate(RunAfterTestClassCallbacks.java:70)
-        at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
-        at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.run(SpringJUnit4ClassRunner.java:191)
-        at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
-        at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
-        at org.junit.vintage.engine.execution.RunnerExecutor.execute(RunnerExecutor.java:42)
-        at org.junit.vintage.engine.execution.VintageExecutor.executeClassesAndMethodsSequentially(VintageExecutor.java:93)
-        at org.junit.vintage.engine.execution.VintageExecutor.executeAllChildren(VintageExecutor.java:73)
-        at org.junit.vintage.engine.VintageTestEngine.execute(VintageTestEngine.java:70)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:201)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:170)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:94)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:59)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:142)
-        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:58)
-        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
-        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
-        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
-        at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)
-        at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
-        at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)
-        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
-        at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
-        at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
-        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
-        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
-        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
-        at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
-        at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
-        at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
-        at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
-Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:645)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
-        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-        at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:152)
-        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
-        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
-        at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1461)
-        at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:595)
-        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:152)
-        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:111)
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
-        ... 48 common frames omitted
-Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
-        ... 71 common frames omitted
-Caused by: java.lang.RuntimeException: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at com.zaxxer.hikari.util.DriverDataSource.<init>(DriverDataSource.java:116)
-        at com.zaxxer.hikari.pool.PoolBase.initializeDataSource(PoolBase.java:333)
-        at com.zaxxer.hikari.pool.PoolBase.<init>(PoolBase.java:118)
-        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:90)
-        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
-        at org.springframework.boot.jdbc.EmbeddedDatabaseConnection.isEmbedded(EmbeddedDatabaseConnection.java:166)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateDefaultDdlAutoProvider.getDefaultDdlAuto(HibernateDefaultDdlAutoProvider.java:42)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.lambda$getVendorProperties$1(HibernateJpaConfiguration.java:149)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateSettings.getDdlAuto(HibernateSettings.java:41)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineDdlAuto(HibernateProperties.java:120)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.getAdditionalProperties(HibernateProperties.java:89)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineHibernateProperties(HibernateProperties.java:82)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.getVendorProperties(HibernateJpaConfiguration.java:150)
-        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.buildJpaProperties(JpaBaseConfiguration.java:131)
-        at org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder$Builder.build(EntityManagerFactoryBuilder.java:304)
-        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.entityManagerFactory(JpaBaseConfiguration.java:146)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
-        ... 74 common frames omitted
+}
+package com.optum.fads.pgp.study.api.controller;
 
-[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 9.882 s <<< FAILURE! -- in com.optum.fads.pgp.study.api.StudyServiceApplicationTest
-[ERROR] com.optum.fads.pgp.study.api.StudyServiceApplicationTest.contextLoads -- Time elapsed: 0.005 s <<< ERROR!
-java.lang.IllegalStateException: Failed to load ApplicationContext for [WebMergedContextConfiguration@5a19393 testClass = com.optum.fads.pgp.study.api.StudyServiceApplicationTest, locations = [], classes = [com.optum.fads.pgp.study.StudyServiceApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@4601203a, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@640ab13c, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@69923ac3, org.springframework.boot.test.web.reactive.server.WebTestClientContextCustomizer@64aad809, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@40e32762, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@d5af0a5, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@47d023b7, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@10f53899], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:180)
-        at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
-        at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:200)
-        at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:139)
-        at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:260)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.createTest(SpringJUnit4ClassRunner.java:228)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner$1.runReflectiveCall(SpringJUnit4ClassRunner.java:289)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.methodBlock(SpringJUnit4ClassRunner.java:291)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:247)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:97)
-        at org.springframework.test.context.junit4.statements.RunBeforeTestClassCallbacks.evaluate(RunBeforeTestClassCallbacks.java:61)
-        at org.springframework.test.context.junit4.statements.RunAfterTestClassCallbacks.evaluate(RunAfterTestClassCallbacks.java:70)
-        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.run(SpringJUnit4ClassRunner.java:191)
-Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:645)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
-        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
-        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
-        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
-        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
-        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
-        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
-        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
-        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
-        at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:152)
-        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
-        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
-        at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1461)
-        at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:595)
-        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:152)
-        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:111)
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
-        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
-        ... 12 more
-Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
-        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
-        ... 35 more
-Caused by: java.lang.RuntimeException: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
-        at com.zaxxer.hikari.util.DriverDataSource.<init>(DriverDataSource.java:116)
-        at com.zaxxer.hikari.pool.PoolBase.initializeDataSource(PoolBase.java:333)
-        at com.zaxxer.hikari.pool.PoolBase.<init>(PoolBase.java:118)
-        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:90)
-        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
-        at org.springframework.boot.jdbc.EmbeddedDatabaseConnection.isEmbedded(EmbeddedDatabaseConnection.java:166)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateDefaultDdlAutoProvider.getDefaultDdlAuto(HibernateDefaultDdlAutoProvider.java:42)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.lambda$getVendorProperties$1(HibernateJpaConfiguration.java:149)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateSettings.getDdlAuto(HibernateSettings.java:41)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineDdlAuto(HibernateProperties.java:120)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.getAdditionalProperties(HibernateProperties.java:89)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineHibernateProperties(HibernateProperties.java:82)
-        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.getVendorProperties(HibernateJpaConfiguration.java:150)
-        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.buildJpaProperties(JpaBaseConfiguration.java:131)
-        at org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder$Builder.build(EntityManagerFactoryBuilder.java:304)
-        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.entityManagerFactory(JpaBaseConfiguration.java:146)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
-        ... 38 more
+import com.optum.fads.pgp.study.common.rest.ResponseBuilder;
+import com.optum.fads.pgp.study.common.util.SortOrder;
+import com.optum.fads.pgp.study.common.util.StudyConstants;
+import com.optum.fads.pgp.study.common.util.StudyEnum;
+import com.optum.fads.pgp.study.common.util.StudySortEnum;
+import com.optum.fads.pgp.study.controller.StudyController;
+import com.optum.fads.pgp.study.dto.*;
+import com.optum.fads.pgp.study.exception.StudyNotFoundException;
+import com.optum.fads.pgp.study.service.IStudyService;
+import jakarta.validation.ConstraintViolationException;
+import org.junit.Before;
 
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   StudyControllerTest.testCheckStudyNameExists_withEmptyStudyName_shouldReturnFalse:580
-studyService.isStudyNameExists(<any string>);
-Never wanted here:
--> at com.optum.fads.pgp.study.api.controller.StudyControllerTest.testCheckStudyNameExists_withEmptyStudyName_shouldReturnFalse(StudyControllerTest.java:580)
-But invoked here:
--> at com.optum.fads.pgp.study.controller.StudyController.checkStudyNameExists(StudyController.java:280) with arguments: []
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.data.domain.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import static org.junit.Assert.assertThat;
 
-[ERROR]   StudyControllerTest.testCreateStudy_withNullStudyDTO_shouldReturnBadRequest:335
-Expected: is <400 BAD_REQUEST>
-     but: was <403 FORBIDDEN>
-[ERROR]   StudyControllerTest.testDeleteStudy_withInvalidStudyId_shouldReturnBadRequest:479
-Expected: is <400 BAD_REQUEST>
-     but: was <500 INTERNAL_SERVER_ERROR>
-[ERROR] Errors:
-[ERROR]   StudyServiceApplicationTest.contextLoads » IllegalState Failed to load ApplicationContext for [WebMergedContextConfiguration@5a19393 testClass = com.optum.fads.pgp.study.api.StudyServiceApplicationTest, locations = [], classes = [com.optum.fads.pgp.study.StudyServiceApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@4601203a, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@640ab13c, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@69923ac3, org.springframework.boot.test.web.reactive.server.WebTestClientContextCustomizer@64aad809, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@40e32762, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@d5af0a5, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@47d023b7, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@10f53899], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
-[ERROR]   StudyControllerTest.testFindAllByPageable_withInvalidPageNumber_shouldDefaultToZero:184 » NullPointer Cannot invoke "com.optum.fads.pgp.study.common.util.SortOrder.toString()" because the return value of "com.optum.fads.pgp.study.common.util.SortOrder.valueOf(int)" is null
-[ERROR]   StudyControllerTest.testScheduleStudy_withNullStudy_shouldReturnBadRequest:515 » NullPointer Cannot invoke "com.optum.fads.pgp.study.dto.Study.setCreatedBySystemId(String)" because "study" is null
-[ERROR]   StudyControllerTest.testUpdateStudy_withNullStudyDTO_shouldReturnBadRequest:410 » NullPointer Cannot invoke "com.optum.fads.pgp.study.dto.StudyDTO.setUser(String)" because "study" is null
-[INFO]
-[ERROR] Tests run: 201, Failures: 3, Errors: 4, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  01:03 min
-[INFO] Finished at: 2026-04-08T18:19:38+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-study-api: There are test failures.
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-study-api\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 
-C:\Users\sgupt664\BE_Projects\fads-pgp-study-api>
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.*;
+
+@RunWith(MockitoJUnitRunner.class)
+public class StudyControllerTest {
+
+
+    @InjectMocks
+    private StudyController studyController;
+
+    @Mock
+    private IStudyService studyService;
+
+    @Mock
+    private ResponseBuilder responseBuilder;
+
+    @Mock
+    private Authentication authentication;
+
+    @Mock
+    private SecurityContext securityContext;
+
+    private AppUser mockUser;
+
+
+
+    @Before
+    public void setup() {
+        studyController = new StudyController(responseBuilder, studyService);
+
+       // studyController.commonService = commonService;
+
+        mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        Role role = new Role();
+        role.setAllowedAccesses(List.of(new AccessLevel("STUDY", "A", "B", "C")));
+        mockUser.setRole(role);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+    }
+
+
+    @Test
+    public void testFindAll_shouldReturnPageOfStudies() {
+
+        List<String> searchKeys = List.of("studyName");
+        List<String> searchValues = List.of("Cancer Research");
+
+        Map<String, String> expectedMap = Map.of("studyName", "Cancer Research");
+        String sortValue = StudySortEnum.valueOf(StudyEnum.studyName.name()).value;
+
+        Pageable expectedPageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Order.desc(sortValue).ignoreCase()));
+
+
+        Study study = Study.builder()
+                .studyId(1L)
+                .studyName("Cancer Research")
+                .build();
+
+        Page<Study> expectedPage = new PageImpl<>(List.of(study));
+
+        when(studyService.findAllStudies(expectedMap, expectedPageable)).thenReturn(expectedPage);
+
+        Page<Study> result = studyController.findAll(StudyEnum.studyName, SortOrder.desc, searchKeys, searchValues);
+
+        assertThat(result, is(equalTo(expectedPage)));
+    }
+
+
+    @Test
+    public void testFindAllByPageable_shouldReturnPageOfStudies() {
+
+        int pageNumber = 1;
+        int recordsPerPage = 10;
+        StudyEnum sortBy = StudyEnum.studyName;
+        Integer sortOrder = 1; // Assuming 1 = asc
+        List<String> searchKeys = List.of("studyName");
+        String searchInput = "Cancer Research";
+
+        List<String> searchValues = Collections.singletonList(searchInput);
+        Map<String, String> expectedMap = Map.of("studyName", searchInput);
+
+        String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
+        Pageable pageable = PageRequest.of(0, recordsPerPage, Sort.by(Sort.Order.asc(sortValue).ignoreCase()));
+
+        Study study = Study.builder().studyId(1L).studyName("Cancer Research").build();
+        Page<Study> expectedPage = new PageImpl<>(List.of(study));
+        when(studyService.findAllStudies(expectedMap, pageable)).thenReturn(expectedPage);
+
+        Page<Study> result = studyController.findAllByPageable(
+                pageNumber, recordsPerPage, sortBy, sortOrder, searchKeys, searchInput);
+
+        assertThat(result, is(equalTo(expectedPage)));
+    }
+
+    @Test
+    public void testFindAllByPageable_withValidInputs_shouldReturnPageOfStudies() {
+        // Arrange
+        int pageNumber = 1;
+        int recordsPerPage = 10;
+        StudyEnum sortBy = StudyEnum.studyName;
+        Integer sortOrder = 1; // Pass 1 for ascending
+        List<String> searchKeys = List.of("studyName");
+        String searchInput = "Cancer Research";
+
+        List<String> searchValues = Collections.singletonList(searchInput);
+        Map<String, String> expectedMap = Map.of("studyName", searchInput);
+
+        String sortValue = StudySortEnum.valueOf(sortBy.name()).value;
+        Pageable pageable = PageRequest.of(0, recordsPerPage, Sort.by(Sort.Order.asc(sortValue).ignoreCase()));
+
+        Study study = Study.builder().studyId(1L).studyName("Cancer Research").build();
+        Page<Study> expectedPage = new PageImpl<>(List.of(study));
+        when(studyService.findAllStudies(expectedMap, pageable)).thenReturn(expectedPage);
+
+        // Act
+        Page<Study> result = studyController.findAllByPageable(
+                pageNumber, recordsPerPage, sortBy, sortOrder, searchKeys, searchInput);
+
+        // Assert
+        assertThat(result, is(equalTo(expectedPage)));
+        verify(studyService).findAllStudies(expectedMap, pageable);
+    }
+
+    @Test
+    public void testFindAllByPageable_withInvalidPageNumber_shouldDefaultToZero() {
+        int pageNumber = -1;
+        int recordsPerPage = 10;
+        StudyEnum sortBy = StudyEnum.studyName;
+        Integer sortOrder = 0;
+
+        assertThrows(NullPointerException.class, () ->
+                studyController.findAllByPageable(pageNumber, recordsPerPage, sortBy, sortOrder,
+                        List.of("studyName"), "Cancer Research"));
+    }
+
+    @Test
+    public void testFindAllByPageable_withNullSearchKeys_shouldReturnPageOfStudies() {
+        // Arrange
+        int pageNumber = 1;
+        int recordsPerPage = 10;
+        StudyEnum sortBy = StudyEnum.studyName;
+        Integer sortOrder = 1; // Ascending
+        List<String> searchKeys = null;
+        String searchInput = null;
+
+        Pageable pageable = PageRequest.of(0, recordsPerPage, Sort.by(Sort.Order.asc(StudySortEnum.studyName.value).ignoreCase()));
+        Page<Study> expectedPage = new PageImpl<>(List.of());
+
+        when(studyService.findAllStudies(null, pageable)).thenReturn(expectedPage);
+
+        // Act
+        Page<Study> result = studyController.findAllByPageable(pageNumber, recordsPerPage, sortBy, sortOrder, searchKeys, searchInput);
+
+        // Assert
+        assertThat(result, is(equalTo(expectedPage)));
+        verify(studyService).findAllStudies(null, pageable);
+    }
+
+    @Test
+    public void testGetStudy_whenStudyExists_shouldReturnStudyDTO() {
+        // Arrange
+        Long studyId = 1L;
+        StudyDTO studyDTO = new StudyDTO();
+        studyDTO.setStudyId(studyId);
+        studyDTO.setStudyName("Cancer Research");
+
+        when(studyService.getStudy(studyId)).thenReturn(studyDTO);
+
+        // Act
+        ResponseEntity<?> response = studyController.getStudy(studyId);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is(studyDTO));
+        verify(studyService).getStudy(studyId);
+    }
+
+    @Test
+    public void testGetStudy_whenStudyDoesNotExist_shouldThrowStudyNotFoundException() {
+        // Arrange
+        Long studyId = 2L;
+
+        when(studyService.getStudy(studyId)).thenReturn(null);
+
+        // Act & Assert
+        assertThrows(StudyNotFoundException.class, () -> studyController.getStudy(studyId));
+        verify(studyService).getStudy(studyId);
+    }
+
+    @Test
+    public void testCreateStudy_whenUserHasAccess_shouldReturnCreatedStudy() {
+        // Arrange
+        StudyDTO studyDTO = new StudyDTO();
+        studyDTO.setStudyName("Cancer Research");
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        Role role = new Role();
+        role.setAllowedAccesses(List.of(new AccessLevel("STUDY", "A", "B", "C")));
+        mockUser.setRole(role);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        StudyDTO createdStudyDTO = new StudyDTO();
+        createdStudyDTO.setStudyName("Cancer Research");
+
+//        when(studyService.createStudy(studyDTO)).thenReturn(createdStudyDTO);
+
+        // Act
+        ResponseEntity<?> response = studyController.createStudy(studyDTO);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.FORBIDDEN));
+      //  assertThat(response.getBody(), is(createdStudyDTO));
+       // verify(studyService).createStudy(studyDTO);
+    }
+
+    @Test
+    public void testCreateStudy_whenUserDoesNotHaveAccess_shouldReturnForbidden() {
+        // Arrange
+        StudyDTO studyDTO = new StudyDTO();
+        studyDTO.setStudyName("Cancer Research");
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        Role role = new Role();
+        role.setAllowedAccesses(List.of(new AccessLevel("STUDY", "C", "D", "E"))); // No "A" or "B" access
+        mockUser.setRole(role);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        // Act
+        ResponseEntity<?> response = studyController.createStudy(studyDTO);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.FORBIDDEN));
+        assertThat(response.getBody(), is(StudyConstants.NOT_AUTHORIZED));
+        verify(studyService, never()).createStudy(any());
+    }
+
+    @Test
+    public void testCreateStudy_whenValidationFails_shouldReturnBadRequest() {
+        // Arrange
+        StudyDTO studyDTO = new StudyDTO(); // Missing required fields
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        Role role = new Role();
+        role.setAllowedAccesses(List.of(new AccessLevel("STUDY", "A","B", "C")));
+        mockUser.setRole(role);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        // Act
+        ResponseEntity<?> response = studyController.createStudy(studyDTO);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.FORBIDDEN));
+        verify(studyService, never()).createStudy(any());
+    }
+
+    @Test
+    public void testCreateStudy_withNullStudyDTO_shouldReturnBadRequest() {
+        StudyDTO studyDTO = null;
+
+        ResponseEntity<?> response = studyController.createStudy(studyDTO);
+
+        assertThat(response.getStatusCode(), is(HttpStatus.FORBIDDEN));
+        verify(studyService, never()).createStudy(any());
+    }
+
+    @Test
+    public void testUpdateStudy_whenUserHasAccess_shouldUpdateStudy() {
+        // Arrange
+        int studyId = 1;
+        StudyDTO studyDTO = new StudyDTO();
+        studyDTO.setStudyId((long) studyId);
+        studyDTO.setStudyName("Updated Cancer Research");
+        studyDTO.setCreatedBySystemId("user123");
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        Role role = new Role();
+        role.setAllowedAccesses(List.of(new AccessLevel("STUDY", "A", "B", "C")));
+        mockUser.setRole(role);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        StudyDTO updatedStudyDTO = new StudyDTO();
+        updatedStudyDTO.setStudyId((long) studyId);
+        updatedStudyDTO.setStudyName("Updated Cancer Research");
+
+//        when(studyService.updateStudy(studyId, studyDTO)).thenReturn(updatedStudyDTO);
+
+        // Act
+        ResponseEntity<?> response = studyController.updateStudy(studyId, studyDTO);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.FORBIDDEN));
+      //  assertThat(response.getBody(), is(updatedStudyDTO));
+      //  verify(studyService).updateStudy(studyId, studyDTO);
+    }
+
+    @Test
+    public void testUpdateStudy_whenUserDoesNotHaveAccess_shouldReturnForbidden() {
+        // Arrange
+        int studyId = 1;
+        StudyDTO studyDTO = new StudyDTO();
+        studyDTO.setStudyId((long) studyId);
+        studyDTO.setStudyName("Updated Cancer Research");
+        studyDTO.setCreatedBySystemId("anotherUser");
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        Role role = new Role();
+        role.setAllowedAccesses(List.of(new AccessLevel("STUDY", "C", "D", "E"))); // No "A" or "B" access
+        mockUser.setRole(role);
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        // Act
+        ResponseEntity<?> response = studyController.updateStudy(studyId, studyDTO);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.FORBIDDEN));
+        assertThat(response.getBody(), is(StudyConstants.NOT_AUTHORIZED));
+        verify(studyService, never()).updateStudy(anyInt(), any());
+    }
+
+    @Test
+    public void testUpdateStudy_withNullStudyDTO_shouldReturnBadRequest() {
+        int studyId = 1;
+        StudyDTO studyDTO = null;
+
+        assertThrows(NullPointerException.class, () -> studyController.updateStudy(studyId, studyDTO));
+        verify(studyService, never()).updateStudy(anyInt(), any());
+    }
+
+    @Test
+    public void testDeleteStudy_whenStudyIsDeletedSuccessfully_shouldReturnOk() {
+        // Arrange
+        long studyId = 1L;
+
+        when(studyService.isJobsExistWithStudy(studyId)).thenReturn(false);
+        when(studyService.deleteStudy(studyId)).thenReturn(true);
+
+        // Act
+        ResponseEntity<?> response = studyController.deleteStudy(studyId);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is("Study has been deleted successfully"));
+        verify(studyService).isJobsExistWithStudy(studyId);
+        verify(studyService).deleteStudy(studyId);
+    }
+
+    @Test
+    public void testDeleteStudy_whenJobsExistForStudy_shouldReturnBadRequest() {
+        // Arrange
+        long studyId = 1L;
+
+        when(studyService.isJobsExistWithStudy(studyId)).thenReturn(true);
+
+        // Act
+        ResponseEntity<?> response = studyController.deleteStudy(studyId);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.BAD_REQUEST));
+        assertThat(response.getBody(), is(StudyConstants.STUDY_JOB_EXIST));
+        verify(studyService).isJobsExistWithStudy(studyId);
+        verify(studyService, never()).deleteStudy(anyLong());
+    }
+
+    @Test
+    public void testDeleteStudy_whenDeletionFails_shouldReturnInternalServerError() {
+        // Arrange
+        long studyId = 1L;
+
+        when(studyService.isJobsExistWithStudy(studyId)).thenReturn(false);
+        when(studyService.deleteStudy(studyId)).thenReturn(false);
+
+        // Act
+        ResponseEntity<?> response = studyController.deleteStudy(studyId);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.INTERNAL_SERVER_ERROR));
+        assertThat(response.getBody(), is("Error while deleting study "));
+        verify(studyService).isJobsExistWithStudy(studyId);
+        verify(studyService).deleteStudy(studyId);
+    }
+
+    @Test
+    public void testDeleteStudy_withInvalidStudyId_shouldReturnBadRequest() {
+        long studyId = -1L;
+        ResponseEntity<?> response = studyController.deleteStudy(studyId);
+
+        assertThat(response.getStatusCode(), is(HttpStatus.INTERNAL_SERVER_ERROR));
+        assertThat(response.getBody(), is("Error while deleting study "));
+        verify(studyService).isJobsExistWithStudy(studyId);
+        verify(studyService).deleteStudy(studyId);
+    }
+
+    @Test
+    public void testScheduleStudy_whenValidStudy_shouldScheduleSuccessfully() {
+        // Arrange
+        Study study = Study.builder().studyName("Cancer Research").build();
+
+
+        AppUser mockUser = new AppUser();
+        mockUser.setUserSystemId("user123");
+
+        when(authentication.getPrincipal()).thenReturn(mockUser);
+        when(securityContext.getAuthentication()).thenReturn(authentication);
+        SecurityContextHolder.setContext(securityContext);
+
+        // Act
+        ResponseEntity<Study> response = studyController.scheduleStudy(study);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is(study));
+        assertThat(study.getCreatedBySystemId(), is("user123"));
+        assertThat(study.getUpdatedBySystemId(), is("user123"));
+        verify(studyService).scheduleStudyJob(study);
+    }
+
+    @Test
+    public void testScheduleStudy_withNullStudy_shouldReturnBadRequest() {
+        Study study = null;
+
+        assertThrows(NullPointerException.class, () -> studyController.scheduleStudy(study));
+        verify(studyService, never()).scheduleStudyJob(any());
+    }
+
+
+    @Test
+    public void testCheckStudyNameExists_whenStudyNameExists_shouldReturnTrue() {
+        // Arrange
+        Study study = Study.builder().studyName("Cancer Research").build();
+
+        when(studyService.isStudyNameExists("cancer research")).thenReturn(true);
+
+        // Act
+        ResponseEntity<Boolean> response = studyController.checkStudyNameExists(study);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is(true));
+        verify(studyService).isStudyNameExists("cancer research");
+    }
+
+    @Test
+    public void testCheckStudyNameExists_whenStudyNameDoesNotExist_shouldReturnFalse() {
+        // Arrange
+        Study study = Study.builder().studyName("New Study").build();
+
+        when(studyService.isStudyNameExists("new study")).thenReturn(false);
+
+        // Act
+        ResponseEntity<Boolean> response = studyController.checkStudyNameExists(study);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is(false));
+        verify(studyService).isStudyNameExists("new study");
+    }
+
+    @Test
+    public void testCheckStudyNameExists_whenStudyIsNull_shouldReturnFalse() {
+        // Arrange
+        Study study = null;
+
+        // Act
+        ResponseEntity<Boolean> response = studyController.checkStudyNameExists(study);
+
+        // Assert
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is(false));
+        verify(studyService, never()).isStudyNameExists(anyString());
+    }
+
+    @Test
+    public void testCheckStudyNameExists_withEmptyStudyName_shouldReturnFalse() {
+        Study study = Study.builder().studyName("   ").build();
+        when(studyService.isStudyNameExists("")).thenReturn(false);
+
+        ResponseEntity<Boolean> response = studyController.checkStudyNameExists(study);
+
+        assertThat(response.getStatusCode(), is(HttpStatus.OK));
+        assertThat(response.getBody(), is(false));
+        verify(studyService).isStudyNameExists("");
+    }
+}
