@@ -1,1694 +1,329 @@
-package com.optum.fads.pgp.study.api.service;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.optum.fads.pgp.study.common.util.FadsConfigEnum;
-import com.optum.fads.pgp.study.common.util.StudyConstants;
-import com.optum.fads.pgp.study.domain.FadsConfigT;
-import com.optum.fads.pgp.study.domain.FadsLuValueT;
-import com.optum.fads.pgp.study.dto.LabelValue;
-import com.optum.fads.pgp.study.mapper.CommonMapper;
-import com.optum.fads.pgp.study.repo.FadsConfigRepository;
-import com.optum.fads.pgp.study.repo.LuValuesRepository;
-import com.optum.fads.pgp.study.service.impl.CommonService;
-
-@ExtendWith(MockitoExtension.class)
-class CommonServiceTest {
-
-    @InjectMocks
-    private CommonService commonService;
-
-    @Mock
-    private LuValuesRepository luValuesRepository;
-
-    @Mock
-    private FadsConfigRepository fadsConfigRepository;
-
-    @Mock
-    private CommonMapper commonMapper;
-
-    @Test
-    void findAllEncClaimTypesReturnsMappedValues() {
-        List<FadsLuValueT> entities = List.of(new FadsLuValueT());
-        List<LabelValue> expected = List.of(LabelValue.builder().label("ENC").value(1).build());
-
-        when(luValuesRepository.findByIdFieldId(StudyConstants.ENC_TYPES_FIELD_ID)).thenReturn(entities);
-        when(commonMapper.convertToLabelValues(entities)).thenReturn(expected);
-
-        List<LabelValue> result = commonService.findAllEncClaimTypes();
-
-        assertSame(expected, result);
-        verify(luValuesRepository).findByIdFieldId(StudyConstants.ENC_TYPES_FIELD_ID);
-        verify(commonMapper).convertToLabelValues(entities);
-    }
-
-    @Test
-    void findAllCrossOverTypesReturnsMappedValues() {
-        List<FadsLuValueT> entities = List.of(new FadsLuValueT());
-        List<LabelValue> expected = List.of(LabelValue.builder().label("XOVER").value(2).build());
-
-        when(luValuesRepository.findByIdFieldId(StudyConstants.XOVERS_TYPES_FIELD_ID)).thenReturn(entities);
-        when(commonMapper.convertToLabelValues(entities)).thenReturn(expected);
-
-        List<LabelValue> result = commonService.findAllCrossOverTypes();
-
-        assertSame(expected, result);
-        verify(luValuesRepository).findByIdFieldId(StudyConstants.XOVERS_TYPES_FIELD_ID);
-        verify(commonMapper).convertToLabelValues(entities);
-    }
-
-    @Test
-    void findAllConfigValuesMapsKnownEnumsByName() {
-        FadsConfigT beginDate = FadsConfigT.builder().optionCode(54L).optionValue("2026-01-01").build();
-        FadsConfigT crossOver = FadsConfigT.builder().optionCode(22L).optionValue("2").build();
-
-        when(fadsConfigRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class)))
-                .thenReturn(List.of(beginDate, crossOver));
-
-        Map<String, Object> result = commonService.findAllConfigValues();
-
-        assertEquals(2, result.size());
-        assertEquals("2026-01-01", result.get(FadsConfigEnum.timePeriodBeginDate.name()));
-        assertEquals("2", result.get(FadsConfigEnum.xOverValue.name()));
-        assertTrue(result.containsKey("timePeriodBeginDate"));
-        verify(fadsConfigRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class));
-    }
-
-    @Test
-    void getZoneIdReturnsConfiguredZone() {
-        FadsConfigT config = FadsConfigT.builder().optionCode(StudyConstants.DATE_TIME_ZONE_ID).optionValue("UTC").build();
-        when(fadsConfigRepository.findById(StudyConstants.DATE_TIME_ZONE_ID)).thenReturn(Optional.of(config));
-
-        ZoneId result = commonService.getZoneId();
-
-        assertEquals(ZoneId.of("UTC"), result);
-    }
-
-    @Test
-    void getZoneIdFallsBackToSystemDefaultWhenMissing() {
-        when(fadsConfigRepository.findById(StudyConstants.DATE_TIME_ZONE_ID)).thenReturn(Optional.empty());
-
-        ZoneId result = commonService.getZoneId();
-
-        assertEquals(ZoneId.systemDefault(), result);
-    }
-}
-
-package com.optum.fads.pgp.study.api.service;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import com.optum.fads.pgp.study.domain.SeSurAccess;
-import com.optum.fads.pgp.study.domain.SeSurGrp;
-import com.optum.fads.pgp.study.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.study.domain.SeSurGrpModAccessPK;
-import com.optum.fads.pgp.study.domain.SeSurModule;
-import com.optum.fads.pgp.study.domain.SeUsrGrp;
-import com.optum.fads.pgp.study.domain.UiUserBase;
-import com.optum.fads.pgp.study.dto.AppUser;
-import com.optum.fads.pgp.study.repo.UserRepository;
-import com.optum.fads.pgp.study.service.impl.UserDetailsService;
-
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
-
-    @InjectMocks
-    private UserDetailsService userDetailsService;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Test
-    void loadUserByUsernameThrowsWhenUserMissing() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("missing", "missing")).thenReturn(Optional.empty());
-
-        UsernameNotFoundException ex =
-                assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername("missing"));
-
-        assertTrue(ex.getMessage().contains("missing"));
-    }
-
-    @Test
-    void loadUserByUsernameMapsUserRoleAndAllowedAccesses() {
-        UiUserBase entity = new UiUserBase();
-        entity.setUiSystemId("SYS-1");
-        entity.setUiUserId("study.user");
-        entity.setUiEMailAddress("study.user@test.com");
-
-        SeUsrGrp userGroup = new SeUsrGrp();
-        SeSurGrp roleGroup = new SeSurGrp();
-        roleGroup.setSurGrpId(77L);
-        roleGroup.setSurGrpName("Study Admin");
-        roleGroup.setSeSurGrpModAccesses(List.of(
-                access("1", "Study Workspace", "RW", 77L),
-                access("2", "Job Monitor", "R", 77L)));
-        userGroup.setSeSurGrp(roleGroup);
-        entity.setSeUsrGrp(userGroup);
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("study.user", "study.user")).thenReturn(Optional.of(entity));
-
-        AppUser result = (AppUser) userDetailsService.loadUserByUsername("study.user");
-
-        assertEquals("SYS-1", result.getUsername());
-        assertEquals("study.user", result.getUserId());
-        assertEquals("study.user@test.com", result.getUserEmail());
-        assertNotNull(result.getRole());
-        assertEquals("77", result.getRole().getId());
-        assertEquals("Study Admin", result.getRole().getRoleName());
-        assertEquals(2, result.getRole().getAllowedAccesses().size());
-        assertTrue(result.getRole().getAllowedAccesses().stream().anyMatch(access ->
-                "1".equals(access.getModuleId())
-                        && "STUDY".equals(access.getModuleCode())
-                        && "Study Workspace".equals(access.getModuleName())
-                        && "RW".equals(access.getAccess())));
-        assertTrue(result.getRole().getAllowedAccesses().stream().anyMatch(access ->
-                "2".equals(access.getModuleId())
-                        && "JOBMONITOR".equals(access.getModuleCode())
-                        && "R".equals(access.getAccess())));
-    }
-
-    private static SeSurGrpModAccess access(String moduleId, String moduleName, String accessId, long groupId) {
-        SeSurGrpModAccessPK id = new SeSurGrpModAccessPK();
-        id.setSurGrpId(groupId);
-        id.setSurModuleId(moduleId);
-
-        SeSurModule module = new SeSurModule();
-        module.setSurModuleId(moduleId);
-        module.setSurModuleName(moduleName);
-
-        SeSurAccess access = new SeSurAccess();
-        access.setSurAccessId(accessId);
-
-        SeSurGrpModAccess grpAccess = new SeSurGrpModAccess();
-        grpAccess.setId(id);
-        grpAccess.setSeSurModule(module);
-        grpAccess.setSeSurAccess(access);
-        return grpAccess;
-    }
-}
-package com.optum.fads.pgp.study.api.service;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.lang.reflect.Field;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import com.optum.fads.pgp.study.domain.PrmStudyBpActLimitsT;
-import com.optum.fads.pgp.study.domain.PrmStudyBpActLimitsTPK;
-import com.optum.fads.pgp.study.domain.PrmStudyMasterT;
-import com.optum.fads.pgp.study.domain.PrmStudyTimePeriodsT;
-import com.optum.fads.pgp.study.domain.PrmStudyTimePeriodsTPK;
-import com.optum.fads.pgp.study.dto.ActivityLimit;
-import com.optum.fads.pgp.study.dto.ExceptionProcess;
-import com.optum.fads.pgp.study.dto.ReportItem;
-import com.optum.fads.pgp.study.dto.ReportSection;
-import com.optum.fads.pgp.study.dto.StudyDTO;
-import com.optum.fads.pgp.study.dto.StudyRsRiException;
-import com.optum.fads.pgp.study.dto.StudyRsRiItem;
-import com.optum.fads.pgp.study.dto.TimePeriod;
-import com.optum.fads.pgp.study.mapper.StudyDetailMapper;
-import com.optum.fads.pgp.study.mapper.StudyMiniMapper;
-import com.optum.fads.pgp.study.repo.FadsConfigRepository;
-import com.optum.fads.pgp.study.repo.JobsRepository;
-import com.optum.fads.pgp.study.repo.StudyRepository;
-import com.optum.fads.pgp.study.service.impl.StudyService;
-
-@ExtendWith(MockitoExtension.class)
-class StudyServiceAdditionalTest {
-
-    private StudyService studyService;
-
-    @Mock
-    private StudyRepository studyRepository;
-
-    @Mock
-    private JobsRepository jobsRepository;
-
-    @Mock
-    private FadsConfigRepository fadsConfigRepository;
-
-    @Mock
-    private StudyMiniMapper studyMiniMapper;
-
-    @Mock
-    private StudyDetailMapper studyDetailMapper;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        studyService = new StudyService();
-        inject("studyRepository", studyRepository);
-        inject("jobsRepository", jobsRepository);
-        inject("fadsConfigRepository", fadsConfigRepository);
-        inject("studyMiniMapper", studyMiniMapper);
-        inject("studyDetailMapper", studyDetailMapper);
-    }
-
-    @Test
-    void getStudyAppliesThresholdsAndExceptionProcessesToMatchingItems() {
-        long studyId = 10L;
-        PrmStudyMasterT entity = new PrmStudyMasterT();
-        StudyDTO mapped = new StudyDTO();
-
-        ReportItem unmatchedItem = ReportItem.builder().reportItemId(999L).build();
-        ReportSection laterSection = ReportSection.builder()
-                .reportSectionId(2L)
-                .rsOrder(99L)
-                .reportItems(Set.of(unmatchedItem))
-                .build();
-
-        ReportItem targetItem = ReportItem.builder().reportItemId(200L).build();
-        ReportSection targetSection = ReportSection.builder()
-                .reportSectionId(1L)
-                .rsOrder(99L)
-                .reportItems(Set.of(targetItem))
-                .build();
-
-        mapped.setReportSections(Set.of(laterSection, targetSection));
-        mapped.setTimePeriods(List.of(TimePeriod.builder().timePeriodId(7L).build()));
-
-        StudyRsRiItem studyItem = StudyRsRiItem.builder()
-                .reportSectionId(1L)
-                .reportItemId(200L)
-                .rsOrder(1L)
-                .lowerLimit(BigDecimal.ONE)
-                .upperLimit(BigDecimal.TEN)
-                .percentage(BigDecimal.valueOf(15))
-                .standardDeviation(BigDecimal.valueOf(3))
-                .weight(BigDecimal.valueOf(4))
-                .build();
-
-        StudyRsRiException exception = StudyRsRiException.builder()
-                .reportSectionId(1L)
-                .reportItemId(200L)
-                .timePeriodId(7L)
-                .exceptionFlag(BigDecimal.ONE)
-                .overLimitFlag(BigDecimal.ZERO)
-                .build();
-
-        when(studyRepository.findById(studyId)).thenReturn(Optional.of(entity));
-        when(studyDetailMapper.toStudyDTO(entity)).thenReturn(mapped);
-        when(studyDetailMapper.toStudyRsRiItems(any())).thenReturn(List.of(studyItem));
-        when(studyDetailMapper.toStudyRsRiExceptions(any())).thenReturn(List.of(exception));
-
-        StudyDTO result = studyService.getStudy(studyId);
-
-        assertNotNull(result);
-        ReportSection updatedSection = result.getReportSections().stream()
-                .filter(section -> section.getReportSectionId() == 1L)
-                .findFirst()
-                .orElseThrow();
-        ReportItem updatedItem = updatedSection.getReportItems().iterator().next();
-        assertEquals(1L, updatedSection.getRsOrder());
-        assertEquals(BigDecimal.ONE, updatedItem.getLowerLimit());
-        assertEquals(BigDecimal.TEN, updatedItem.getUpperLimit());
-        assertEquals(BigDecimal.valueOf(15), updatedItem.getPercentage());
-        assertEquals(BigDecimal.valueOf(3), updatedItem.getStandardDeviation());
-        assertEquals(BigDecimal.valueOf(4), updatedItem.getWeight());
-        assertEquals(1, updatedItem.getExceptionProcesses().size());
-        assertEquals(7L, updatedItem.getExceptionProcesses().get(0).getTimePeriodId());
-    }
-
-    @Test
-    void createStudyBuildsNestedEntitiesIncludingActivityLimitsAndExceptions() {
-        StudyDTO studyDTO = baseStudyDto();
-        PrmStudyMasterT entity = baseStudyEntity(0L);
-
-        PrmStudyTimePeriodsT timePeriodEntity = PrmStudyTimePeriodsT.builder()
-                .id(PrmStudyTimePeriodsTPK.builder().pbId(0L).pbTimePrd(1L).build())
-                .build();
-        entity.setPrmStudyTimePeriodsTs(new ArrayList<>(List.of(timePeriodEntity)));
-        entity.setPrmStudyBpActLimitsTs(new ArrayList<>(List.of(PrmStudyBpActLimitsT.builder()
-                .id(PrmStudyBpActLimitsTPK.builder().pbId(0L).bpId(11L).build())
-                .vcFlag(BigDecimal.ONE)
-                .vcMin(BigDecimal.valueOf(2))
-                .vcMax(BigDecimal.valueOf(8))
-                .build())));
-
-        when(studyDetailMapper.convertToPrmStudyMasterT(studyDTO)).thenReturn(entity);
-        when(studyRepository.getNextStudyId()).thenReturn(321L);
-        when(studyRepository.saveAndFlush(any(PrmStudyMasterT.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(studyDetailMapper.toStudyDTO(any(PrmStudyMasterT.class))).thenReturn(studyDTO);
-
-        StudyDTO result = studyService.createStudy(studyDTO);
-
-        assertNotNull(result);
-
-        ArgumentCaptor<PrmStudyMasterT> captor = ArgumentCaptor.forClass(PrmStudyMasterT.class);
-        verify(studyRepository).saveAndFlush(captor.capture());
-        PrmStudyMasterT saved = captor.getValue();
-
-        assertEquals(321L, saved.getPbId());
-        assertEquals(BigDecimal.ZERO, saved.getPbExcpOnlyFlag());
-        assertEquals(BigDecimal.ONE, saved.getPbUseDwFlag());
-        assertEquals(BigDecimal.ONE, saved.getPbUseVwFlag());
-        assertEquals(1, saved.getPrmStudyTimePeriodsTs().size());
-        assertEquals(321L, saved.getPrmStudyTimePeriodsTs().get(0).getId().getPbId());
-        assertEquals(studyDTO.getCreateDate(), saved.getPrmStudyTimePeriodsTs().get(0).getCreateDte());
-        assertEquals(studyDTO.getUpdateDate(), saved.getPrmStudyTimePeriodsTs().get(0).getUpdateDte());
-        assertEquals(1, saved.getPrmStudyBpActLimitsTs().size());
-        assertEquals(321L, saved.getPrmStudyBpActLimitsTs().get(0).getId().getPbId());
-        assertEquals(11L, saved.getPrmStudyBpActLimitsTs().get(0).getId().getBpId());
-        assertEquals(1, saved.getPrmStudyRsRiTs().size());
-        assertEquals(321L, saved.getPrmStudyRsRiTs().get(0).getId().getPbId());
-        assertEquals(1L, saved.getPrmStudyRsRiTs().get(0).getId().getRsOrder());
-        assertEquals(1, saved.getPrmStudyRsRiExceptTs().size());
-        assertEquals(321L, saved.getPrmStudyRsRiExceptTs().get(0).getId().getPbId());
-        assertEquals(7L, saved.getPrmStudyRsRiExceptTs().get(0).getId().getPbTimePrd());
-    }
-
-    @Test
-    void updateStudyRebuildsNestedCollectionsForExistingStudyId() {
-        StudyDTO studyDTO = baseStudyDto();
-        PrmStudyMasterT entity = baseStudyEntity(555L);
-        entity.setPrmStudyTimePeriodsTs(new ArrayList<>(List.of(PrmStudyTimePeriodsT.builder()
-                .id(PrmStudyTimePeriodsTPK.builder().pbId(555L).pbTimePrd(1L).build())
-                .build())));
-        entity.setPrmStudyBpActLimitsTs(new ArrayList<>(List.of(PrmStudyBpActLimitsT.builder()
-                .id(PrmStudyBpActLimitsTPK.builder().pbId(555L).bpId(11L).build())
-                .vcFlag(BigDecimal.ONE)
-                .vcMin(BigDecimal.valueOf(2))
-                .vcMax(BigDecimal.valueOf(8))
-                .build())));
-
-        when(studyDetailMapper.convertToPrmStudyMasterT(studyDTO)).thenReturn(entity);
-        when(studyRepository.saveAndFlush(any(PrmStudyMasterT.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(studyDetailMapper.toStudyDTO(any(PrmStudyMasterT.class))).thenReturn(studyDTO);
-
-        StudyDTO result = studyService.updateStudy(555, studyDTO);
-
-        assertNotNull(result);
-
-        ArgumentCaptor<PrmStudyMasterT> captor = ArgumentCaptor.forClass(PrmStudyMasterT.class);
-        verify(studyRepository).saveAndFlush(captor.capture());
-        PrmStudyMasterT saved = captor.getValue();
-
-        assertEquals(555L, saved.getPbId());
-        assertEquals(BigDecimal.ZERO, saved.getPbExcpOnlyFlag());
-        assertEquals(BigDecimal.ONE, saved.getPbUseDwFlag());
-        assertEquals(BigDecimal.ONE, saved.getPbUseVwFlag());
-        assertEquals(1, saved.getPrmStudyTimePeriodsTs().size());
-        assertEquals(555L, saved.getPrmStudyTimePeriodsTs().get(0).getId().getPbId());
-        assertNotNull(saved.getPrmStudyTimePeriodsTs().get(0).getUpdateDte());
-        assertEquals(1, saved.getPrmStudyBpActLimitsTs().size());
-        assertEquals(555L, saved.getPrmStudyBpActLimitsTs().get(0).getId().getPbId());
-        assertEquals(1, saved.getPrmStudyRsRiTs().size());
-        assertEquals(1, saved.getPrmStudyRsRiExceptTs().size());
-    }
-
-    @Test
-    void isJobsExistWithStudyReturnsFalseForEmptyListAndTrueWhenJobsPresent() {
-        when(jobsRepository.findJobsWithStudyId(1L)).thenReturn(List.of());
-        when(jobsRepository.findJobsWithStudyId(2L)).thenReturn(List.of(new com.optum.fads.pgp.study.domain.JobMasterT()));
-
-        assertTrue(!studyService.isJobsExistWithStudy(1L));
-        assertTrue(studyService.isJobsExistWithStudy(2L));
-    }
-
-    private static StudyDTO baseStudyDto() {
-        LocalDateTime now = LocalDateTime.of(2026, 4, 8, 10, 15);
-
-        ReportItem reportItem = ReportItem.builder()
-                .reportItemId(200L)
-                .lowerLimit(BigDecimal.ONE)
-                .upperLimit(BigDecimal.TEN)
-                .percentage(BigDecimal.valueOf(15))
-                .standardDeviation(BigDecimal.valueOf(3))
-                .weight(BigDecimal.valueOf(4))
-                .exceptionProcesses(List.of(new ExceptionProcess(7L, BigDecimal.ONE, BigDecimal.ZERO)))
-                .build();
-
-        ReportSection reportSection = ReportSection.builder()
-                .reportSectionId(1L)
-                .rsOrder(1L)
-                .reportItems(Set.of(reportItem))
-                .build();
-
-        StudyDTO dto = new StudyDTO();
-        dto.setCreateDate(now);
-        dto.setUpdateDate(now.plusHours(1));
-        dto.setTimePeriods(List.of(TimePeriod.builder()
-                .timePeriodId(1L)
-                .fromDate(LocalDate.of(2026, 1, 1))
-                .toDate(LocalDate.of(2026, 1, 31))
-                .weight(BigDecimal.valueOf(50))
-                .build()));
-        dto.setActivityLimits(Set.of(ActivityLimit.builder()
-                .behaviorPatternId(11L)
-                .flag(BigDecimal.ONE)
-                .min(BigDecimal.valueOf(2))
-                .max(BigDecimal.valueOf(8))
-                .build()));
-        dto.setReportSections(Set.of(reportSection));
-        return dto;
-    }
-
-    private static PrmStudyMasterT baseStudyEntity(long studyId) {
-        PrmStudyMasterT entity = new PrmStudyMasterT();
-        entity.setPbId(studyId);
-        entity.setPrmStudyTimePeriodsTs(new ArrayList<>());
-        entity.setPrmStudyBpActLimitsTs(new ArrayList<>());
-        entity.setPrmStudyRsRiTs(new ArrayList<>());
-        entity.setPrmStudyRsRiExceptTs(new ArrayList<>());
-        return entity;
-    }
-
-    private void inject(String fieldName, Object value) throws Exception {
-        Field field = StudyService.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(studyService, value);
-    }
-}
-package com.optum.fads.pgp.study.api.service;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
-import java.util.Optional;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import com.optum.fads.pgp.study.domain.SeSurAccess;
-import com.optum.fads.pgp.study.domain.SeSurGrp;
-import com.optum.fads.pgp.study.domain.SeSurGrpModAccess;
-import com.optum.fads.pgp.study.domain.SeSurGrpModAccessPK;
-import com.optum.fads.pgp.study.domain.SeSurModule;
-import com.optum.fads.pgp.study.domain.SeUsrGrp;
-import com.optum.fads.pgp.study.domain.UiUserBase;
-import com.optum.fads.pgp.study.dto.AppUser;
-import com.optum.fads.pgp.study.repo.UserRepository;
-import com.optum.fads.pgp.study.service.impl.UserDetailsService;
-
-@ExtendWith(MockitoExtension.class)
-class UserDetailsServiceTest {
-
-    @InjectMocks
-    private UserDetailsService userDetailsService;
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Test
-    void loadUserByUsernameThrowsWhenUserMissing() {
-        when(userRepository.findByUiEMailAddressOrUiUserId("missing", "missing")).thenReturn(Optional.empty());
-
-        UsernameNotFoundException ex =
-                assertThrows(UsernameNotFoundException.class, () -> userDetailsService.loadUserByUsername("missing"));
-
-        assertTrue(ex.getMessage().contains("missing"));
-    }
-
-    @Test
-    void loadUserByUsernameMapsUserRoleAndAllowedAccesses() {
-        UiUserBase entity = new UiUserBase();
-        entity.setUiSystemId("SYS-1");
-        entity.setUiUserId("study.user");
-        entity.setUiEMailAddress("study.user@test.com");
-
-        SeUsrGrp userGroup = new SeUsrGrp();
-        SeSurGrp roleGroup = new SeSurGrp();
-        roleGroup.setSurGrpId(77L);
-        roleGroup.setSurGrpName("Study Admin");
-        roleGroup.setSeSurGrpModAccesses(List.of(
-                access("1", "Study Workspace", "RW", 77L),
-                access("2", "Job Monitor", "R", 77L)));
-        userGroup.setSeSurGrp(roleGroup);
-        entity.setSeUsrGrp(userGroup);
-
-        when(userRepository.findByUiEMailAddressOrUiUserId("study.user", "study.user")).thenReturn(Optional.of(entity));
-
-        AppUser result = (AppUser) userDetailsService.loadUserByUsername("study.user");
-
-        assertEquals("SYS-1", result.getUsername());
-        assertEquals("study.user", result.getUserId());
-        assertEquals("study.user@test.com", result.getUserEmail());
-        assertNotNull(result.getRole());
-        assertEquals("77", result.getRole().getId());
-        assertEquals("Study Admin", result.getRole().getRoleName());
-        assertEquals(2, result.getRole().getAllowedAccesses().size());
-        assertTrue(result.getRole().getAllowedAccesses().stream().anyMatch(access ->
-                "1".equals(access.getModuleId())
-                        && "STUDY".equals(access.getModuleCode())
-                        && "Study Workspace".equals(access.getModuleName())
-                        && "RW".equals(access.getAccess())));
-        assertTrue(result.getRole().getAllowedAccesses().stream().anyMatch(access ->
-                "2".equals(access.getModuleId())
-                        && "JOBMONITOR".equals(access.getModuleCode())
-                        && "R".equals(access.getAccess())));
-    }
-
-    private static SeSurGrpModAccess access(String moduleId, String moduleName, String accessId, long groupId) {
-        SeSurGrpModAccessPK id = new SeSurGrpModAccessPK();
-        id.setSurGrpId(groupId);
-        id.setSurModuleId(moduleId);
-
-        SeSurModule module = new SeSurModule();
-        module.setSurModuleId(moduleId);
-        module.setSurModuleName(moduleName);
-
-        SeSurAccess access = new SeSurAccess();
-        access.setSurAccessId(accessId);
-
-        SeSurGrpModAccess grpAccess = new SeSurGrpModAccess();
-        grpAccess.setId(id);
-        grpAccess.setSeSurModule(module);
-        grpAccess.setSeSurAccess(access);
-        return grpAccess;
-    }
-}
-package com.optum.fads.pgp.study.api.common.rest;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
-import com.optum.fads.pgp.study.common.rest.ResponseBuilder;
-import com.optum.fads.pgp.study.dto.rest.ErrorResponse;
-import com.optum.fads.pgp.study.dto.rest.Response;
-import com.optum.fads.pgp.study.dto.rest.ResponseData;
-import com.optum.fads.pgp.study.dto.rest.RestResponse;
-import com.optum.fads.pgp.study.exception.ErrorDetail;
-import com.optum.fads.pgp.study.exception.StudyApiException;
-
-import brave.Span;
-import brave.Tracer;
-import brave.propagation.TraceContext;
-
-class ResponseBuilderTest {
-
-    private ResponseBuilder responseBuilder;
-
-    @BeforeEach
-    void setUp() {
-        Tracer tracer = mock(Tracer.class);
-        Span span = mock(Span.class);
-        TraceContext traceContext = TraceContext.newBuilder().traceId(123L).spanId(456L).sampled(true).build();
-
-        when(tracer.currentSpan()).thenReturn(span);
-        when(span.context()).thenReturn(traceContext);
-
-        responseBuilder = new ResponseBuilder("study-api", tracer);
-    }
-
-    @Test
-    void buildEmptyResponseIncludesMeta() {
-        RestResponse response = responseBuilder.buildEmptyResponse();
-
-        assertNotNull(response.getMeta());
-        assertEquals("study-api", response.getMeta().getServiceName());
-        assertEquals("000000000000007b", response.getMeta().getCorrelationId());
-    }
-
-    @Test
-    void buildSingleResponseWithoutMetaWrapsData() {
-        ResponseData<String> response = responseBuilder.buildResponse("value");
-
-        assertEquals("study-api", response.getMeta().getServiceName());
-        assertEquals("value", response.getResult().getData());
-    }
-
-    @Test
-    void buildListResponseCalculatesRecordCounts() {
-        Response<List<String>> response = responseBuilder.buildResponse(List.of("a", "b"), 4L);
-
-        assertEquals(2, response.getResult().getResultMeta().getNumberOfRecords());
-        assertEquals(4L, response.getResult().getResultMeta().getTotalNumberOfRecords());
-        assertEquals(List.of("a", "b"), response.getResult().getData());
-    }
-
-    @Test
-    void buildPagedResponseIncludesPagesAndTotals() {
-        Response<String> response = responseBuilder.buildResponse("row", 1, 3, 10L);
-
-        assertEquals(1, response.getResult().getResultMeta().getNumberOfRecords());
-        assertEquals(3, response.getResult().getResultMeta().getNumberOfPages());
-        assertEquals(10L, response.getResult().getResultMeta().getTotalNumberOfRecords());
-    }
-
-    @Test
-    void buildResponseEntityUsesProvidedStatus() {
-        ResponseEntity<ResponseData<String>> response = responseBuilder.buildResponseEntity("saved", HttpStatus.CREATED);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertEquals("saved", response.getBody().getResult().getData());
-    }
-
-    @Test
-    void buildErrorResponseMapsExceptionDetails() {
-        StudyApiException first = new StudyApiException(errorDetail("E1", "First"));
-        StudyApiException second = new StudyApiException(errorDetail("E2", "Second"));
-
-        ErrorResponse response = responseBuilder.buildErrorResponse(first, second);
-
-        assertEquals(2, response.getErrors().size());
-        assertEquals("E1", response.getErrors().get(0).getCode());
-        assertEquals("Second", response.getErrors().get(1).getMessage());
-    }
-
-    @Test
-    void buildResponseWithoutResultMetaLeavesMetaOnlyResultPayload() {
-        ResponseData<String> response = responseBuilder.buildResponseWithoutResultMeta("plain");
-
-        assertEquals("plain", response.getResult().getData());
-        assertSame("study-api", response.getMeta().getServiceName());
-        assertTrue(response.getMeta().getDate() != null);
-    }
-
-    private static ErrorDetail errorDetail(String code, String message) {
-        return new ErrorDetail() {
-            @Override
-            public String getMessage() {
-                return message;
-            }
-
-            @Override
-            public String getCode() {
-                return code;
-            }
-
-            @Override
-            public HttpStatus getHttpStatus() {
-                return HttpStatus.BAD_REQUEST;
-            }
-        };
-    }
-}
-package com.optum.fads.pgp.study.api.common.util;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
-import java.lang.reflect.Method;
-
-import org.junit.jupiter.api.Test;
-
-import com.optum.fads.pgp.study.common.util.FadsConfigEnum;
-import com.optum.fads.pgp.study.common.util.SortOrder;
-import com.optum.fads.pgp.study.common.util.StudyEnum;
-import com.optum.fads.pgp.study.common.util.StudySortEnum;
-import com.optum.fads.pgp.study.dto.ModuleAccess;
-
-class StudyUtilityEnumsTest {
-
-    @Test
-    void fadsConfigEnumResolvesKnownCodes() {
-        assertEquals(54L, FadsConfigEnum.timePeriodBeginDate.getOptionCode());
-        assertEquals(FadsConfigEnum.xOverValue, FadsConfigEnum.valueOf(22L));
-        assertNull(FadsConfigEnum.valueOf(999L));
-    }
-
-    @Test
-    void sortOrderResolvesDirectionValues() {
-        assertEquals(1, SortOrder.asc.getValue());
-        assertEquals(SortOrder.asc, SortOrder.valueOf(1));
-        assertEquals(SortOrder.desc, SortOrder.valueOf(-1));
-        assertNull(SortOrder.valueOf(0));
-    }
-
-    @Test
-    void studyAndModuleEnumsExposeExpectedNames() throws Exception {
-        assertEquals("studyName", StudyEnum.studyName.name());
-        assertEquals(ModuleAccess.STUDY, ModuleAccess.getByName("1"));
-        assertEquals(ModuleAccess.JOBMONITOR, ModuleAccess.getByName("2"));
-
-        Method getValue = StudySortEnum.class.getDeclaredMethod("getValue");
-        getValue.setAccessible(true);
-        assertEquals("pbName", getValue.invoke(StudySortEnum.studyName));
-        assertEquals("createDte", getValue.invoke(StudySortEnum.createDate));
-    }
-}
-package com.optum.fads.pgp.study.api.config;
-
-import com.optum.fads.pgp.study.config.CommonConfig;
-import org.junit.Assert;
-import org.junit.jupiter.api.Test;
-import org.modelmapper.convention.MatchingStrategies;
-
-/**
- * Test CommonConfig for spring based configuration
- */
-public class CommonConfigTest {
-
-
-	  @Test
-      public void testModelMapperInstance() { final var config = new
-              CommonConfig(); Assert.assertNotNull(config.modelMapper());
-	  Assert.assertEquals(MatchingStrategies.STRICT,
-	  config.modelMapper().getConfiguration().getMatchingStrategy()); }
-	 }
-package com.optum.fads.pgp.study.api.controller;
-
-import com.optum.fads.pgp.study.controller.CommonController;
-import com.optum.fads.pgp.study.dto.LabelValue;
-import com.optum.fads.pgp.study.service.ICommonService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
-
-class CommonControllerTest {
-
-    @InjectMocks
-    private CommonController commonController;
-
-    @Mock
-    private ICommonService commonService;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
-
-    @Test
-    void testFindAllEncClaimTypes_shouldReturnListOfLabelValue() {
-        // Arrange
-        List<LabelValue> mockList = List.of(
-                new LabelValue("ClaimType1", 1),
-                new LabelValue("ClaimType2", 2)
-        );
-        when(commonService.findAllEncClaimTypes()).thenReturn(mockList);
-
-        // Act
-        ResponseEntity<List<LabelValue>> response = commonController.findAllEncClaimTypes();
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(mockList, response.getBody());
-    }
-
-    @Test
-    void testFindAllCrossOverTypes_shouldReturnListOfLabelValue() {
-        // Arrange
-        List<LabelValue> mockList = List.of(
-                new LabelValue("CrossOverType1", 1),
-                new LabelValue("CrossOverType2", 2)
-        );
-        when(commonService.findAllCrossOverTypes()).thenReturn(mockList);
-
-        // Act
-        ResponseEntity<List<LabelValue>> response = commonController.findAllCrossOverTypes();
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(mockList, response.getBody());
-    }
-
-    @Test
-    void testFindAllConfigValues_shouldReturnMapOfConfigValues() {
-        // Arrange
-        Map<String, Object> mockMap = Map.of(
-                "ConfigKey1", "ConfigValue1",
-                "ConfigKey2", "ConfigValue2"
-        );
-        when(commonService.findAllConfigValues()).thenReturn(mockMap);
-
-        // Act
-        ResponseEntity<Map<String, Object>> response = commonController.findAllConfigValues();
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(mockMap, response.getBody());
-    }
-}
-package com.optum.fads.pgp.study.api.controller;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.lang.reflect.Field;
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-import com.optum.fads.pgp.study.common.rest.ResponseBuilder;
-import com.optum.fads.pgp.study.common.util.SortOrder;
-import com.optum.fads.pgp.study.common.util.StudyConstants;
-import com.optum.fads.pgp.study.common.util.StudyEnum;
-import com.optum.fads.pgp.study.common.util.StudySortEnum;
-import com.optum.fads.pgp.study.controller.StudyController;
-import com.optum.fads.pgp.study.dto.AccessLevel;
-import com.optum.fads.pgp.study.dto.AppUser;
-import com.optum.fads.pgp.study.dto.Role;
-import com.optum.fads.pgp.study.dto.Study;
-import com.optum.fads.pgp.study.dto.StudyDTO;
-import com.optum.fads.pgp.study.dto.TimePeriod;
-import com.optum.fads.pgp.study.service.ICommonService;
-import com.optum.fads.pgp.study.service.IStudyService;
-
-@ExtendWith(MockitoExtension.class)
-class StudyControllerAdditionalTest {
-
-    private StudyController studyController;
-
-    @Mock
-    private ResponseBuilder responseBuilder;
-
-    @Mock
-    private IStudyService studyService;
-
-    @Mock
-    private ICommonService commonService;
-
-    @Mock
-    private Authentication authentication;
-
-    @Mock
-    private SecurityContext securityContext;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        studyController = new StudyController(responseBuilder, studyService);
-
-        Field field = StudyController.class.getDeclaredField("commonService");
-        field.setAccessible(true);
-        field.set(studyController, commonService);
-
-        SecurityContextHolder.setContext(securityContext);
-    }
-
-    @AfterEach
-    void tearDown() {
-        SecurityContextHolder.clearContext();
-    }
-
-    @Test
-    void createStudyCreatesStudyWhenUserHasAdminAccess() {
-        AppUser user = userWithAccess("A");
-        StudyDTO request = new StudyDTO();
-        request.setTimePeriods(new ArrayList<>(List.of(new TimePeriod(), new TimePeriod())));
-
-        StudyDTO created = new StudyDTO();
-        created.setStudyName("Created");
-
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(user);
-        when(commonService.getZoneId()).thenReturn(ZoneId.of("UTC"));
-        when(studyService.createStudy(request)).thenReturn(created);
-
-        ResponseEntity<?> response = studyController.createStudy(request);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertSame(created, response.getBody());
-        assertEquals("SYS-1", request.getCreatedBySystemId());
-        assertEquals("SYS-1", request.getUpdatedBySystemId());
-        assertEquals("SYS-1", request.getUser());
-        assertEquals("SYS-1", request.getTimePeriods().get(0).getCreatedUser());
-        assertEquals("SYS-1", request.getTimePeriods().get(1).getUpdatedUser());
-        verify(studyService).createStudy(request);
-    }
-
-    @Test
-    void updateStudyUpdatesStudyWhenUserHasFullAccess() {
-        AppUser user = userWithAccess("A");
-        StudyDTO request = new StudyDTO();
-        request.setCreatedBySystemId("OTHER");
-        request.setTimePeriods(new ArrayList<>(List.of(new TimePeriod())));
-
-        StudyDTO updated = new StudyDTO();
-        updated.setStudyName("Updated");
-
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(user);
-        when(commonService.getZoneId()).thenReturn(ZoneId.of("UTC"));
-        when(studyService.updateStudy(9, request)).thenReturn(updated);
-
-        ResponseEntity<?> response = studyController.updateStudy(9, request);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertSame(updated, response.getBody());
-        assertEquals("SYS-1", request.getUser());
-        assertEquals("SYS-1", request.getUpdatedBySystemId());
-        assertEquals("SYS-1", request.getTimePeriods().get(0).getCreatedUser());
-        verify(studyService).updateStudy(9, request);
-    }
-
-    @Test
-    void updateStudyAllowsOwnerWhenAccessIsB() {
-        AppUser user = userWithAccess("B");
-        StudyDTO request = new StudyDTO();
-        request.setCreatedBySystemId("SYS-1");
-        request.setTimePeriods(new ArrayList<>(List.of(new TimePeriod())));
-
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(user);
-        when(commonService.getZoneId()).thenReturn(ZoneId.of("UTC"));
-        when(studyService.updateStudy(11, request)).thenReturn(request);
-
-        ResponseEntity<?> response = studyController.updateStudy(11, request);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(studyService).updateStudy(11, request);
-    }
-
-    @Test
-    void findAllUsesAscendingSortAndNoFiltersWhenSearchKeysMissing() {
-        String sortValue = StudySortEnum.studyName.value;
-        PageRequest pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Order.asc(sortValue).ignoreCase()));
-        Page<Study> expected = new PageImpl<>(List.of());
-
-        when(studyService.findAllStudies(null, pageable)).thenReturn(expected);
-
-        Page<Study> result = studyController.findAll(StudyEnum.studyName, SortOrder.asc, null, null);
-
-        assertSame(expected, result);
-    }
-
-    @Test
-    void findMyStudiesByPageableReplacesUserSystemIdFilterValue() {
-        AppUser user = userWithAccess("A");
-        String sortValue = StudySortEnum.studyName.value;
-        PageRequest pageable = PageRequest.of(0, 10, Sort.by(Sort.Order.desc(sortValue).ignoreCase()));
-        List<String> searchKeys = List.of("createdBySystemId");
-        List<String> searchValues = new ArrayList<>(List.of(StudyConstants.USER_SYSTEM_ID));
-        Page<Study> expected = new PageImpl<>(List.of());
-
-        when(securityContext.getAuthentication()).thenReturn(authentication);
-        when(authentication.getPrincipal()).thenReturn(user);
-        when(studyService.findAllStudies(java.util.Map.of("createdBySystemId", "SYS-1"), pageable)).thenReturn(expected);
-
-        Page<Study> result =
-                studyController.findMyStudiesByPageable(1, 10, StudyEnum.studyName, -1, searchKeys, searchValues);
-
-        assertSame(expected, result);
-        assertEquals("SYS-1", searchValues.get(0));
-    }
-
-    @Test
-    void checkStudyNameExistsDoesNotTrimNullStudyAndReturnsFalse() {
-        ResponseEntity<Boolean> response = studyController.checkStudyNameExists(null);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(Boolean.FALSE, response.getBody());
-        verify(studyService, never()).isStudyNameExists(any());
-    }
-
-    private static AppUser userWithAccess(String access) {
-        AppUser user = new AppUser();
-        user.setUserSystemId("SYS-1");
-
-        Role role = new Role();
-        role.setAllowedAccesses(List.of(new AccessLevel("1", "STUDY", "Study", access)));
-        user.setRole(role);
-        return user;
-    }
-}
-package com.optum.fads.pgp.study.api.exception;
-
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.sameInstance;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.when;
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-
-import com.optum.fads.pgp.study.common.rest.ResponseBuilder;
-import com.optum.fads.pgp.study.dto.rest.ErrorResponse;
-import com.optum.fads.pgp.study.exception.RestExceptionHandler;
-import com.optum.fads.pgp.study.exception.StudyApiException;
-
-/**
- * The RestExceptionHandlerTest is used to test the type of exception thrown by
- * API controllers
- */
-@RunWith(MockitoJUnitRunner.class)
-public class RestExceptionHandlerTest {
-
-	@Mock
-	private ResponseBuilder mockResponseBuilder;
-
-	@Mock
-	private StudyApiException mockPiApiException;
-
-	@InjectMocks
-	private RestExceptionHandler restExceptionHandler;
-
-	@Test
-	public void testResponseBody() {
-		final var errorResponse = new ErrorResponse(null, null);
-		when(mockPiApiException.getHttpStatus()).thenReturn(INTERNAL_SERVER_ERROR);
-		when(mockResponseBuilder.buildErrorResponse(mockPiApiException)).thenReturn(errorResponse);
-
-		final var responseEntity = restExceptionHandler.exceptionHandler(mockPiApiException);
-
-		assertThat(responseEntity.getBody(), is(sameInstance(errorResponse)));
-	}
-
-	@Test
-	public void testStatus() {
-		when(mockPiApiException.getHttpStatus()).thenReturn(INTERNAL_SERVER_ERROR);
-
-		final var responseEntity = restExceptionHandler.exceptionHandler(mockPiApiException);
-
-		assertThat(responseEntity.getStatusCode(), is(equalTo(INTERNAL_SERVER_ERROR)));
-	}
-
-}
-package com.optum.fads.pgp.study.api.security;
-
-import com.optum.fads.pgp.study.security.UserJwtAuthenticationConverter;
-import com.optum.fads.pgp.study.service.IUserDetailsService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.oauth2.jwt.Jwt;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-class UserJwtAuthenticationConverterTest {
-
-    private UserJwtAuthenticationConverter converter;
-
-    @Mock
-    private IUserDetailsService userDetailsService;
-
-    @BeforeEach
-    void setUp() {
-        MockitoAnnotations.openMocks(this);
-        converter = new UserJwtAuthenticationConverter(userDetailsService, List.of("upn", "unique_name", "email", "sub"));
-    }
-
-    @Test
-    void testConvert_whenValidJwt_shouldReturnAuthenticationToken() {
-        // Arrange
-        Map<String, Object> claims = Map.of(
-                "email", "testuser@example.com",
-                "groups", List.of("admin", "user")
-        );
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "HS256")
-                .claims(claimsMap -> claimsMap.putAll(claims)) // Use a lambda to populate claims
-                .build();
-
-        User mockUser = new User("testuser@example.com", "password", List.of());
-        when(userDetailsService.loadUserByUsername("testuser@example.com")).thenReturn(mockUser);
-
-        // Act
-        AbstractAuthenticationToken token = converter.convert(jwt);
-
-        // Assert
-        assertNotNull(token);
-        assertEquals(mockUser, token.getPrincipal());
-        assertEquals("n/a", token.getCredentials());
-        assertEquals(2, token.getAuthorities().size());
-        assertTrue(token.getAuthorities().stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")));
-        assertTrue(token.getAuthorities().stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_USER")));
-    }
-
-    @Test
-    void testConvert_whenJwtHasNoGroups_shouldReturnEmptyAuthorities() {
-        // Arrange
-        Map<String, Object> claims = Map.of(
-                "email", "testuser@example.com"
-        );
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "HS256")
-                .claims(claimsMap -> claimsMap.putAll(claims))
-                .build();
-
-        User mockUser = new User("testuser@example.com", "password", List.of());
-        when(userDetailsService.loadUserByUsername("testuser@example.com")).thenReturn(mockUser);
-
-        // Act
-        AbstractAuthenticationToken token = converter.convert(jwt);
-
-        // Assert
-        assertNotNull(token);
-        assertEquals(mockUser, token.getPrincipal());
-        assertEquals("n/a", token.getCredentials());
-        assertTrue(token.getAuthorities().isEmpty());
-    }
-
-    @Test
-    void testConvert_whenJwtHasNoEmailOrUsername_shouldThrowBadCredentialsException() {
-        // Arrange
-        Map<String, Object> claims = Map.of(
-                "groups", List.of("admin", "user")
-        );
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "HS256")
-                .claims(claimsMap -> claimsMap.putAll(claims))
-                .build();
-
-        // Act & Assert
-        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
-        verify(userDetailsService, never()).loadUserByUsername(anyString());
-    }
-
-    @Test
-    void testConvert_whenUserNotFound_shouldThrowBadCredentialsException() {
-        // Arrange
-        Map<String, Object> claims = Map.of(
-                "email", "nonexistentuser@example.com",
-                "groups", List.of("admin", "user")
-        );
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "HS256")
-                .claims(claimsMap -> claimsMap.putAll(claims))
-                .build();
-
-        when(userDetailsService.loadUserByUsername("nonexistentuser@example.com")).thenReturn(null);
-
-        // Act & Assert
-        assertThrows(BadCredentialsException.class, () -> converter.convert(jwt));
-    }
-}
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-
-	<modelVersion>4.0.0</modelVersion>
-
-	<groupId>com.optum.fads</groupId>
-	<artifactId>fads-pgp-study-api</artifactId>
-	<version>1.0.0</version>
-	<packaging>jar</packaging>
-
- 	<parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.9</version>
-        <relativePath/>
-    </parent>
-
-	<properties>
-		<maven.test.skip>false</maven.test.skip>
-		<skipTests>${maven.test.skip}</skipTests>
-		<!-- >surefire.skip>${skipTests}</surefire.skip -->
-		<failsafe.skip>${skipTests}</failsafe.skip>
-		<logback.version>1.5.26</logback.version>
-        <java.version>17</java.version>
-        <spring.cloud.version>2023.0.2</spring.cloud.version>
-		<modelmapper.version>3.1.1</modelmapper.version>
-		<jacoco.version>0.8.10</jacoco.version>
-		<guava.version>32.1.2-jre</guava.version>
-		<logback.encoder.version>8.0</logback.encoder.version>
-		<lombok.version>1.18.28</lombok.version>
-		<log4j2.version>2.17.1</log4j2.version>
-		<org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
-		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-		<log4j.version>2.24.3</log4j.version>
-		<commons-lang.version>2.6</commons-lang.version>
-        <commons.collections4.version>4.5.0-M1</commons.collections4.version>
-		<querydsl.version>5.1.0</querydsl.version>
-		<sonar.coverage.exclusions>
-			**/com/optum/ /pgpstudy.api/**,
-		</sonar.coverage.exclusions>
-		<netty.version>4.1.130.Final</netty.version>
-	</properties>
-
-	<dependencyManagement>
-		<dependencies>
-			<dependency>
-				<groupId>org.springframework.cloud</groupId>
-				<artifactId>spring-cloud-dependencies</artifactId>
-				<version>${spring.cloud.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.logging.log4j</groupId>
-				<artifactId>log4j-bom</artifactId>
-				<version>${log4j.version}</version>
-				<scope>import</scope>
-				<type>pom</type>
-			</dependency>
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-bom</artifactId>
-				<version>${netty.version}</version>
-				<type>pom</type>
-				<scope>import</scope>
-			</dependency>
-		</dependencies>
-	</dependencyManagement>
-
-	<dependencies>
-		<!-- Spring Boot Dependencies -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
-		</dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-jdbc</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-              </dependency>
-		<dependency>
-			<groupId>org.springframework.data</groupId>
-			<artifactId>spring-data-commons</artifactId>
-		</dependency>
-
-        <dependency>
-            <groupId>org.apache.tomcat.embed</groupId>
-            <artifactId>tomcat-embed-core</artifactId>
-            <version>10.1.47</version>
-        </dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-webflux</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-oauth2-resource-server</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-oauth2-jose</artifactId>
-		</dependency>
-        
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-compression</artifactId>
-            <version>4.2.5.Final</version>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-tracing-bridge-brave</artifactId>
-        </dependency>
-		
-	    
-		<!-- Model Mapper -->
-		<dependency>
-			<groupId>org.modelmapper</groupId>
-			<artifactId>modelmapper</artifactId>
-			<version>${modelmapper.version}</version>
-		</dependency>
-
-
-		<!--Used in Getter/Setter Verifier @NonNull -->
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>${guava.version}</version>
-		</dependency>
-
-		<!-- Lombok -->
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<scope>provided</scope>
-		</dependency>
-
-		<!-- MapStruct -->
-
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-jdk8</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct-processor</artifactId>
-			<version>${org.mapstruct.version}</version>
-		</dependency>
-
-
-        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-collections4 -->
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-collections4</artifactId>
-            <version>${commons.collections4.version}</version>
-        </dependency>
-		<dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
-        </dependency>
-		<!-- JSON logging -->
-		<dependency>
-			<groupId>net.logstash.logback</groupId>
-			<artifactId>logstash-logback-encoder</artifactId>
-			<version>${logback.encoder.version}</version>
-			<scope>runtime</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.codehaus.janino</groupId>
-			<artifactId>janino</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-
-		<!-- Testing -->
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.13.2</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.junit.vintage</groupId>
-			<artifactId>junit-vintage-engine</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.mockito</groupId>
-			<artifactId>mockito-core</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.microsoft.sqlserver/mssql-jdbc -->
-		<dependency>
-			<groupId>com.microsoft.sqlserver</groupId>
-			<artifactId>mssql-jdbc</artifactId>
-			<version>13.2.1.jre11</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.querydsl</groupId>
-			<artifactId>querydsl-jpa</artifactId>
-			<version>${querydsl.version}</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.querydsl</groupId>
-			<artifactId>querydsl-apt</artifactId>
-			<version>${querydsl.version}</version>
-		</dependency>
-        <dependency>
-            <groupId>jakarta.persistence</groupId>
-            <artifactId>jakarta.persistence-api</artifactId>
-        </dependency>
-	
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>test</scope>
-        </dependency>
-  
-    </dependencies>
-
-    <build>
-       <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.projectlombok</groupId>
-                    <artifactId>lombok-maven-plugin</artifactId>
-                    <version>${lombok.version}</version>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <phase>install</phase>
-                        <goals>
-                            <goal>copy-dependencies</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/lib</outputDirectory>
-                            <excludeScope>provided</excludeScope>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-enforcer-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>enforce-maven</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <configuration>
-                            <rules>
-                                <requireMavenVersion>
-                                    <version>3.3.9</version>
-                                </requireMavenVersion>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.2</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>true</skip>
-                    <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                </configuration>
-            </plugin>
-            <!-- Below plugin ensures the execution of test cases during maven build-->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
-                <configuration>
-                    <argLine>${argLine}</argLine>
-                    <useModulePath>false</useModulePath>
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                        <include>**/*TestCase.java</include>
-                    </includes>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>verify</id>
-                        <goals>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <skip>${failsafe.skip}</skip>
-                </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>${jacoco.version}</version>
-                <configuration>
-                    <destFile>target/jacoco.exec</destFile>
-                    <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
-                    <formats>
-                        <format>XML</format>
-                        <format>HTML</format>
-                    </formats>
-                    <excludes>
-                        <exclude>**/dto/**</exclude>
-                        <exclude>**/domain/**</exclude>
-                        <exclude>**/repo/**</exclude>
-                        <exclude>**/exception/**</exclude>
-                        <exclude>**/mapper/**</exclude>
-                        <exclude>**/config/**</exclude>
-                        <exclude>**/*Application.class</exclude>
-                    </excludes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>jacoco-initialize</id>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-site</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-        </plugins>
-    </build>
-</project>
-
+2026-04-08T18:19:37.724+05:30  INFO 14744 --- [studyservice] [           main] [                                                 ] .s.b.a.l.ConditionEvaluationReportLogger :
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-04-08T18:19:37.891+05:30 ERROR 14744 --- [studyservice] [           main] [                                                 ] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:645)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:152)
+        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
+        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
+        at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1461)
+        at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:595)
+        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:152)
+        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:111)
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
+        at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
+        at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:200)
+        at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:139)
+        at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:260)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.createTest(SpringJUnit4ClassRunner.java:228)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner$1.runReflectiveCall(SpringJUnit4ClassRunner.java:289)
+        at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.methodBlock(SpringJUnit4ClassRunner.java:291)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:247)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:97)
+        at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+        at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+        at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+        at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+        at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+        at org.springframework.test.context.junit4.statements.RunBeforeTestClassCallbacks.evaluate(RunBeforeTestClassCallbacks.java:61)
+        at org.springframework.test.context.junit4.statements.RunAfterTestClassCallbacks.evaluate(RunAfterTestClassCallbacks.java:70)
+        at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+        at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.run(SpringJUnit4ClassRunner.java:191)
+        at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+        at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+        at org.junit.vintage.engine.execution.RunnerExecutor.execute(RunnerExecutor.java:42)
+        at org.junit.vintage.engine.execution.VintageExecutor.executeClassesAndMethodsSequentially(VintageExecutor.java:93)
+        at org.junit.vintage.engine.execution.VintageExecutor.executeAllChildren(VintageExecutor.java:73)
+        at org.junit.vintage.engine.VintageTestEngine.execute(VintageTestEngine.java:70)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:201)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:170)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:94)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:59)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:142)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:58)
+        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
+        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
+        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+        at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)
+        at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+        at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)
+        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+        at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+        at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+        at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+        at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+        at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+        at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        ... 71 common frames omitted
+Caused by: java.lang.RuntimeException: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at com.zaxxer.hikari.util.DriverDataSource.<init>(DriverDataSource.java:116)
+        at com.zaxxer.hikari.pool.PoolBase.initializeDataSource(PoolBase.java:333)
+        at com.zaxxer.hikari.pool.PoolBase.<init>(PoolBase.java:118)
+        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:90)
+        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
+        at org.springframework.boot.jdbc.EmbeddedDatabaseConnection.isEmbedded(EmbeddedDatabaseConnection.java:166)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateDefaultDdlAutoProvider.getDefaultDdlAuto(HibernateDefaultDdlAutoProvider.java:42)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.lambda$getVendorProperties$1(HibernateJpaConfiguration.java:149)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateSettings.getDdlAuto(HibernateSettings.java:41)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineDdlAuto(HibernateProperties.java:120)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.getAdditionalProperties(HibernateProperties.java:89)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineHibernateProperties(HibernateProperties.java:82)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.getVendorProperties(HibernateJpaConfiguration.java:150)
+        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.buildJpaProperties(JpaBaseConfiguration.java:131)
+        at org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder$Builder.build(EntityManagerFactoryBuilder.java:304)
+        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.entityManagerFactory(JpaBaseConfiguration.java:146)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        ... 74 common frames omitted
+
+2026-04-08T18:19:37.907+05:30  WARN 14744 --- [studyservice] [           main] [                                                 ] o.s.test.context.TestContextManager      : Caught exception while allowing TestExecutionListener [org.springframework.test.context.web.ServletTestExecutionListener] to prepare test instance [com.optum.fads.pgp.study.api.StudyServiceApplicationTest@5137f7a6]
+
+java.lang.IllegalStateException: Failed to load ApplicationContext for [WebMergedContextConfiguration@5a19393 testClass = com.optum.fads.pgp.study.api.StudyServiceApplicationTest, locations = [], classes = [com.optum.fads.pgp.study.StudyServiceApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@4601203a, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@640ab13c, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@69923ac3, org.springframework.boot.test.web.reactive.server.WebTestClientContextCustomizer@64aad809, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@40e32762, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@d5af0a5, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@47d023b7, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@10f53899], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:180)
+        at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
+        at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:200)
+        at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:139)
+        at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:260)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.createTest(SpringJUnit4ClassRunner.java:228)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner$1.runReflectiveCall(SpringJUnit4ClassRunner.java:289)
+        at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.methodBlock(SpringJUnit4ClassRunner.java:291)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:247)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:97)
+        at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+        at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+        at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+        at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+        at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+        at org.springframework.test.context.junit4.statements.RunBeforeTestClassCallbacks.evaluate(RunBeforeTestClassCallbacks.java:61)
+        at org.springframework.test.context.junit4.statements.RunAfterTestClassCallbacks.evaluate(RunAfterTestClassCallbacks.java:70)
+        at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+        at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.run(SpringJUnit4ClassRunner.java:191)
+        at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+        at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+        at org.junit.vintage.engine.execution.RunnerExecutor.execute(RunnerExecutor.java:42)
+        at org.junit.vintage.engine.execution.VintageExecutor.executeClassesAndMethodsSequentially(VintageExecutor.java:93)
+        at org.junit.vintage.engine.execution.VintageExecutor.executeAllChildren(VintageExecutor.java:73)
+        at org.junit.vintage.engine.VintageTestEngine.execute(VintageTestEngine.java:70)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:201)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:170)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:94)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.lambda$execute$0(EngineExecutionOrchestrator.java:59)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.withInterceptedStreams(EngineExecutionOrchestrator.java:142)
+        at org.junit.platform.launcher.core.EngineExecutionOrchestrator.execute(EngineExecutionOrchestrator.java:58)
+        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:103)
+        at org.junit.platform.launcher.core.DefaultLauncher.execute(DefaultLauncher.java:85)
+        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+        at org.junit.platform.launcher.core.InterceptingLauncher.lambda$execute$1(InterceptingLauncher.java:39)
+        at org.junit.platform.launcher.core.ClasspathAlignmentCheckingLauncherInterceptor.intercept(ClasspathAlignmentCheckingLauncherInterceptor.java:25)
+        at org.junit.platform.launcher.core.InterceptingLauncher.execute(InterceptingLauncher.java:38)
+        at org.junit.platform.launcher.core.DelegatingLauncher.execute(DelegatingLauncher.java:47)
+        at org.apache.maven.surefire.junitplatform.LauncherAdapter.executeWithoutCancellationToken(LauncherAdapter.java:60)
+        at org.apache.maven.surefire.junitplatform.LauncherAdapter.execute(LauncherAdapter.java:52)
+        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.execute(JUnitPlatformProvider.java:203)
+        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invokeAllTests(JUnitPlatformProvider.java:168)
+        at org.apache.maven.surefire.junitplatform.JUnitPlatformProvider.invoke(JUnitPlatformProvider.java:136)
+        at org.apache.maven.surefire.booter.ForkedBooter.runSuitesInProcess(ForkedBooter.java:385)
+        at org.apache.maven.surefire.booter.ForkedBooter.execute(ForkedBooter.java:162)
+        at org.apache.maven.surefire.booter.ForkedBooter.run(ForkedBooter.java:507)
+        at org.apache.maven.surefire.booter.ForkedBooter.main(ForkedBooter.java:495)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:645)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:152)
+        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
+        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
+        at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1461)
+        at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:595)
+        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:152)
+        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:111)
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
+        ... 48 common frames omitted
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        ... 71 common frames omitted
+Caused by: java.lang.RuntimeException: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at com.zaxxer.hikari.util.DriverDataSource.<init>(DriverDataSource.java:116)
+        at com.zaxxer.hikari.pool.PoolBase.initializeDataSource(PoolBase.java:333)
+        at com.zaxxer.hikari.pool.PoolBase.<init>(PoolBase.java:118)
+        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:90)
+        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
+        at org.springframework.boot.jdbc.EmbeddedDatabaseConnection.isEmbedded(EmbeddedDatabaseConnection.java:166)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateDefaultDdlAutoProvider.getDefaultDdlAuto(HibernateDefaultDdlAutoProvider.java:42)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.lambda$getVendorProperties$1(HibernateJpaConfiguration.java:149)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateSettings.getDdlAuto(HibernateSettings.java:41)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineDdlAuto(HibernateProperties.java:120)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.getAdditionalProperties(HibernateProperties.java:89)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineHibernateProperties(HibernateProperties.java:82)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.getVendorProperties(HibernateJpaConfiguration.java:150)
+        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.buildJpaProperties(JpaBaseConfiguration.java:131)
+        at org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder$Builder.build(EntityManagerFactoryBuilder.java:304)
+        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.entityManagerFactory(JpaBaseConfiguration.java:146)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+        at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+        at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        ... 74 common frames omitted
+
+[ERROR] Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 9.882 s <<< FAILURE! -- in com.optum.fads.pgp.study.api.StudyServiceApplicationTest
+[ERROR] com.optum.fads.pgp.study.api.StudyServiceApplicationTest.contextLoads -- Time elapsed: 0.005 s <<< ERROR!
+java.lang.IllegalStateException: Failed to load ApplicationContext for [WebMergedContextConfiguration@5a19393 testClass = com.optum.fads.pgp.study.api.StudyServiceApplicationTest, locations = [], classes = [com.optum.fads.pgp.study.StudyServiceApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@4601203a, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@640ab13c, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@69923ac3, org.springframework.boot.test.web.reactive.server.WebTestClientContextCustomizer@64aad809, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@40e32762, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@d5af0a5, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@47d023b7, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@10f53899], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:180)
+        at org.springframework.test.context.support.DefaultTestContext.getApplicationContext(DefaultTestContext.java:130)
+        at org.springframework.test.context.web.ServletTestExecutionListener.setUpRequestContextIfNecessary(ServletTestExecutionListener.java:200)
+        at org.springframework.test.context.web.ServletTestExecutionListener.prepareTestInstance(ServletTestExecutionListener.java:139)
+        at org.springframework.test.context.TestContextManager.prepareTestInstance(TestContextManager.java:260)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.createTest(SpringJUnit4ClassRunner.java:228)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner$1.runReflectiveCall(SpringJUnit4ClassRunner.java:289)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.methodBlock(SpringJUnit4ClassRunner.java:291)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:247)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.runChild(SpringJUnit4ClassRunner.java:97)
+        at org.springframework.test.context.junit4.statements.RunBeforeTestClassCallbacks.evaluate(RunBeforeTestClassCallbacks.java:61)
+        at org.springframework.test.context.junit4.statements.RunAfterTestClassCallbacks.evaluate(RunAfterTestClassCallbacks.java:70)
+        at org.springframework.test.context.junit4.SpringJUnit4ClassRunner.run(SpringJUnit4ClassRunner.java:191)
+Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'entityManagerFactory' defined in class path resource [org/springframework/boot/autoconfigure/orm/jpa/HibernateJpaConfiguration.class]: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:657)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiateUsingFactoryMethod(ConstructorResolver.java:645)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiateUsingFactoryMethod(AbstractAutowireCapableBeanFactory.java:1375)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBeanInstance(AbstractAutowireCapableBeanFactory.java:1205)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.doCreateBean(AbstractAutowireCapableBeanFactory.java:569)
+        at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.createBean(AbstractAutowireCapableBeanFactory.java:529)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.lambda$doGetBean$0(AbstractBeanFactory.java:339)
+        at org.springframework.beans.factory.support.DefaultSingletonBeanRegistry.getSingleton(DefaultSingletonBeanRegistry.java:373)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.doGetBean(AbstractBeanFactory.java:337)
+        at org.springframework.beans.factory.support.AbstractBeanFactory.getBean(AbstractBeanFactory.java:207)
+        at org.springframework.context.support.AbstractApplicationContext.finishBeanFactoryInitialization(AbstractApplicationContext.java:973)
+        at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:627)
+        at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:752)
+        at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:439)
+        at org.springframework.boot.SpringApplication.run(SpringApplication.java:318)
+        at org.springframework.boot.test.context.SpringBootContextLoader.lambda$loadContext$3(SpringBootContextLoader.java:152)
+        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:58)
+        at org.springframework.util.function.ThrowingSupplier.get(ThrowingSupplier.java:46)
+        at org.springframework.boot.SpringApplication.withHook(SpringApplication.java:1461)
+        at org.springframework.boot.test.context.SpringBootContextLoader$ContextLoaderHook.run(SpringBootContextLoader.java:595)
+        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:152)
+        at org.springframework.boot.test.context.SpringBootContextLoader.loadContext(SpringBootContextLoader.java:111)
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContextInternal(DefaultCacheAwareContextLoaderDelegate.java:225)
+        at org.springframework.test.context.cache.DefaultCacheAwareContextLoaderDelegate.loadContext(DefaultCacheAwareContextLoaderDelegate.java:152)
+        ... 12 more
+Caused by: org.springframework.beans.BeanInstantiationException: Failed to instantiate [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]: Factory method 'entityManagerFactory' threw exception with message: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:200)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiateWithFactoryMethod(SimpleInstantiationStrategy.java:89)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.instantiate(SimpleInstantiationStrategy.java:169)
+        at org.springframework.beans.factory.support.ConstructorResolver.instantiate(ConstructorResolver.java:653)
+        ... 35 more
+Caused by: java.lang.RuntimeException: Driver com.microsoft.sqlserver.jdbc.SQLServerDriver claims to not accept jdbcUrl, ${DB_URL}
+        at com.zaxxer.hikari.util.DriverDataSource.<init>(DriverDataSource.java:116)
+        at com.zaxxer.hikari.pool.PoolBase.initializeDataSource(PoolBase.java:333)
+        at com.zaxxer.hikari.pool.PoolBase.<init>(PoolBase.java:118)
+        at com.zaxxer.hikari.pool.HikariPool.<init>(HikariPool.java:90)
+        at com.zaxxer.hikari.HikariDataSource.getConnection(HikariDataSource.java:111)
+        at org.springframework.boot.jdbc.EmbeddedDatabaseConnection.isEmbedded(EmbeddedDatabaseConnection.java:166)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateDefaultDdlAutoProvider.getDefaultDdlAuto(HibernateDefaultDdlAutoProvider.java:42)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.lambda$getVendorProperties$1(HibernateJpaConfiguration.java:149)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateSettings.getDdlAuto(HibernateSettings.java:41)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineDdlAuto(HibernateProperties.java:120)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.getAdditionalProperties(HibernateProperties.java:89)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateProperties.determineHibernateProperties(HibernateProperties.java:82)
+        at org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaConfiguration.getVendorProperties(HibernateJpaConfiguration.java:150)
+        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.buildJpaProperties(JpaBaseConfiguration.java:131)
+        at org.springframework.boot.orm.jpa.EntityManagerFactoryBuilder$Builder.build(EntityManagerFactoryBuilder.java:304)
+        at org.springframework.boot.autoconfigure.orm.jpa.JpaBaseConfiguration.entityManagerFactory(JpaBaseConfiguration.java:146)
+        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+        at org.springframework.beans.factory.support.SimpleInstantiationStrategy.lambda$instantiate$0(SimpleInstantiationStrategy.java:172)
+        ... 38 more
+
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   StudyControllerTest.testCheckStudyNameExists_withEmptyStudyName_shouldReturnFalse:580
+studyService.isStudyNameExists(<any string>);
+Never wanted here:
+-> at com.optum.fads.pgp.study.api.controller.StudyControllerTest.testCheckStudyNameExists_withEmptyStudyName_shouldReturnFalse(StudyControllerTest.java:580)
+But invoked here:
+-> at com.optum.fads.pgp.study.controller.StudyController.checkStudyNameExists(StudyController.java:280) with arguments: []
+
+[ERROR]   StudyControllerTest.testCreateStudy_withNullStudyDTO_shouldReturnBadRequest:335
+Expected: is <400 BAD_REQUEST>
+     but: was <403 FORBIDDEN>
+[ERROR]   StudyControllerTest.testDeleteStudy_withInvalidStudyId_shouldReturnBadRequest:479
+Expected: is <400 BAD_REQUEST>
+     but: was <500 INTERNAL_SERVER_ERROR>
+[ERROR] Errors:
+[ERROR]   StudyServiceApplicationTest.contextLoads » IllegalState Failed to load ApplicationContext for [WebMergedContextConfiguration@5a19393 testClass = com.optum.fads.pgp.study.api.StudyServiceApplicationTest, locations = [], classes = [com.optum.fads.pgp.study.StudyServiceApplication], contextInitializerClasses = [], activeProfiles = [], propertySourceDescriptors = [], propertySourceProperties = ["org.springframework.boot.test.context.SpringBootTestContextBootstrapper=true"], contextCustomizers = [org.springframework.boot.test.context.filter.ExcludeFilterContextCustomizer@4601203a, org.springframework.boot.test.json.DuplicateJsonObjectContextCustomizerFactory$DuplicateJsonObjectContextCustomizer@640ab13c, org.springframework.boot.test.mock.mockito.MockitoContextCustomizer@0, org.springframework.boot.test.web.client.TestRestTemplateContextCustomizer@69923ac3, org.springframework.boot.test.web.reactive.server.WebTestClientContextCustomizer@64aad809, org.springframework.boot.test.web.reactor.netty.DisableReactorResourceFactoryGlobalResourcesContextCustomizerFactory$DisableReactorResourceFactoryGlobalResourcesContextCustomizerCustomizer@40e32762, org.springframework.boot.test.autoconfigure.OnFailureConditionReportContextCustomizerFactory$OnFailureConditionReportContextCustomizer@d5af0a5, org.springframework.boot.test.autoconfigure.actuate.observability.ObservabilityContextCustomizerFactory$DisableObservabilityContextCustomizer@1f, org.springframework.boot.test.autoconfigure.properties.PropertyMappingContextCustomizer@0, org.springframework.boot.test.autoconfigure.web.servlet.WebDriverContextCustomizer@47d023b7, org.springframework.test.context.support.DynamicPropertiesContextCustomizer@0, org.springframework.boot.test.context.SpringBootTestAnnotation@10f53899], resourceBasePath = "src/main/webapp", contextLoader = org.springframework.boot.test.context.SpringBootContextLoader, parent = null]
+[ERROR]   StudyControllerTest.testFindAllByPageable_withInvalidPageNumber_shouldDefaultToZero:184 » NullPointer Cannot invoke "com.optum.fads.pgp.study.common.util.SortOrder.toString()" because the return value of "com.optum.fads.pgp.study.common.util.SortOrder.valueOf(int)" is null
+[ERROR]   StudyControllerTest.testScheduleStudy_withNullStudy_shouldReturnBadRequest:515 » NullPointer Cannot invoke "com.optum.fads.pgp.study.dto.Study.setCreatedBySystemId(String)" because "study" is null
+[ERROR]   StudyControllerTest.testUpdateStudy_withNullStudyDTO_shouldReturnBadRequest:410 » NullPointer Cannot invoke "com.optum.fads.pgp.study.dto.StudyDTO.setUser(String)" because "study" is null
+[INFO]
+[ERROR] Tests run: 201, Failures: 3, Errors: 4, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:03 min
+[INFO] Finished at: 2026-04-08T18:19:38+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-pgp-study-api: There are test failures.
+[ERROR]
+[ERROR] See C:\Users\sgupt664\BE_Projects\fads-pgp-study-api\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+C:\Users\sgupt664\BE_Projects\fads-pgp-study-api>
