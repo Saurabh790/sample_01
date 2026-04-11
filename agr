@@ -1,490 +1,656 @@
 package com.optum.fads.caseentrybatch.api.config;
 
-import org.quartz.CronScheduleBuilder;
-import org.quartz.JobBuilder;
-import org.quartz.JobDetail;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-
-import com.optum.fads.caseentrybatch.api.job.CaseEntryBatchJob;
-import com.optum.fads.caseentrybatch.api.repo.CaseConfigRepository;
-
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
-@Configuration
-public class CaseEntryBatchJobConfig {
-	private static final String BATCH_CASE_SCHEDULE = "BATCH_CASE_ENTRY_SCHEDULE";
-	
-	@Autowired
-	private CaseConfigRepository caseConfigTRepository;
-	
-	@Bean
-	public JobDetail caseBatchJobDetails() {
-		
-	//	return JobBuilder.newJob(casebatchJob.class).withIdentity("casebatchJob").usingJobData("casebatchJobDetail", "test")
-		return JobBuilder.newJob(CaseEntryBatchJob.class).withIdentity("caseEntryBatchJob")
-				.storeDurably().build();
-	}
-
-	@Bean
-	public Trigger caseBatchJobTrigger() {
-		String batchCaseCronDb = caseConfigTRepository.getOptionValue(BATCH_CASE_SCHEDULE);
-		
-		log.info("casebatchJobTrigger set up with Cron Expression " + batchCaseCronDb);
-		return TriggerBuilder.newTrigger().forJob(caseBatchJobDetails()).withIdentity("CaseBatchJobTrigger", "CaseBatchGroup")
-				.withSchedule(CronScheduleBuilder.cronSchedule(batchCaseCronDb)).build();
-	}
-	
-	
-}
-
-
-/*
-//***********************************************
-// Copyright UNITEDHEALTH GROUP CORPORATION 2018.
-// This software and documentation contain confidential and
-// proprietary information owned by UnitedHealth Group Corporation.
-// Unauthorized use and distribution are prohibited.
-//***********************************************
-*/
-
-package com.optum.fads.caseentrybatch.api.config;
-
-import com.azure.identity.ClientSecretCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.identity.ClientSecretCredential;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-
-import static org.springframework.beans.factory.config.ConfigurableBeanFactory.SCOPE_PROTOTYPE;
-
-/**
- * The CommonConfig holds spring based configuration
- */
-@Configuration
-public class CommonConfig {
-
-    @Value("${spring.cloud.azure.keyvault.secrets.endpoint}")
-    private String azureKeyVaultUrl;
-    @Value("${spring.cloud.azure.keyvault.credential.tenant-id}")
-    private String azureKeyVaultTenant;
-    @Value("${spring.cloud.azure.keyvault.credential.client-secret}")
-    private String azureKeyVaultSecret;
-    @Value("${spring.cloud.azure.keyvault.credential.client-id}")
-    private String azureKeyVaultClientId;
-
-    /**
-     * Model Mapper for mapping objects
-     *
-     * @return modelMapper
-     */
-    @Bean
-    @Scope(SCOPE_PROTOTYPE)
-    public ModelMapper modelMapper() {
-        final var modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        return modelMapper;
-    }
-
-    @Bean
-    public SecretClient secretClient() {
-        ClientSecretCredential clientSecretCredential = new ClientSecretCredentialBuilder()
-                .clientId(azureKeyVaultClientId)
-                .clientSecret(azureKeyVaultSecret)
-                .tenantId(azureKeyVaultTenant)
-                .build();
-
-        return new SecretClientBuilder()
-                .vaultUrl(azureKeyVaultUrl)
-                .credential(clientSecretCredential)
-                .buildClient();
-    }
-}
-package com.optum.fads.caseentrybatch.api.config;
-
-import java.io.StringReader;
-import java.security.PrivateKey;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.spec.RSAPrivateCrtKeySpec;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.jce.provider.BouncyCastleProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMEncryptedKeyPair;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.PEMParser;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8DecryptorProviderBuilder;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.operator.InputDecryptorProvider;
-import net.snowflake.client.jdbc.internal.org.bouncycastle.pkcs.PKCS8EncryptedPrivateKeyInfo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import java.security.KeyFactory;
-import java.security.PrivateKey;
-import java.security.Security;
-import java.security.interfaces.RSAPrivateCrtKey;
-import java.security.spec.RSAPrivateCrtKeySpec;
-
-
-public class PemKeyLoader {
-    private static final Logger logger =
-            LoggerFactory.getLogger(PemKeyLoader.class);
-
-    static {
-        Security.addProvider(new BouncyCastleProvider());
-    }
-
-    public static PrivateKey loadPrivateKeyPem(String pemContent, char[] passphrase) throws Exception {
-        logger.debug("Parsing PEM content...");
-        try (PEMParser pemParser = new PEMParser(new StringReader(pemContent))) {
-            Object pemObject = pemParser.readObject();
-            PrivateKeyInfo privateKeyInfo = null;
-
-            if (pemObject instanceof PKCS8EncryptedPrivateKeyInfo) {
-                if (passphrase == null) {
-                    throw new IllegalArgumentException(
-                            "Encrypted key found but no passphrase provided."
-                    );
-                }
-                logger.debug("Detected PKCS#8 encrypted key.");
-                PKCS8EncryptedPrivateKeyInfo encInfo =
-                        (PKCS8EncryptedPrivateKeyInfo) pemObject;
-                InputDecryptorProvider decProv =
-                        new JceOpenSSLPKCS8DecryptorProviderBuilder().build(passphrase);
-                privateKeyInfo = encInfo.decryptPrivateKeyInfo(decProv);
-
-            } else if (pemObject instanceof PEMEncryptedKeyPair) {
-                logger.debug("Detected old-format encrypted key (PEM).");
-                // Add necessary decryption if needed
-            } else if (pemObject instanceof PrivateKeyInfo) {
-                logger.debug("Detected unencrypted PKCS#8 key.");
-                privateKeyInfo = (PrivateKeyInfo) pemObject;
-            } else {
-                logger.debug("Unknown PEM object type: {}",
-                        pemObject == null ? "null" : pemObject.getClass().getName());
-            }
-
-            // Convert to BC key first
-            JcaPEMKeyConverter converter = new JcaPEMKeyConverter()
-                    .setProvider(BouncyCastleProvider.PROVIDER_NAME);
-            PrivateKey bcKey = converter.getPrivateKey(privateKeyInfo);
-
-            // Convert BC key to standard JDK RSA key
-            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            RSAPrivateCrtKey rsaKey = (RSAPrivateCrtKey) bcKey;
-
-            RSAPrivateCrtKeySpec keySpec = new RSAPrivateCrtKeySpec(
-                    rsaKey.getModulus(),
-                    rsaKey.getPublicExponent(),
-                    rsaKey.getPrivateExponent(),
-                    rsaKey.getPrimeP(),
-                    rsaKey.getPrimeQ(),
-                    rsaKey.getPrimeExponentP(),
-                    rsaKey.getPrimeExponentQ(),
-                    rsaKey.getCrtCoefficient()
-            );
-
-            PrivateKey jdkKey = keyFactory.generatePrivate(keySpec);
-            logger.debug("Key conversion successfull ***");
-
-            return jdkKey;
-        }
-    }
-}
-package com.optum.fads.caseentrybatch.api.config;
-
-import java.io.IOException;
-import java.security.PrivateKey;
-import java.util.HashMap;
-import java.util.Properties;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import javax.sql.DataSource;
 
-import org.bouncycastle.pkcs.PKCSException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.junit.Before;
+import org.junit.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.azure.security.keyvault.secrets.SecretClient;
-import com.zaxxer.hikari.HikariDataSource;
-
-import jakarta.persistence.EntityManagerFactory;
-import net.snowflake.client.jdbc.SnowflakeBasicDataSource;
-
-/**
- * @author sbajaj8
- *
- */
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "snfkEntityManagerFactory",
-						transactionManagerRef = "txManagerSnFk",
-						basePackages = {"com.optum.fads.caseentrybatch.api.snowflakeRepo"}
-						)
-public class ServiceConfig 
-{
-    private static final Logger logger =
-            LoggerFactory.getLogger(ServiceConfig.class);
-
-	
-	@Value("${spring.datasource.snfk.jdbcUrl}")
-    private String url;
-
-    @Value("${spring.datasource.snfk.userName}")
-    private String username;
-
-    @Value("${spring.datasource.snfk.password}")
-    private String password;
-
-    @Value("${spring.datasource.snfk.certKey}")
-    private String certKey;
-
-    @Value("${spring.datasource.snfk.passphrase}")
-    private String passphrase;
-
-    @Value("${spring.datasource.snfk.database}")
-    private String database;
-
-    @Value("${spring.datasource.snfk.schema}")
-    private String schema;
-
-    @Value("${spring.datasource.snfk.warehouse}")
-    private String warehouse;
-
-    @Value("${spring.datasource.snfk.account}")
-    private String account;
-    
-    @Value("${spring.datasource.snfk.role}")
-    private String role;
-
-    @Value("${db.snfk-login.useCert}")
-    private Boolean useCert;
-
-    private final SecretClient secretClient;
-
-    public ServiceConfig(SecretClient secretClient) {
-        this.secretClient = secretClient;
-    }
-	
-    @Primary
-	@Bean(name="fadsDataSource")
-    public DataSource customDataSource() throws Exception, IOException {
-        if(useCert){
-            String pemContent = secretClient.getSecret(certKey).getValue();
-            logger.info("snowflake login using certificate");
-
-            char[] password = secretClient.getSecret(passphrase).getValue()  != null ? secretClient.getSecret(passphrase).getValue().toCharArray() : null;
-            PrivateKey privateKey = PemKeyLoader.loadPrivateKeyPem(pemContent, password);
-            // Add more logging
-            logger.info("Private key class: {}", privateKey.getClass().getName());
-            logger.info("Private key implements RSAPrivateCrtKey? {}", privateKey instanceof java.security.interfaces.RSAPrivateCrtKey);
-
-            SnowflakeBasicDataSource dataSource = new SnowflakeBasicDataSource();
-
-            dataSource.setUrl(url);
-            dataSource.setDatabaseName(database);
-            dataSource.setSchema(schema);
-            dataSource.setWarehouse(warehouse);
-            if(account != null && !account.isEmpty()) {
-                dataSource.setAccount(account);
-            }
-            if(role != null && !role.isEmpty()) {
-                dataSource.setRole(role);
-            }
-
-            dataSource.setUser(username);
-            dataSource.setPrivateKey(privateKey);
-
-            HikariDataSource hikariDs = new HikariDataSource();
-            hikariDs.setDataSource(dataSource);
-
-            return hikariDs;
-
-        } else {
-            String user = secretClient.getSecret(username).getValue();
-            String pass = secretClient.getSecret(password).getValue();
-            logger.info("snowflake login using username and password");
-            Properties props = new Properties();
-            props.put("user", user);
-            props.put("password", pass);
-            props.put("database", database);
-            props.put("schema", schema);
-            props.put("warehouse", warehouse);
-            if(role != null && !role.isEmpty()){
-                props.put("role", role);
-            }
-            if(account != null && !account.isEmpty()){
-                props.put("account", account);
-            }
-            return new DriverManagerDataSource(url, props);
-        }
-
-    }
-	
-    @Primary
-	@Bean("snfkEntityManagerFactory")
-    public LocalContainerEntityManagerFactoryBean 
-    snfkEntityManagerFactory( ) throws IOException, PKCSException, Exception
-	 {
-	  LocalContainerEntityManagerFactoryBean em
-	          = new LocalContainerEntityManagerFactoryBean();
-	        em.setDataSource(customDataSource());
-	        em.setPackagesToScan(
-	          new String[] { "com.optum.fads.caseentrybatch.api.snowflakeDomain" });
-	        HibernateJpaVendorAdapter vendorAdapter
-	          = new HibernateJpaVendorAdapter();
-	        em.setJpaVendorAdapter(vendorAdapter);
-	        HashMap<String, Object> properties = new HashMap<>();
-	        properties.put("hibernate.allow_update_outside_transaction",true);
-	        properties.put("hibernate.dialect", "com.optum.fads.caseentrybatch.api.config.SnowflakeDialect");
-	        em.setJpaPropertyMap(properties);
-	    return em;
-	}
-	
-    @Primary
-	@Bean ("txManagerSnFk")
-	public PlatformTransactionManager txManagerSnFk(@Qualifier("snfkEntityManagerFactory")EntityManagerFactory snfkEntityManagerFactory) throws IOException, PKCSException, Exception
-	 {
-    	JpaTransactionManager txManager = new JpaTransactionManager();
-        txManager.setEntityManagerFactory(snfkEntityManagerFactory().getObject());
-        return txManager;
-	 }
-
-    @Bean(name = "jdbcSnowflake")
-    public JdbcTemplate snowflakeJdbcTemplate(@Qualifier("fadsDataSource") DataSource dsSlave) {
-        return new JdbcTemplate(dsSlave);
-    }
-	}
-
-
-	
-
-package com.optum.fads.caseentrybatch.api.config;
-
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 
 import jakarta.persistence.EntityManagerFactory;
 
-/**
- * @author sbajaj8
- *
- */
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
-						transactionManagerRef = "txManagerSQL",
-						basePackages = "com.optum.fads.caseentrybatch.api.repo" )
-		public class ServiceConfigSQL 
-		{
-			@Value("${spring.datasource.sql.userName}")
-			private String userName;
+public class ServiceConfigTest {
 
-			@Value("${spring.datasource.sql.password}")
-			private String password;
+    private SecretClient secretClient;
+    private ServiceConfig serviceConfig;
 
-			@Value("${spring.datasource.sql.jdbcUrl}")
-			private String url;
+    @Before
+    public void setUp() {
+        secretClient = mock(SecretClient.class);
+        serviceConfig = new ServiceConfig(secretClient);
 
-			@Value("${spring.datasource.sql.driverClassName}")
-			private String driverClassName;
+        ReflectionTestUtils.setField(serviceConfig, "url", "jdbc:snowflake://account.snowflakecomputing.com");
+        ReflectionTestUtils.setField(serviceConfig, "username", "snowflake-username-secret");
+        ReflectionTestUtils.setField(serviceConfig, "password", "snowflake-password-secret");
+        ReflectionTestUtils.setField(serviceConfig, "certKey", "cert-secret");
+        ReflectionTestUtils.setField(serviceConfig, "passphrase", "passphrase-secret");
+        ReflectionTestUtils.setField(serviceConfig, "database", "FADS_DB");
+        ReflectionTestUtils.setField(serviceConfig, "schema", "PUBLIC");
+        ReflectionTestUtils.setField(serviceConfig, "warehouse", "WH");
+        ReflectionTestUtils.setField(serviceConfig, "account", "ACCOUNT");
+        ReflectionTestUtils.setField(serviceConfig, "role", "ROLE1");
+        ReflectionTestUtils.setField(serviceConfig, "useCert", Boolean.FALSE);
 
-			private final SecretClient secretClient;
+        when(secretClient.getSecret("snowflake-username-secret"))
+                .thenReturn(new KeyVaultSecret("snowflake-username-secret", "snow_user"));
+        when(secretClient.getSecret("snowflake-password-secret"))
+                .thenReturn(new KeyVaultSecret("snowflake-password-secret", "snow_pass"));
+    }
 
-			public ServiceConfigSQL(SecretClient secretClient) {
-				this.secretClient = secretClient;
-			}
+    @Test
+    public void customDataSourceBuildsDriverManagerDataSourceForUsernamePasswordFlow() throws Exception {
+        DataSource dataSource = serviceConfig.customDataSource();
 
-			@Primary
-			@Bean(name = "fadsSQLDataSource")
-			public DataSource fadsSQLDataSource() {
-				String userNameValue = secretClient.getSecret(userName).getValue();
-				String passwordValue = secretClient.getSecret(password).getValue();
+        assertNotNull(dataSource);
+        assertTrue(dataSource instanceof DriverManagerDataSource);
+        DriverManagerDataSource driverManagerDataSource = (DriverManagerDataSource) dataSource;
+        assertEquals("jdbc:snowflake://account.snowflakecomputing.com", driverManagerDataSource.getUrl());
+        verify(secretClient).getSecret("snowflake-username-secret");
+        verify(secretClient).getSecret("snowflake-password-secret");
+    }
 
-				DriverManagerDataSource dataSource = new DriverManagerDataSource();
-				dataSource.setDriverClassName(driverClassName);
-				dataSource.setUsername(userNameValue);
-				dataSource.setPassword(passwordValue);
-				dataSource.setUrl(url);
+    @Test
+    public void snfkEntityManagerFactoryCreatesBeanWithDataSourceAndJpaProperties() throws Exception {
+        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = serviceConfig.snfkEntityManagerFactory();
 
-				return dataSource;
-			}
-	
-			@Bean(name = "sqlEntityManagerFactory")
-				public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
-					{
-						LocalContainerEntityManagerFactoryBean em
-								= new LocalContainerEntityManagerFactoryBean();
-						em.setDataSource(fadsSQLDataSource());
-						em.setPackagesToScan(
-								new String[] { "com.optum.fads.caseentrybatch.api.domain" });
-						HibernateJpaVendorAdapter vendorAdapter
-							= new HibernateJpaVendorAdapter();
-						em.setJpaVendorAdapter(vendorAdapter);
-					return em;
-					}
-	 
-	 
-	 @Bean(name = "txManagerSQL")
-	 public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
-	 {
-		 JpaTransactionManager txManager = new JpaTransactionManager();
-	        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
-	        return txManager;
-	 }
-	 
-	}
+        assertNotNull(entityManagerFactoryBean);
+        assertNotNull(entityManagerFactoryBean.getDataSource());
+        assertNotNull(entityManagerFactoryBean.getJpaVendorAdapter());
+        assertEquals("com.optum.fads.caseentrybatch.api.config.SnowflakeDialect",
+                entityManagerFactoryBean.getJpaPropertyMap().get("hibernate.dialect"));
+        assertEquals(Boolean.TRUE, entityManagerFactoryBean.getJpaPropertyMap().get("hibernate.allow_update_outside_transaction"));
+    }
 
+    @Test
+    public void txManagerSnFkReturnsJpaTransactionManager() throws Exception {
+        EntityManagerFactory entityManagerFactory = mock(EntityManagerFactory.class);
 
-	
+        JpaTransactionManager transactionManager = (JpaTransactionManager) serviceConfig.txManagerSnFk(entityManagerFactory);
 
-package com.optum.fads.caseentrybatch.api.config;
+        assertNotNull(transactionManager);
+    }
 
-import org.hibernate.dialect.Dialect;
-import org.springframework.context.annotation.Configuration;
+    @Test
+    public void snowflakeJdbcTemplateUsesProvidedDataSource() {
+        DataSource dataSource = mock(DataSource.class);
 
-@Configuration
-public class SnowflakeDialect extends Dialect {
+        JdbcTemplate jdbcTemplate = serviceConfig.snowflakeJdbcTemplate(dataSource);
 
+        assertNotNull(jdbcTemplate);
+        assertEquals(dataSource, jdbcTemplate.getDataSource());
+    }
 }
+package com.optum.fads.caseentrybatch.api.config;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.quartz.CronTrigger;
+import org.quartz.JobDetail;
+
+import com.optum.fads.caseentrybatch.api.job.CaseEntryBatchJob;
+import com.optum.fads.caseentrybatch.api.repo.CaseConfigRepository;
+
+@RunWith(MockitoJUnitRunner.class)
+public class CaseEntryBatchJobConfigTest {
+
+    @Mock
+    private CaseConfigRepository caseConfigTRepository;
+
+    @InjectMocks
+    private CaseEntryBatchJobConfig caseEntryBatchJobConfig;
+
+    @Test
+    public void caseBatchJobDetailsBuildsDurableJobForBatchJobClass() {
+        JobDetail jobDetail = caseEntryBatchJobConfig.caseBatchJobDetails();
+
+        assertEquals(CaseEntryBatchJob.class, jobDetail.getJobClass());
+        assertEquals("caseEntryBatchJob", jobDetail.getKey().getName());
+        assertTrue(jobDetail.isDurable());
+    }
+
+    @Test
+    public void caseBatchJobTriggerUsesCronFromRepository() {
+        when(caseConfigTRepository.getOptionValue("BATCH_CASE_ENTRY_SCHEDULE")).thenReturn("0 0/5 * * * ?");
+
+        CronTrigger trigger = (CronTrigger) caseEntryBatchJobConfig.caseBatchJobTrigger();
+
+        assertEquals("CaseBatchJobTrigger", trigger.getKey().getName());
+        assertEquals("CaseBatchGroup", trigger.getKey().getGroup());
+        assertEquals("0 0/5 * * * ?", trigger.getCronExpression());
+        assertEquals("caseEntryBatchJob", trigger.getJobKey().getName());
+    }
+}
+<?xml version="1.0" encoding="utf-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.optum.fads</groupId>
+  <artifactId>fads-case-entry-batch</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.5.8</version>
+    <relativePath />
+  </parent>
+  <repositories>
+    <repository>
+      <id>central</id>
+      <name>centraluhg.jfrog.io-releases</name>
+      <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+    </repository>
+    <repository>
+      <id>snapshots</id>
+      <name>snapshots-repo</name>
+      <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+    </repository>
+  </repositories>
+  <properties>
+    <maven.test.skip>false</maven.test.skip>
+    <skipTests>${maven.test.skip}</skipTests>
+    <surefire.skip>${skipTests}</surefire.skip>
+    <failsafe.skip>true</failsafe.skip>
+    <log4j2.version>2.16.0</log4j2.version>
+    <java.version>17</java.version>
+    <spring.boot.version>3.5.8</spring.boot.version>
+    <spring.cloud.version>2025.0.0</spring.cloud.version>
+    <jasypt.version>3.0.5</jasypt.version>
+    <jwt.version>4.4.0</jwt.version>
+    <cloudsdk.version>4.2.0-RELEASE</cloudsdk.version>
+    <modelmapper.version>3.2.2</modelmapper.version>
+    <jacoco.version>0.8.12</jacoco.version>
+    <springrunner.version>0.1.0</springrunner.version>
+    <guava.version>32.1.2-jre</guava.version>
+    <logback.encoder.version>7.4</logback.encoder.version>
+    <lombok.version>1.18.28</lombok.version>
+    <restassured.version>5.5.0</restassured.version>
+    <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
+    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+    <bcp.version>1.67</bcp.version>
+    <netty.version>4.1.129.Final</netty.version>
+  </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.azure.spring</groupId>
+        <artifactId>spring-cloud-azure-dependencies</artifactId>
+        <version>6.1.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.24.3</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring.boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring.cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.microsoft.azure</groupId>
+        <artifactId>msal4j</artifactId>
+        <version>1.17.2</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>1.5.25</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.5.25</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http2</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+    </dependency>
+    <!-- Spring Boot Dependencies  -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!-- httpsmvnrepository.comartifactorg.springframework.bootspring-boot-starter-mail  -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+    <!-- httpsmvnrepository.comartifactorg.apache.commonscommons-email  -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-email</artifactId>
+      <version>1.5</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.18.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.hibernate.javax.persistence</groupId>
+      <artifactId>hibernate-jpa-2.1-api</artifactId>
+      <version>1.0.2.Final</version>
+    </dependency>
+    <!-- Micrometer Prometheus registry   -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <!-- Password Encryption  -->
+    <dependency>
+      <groupId>com.github.ulisesbocchio</groupId>
+      <artifactId>jasypt-spring-boot-starter</artifactId>
+      <version>${jasypt.version}</version>
+    </dependency>
+    <!-- JWT  -->
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>java-jwt</artifactId>
+      <version>${jwt.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt</artifactId>
+      <version>0.12.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.5.14</version>
+    </dependency>
+    <!-- Model Mapper  -->
+    <dependency>
+      <groupId>org.modelmapper</groupId>
+      <artifactId>modelmapper</artifactId>
+      <version>${modelmapper.version}</version>
+    </dependency>
+    <!-- MapStruct  -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-jdk8</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-processor</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
+    <!-- Jackson  -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- Used in GetterSetter Verifier @NonNull   -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+    </dependency>
+    <!-- Lombok  -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- JSON logging -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>${logback.encoder.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.janino</groupId>
+      <artifactId>janino</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!-- httpsmvnrepository.comartifactorg.codehaus.jettisonjettison  -->
+    <dependency>
+      <groupId>org.codehaus.jettison</groupId>
+      <artifactId>jettison</artifactId>
+      <version>1.5.4</version>
+    </dependency>
+    <!-- Testing  -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-quartz</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>5.2.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Before After Spring Test Runner  -->
+    <dependency>
+      <groupId>org.jacoco</groupId>
+      <artifactId>jacoco-maven-plugin</artifactId>
+      <version>${jacoco.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${restassured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-commons</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-test</artifactId>
+    </dependency>
+    <!-- Quartz-Java dependency Remediation Upgrade   -->
+    <dependency>
+      <groupId>org.quartz-scheduler</groupId>
+      <artifactId>quartz</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>13.2.1.jre11</version>
+    </dependency>
+    <dependency>
+      <groupId>org.hibernate</groupId>
+      <artifactId>hibernate-core</artifactId>
+      <version>6.2.3.Final</version>
+    </dependency>
+    <!-- Snowflake dependency  -->
+    <dependency>
+      <groupId>net.snowflake</groupId>
+      <artifactId>snowflake-jdbc</artifactId>
+      <version>${snowflake-jdbc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-ext-jdk15on</artifactId>
+      <version>${bcp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>${bcp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>9.37.4</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <finalName>${project.artifactId}</finalName>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.projectlombok</groupId>
+          <artifactId>lombok-maven-plugin</artifactId>
+          <version>${lombok.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${org.mapstruct.version}</version>
+            </path>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.0.0-M2</version>
+        <executions>
+          <execution>
+            <id>enforce-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>3.3.9</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring.boot.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <skip>${surefire.skip}</skip>
+          <argLine>${argLine}</argLine>
+          <useModulePath>false</useModulePath>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+            <include>**/*TestCase.java</include>
+          </includes>
+        </configuration>
+        <version>3.5.4</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>integration-test</id>
+            <goals>
+              <goal>integration-test</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>verify</id>
+            <goals>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>${failsafe.skip}</skip>
+          <argLine>${argLine}</argLine>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <configuration>
+          <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
+          <destFile>${project.build.directory}/jacoco.exec</destFile>
+          <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+          <append>true</append>
+          <formats>
+            <format>XML</format>
+            <format>HTML</format>
+          </formats>
+          <excludes>
+            <exclude>**/dto/**</exclude>
+            <exclude>**/domain/**</exclude>
+            <exclude>**/repo/**</exclude>
+            <exclude>**/repo/specs/**</exclude>
+            <exclude>**/common/**</exclude>
+            <exclude>**/util/**</exclude>
+            <exclude>**/snowflakeDomain/**</exclude>
+            <exclude>**/snowflakeRepo/**</exclude>
+            <exclude>**/config/PemKeyLoader.class</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>jacoco-initialize</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>jacoco-report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
