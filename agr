@@ -4,331 +4,318 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
-import java.util.Date;
+import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Optional;
 
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.modelmapper.ModelMapper;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
-import com.optum.fads.caseentrybatch.api.domain.CaGeneralT;
-import com.optum.fads.caseentrybatch.api.domain.CaIntelligentKeyT;
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
-import com.optum.fads.caseentrybatch.api.domain.CaUniverseTPK;
+import com.optum.fads.caseentrybatch.api.domain.CaEmailsBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaLuValuesT;
+import com.optum.fads.caseentrybatch.api.domain.CaLuValuesTPK;
+import com.optum.fads.caseentrybatch.api.domain.CaMetaBaseNoticeT;
+import com.optum.fads.caseentrybatch.api.domain.CaseConfigT;
 import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
-import com.optum.fads.caseentrybatch.api.dto.CaseBaseInfo;
-import com.optum.fads.caseentrybatch.api.dto.CaseProviderDTO;
-import com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO;
-import com.optum.fads.caseentrybatch.api.repo.CaIntelligentKeyRepository;
-import com.optum.fads.caseentrybatch.api.repo.CaMetaBaseRepository;
-import com.optum.fads.caseentrybatch.api.repo.CaUniverseRepository;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaEmailsBatchRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaLuValuesRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaMetaBaseNoticeRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaseConfigRepository;
+import com.optum.fads.caseentrybatch.api.repo.UserRepository;
 import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
-import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchIndividualService;
-import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
 import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
-import com.optum.fads.caseentrybatch.api.util.ClaimsCorrectionsHistAssist;
 
 @RunWith(MockitoJUnitRunner.class)
-public class CaseBatchIndividualServiceTests {
+public class CaseBatchEmailServiceTests {
 
     @Mock
-    private CaUniverseRepository caUniverseRepository;
+    private UserRepository userRepository;
 
     @Mock
-    private CaIntelligentKeyRepository caIntelligentKeyRepository;
+    private CaMetaBaseNoticeRepository caMetaBaseNoticeRepository;
 
     @Mock
-    private DmClaimDrugRepository dmClaimDrugRepository;
-
-    @Mock
-    private CaMetaBaseRepository caMetaBaseRepository;
-
-    @Mock
-    private ClaimsCorrectionsHistAssist claimsCorrectionsHistAssist;
-
-    @Mock
-    private CaseBatchEmailService caseBatchEmailService;
+    private CaEmailsBatchRepository caEmailsBatchRepository;
 
     @Mock
     private CaseBatchUtil caseBatchUtil;
 
+    @Mock
+    private CaseConfigRepository caseConfigRepository;
+
+    @Mock
+    private CaLuValuesRepository caLuValuesRepository;
+
     @InjectMocks
-    private CaseBatchIndividualService caseBatchIndividualService;
+    private CaseBatchEmailService caseBatchEmailService;
 
-    @Before
-    public void setUp() {
-        ReflectionTestUtils.setField(caseBatchIndividualService, "modelMapper", createConfiguredModelMapper());
+    @Test
+    public void sendMailBuildsEmailSpecificationAndDelegatesToUtility() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        when(caseBatchUtil.getEmailSpecs()).thenReturn(emailSpecification);
+        when(caseBatchUtil.sendMail(emailSpecification)).thenReturn(true);
+
+        boolean result = caseBatchEmailService.sendMail("user@test.com", "subject", "body");
+
+        assertEquals(true, result);
+        assertEquals("user@test.com", emailSpecification.getSendToEmail());
+        assertEquals("subject", emailSpecification.getEmailSubject());
+        assertEquals("body", emailSpecification.getEmailText());
     }
 
     @Test
-    public void getCaseIndValueUsesRepositoryValuesWhenPresent() {
-        when(caIntelligentKeyRepository.getNextCaseId()).thenReturn(42);
-        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(7);
-
-        CaseBaseInfo result = caseBatchIndividualService.getCaseIndValue("PAU", 2024, "P100");
-
-        assertEquals(Integer.valueOf(42), result.getCaseId());
-        assertEquals(Integer.valueOf(7), result.getSequenceId());
-        assertEquals("PAU-2024-00007", result.getCaseIdStr());
-        assertEquals("P100", result.getParticpantId());
-    }
-
-    @Test
-    public void getCaseIndValueFallsBackToOneWhenRepositoryReturnsNull() {
-        when(caIntelligentKeyRepository.getNextCaseId()).thenReturn(null);
-        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(null);
-
-        CaseBaseInfo result = caseBatchIndividualService.getCaseIndValue("PAU", 2024, "P100");
-
-        assertEquals(Integer.valueOf(1), result.getCaseId());
-        assertEquals(Integer.valueOf(1), result.getSequenceId());
-        assertEquals("PAU-2024-00001", result.getCaseIdStr());
-    }
-
-    @Test
-    public void saveCaIntelligentKeyTentryDelegatesToRepository() {
-        CaIntelligentKeyT caIntelligentKeyT = CaIntelligentKeyT.builder().caseId(88).build();
-
-        caseBatchIndividualService.saveCaIntelligentKeyTentry(caIntelligentKeyT);
-
-        verify(caIntelligentKeyRepository).save(caIntelligentKeyT);
-    }
-
-    @Test
-    public void createCaGeneralTentryBuildsTrackingDataWithoutCaseSource() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(55).build();
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setCaseSourceCd(null);
-
-        CaGeneralT result = caseBatchIndividualService.createCaGeneralTentry(key, "PART-1", "John Smith", caUniverseT);
-
-        assertEquals(Integer.valueOf(55), result.getCaseId());
-        assertEquals("PART-1", result.getParticipantId());
-        assertEquals("John Smith", result.getParticipantName());
-        assertEquals(CaseEntryConstants.BATCH_CASE + 10, result.getTrackingId());
-        assertEquals("ACTIVE", result.getProtectStatus());
-        assertNull(result.getCaLuCaseSourceT());
-        assertSame(key, result.getCaIntelligentKeyT());
-    }
-
-    @Test
-    public void createCaGeneralTentryAddsCaseSourceWhenProvided() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(56).build();
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setCaseSourceCd("SRC");
-
-        CaGeneralT result = caseBatchIndividualService.createCaGeneralTentry(key, "PART-2", "Jane Doe", caUniverseT);
-
-        assertEquals("SRC", result.getCaLuCaseSourceT().getSourceCd());
-        assertSame(key, result.getCaIntelligentKeyT());
-    }
-
-    @Test
-    public void createProviderEntryMapsProviderFieldsAndLinksCase() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(70).build();
-        CaseProviderDTO provider = new CaseProviderDTO();
-        provider.setParticipantId("PV-1");
-        provider.setParticipantName("Provider Name");
-
-        var result = caseBatchIndividualService.createProviderEntry(key, provider);
-
-        assertEquals(Integer.valueOf(70), result.getCaseId());
-        assertSame(key, result.getCaIntelligentKeyT());
-    }
-
-    @Test
-    public void createRecipientEntryMapsRecipientFieldsAndLinksCase() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(71).build();
-        CaseRecipientDTO recipient = new CaseRecipientDTO();
-        recipient.setParticipantId("MB-1");
-        recipient.setParticipantName("Member Name");
-        var result = caseBatchIndividualService.createRecipientEntry(key, recipient);
-
-        assertEquals(Integer.valueOf(71), result.getCaseId());
-        assertSame(key, result.getCaIntelligentKeyT());
-    }
-
-    @Test
-    public void createinvstPrFsEntryBuildsPreliminaryStructuresIncludingIssue() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(80).build();
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
-        caUniverseT.setCaseStatusCd("OPEN");
-        caUniverseT.setIssueCd("ISSUE1");
-
-        caseBatchIndividualService.createinvstPrFsEntry(key, caUniverseT);
-
-        assertNotNull(key.getCaInvstPreliminaryT());
-        assertEquals("OPEN", key.getCaInvstPreliminaryT().getCaseStatusCd());
-        assertEquals(1, key.getCaInvstPrHistTs().size());
-        assertEquals(1, key.getCaInvstPrStatusHistTs().size());
-        assertEquals(1, key.getCaInvstPrIssueTs().size());
-        assertNotNull(key.getCaInvstPrIssueHistTs());
-    }
-
-    @Test
-    public void createinvstPrFsEntryBuildsFullscaleStructuresIncludingIssue() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(81).build();
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setInvstTypeCd("FS");
-        caUniverseT.setCaseStatusCd("OPEN");
-        caUniverseT.setIssueCd("ISSUE2");
-
-        caseBatchIndividualService.createinvstPrFsEntry(key, caUniverseT);
-
-        assertNotNull(key.getCaInvstFullscaleT());
-        assertEquals("OPEN", key.getCaInvstFullscaleT().getCaseStatusCd());
-        assertEquals(1, key.getCaInvstFsHistTs().size());
-        assertEquals(1, key.getCaInvstFsStatusHistTs().size());
-        assertEquals(1, key.getCaInvstFsIssueTs().size());
-        assertEquals(1, key.getCaInvstFsIssueHistTs().size());
-    }
-
-    @Test
-    public void createinvstPrFsAssignEntryBuildsPreliminaryAssignmentStructures() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(82).build();
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
-        caUniverseT.setAssignSectionCd("PRELIM");
-        caUniverseT.setAssignUsr("WA54321");
-
-        caseBatchIndividualService.createinvstPrFsAssignEntry(key, 1, caUniverseT);
-
-        assertEquals(1, key.getCaInvstPrAssignTs().size());
-        assertEquals(1, key.getCaInvstPrAssignHistTs().size());
-    }
-
-    @Test
-    public void createinvstPrFsAssignEntryBuildsFullscaleAssignmentStructures() {
-        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(83).build();
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setInvstTypeCd("FS");
-        caUniverseT.setAssignSectionCd("FULL");
-        caUniverseT.setAssignUsr("WA67890");
-
-        caseBatchIndividualService.createinvstPrFsAssignEntry(key, 1, caUniverseT);
-
-        assertEquals(1, key.getCaInvstFsAssignTs().size());
-        assertEquals(1, key.getCaInvstFsAssignHistTs().size());
-    }
-
-    @Test
-    public void getSequenceIdFromCaIntelligentKeyReturnsRepositoryValue() {
-        CaUniverseT caUniverseT = createUniverse();
-        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(9);
-
-        Integer result = caseBatchIndividualService.getSequenceIdFromCaIntelligentKey(caUniverseT);
-
-        assertEquals(Integer.valueOf(9), result);
-    }
-
-    @Test
-    public void getSequenceIdFromCaIntelligentKeyFallsBackToOne() {
-        CaUniverseT caUniverseT = createUniverse();
-        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(null);
-
-        Integer result = caseBatchIndividualService.getSequenceIdFromCaIntelligentKey(caUniverseT);
-
-        assertEquals(Integer.valueOf(1), result);
-    }
-
-    @Test
-    public void createIntGenPrRpInvstEntriesBuildsProviderCaseAndInvestigationData() {
-        CaseBatchIndividualService spyService = org.mockito.Mockito.spy(caseBatchIndividualService);
-        ReflectionTestUtils.setField(spyService, "modelMapper", createConfiguredModelMapper());
-
-        CaseBaseInfo caseInfo = new CaseBaseInfo();
-        caseInfo.setCaseId(90);
-        caseInfo.setSequenceId(12);
-        caseInfo.setParticpantId("PV-100");
-
-        CaseProviderDTO provider = new CaseProviderDTO();
-        provider.setParticipantId("PV-100");
-        provider.setParticipantName("Provider Test");
-        org.mockito.Mockito.doReturn(provider).when(spyService).findCaseProvider(CaseEntryConstants.PROVIDER, "PV-100");
-
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setCaseTypeCd(CaseEntryConstants.PROVIDER);
-        caUniverseT.setParticipantId("PV-100");
-        caUniverseT.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
-
-        CaIntelligentKeyT result = spyService.createIntGenPrRpInvstEntries(caseInfo, LocalDateTime.now(), caUniverseT);
-
-        assertNotNull(result.getCaGeneralT());
-        assertNotNull(result.getCaProviderT());
-        assertNull(result.getCaRecipientT());
-        assertNotNull(result.getCaInvstPreliminaryT());
-        assertEquals("Provider Test", result.getCaGeneralT().getParticipantName());
-    }
-
-    @Test
-    public void createIntGenPrRpInvstEntriesBuildsRecipientCaseAndAssignmentData() {
-        CaseBatchIndividualService spyService = org.mockito.Mockito.spy(caseBatchIndividualService);
-        ReflectionTestUtils.setField(spyService, "modelMapper", createConfiguredModelMapper());
-
-        CaseBaseInfo caseInfo = new CaseBaseInfo();
-        caseInfo.setCaseId(91);
-        caseInfo.setSequenceId(13);
-        caseInfo.setParticpantId("MB-100");
-
-        CaseRecipientDTO recipient = new CaseRecipientDTO();
-        recipient.setParticipantId("MB-100");
-        recipient.setParticipantName("Member Test");
-        org.mockito.Mockito.doReturn(recipient).when(spyService).findCaseRecipient(CaseEntryConstants.MEMBER, "MB-100");
-
-        CaUniverseT caUniverseT = createUniverse();
-        caUniverseT.setCaseTypeCd(CaseEntryConstants.MEMBER);
-        caUniverseT.setParticipantId("MB-100");
-        caUniverseT.setInvstTypeCd("FS");
-
-        CaIntelligentKeyT result = spyService.createIntGenPrRpInvstEntries(caseInfo, LocalDateTime.now(), caUniverseT);
-
-        assertNotNull(result.getCaGeneralT());
-        assertNull(result.getCaProviderT());
-        assertNotNull(result.getCaRecipientT());
-        assertNotNull(result.getCaInvstFullscaleT());
-        assertEquals(1, result.getCaInvstFsAssignTs().size());
-        assertEquals("Member Test", result.getCaGeneralT().getParticipantName());
-    }
-
-    private CaUniverseT createUniverse() {
-        CaUniverseTPK id = new CaUniverseTPK();
-        id.setCtBatchId(10);
-
+    public void getUiUserBaseReturnsUserWhenPresent() {
         UiUserBase userBase = new UiUserBase();
         userBase.setUiSystemId("WA123456");
+        when(userRepository.findById("WA123456")).thenReturn(Optional.of(userBase));
 
-        CaUniverseT caUniverseT = new CaUniverseT();
-        caUniverseT.setId(id);
-        caUniverseT.setUiUserBase(userBase);
-        caUniverseT.setCaPrmNodeCd("PAU");
-        caUniverseT.setCaYearId(2024);
-        caUniverseT.setProjectStatus("ACTIVE");
-        caUniverseT.setAssignUsr("WA123456");
-        caUniverseT.setAssignSectionCd("PR");
-        caUniverseT.setAssignDate(new Date());
-        caUniverseT.setCaseStatusCd("OPEN");
-        caUniverseT.setCaseStatusDt(new Date());
-        caUniverseT.setCaseTypeCd(CaseEntryConstants.PROVIDER);
-        return caUniverseT;
+        UiUserBase result = caseBatchEmailService.getUiUserBase("WA123456");
+
+        assertSame(userBase, result);
     }
 
-    private ModelMapper createConfiguredModelMapper() {
-        ModelMapper modelMapper = new ModelMapper();
-        modelMapper.getConfiguration().setAmbiguityIgnored(true);
-        modelMapper.typeMap(CaseProviderDTO.class, com.optum.fads.caseentrybatch.api.domain.CaProviderT.class)
-                .addMappings(mapper -> mapper.skip(com.optum.fads.caseentrybatch.api.domain.CaProviderT::setCaseId));
-        modelMapper.typeMap(CaseRecipientDTO.class, com.optum.fads.caseentrybatch.api.domain.CaRecipientT.class)
-                .addMappings(mapper -> mapper.skip(com.optum.fads.caseentrybatch.api.domain.CaRecipientT::setCaseId));
-        return modelMapper;
+    @Test
+    public void getUiUserBaseReturnsNullWhenUserMissing() {
+        when(userRepository.findById("WA000000")).thenReturn(Optional.empty());
+
+        UiUserBase result = caseBatchEmailService.getUiUserBase("WA000000");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void setEmailSubjTextBuildsSuccessNotificationText() {
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE)).thenReturn(Collections.emptyList());
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        emailData.setBatchId(21);
+        emailData.setCaseIdList(Arrays.asList("PAU-2024-00001", "PAU-2024-00002"));
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setSubjEmail("Case Batch ID [BATCH ID] Completed Successfully");
+        notice.setRemComment("Case Batch ID [BATCH ID] created case(s) [CASE ID].");
+
+        EmailData result = caseBatchEmailService.setEmailSubjText(emailData, "Anil", "Wagh", notice);
+
+        assertEquals("Case Batch ID 21 Completed Successfully", result.getEmailSubject());
+        assertEquals("Case Batch ID 21 created case(s) PAU-2024-00001, PAU-2024-00002.", result.getEmailText());
+    }
+
+    @Test
+    public void setEmailSubjTextBuildsAssignmentNotificationText() {
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE))
+                .thenReturn(Arrays.asList(createLuValue(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY, "Preliminary"),
+                        createLuValue(CaseEntryConstants.INVESTIGATION_TYPE_FULLSCALE, "Full Scale")));
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        emailData.setBatchId(45);
+        emailData.setInvestigationType(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        emailData.setCaseIdList(Arrays.asList("PAU-2024-00010", "PAU-2024-00011"));
+        emailData.setAssignDate(new java.util.Date(0));
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setSubjEmail("Batch [BATCH ID]");
+        notice.setRemComment("Assigned to [ASSIGNED TO] for [INVESTIGATION TYPE] cases [CASE ID] on [ASSIGNED DATE]");
+
+        EmailData result = caseBatchEmailService.setEmailSubjText(emailData, "Anil", "Wagh", notice);
+
+        assertEquals("Batch 45", result.getEmailSubject());
+        assertEquals("Assigned to Anil Wagh for Preliminary cases PAU-2024-00010, PAU-2024-00011 on 12/31/1969",
+                result.getEmailText());
+    }
+
+    @Test
+    public void setEmailSubjTextBuildsInvalidNotificationText() {
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE)).thenReturn(Collections.emptyList());
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+        emailData.setBatchId(77);
+        emailData.setErrorLog("TCN-1, TCN-2");
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setSubjEmail("Invalid [BATCH ID]");
+        notice.setRemComment("Invalid claims [TCNS] for batch [BATCH ID]");
+
+        EmailData result = caseBatchEmailService.setEmailSubjText(emailData, "", "", notice);
+
+        assertEquals("Invalid 77", result.getEmailSubject());
+        assertEquals("Invalid claims TCN-1, TCN-2 for batch 77", result.getEmailText());
+    }
+
+    @Test
+    public void saveEmailBatchTSavesExpectedEntity() {
+        EmailData emailData = new EmailData();
+        emailData.setBatchId(35);
+        emailData.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        emailData.setEmailSubject("subject");
+        emailData.setEmailText("body");
+
+        when(caEmailsBatchRepository.getNextSequenceId(35)).thenReturn(null);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.saveEmailBatchT(emailData, "user@test.com");
+
+        ArgumentCaptor<CaEmailsBatchT> captor = ArgumentCaptor.forClass(CaEmailsBatchT.class);
+        verify(caEmailsBatchRepository).saveAndFlush(captor.capture());
+        CaEmailsBatchT saved = captor.getValue();
+
+        assertNotNull(saved.getId());
+        assertEquals(Integer.valueOf(35), saved.getId().getCtBatchId());
+        assertEquals(Integer.valueOf(1), saved.getId().getSeqNum());
+        assertEquals(CaseEntryConstants.SUCCESS_MESSAGE, saved.getEmailType());
+        assertEquals("user@test.com", saved.getToEmail());
+        assertEquals("CT_ADMIN", saved.getUserId());
+        assertEquals("subject", saved.getEmailSubj());
+        assertEquals("body", saved.getEmailText());
+    }
+
+    @Test
+    public void saveEmailBatchTUsesExistingSequenceAndAssignmentType() {
+        EmailData emailData = new EmailData();
+        emailData.setBatchId(36);
+        emailData.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        emailData.setEmailSubject("assignment subject");
+        emailData.setEmailText("assignment body");
+
+        when(caEmailsBatchRepository.getNextSequenceId(36)).thenReturn(5);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.saveEmailBatchT(emailData, "assigned@test.com");
+
+        ArgumentCaptor<CaEmailsBatchT> captor = ArgumentCaptor.forClass(CaEmailsBatchT.class);
+        verify(caEmailsBatchRepository).saveAndFlush(captor.capture());
+        CaEmailsBatchT saved = captor.getValue();
+
+        assertEquals(Integer.valueOf(36), saved.getId().getCtBatchId());
+        assertEquals(Integer.valueOf(5), saved.getId().getSeqNum());
+        assertEquals(CaseEntryConstants.ASSIGNMENT, saved.getEmailType());
+        assertEquals("assigned@test.com", saved.getToEmail());
+    }
+
+    @Test
+    public void postBatchProcessMailSendsAssignmentMailAndPersistsAuditRow() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        UiUserBase assignedUser = new UiUserBase();
+        assignedUser.setUiSystemId("WA111111");
+        assignedUser.setUiEMailAddress("assigned@test.com");
+        assignedUser.setUiFirstName("Anil");
+        assignedUser.setUiLastName("Wagh");
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        notice.setNoticeFlag(CaseEntryConstants.ONE_STR);
+        notice.setSubjEmail("Batch [BATCH ID]");
+        notice.setRemComment("Assigned to [ASSIGNED TO] for [INVESTIGATION TYPE] cases [CASE ID] on [ASSIGNED DATE]");
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        emailData.setAssignUser("WA111111");
+        emailData.setBatchId(21);
+        emailData.setInvestigationType(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        emailData.setCaseIdList(Arrays.asList("PAU-2024-00001"));
+        emailData.setAssignDate(new java.util.Date(0));
+
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION)).thenReturn(Optional.of(notice));
+        when(userRepository.findById("WA111111")).thenReturn(Optional.of(assignedUser));
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE))
+                .thenReturn(Arrays.asList(createLuValue(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY, "Preliminary")));
+        when(caseBatchUtil.sendMail(emailSpecification)).thenReturn(true);
+        when(caEmailsBatchRepository.getNextSequenceId(21)).thenReturn(null);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecification);
+
+        assertEquals("assigned@test.com", emailSpecification.getSendToEmail());
+        verify(caseBatchUtil).sendMail(emailSpecification);
+        verify(caEmailsBatchRepository).saveAndFlush(any(CaEmailsBatchT.class));
+    }
+
+    @Test
+    public void postBatchProcessMailSendsAdminMailUsingConfigDistributionList() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+        notice.setNoticeFlag(CaseEntryConstants.ONE_STR);
+        notice.setSubjEmail("Admin [BATCH ID]");
+        notice.setRemComment("Errors: [error log info]");
+
+        CaseConfigT config = new CaseConfigT();
+        config.setOptionCode(CaseEntryConstants.SYSTEM_ADMIN_DIST_LIST);
+        config.setOptionValue("admin@test.com");
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+        emailData.setBatchId(99);
+        emailData.setErrorLog("claim issue");
+
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN)).thenReturn(Optional.of(notice));
+        when(caseConfigRepository.findById(CaseEntryConstants.SYSTEM_ADMIN_DIST_LIST)).thenReturn(Optional.of(config));
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE)).thenReturn(Collections.emptyList());
+        when(caseBatchUtil.sendMail(emailSpecification)).thenReturn(true);
+        when(caEmailsBatchRepository.getNextSequenceId(99)).thenReturn(3);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecification);
+
+        assertEquals("admin@test.com", emailSpecification.getSendToEmail());
+        assertEquals("Admin 99", emailSpecification.getEmailSubject());
+        verify(caEmailsBatchRepository).saveAndFlush(any(CaEmailsBatchT.class));
+    }
+
+    @Test
+    public void postBatchProcessMailSkipsSendWhenNoticeFlagIsDisabled() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        notice.setNoticeFlag("0");
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        emailData.setSubmittedBy("WA123456");
+
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION)).thenReturn(Optional.of(notice));
+
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecification);
+
+        verify(caseBatchUtil, never()).sendMail(any(EmailSpecification.class));
+        verify(caEmailsBatchRepository, never()).saveAndFlush(any(CaEmailsBatchT.class));
+    }
+
+    @Test
+    public void getMetaBaseNoticeTReturnsNoticeWhenPresent() {
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION)).thenReturn(Optional.of(notice));
+
+        CaMetaBaseNoticeT result = caseBatchEmailService.getMetaBaseNoticeT(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+
+        assertSame(notice, result);
+    }
+
+    private CaLuValuesT createLuValue(String luValue, String label) {
+        CaLuValuesT caLuValuesT = new CaLuValuesT();
+        caLuValuesT.setId(new CaLuValuesTPK(CaseEntryConstants.INVST_TYPE_CODE, luValue, 1));
+        caLuValuesT.setLuLabel(label);
+        return caLuValuesT;
     }
 }
