@@ -1,34 +1,400 @@
+package com.optum.fads.caseentrybatch.api.config;
 
-[INFO] Running com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests
-2026-04-12T00:53:55.131+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Run Case Batch
-2026-04-12T00:53:55.132+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Next Batch Id = 10
-2026-04-12T00:53:55.133+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 10
-2026-04-12T00:53:55.147+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
-2026-04-12T00:53:55.149+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Delete caUniverseBatchT entries in Batch ID 10
-2026-04-12T00:53:55.182+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Run Case Batch
-2026-04-12T00:53:55.190+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 10
-2026-04-12T00:53:55.191+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
-[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.194 s -- in com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   CaseBatchEmailServiceTests.setEmailSubjTextBuildsAssignmentNotificationText:138 expected:<..., PAU-2024-00011 on [12/31/1969]> but was:<..., PAU-2024-00011 on [01-01-1970]>
-[INFO]
-[ERROR] Tests run: 43, Failures: 1, Errors: 0, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  42.734 s
-[INFO] Finished at: 2026-04-12T00:53:55+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch: There are test failures.
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-case-entry-batch\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import javax.sql.DataSource;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.azure.security.keyvault.secrets.SecretClient;
+import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
+
+import jakarta.persistence.EntityManagerFactory;
+
+public class ServiceConfigSQLTest {
+
+    private SecretClient secretClient;
+    private ServiceConfigSQL serviceConfigSQL;
+
+    @Before
+    public void setUp() {
+        secretClient = mock(SecretClient.class);
+        serviceConfigSQL = new ServiceConfigSQL(secretClient);
+
+        ReflectionTestUtils.setField(serviceConfigSQL, "userName", "sql-username-secret");
+        ReflectionTestUtils.setField(serviceConfigSQL, "password", "sql-password-secret");
+        ReflectionTestUtils.setField(serviceConfigSQL, "url", "jdbc:sqlserver://localhost:1433;databaseName=testdb");
+        ReflectionTestUtils.setField(serviceConfigSQL, "driverClassName", "com.microsoft.sqlserver.jdbc.SQLServerDriver");
+
+        when(secretClient.getSecret("sql-username-secret")).thenReturn(new KeyVaultSecret("sql-username-secret", "db_user"));
+        when(secretClient.getSecret("sql-password-secret")).thenReturn(new KeyVaultSecret("sql-password-secret", "db_password"));
+    }
+
+    @Test
+    public void fadsSQLDataSourceBuildsDriverManagerDataSourceFromSecrets() {
+        DataSource dataSource = serviceConfigSQL.fadsSQLDataSource();
+
+        assertNotNull(dataSource);
+        assertTrue(dataSource instanceof DriverManagerDataSource);
+
+        DriverManagerDataSource driverManagerDataSource = (DriverManagerDataSource) dataSource;
+        assertEquals("com.microsoft.sqlserver.jdbc.SQLServerDriver", driverManagerDataSource.getDriverClassName());
+        assertEquals("db_user", driverManagerDataSource.getUsername());
+        assertEquals("db_password", driverManagerDataSource.getPassword());
+        assertEquals("jdbc:sqlserver://localhost:1433;databaseName=testdb", driverManagerDataSource.getUrl());
+    }
+
+    @Test
+    public void sqlEntityManagerFactoryUsesConfiguredDataSourceAndPackages() {
+        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = serviceConfigSQL.sqlEntityManagerFactory();
+
+        assertNotNull(entityManagerFactoryBean);
+        assertNotNull(entityManagerFactoryBean.getDataSource());
+        assertNotNull(entityManagerFactoryBean.getJpaVendorAdapter());
+        String[] packagesToScan = (String[]) ReflectionTestUtils.getField(entityManagerFactoryBean, "packagesToScan");
+        assertNotNull(packagesToScan);
+        assertEquals("com.optum.fads.caseentrybatch.api.domain", packagesToScan[0]);
+    }
+
+    @Test
+    public void txManagerSQLReturnsJpaTransactionManager() {
+        EntityManagerFactory entityManagerFactory = mock(EntityManagerFactory.class);
+
+        JpaTransactionManager transactionManager = (JpaTransactionManager) serviceConfigSQL.txManagerSQL(entityManagerFactory);
+
+        assertNotNull(transactionManager);
+    }
+}
+
+
+
+package com.optum.fads.caseentrybatch.api.service;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Optional;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaEmailsBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaLuValuesT;
+import com.optum.fads.caseentrybatch.api.domain.CaLuValuesTPK;
+import com.optum.fads.caseentrybatch.api.domain.CaMetaBaseNoticeT;
+import com.optum.fads.caseentrybatch.api.domain.CaseConfigT;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaEmailsBatchRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaLuValuesRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaMetaBaseNoticeRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaseConfigRepository;
+import com.optum.fads.caseentrybatch.api.repo.UserRepository;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+
+@RunWith(MockitoJUnitRunner.class)
+public class CaseBatchEmailServiceTests {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private CaMetaBaseNoticeRepository caMetaBaseNoticeRepository;
+
+    @Mock
+    private CaEmailsBatchRepository caEmailsBatchRepository;
+
+    @Mock
+    private CaseBatchUtil caseBatchUtil;
+
+    @Mock
+    private CaseConfigRepository caseConfigRepository;
+
+    @Mock
+    private CaLuValuesRepository caLuValuesRepository;
+
+    @InjectMocks
+    private CaseBatchEmailService caseBatchEmailService;
+
+    @Test
+    public void sendMailBuildsEmailSpecificationAndDelegatesToUtility() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        when(caseBatchUtil.getEmailSpecs()).thenReturn(emailSpecification);
+        when(caseBatchUtil.sendMail(emailSpecification)).thenReturn(true);
+
+        boolean result = caseBatchEmailService.sendMail("user@test.com", "subject", "body");
+
+        assertEquals(true, result);
+        assertEquals("user@test.com", emailSpecification.getSendToEmail());
+        assertEquals("subject", emailSpecification.getEmailSubject());
+        assertEquals("body", emailSpecification.getEmailText());
+    }
+
+    @Test
+    public void getUiUserBaseReturnsUserWhenPresent() {
+        UiUserBase userBase = new UiUserBase();
+        userBase.setUiSystemId("WA123456");
+        when(userRepository.findById("WA123456")).thenReturn(Optional.of(userBase));
+
+        UiUserBase result = caseBatchEmailService.getUiUserBase("WA123456");
+
+        assertSame(userBase, result);
+    }
+
+    @Test
+    public void getUiUserBaseReturnsNullWhenUserMissing() {
+        when(userRepository.findById("WA000000")).thenReturn(Optional.empty());
+
+        UiUserBase result = caseBatchEmailService.getUiUserBase("WA000000");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void setEmailSubjTextBuildsSuccessNotificationText() {
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE)).thenReturn(Collections.emptyList());
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        emailData.setBatchId(21);
+        emailData.setCaseIdList(Arrays.asList("PAU-2024-00001", "PAU-2024-00002"));
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setSubjEmail("Case Batch ID [BATCH ID] Completed Successfully");
+        notice.setRemComment("Case Batch ID [BATCH ID] created case(s) [CASE ID].");
+
+        EmailData result = caseBatchEmailService.setEmailSubjText(emailData, "Anil", "Wagh", notice);
+
+        assertEquals("Case Batch ID 21 Completed Successfully", result.getEmailSubject());
+        assertEquals("Case Batch ID 21 created case(s) PAU-2024-00001, PAU-2024-00002.", result.getEmailText());
+    }
+
+    @Test
+    public void setEmailSubjTextBuildsAssignmentNotificationText() {
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE))
+                .thenReturn(Arrays.asList(createLuValue(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY, "Preliminary"),
+                        createLuValue(CaseEntryConstants.INVESTIGATION_TYPE_FULLSCALE, "Full Scale")));
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        emailData.setBatchId(45);
+        emailData.setInvestigationType(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        emailData.setCaseIdList(Arrays.asList("PAU-2024-00010", "PAU-2024-00011"));
+        emailData.setAssignDate(new java.util.Date(0));
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setSubjEmail("Batch [BATCH ID]");
+        notice.setRemComment("Assigned to [ASSIGNED TO] for [INVESTIGATION TYPE] cases [CASE ID] on [ASSIGNED DATE]");
+
+        EmailData result = caseBatchEmailService.setEmailSubjText(emailData, "Anil", "Wagh", notice);
+
+        assertEquals("Batch 45", result.getEmailSubject());
+        assertEquals("Assigned to Anil Wagh for Preliminary cases PAU-2024-00010, PAU-2024-00011 on 01-01-1970",
+                result.getEmailText());
+    }
+
+    @Test
+    public void setEmailSubjTextBuildsInvalidNotificationText() {
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE)).thenReturn(Collections.emptyList());
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_INVALID_NOTIFICATION_USER);
+        emailData.setBatchId(77);
+        emailData.setErrorLog("TCN-1, TCN-2");
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setSubjEmail("Invalid [BATCH ID]");
+        notice.setRemComment("Invalid claims [TCNS] for batch [BATCH ID]");
+
+        EmailData result = caseBatchEmailService.setEmailSubjText(emailData, "", "", notice);
+
+        assertEquals("Invalid 77", result.getEmailSubject());
+        assertEquals("Invalid claims TCN-1, TCN-2 for batch 77", result.getEmailText());
+    }
+
+    @Test
+    public void saveEmailBatchTSavesExpectedEntity() {
+        EmailData emailData = new EmailData();
+        emailData.setBatchId(35);
+        emailData.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        emailData.setEmailSubject("subject");
+        emailData.setEmailText("body");
+
+        when(caEmailsBatchRepository.getNextSequenceId(35)).thenReturn(null);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.saveEmailBatchT(emailData, "user@test.com");
+
+        ArgumentCaptor<CaEmailsBatchT> captor = ArgumentCaptor.forClass(CaEmailsBatchT.class);
+        verify(caEmailsBatchRepository).saveAndFlush(captor.capture());
+        CaEmailsBatchT saved = captor.getValue();
+
+        assertNotNull(saved.getId());
+        assertEquals(Integer.valueOf(35), saved.getId().getCtBatchId());
+        assertEquals(Integer.valueOf(1), saved.getId().getSeqNum());
+        assertEquals(CaseEntryConstants.SUCCESS_MESSAGE, saved.getEmailType());
+        assertEquals("user@test.com", saved.getToEmail());
+        assertEquals("CT_ADMIN", saved.getUserId());
+        assertEquals("subject", saved.getEmailSubj());
+        assertEquals("body", saved.getEmailText());
+    }
+
+    @Test
+    public void saveEmailBatchTUsesExistingSequenceAndAssignmentType() {
+        EmailData emailData = new EmailData();
+        emailData.setBatchId(36);
+        emailData.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        emailData.setEmailSubject("assignment subject");
+        emailData.setEmailText("assignment body");
+
+        when(caEmailsBatchRepository.getNextSequenceId(36)).thenReturn(5);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.saveEmailBatchT(emailData, "assigned@test.com");
+
+        ArgumentCaptor<CaEmailsBatchT> captor = ArgumentCaptor.forClass(CaEmailsBatchT.class);
+        verify(caEmailsBatchRepository).saveAndFlush(captor.capture());
+        CaEmailsBatchT saved = captor.getValue();
+
+        assertEquals(Integer.valueOf(36), saved.getId().getCtBatchId());
+        assertEquals(Integer.valueOf(5), saved.getId().getSeqNum());
+        assertEquals(CaseEntryConstants.ASSIGNMENT, saved.getEmailType());
+        assertEquals("assigned@test.com", saved.getToEmail());
+    }
+
+    @Test
+    public void postBatchProcessMailSendsAssignmentMailAndPersistsAuditRow() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        UiUserBase assignedUser = new UiUserBase();
+        assignedUser.setUiSystemId("WA111111");
+        assignedUser.setUiEMailAddress("assigned@test.com");
+        assignedUser.setUiFirstName("Anil");
+        assignedUser.setUiLastName("Wagh");
+
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        notice.setNoticeFlag(CaseEntryConstants.ONE_STR);
+        notice.setSubjEmail("Batch [BATCH ID]");
+        notice.setRemComment("Assigned to [ASSIGNED TO] for [INVESTIGATION TYPE] cases [CASE ID] on [ASSIGNED DATE]");
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION);
+        emailData.setAssignUser("WA111111");
+        emailData.setBatchId(21);
+        emailData.setInvestigationType(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        emailData.setCaseIdList(Arrays.asList("PAU-2024-00001"));
+        emailData.setAssignDate(new java.util.Date(0));
+
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_ASSIGNMENT_NOTIFICATION)).thenReturn(Optional.of(notice));
+        when(userRepository.findById("WA111111")).thenReturn(Optional.of(assignedUser));
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE))
+                .thenReturn(Arrays.asList(createLuValue(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY, "Preliminary")));
+        when(caseBatchUtil.sendMail(emailSpecification)).thenReturn(true);
+        when(caEmailsBatchRepository.getNextSequenceId(21)).thenReturn(null);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecification);
+
+        assertEquals("assigned@test.com", emailSpecification.getSendToEmail());
+        verify(caseBatchUtil).sendMail(emailSpecification);
+        verify(caEmailsBatchRepository).saveAndFlush(any(CaEmailsBatchT.class));
+    }
+
+    @Test
+    public void postBatchProcessMailSendsAdminMailUsingConfigDistributionList() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+        notice.setNoticeFlag(CaseEntryConstants.ONE_STR);
+        notice.setSubjEmail("Admin [BATCH ID]");
+        notice.setRemComment("Errors: [error log info]");
+
+        CaseConfigT config = new CaseConfigT();
+        config.setOptionCode(CaseEntryConstants.SYSTEM_ADMIN_DIST_LIST);
+        config.setOptionValue("admin@test.com");
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN);
+        emailData.setBatchId(99);
+        emailData.setErrorLog("claim issue");
+
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_FAIL_NOTIFICATION_ADMIN)).thenReturn(Optional.of(notice));
+        when(caseConfigRepository.findById(CaseEntryConstants.SYSTEM_ADMIN_DIST_LIST)).thenReturn(Optional.of(config));
+        when(caLuValuesRepository.findByIdFieldId(CaseEntryConstants.INVST_TYPE_CODE)).thenReturn(Collections.emptyList());
+        when(caseBatchUtil.sendMail(emailSpecification)).thenReturn(true);
+        when(caEmailsBatchRepository.getNextSequenceId(99)).thenReturn(3);
+        when(caseBatchUtil.getCtAdminSystemId()).thenReturn("CT_ADMIN");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("Asia/Calcutta"));
+
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecification);
+
+        assertEquals("admin@test.com", emailSpecification.getSendToEmail());
+        assertEquals("Admin 99", emailSpecification.getEmailSubject());
+        verify(caEmailsBatchRepository).saveAndFlush(any(CaEmailsBatchT.class));
+    }
+
+    @Test
+    public void postBatchProcessMailSkipsSendWhenNoticeFlagIsDisabled() {
+        EmailSpecification emailSpecification = new EmailSpecification();
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        notice.setNoticeFlag("0");
+
+        EmailData emailData = new EmailData();
+        emailData.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        emailData.setSubmittedBy("WA123456");
+
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION)).thenReturn(Optional.of(notice));
+
+        caseBatchEmailService.postBatchProcessMail(emailData, emailSpecification);
+
+        verify(caseBatchUtil, never()).sendMail(any(EmailSpecification.class));
+        verify(caEmailsBatchRepository, never()).saveAndFlush(any(CaEmailsBatchT.class));
+    }
+
+    @Test
+    public void getMetaBaseNoticeTReturnsNoticeWhenPresent() {
+        CaMetaBaseNoticeT notice = new CaMetaBaseNoticeT();
+        notice.setNoticeId(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+        when(caMetaBaseNoticeRepository.findById(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION)).thenReturn(Optional.of(notice));
+
+        CaMetaBaseNoticeT result = caseBatchEmailService.getMetaBaseNoticeT(CaseEntryConstants.BATCH_SUCCESS_NOTIFICATION);
+
+        assertSame(notice, result);
+    }
+
+    private CaLuValuesT createLuValue(String luValue, String label) {
+        CaLuValuesT caLuValuesT = new CaLuValuesT();
+        caLuValuesT.setId(new CaLuValuesTPK(CaseEntryConstants.INVST_TYPE_CODE, luValue, 1));
+        caLuValuesT.setLuLabel(label);
+        return caLuValuesT;
+    }
+}
