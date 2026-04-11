@@ -45,9 +45,6 @@
     <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
     <snakeyaml.version>2.0</snakeyaml.version>
     <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
-    <s>onar.coverage.exclusion</s>
-    <!-- UNPARSED: comoptumfadscaseentrybatch.api, -->
-    <s>onar.coverage.exclusion</s>
     <bcp.version>1.67</bcp.version>
     <netty.version>4.1.129.Final</netty.version>
   </properties>
@@ -274,6 +271,12 @@
       <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>5.2.0</version>
+      <scope>test</scope>
+    </dependency>
     <!-- Before After Spring Test Runner  -->
     <dependency>
       <groupId>org.jacoco</groupId>
@@ -364,6 +367,11 @@
                     <target>${java.version}</target>
                     <testIncludes>
                         <testInclude>**/CommonConfigTest.java</testInclude>
+                        <testInclude>**/CaseEntryBatchApplicationTest.java</testInclude>
+                        <testInclude>**/SnowflakeDialectTest.java</testInclude>
+                        <testInclude>**/CaseEntryBatchJobTest.java</testInclude>
+                        <testInclude>**/CaseEntryApiExceptionTest.java</testInclude>
+                        <testInclude>**/PiApiExceptionTest.java</testInclude>
                     </testIncludes>
                     <annotationProcessorPaths>
                         <path>
@@ -435,6 +443,11 @@
           <useModulePath>false</useModulePath>
           <includes>
             <include>**/CommonConfigTest.java</include>
+            <include>**/CaseEntryBatchApplicationTest.java</include>
+            <include>**/SnowflakeDialectTest.java</include>
+            <include>**/CaseEntryBatchJobTest.java</include>
+            <include>**/CaseEntryApiExceptionTest.java</include>
+            <include>**/PiApiExceptionTest.java</include>
           </includes>
         </configuration>
         <version>3.5.4</version>
@@ -479,19 +492,20 @@
             <exclude>**/domain/**</exclude>
             <exclude>**/repo/**</exclude>
             <exclude>**/common/**</exclude>
-            <exclude>**/exception/**</exclude>
             <exclude>**/controller/**</exclude>
-            <exclude>**/job/**</exclude>
             <exclude>**/service/impl/**</exclude>
             <exclude>**/util/**</exclude>
             <exclude>**/config/CaseEntryBatchJobConfig.class</exclude>
             <exclude>**/config/PemKeyLoader.class</exclude>
             <exclude>**/config/ServiceConfigSQL.class</exclude>
-            <exclude>**/config/SnowflakeDialect.class</exclude>
-            <exclude>**/*Application.class</exclude>
           </excludes>
           <includes>
             <include>**/config/CommonConfig.class</include>
+            <include>**/config/SnowflakeDialect.class</include>
+            <include>**/job/CaseEntryBatchJob.class</include>
+            <include>**/exception/CaseEntryApiException.class</include>
+            <include>**/exception/PiApiException.class</include>
+            <include>**/*Application.class</include>
           </includes>
         </configuration>
         <executions>
@@ -513,3 +527,205 @@
     </plugins>
   </build>
 </project>
+package com.optum.fads.caseentrybatch.api;
+
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.springframework.boot.SpringApplication;
+
+public class CaseEntryBatchApplicationTest {
+
+    @Test
+    public void mainInvokesSpringApplicationRun() {
+        try (MockedStatic<SpringApplication> springApplication = Mockito.mockStatic(SpringApplication.class)) {
+            CaseEntryBatchApplication.main(new String[] {"arg1"});
+
+            springApplication.verify(() -> SpringApplication.run(CaseEntryBatchApplication.class, new String[] {"arg1"}));
+        }
+    }
+
+    @Test
+    public void applicationClassIsInstantiable() {
+        assertTrue(new CaseEntryBatchApplication() instanceof CaseEntryBatchApplication);
+    }
+}
+package com.optum.fads.caseentrybatch.api.config;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
+import org.modelmapper.convention.MatchingStrategies;
+import org.springframework.test.util.ReflectionTestUtils;
+
+public class CommonConfigTest {
+
+    @Test
+    public void modelMapperUsesStrictMatching() {
+        CommonConfig config = new CommonConfig();
+
+        assertNotNull(config.modelMapper());
+        assertTrue(config.modelMapper().getConfiguration().isAmbiguityIgnored());
+        assertEquals(MatchingStrategies.STRICT, config.modelMapper().getConfiguration().getMatchingStrategy());
+    }
+
+    @Test
+    public void secretClientBeanIsCreated() {
+        CommonConfig config = new CommonConfig();
+        ReflectionTestUtils.setField(config, "azureKeyVaultUrl", "https://example.vault.azure.net/");
+        ReflectionTestUtils.setField(config, "azureKeyVaultTenant", "tenant");
+        ReflectionTestUtils.setField(config, "azureKeyVaultSecret", "secret");
+        ReflectionTestUtils.setField(config, "azureKeyVaultClientId", "client");
+
+        assertNotNull(config.secretClient());
+    }
+}
+package com.optum.fads.caseentrybatch.api.config;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import org.hibernate.dialect.Dialect;
+import org.junit.Test;
+
+public class SnowflakeDialectTest {
+
+    @Test
+    public void snowflakeDialectIsHibernateDialect() {
+        SnowflakeDialect dialect = new SnowflakeDialect();
+
+        assertNotNull(dialect);
+        assertTrue(dialect instanceof Dialect);
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.exception;
+
+import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
+
+public class CaseEntryApiExceptionTest {
+
+    @Test
+    public void constructorWithMessageUsesProvidedMessage() {
+        CaseEntryApiException exception = new CaseEntryApiException("batch failure");
+
+        assertEquals("batch failure", exception.getMessage());
+    }
+
+    @Test
+    public void constructorWithCauseUsesCauseMessage() {
+        RuntimeException cause = new RuntimeException("root cause");
+
+        CaseEntryApiException exception = new CaseEntryApiException(cause);
+
+        assertEquals("root cause", exception.getMessage());
+    }
+}
+
+package com.optum.fads.caseentrybatch.api.exception;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+
+import org.junit.Test;
+import org.springframework.http.HttpStatus;
+
+public class PiApiExceptionTest {
+
+    private enum TestErrorDetail implements ErrorDetail {
+        SAMPLE;
+
+        @Override
+        public String getMessage() {
+            return "Error for {}";
+        }
+
+        @Override
+        public String getCode() {
+            return "CASE_001";
+        }
+
+        @Override
+        public HttpStatus getHttpStatus() {
+            return HttpStatus.BAD_REQUEST;
+        }
+    }
+
+    @Test
+    public void constructorWithErrorDetailSetsMessageCodeAndStatus() {
+        PiApiException exception = new PiApiException(TestErrorDetail.SAMPLE);
+
+        assertEquals("Error for {}", exception.getMessage());
+        assertEquals("CASE_001", exception.getErrorCode());
+        assertSame(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
+    }
+
+    @Test
+    public void constructorFormatsMessageArguments() {
+        PiApiException exception = new PiApiException(TestErrorDetail.SAMPLE, "batch");
+
+        assertEquals("Error for batch", exception.getMessage());
+        assertEquals("CASE_001", exception.getErrorCode());
+        assertSame(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
+    }
+
+    @Test
+    public void constructorWithCausePreservesCause() {
+        IllegalStateException cause = new IllegalStateException("boom");
+
+        PiApiException exception = new PiApiException(TestErrorDetail.SAMPLE, cause, "batch");
+
+        assertEquals("Error for batch", exception.getMessage());
+        assertSame(cause, exception.getCause());
+        assertEquals("CASE_001", exception.getErrorCode());
+        assertSame(HttpStatus.BAD_REQUEST, exception.getHttpStatus());
+    }
+}
+package com.optum.fads.caseentrybatch.api.job;
+
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.quartz.JobExecutionContext;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import com.optum.fads.caseentrybatch.api.service.ICaseBatchService;
+
+@RunWith(MockitoJUnitRunner.class)
+public class CaseEntryBatchJobTest {
+
+    @Mock
+    private ICaseBatchService caseBatchService;
+
+    @Mock
+    private JobExecutionContext context;
+
+    @InjectMocks
+    private TestableCaseEntryBatchJob job;
+
+    @Test
+    public void executeInternalDelegatesToBatchService() throws Exception {
+        ReflectionTestUtils.setField(job, "iCaseBatchService", caseBatchService);
+
+        job.run(context);
+
+        verify(caseBatchService, times(1)).createBatchCase();
+    }
+
+    private static class TestableCaseEntryBatchJob extends CaseEntryBatchJob {
+        void run(JobExecutionContext context) throws Exception {
+            executeInternal(context);
+        }
+    }
+}
