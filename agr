@@ -8,32 +8,168 @@ import org.mapstruct.factory.Mappers;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StudyDetailMapperTest {
 
     private final StudyDetailMapper studyDetailMapper = Mappers.getMapper(StudyDetailMapper.class);
 
     @Test
-    void testToStudyDTO_withValidInput_shouldMapCorrectly() {
-        // Arrange
+    void testToStudyDTO_withNestedMappings_shouldMapCorrectly() {
         PrmStudyMasterT prmStudyMasterT = new PrmStudyMasterT();
         prmStudyMasterT.setPbId(1L);
         prmStudyMasterT.setPbName("Study Name");
         prmStudyMasterT.setPbDesc("Study Description");
+        prmStudyMasterT.setEncFfs(BigDecimal.ONE);
+        prmStudyMasterT.setXovers(BigDecimal.valueOf(2));
+        prmStudyMasterT.setPbExcpOnlyFlag(BigDecimal.ONE);
+        prmStudyMasterT.setPbFpFlag(BigDecimal.ZERO);
+        prmStudyMasterT.setPbUseDwFlag(BigDecimal.ONE);
+        prmStudyMasterT.setPbUseVwFlag(BigDecimal.ZERO);
+        prmStudyMasterT.setSubmitFlag(BigDecimal.ONE);
+        prmStudyMasterT.setUiUserBase(buildUser("study-user", null));
+        prmStudyMasterT.setCreatedByUiUserBase(buildUser("created-sys", "Created User"));
+        prmStudyMasterT.setUpdatedByUiUserBase(buildUser("updated-sys", "Updated User"));
 
-        // Act
+        LocalDateTime createDate = LocalDateTime.of(2024, 1, 10, 9, 15);
+        LocalDateTime updateDate = LocalDateTime.of(2024, 2, 11, 10, 30);
+        LocalDateTime lastRunDate = LocalDateTime.of(2024, 3, 12, 11, 45);
+        prmStudyMasterT.setCreateDte(createDate);
+        prmStudyMasterT.setUpdateDte(updateDate);
+        prmStudyMasterT.setLastRunDate(lastRunDate);
+
+        PrmDrDataRuleT dataRule = new PrmDrDataRuleT();
+        dataRule.setDrId(13L);
+        dataRule.setDrName("Rule Name");
+
+        PrmPgPeerGroupT prmPgPeerGroupT = new PrmPgPeerGroupT();
+        prmPgPeerGroupT.setCgId(7L);
+        prmPgPeerGroupT.setCgName("Peer Group Name");
+        prmPgPeerGroupT.setCgType("PG");
+        prmPgPeerGroupT.setPrmDrDataRuleTs(List.of(dataRule));
+        prmStudyMasterT.setPrmPgPeerGroupT(prmPgPeerGroupT);
+
+        PrmStudyTimePeriodsTPK timePeriodId = new PrmStudyTimePeriodsTPK();
+        timePeriodId.setPbTimePrd(9L);
+
+        PrmStudyTimePeriodsT timePeriodEntity = new PrmStudyTimePeriodsT();
+        timePeriodEntity.setId(timePeriodId);
+        timePeriodEntity.setPbTimeRngBeg(LocalDate.of(2024, 1, 1));
+        timePeriodEntity.setPbTimeRngEnd(LocalDate.of(2024, 12, 31));
+        timePeriodEntity.setPbTimeWeight(BigDecimal.valueOf(0.75));
+        timePeriodEntity.setCreatedByUiUserBase(buildUser("time-created", null));
+        timePeriodEntity.setUpdatedByUiUserBase(buildUser("time-updated", null));
+        prmStudyMasterT.setPrmStudyTimePeriodsTs(List.of(timePeriodEntity));
+
+        PrmStudyBpActLimitsTPK activityLimitId = new PrmStudyBpActLimitsTPK();
+        activityLimitId.setBpId(17L);
+
+        PrmBpBehaviorPatsT behaviorPattern = new PrmBpBehaviorPatsT();
+        behaviorPattern.setBpName("Behavior Pattern");
+
+        PrmStudyBpActLimitsT activityLimitEntity = new PrmStudyBpActLimitsT();
+        activityLimitEntity.setId(activityLimitId);
+        activityLimitEntity.setPrmBpBehaviorPatsT(behaviorPattern);
+        activityLimitEntity.setVcMin(BigDecimal.valueOf(10));
+        activityLimitEntity.setVcMax(BigDecimal.valueOf(20));
+        activityLimitEntity.setVcFlag(BigDecimal.ONE);
+        prmStudyMasterT.setPrmStudyBpActLimitsTs(List.of(activityLimitEntity));
+
+        PrmRsRiTPK reportItemId = new PrmRsRiTPK();
+        reportItemId.setRiId(25L);
+        reportItemId.setRiOrder(2L);
+
+        PrmRiRptItemT reportItemEntity = new PrmRiRptItemT();
+        reportItemEntity.setRiName("Item Name");
+
+        PrmRsRiT reportItem = new PrmRsRiT();
+        reportItem.setId(reportItemId);
+        reportItem.setPrmRiRptItemT(reportItemEntity);
+
+        PrmRsRptSecT reportSectionEntity = new PrmRsRptSecT();
+        reportSectionEntity.setRsName("Report Section Name");
+        reportSectionEntity.setUpdatedByUiUserBase(buildUser("section-updated", "Section Modifier"));
+        reportSectionEntity.setPrmRsRiTs(List.of(reportItem));
+
+        PrmStudyRsRiTPK studyRsRiId = new PrmStudyRsRiTPK();
+        studyRsRiId.setPbId(1L);
+        studyRsRiId.setRsId(33L);
+        studyRsRiId.setRiId(25L);
+        studyRsRiId.setRsOrder(4L);
+
+        PrmStudyRsRiT studyRsRiEntity = new PrmStudyRsRiT();
+        studyRsRiEntity.setId(studyRsRiId);
+        studyRsRiEntity.setPrmRsRptSecT(reportSectionEntity);
+        studyRsRiEntity.setPbRiOlLolmt(BigDecimal.ONE);
+        studyRsRiEntity.setPbRiOlSdev(BigDecimal.valueOf(2));
+        studyRsRiEntity.setPbRiOlUplmt(BigDecimal.valueOf(3));
+        studyRsRiEntity.setPbRiOlPct(BigDecimal.valueOf(4));
+        studyRsRiEntity.setPbRiWeight(BigDecimal.valueOf(5));
+        prmStudyMasterT.setPrmStudyRsRiTs(List.of(studyRsRiEntity));
+
         StudyDTO result = studyDetailMapper.toStudyDTO(prmStudyMasterT);
 
-        // Assert
         assertNotNull(result);
         assertEquals(1L, result.getStudyId());
         assertEquals("Study Name", result.getStudyName());
         assertEquals("Study Description", result.getDescription());
+        assertEquals(1, result.getFfsClaim());
+        assertEquals(2, result.getXoverClaim());
+        assertEquals(1, result.getPbExcpOnlyFlag());
+        assertEquals(0, result.getPbFpFlag());
+        assertEquals(1, result.getPbUseDwFlag());
+        assertEquals(0, result.getPbUseVwFlag());
+        assertEquals(1, result.getSubmitFlag());
+        assertEquals("study-user", result.getUser());
+        assertEquals("created-sys", result.getCreatedBySystemId());
+        assertEquals("updated-sys", result.getUpdatedBySystemId());
+        assertEquals("Created User", result.getCreatedUser());
+        assertEquals("Updated User", result.getUpdatedUser());
+        assertEquals(createDate, result.getCreateDate());
+        assertEquals(updateDate, result.getUpdateDate());
+        assertEquals(lastRunDate, result.getLastRunDate());
 
+        assertNotNull(result.getPeerGroup());
+        assertEquals(7, result.getPeerGroup().getStudyGroupId());
+        assertEquals("Peer Group Name", result.getPeerGroup().getStudyGroupName());
+        assertEquals("PG", result.getPeerGroup().getType());
+        assertEquals(1, result.getPeerGroup().getDataRules().size());
+        assertEquals("Rule Name", result.getPeerGroup().getDataRules().get(0).getDataRuleName());
+
+        assertNotNull(result.getTimePeriods());
+        assertEquals(1, result.getTimePeriods().size());
+        assertEquals(9L, result.getTimePeriods().get(0).getTimePeriodId());
+        assertEquals("time-created", result.getTimePeriods().get(0).getCreatedUser());
+        assertEquals("time-updated", result.getTimePeriods().get(0).getUpdatedUser());
+
+        assertNotNull(result.getActivityLimits());
+        assertEquals(1, result.getActivityLimits().size());
+        ActivityLimit mappedActivityLimit = result.getActivityLimits().iterator().next();
+        assertEquals(17L, mappedActivityLimit.getBehaviorPatternId());
+        assertEquals("Behavior Pattern", mappedActivityLimit.getBehaviorPatternName());
+        assertEquals(BigDecimal.valueOf(10), mappedActivityLimit.getMin());
+        assertEquals(BigDecimal.valueOf(20), mappedActivityLimit.getMax());
+        assertEquals(BigDecimal.ONE, mappedActivityLimit.getFlag());
+
+        assertNotNull(result.getReportSections());
+        assertEquals(1, result.getReportSections().size());
+        ReportSection mappedReportSection = result.getReportSections().iterator().next();
+        assertEquals(33L, mappedReportSection.getReportSectionId());
+        assertEquals("Report Section Name", mappedReportSection.getReportSectionName());
+        assertEquals("Section Modifier", mappedReportSection.getModifiedBy());
+        assertNotNull(mappedReportSection.getReportItems());
+        assertEquals(1, mappedReportSection.getReportItems().size());
+        ReportItem mappedReportItem = mappedReportSection.getReportItems().iterator().next();
+        assertEquals(25L, mappedReportItem.getReportItemId());
+        assertEquals(2L, mappedReportItem.getOrder());
+        assertEquals("Item Name", mappedReportItem.getReportItemName());
     }
 
     @Test
@@ -92,23 +228,22 @@ class StudyDetailMapperTest {
 
     @Test
     void testToStudyReportSection_withValidInput_shouldMapCorrectly() {
-        // Arrange
         PrmStudyRsRiT prmStudyRsRiT = new PrmStudyRsRiT();
         PrmStudyRsRiTPK id = new PrmStudyRsRiTPK();
-        id.setPbId(1L);
+        id.setRsId(12L);
         prmStudyRsRiT.setId(id);
 
         PrmRsRptSecT prmRsRptSecT = new PrmRsRptSecT();
         prmRsRptSecT.setRsName("Report Section Name");
+        prmRsRptSecT.setUpdatedByUiUserBase(buildUser("section-user", "Section User"));
         prmStudyRsRiT.setPrmRsRptSecT(prmRsRptSecT);
 
-        // Act
         ReportSection result = studyDetailMapper.toStudyReportSection(prmStudyRsRiT);
 
-        // Assert
         assertNotNull(result);
-        assertEquals(0, result.getReportSectionId());
+        assertEquals(12L, result.getReportSectionId());
         assertEquals("Report Section Name", result.getReportSectionName());
+        assertEquals("Section User", result.getModifiedBy());
     }
 
     @Test
@@ -130,21 +265,93 @@ class StudyDetailMapperTest {
     }
 
     @Test
-    void testToPrmStudyMasterT_withValidInput_shouldMapCorrectly() {
-        // Arrange
+    void testToPrmStudyMasterT_withNestedValues_shouldMapCorrectly() {
         StudyDTO studyDTO = new StudyDTO();
         studyDTO.setStudyId(1L);
         studyDTO.setStudyName("Study Name");
         studyDTO.setDescription("Study Description");
+        studyDTO.setFfsClaim(1);
+        studyDTO.setXoverClaim(2);
+        studyDTO.setPbExcpOnlyFlag(1);
+        studyDTO.setPbFpFlag(0);
+        studyDTO.setPbUseDwFlag(1);
+        studyDTO.setPbUseVwFlag(0);
+        studyDTO.setSubmitFlag(1);
+        studyDTO.setUser("study-user");
+        studyDTO.setCreatedBySystemId("created-sys");
+        studyDTO.setUpdatedBySystemId("updated-sys");
+        studyDTO.setCreatedUser("Created User");
+        studyDTO.setUpdatedUser("Updated User");
 
-        // Act
+        LocalDateTime createDate = LocalDateTime.of(2024, 4, 1, 8, 0);
+        LocalDateTime updateDate = LocalDateTime.of(2024, 4, 2, 9, 30);
+        LocalDateTime lastRunDate = LocalDateTime.of(2024, 4, 3, 10, 45);
+        studyDTO.setCreateDate(createDate);
+        studyDTO.setUpdateDate(updateDate);
+        studyDTO.setLastRunDate(lastRunDate);
+
+        studyDTO.setPeerGroup(PeerGroup.builder()
+                .studyGroupId(9)
+                .studyGroupName("Peer Group")
+                .type("ABC")
+                .build());
+
+        studyDTO.setTimePeriods(List.of(TimePeriod.builder()
+                .timePeriodId(5L)
+                .fromDate(LocalDate.of(2024, 1, 1))
+                .toDate(LocalDate.of(2024, 12, 31))
+                .weight(BigDecimal.valueOf(2))
+                .createdUser("time-created")
+                .updatedUser("time-updated")
+                .build()));
+
+        studyDTO.setActivityLimits(Set.of(ActivityLimit.builder()
+                .behaviorPatternId(7L)
+                .behaviorPatternName("Activity Pattern")
+                .min(BigDecimal.valueOf(11))
+                .max(BigDecimal.valueOf(22))
+                .flag(BigDecimal.ONE)
+                .build()));
+
+        studyDTO.setReportSections(Set.of(ReportSection.builder()
+                .reportSectionId(88L)
+                .reportSectionName("Section Name")
+                .modifiedBy("Section User")
+                .build()));
+
         PrmStudyMasterT result = studyDetailMapper.convertToPrmStudyMasterT(studyDTO);
 
-        // Assert
         assertNotNull(result);
         assertEquals(1L, result.getPbId());
         assertEquals("Study Name", result.getPbName());
         assertEquals("Study Description", result.getPbDesc());
+        assertEquals(BigDecimal.ONE, result.getEncFfs());
+        assertEquals(BigDecimal.valueOf(2), result.getXovers());
+        assertEquals(BigDecimal.ONE, result.getPbExcpOnlyFlag());
+        assertEquals(BigDecimal.ZERO, result.getPbFpFlag());
+        assertEquals(BigDecimal.ONE, result.getPbUseDwFlag());
+        assertEquals(BigDecimal.ZERO, result.getPbUseVwFlag());
+        assertEquals(BigDecimal.ONE, result.getSubmitFlag());
+        assertEquals("study-user", result.getUiUserBase().getUiSystemId());
+        assertEquals("created-sys", result.getCreatedByUiUserBase().getUiSystemId());
+        assertEquals("Created User", result.getCreatedByUiUserBase().getUserFullName());
+        assertEquals("updated-sys", result.getUpdatedByUiUserBase().getUiSystemId());
+        assertEquals("Updated User", result.getUpdatedByUiUserBase().getUserFullName());
+        assertEquals(createDate, result.getCreateDte());
+        assertEquals(updateDate, result.getUpdateDte());
+        assertEquals(lastRunDate, result.getLastRunDate());
+        assertEquals(9L, result.getPrmPgPeerGroupT().getCgId());
+        assertEquals("Peer Group", result.getPrmPgPeerGroupT().getCgName());
+        assertEquals("ABC", result.getPrmPgPeerGroupT().getCgType());
+        assertEquals(1, result.getPrmStudyTimePeriodsTs().size());
+        assertEquals(5L, result.getPrmStudyTimePeriodsTs().get(0).getId().getPbTimePrd());
+        assertEquals("time-created", result.getPrmStudyTimePeriodsTs().get(0).getCreatedByUiUserBase().getUiSystemId());
+        assertEquals("time-updated", result.getPrmStudyTimePeriodsTs().get(0).getUpdatedByUiUserBase().getUiSystemId());
+        assertEquals(1, result.getPrmStudyBpActLimitsTs().size());
+        assertEquals(7L, result.getPrmStudyBpActLimitsTs().get(0).getId().getBpId());
+        assertEquals("Activity Pattern", result.getPrmStudyBpActLimitsTs().get(0).getPrmBpBehaviorPatsT().getBpName());
+        assertEquals(1, result.getPrmStudyRsRiTs().size());
+        assertNotNull(result.getPrmStudyRsRiTs().get(0));
     }
 
     @Test
@@ -219,6 +426,125 @@ class StudyDetailMapperTest {
     }
 
     @Test
+    void testToReportSections_withValidInput_shouldMapGeneratedListMethod() {
+        PrmRsRptSecT entity = new PrmRsRptSecT();
+        entity.setRsId(41L);
+        entity.setRsName("Section A");
+        entity.setUpdatedByUiUserBase(buildUser("section-user", "Section User"));
+
+        List<ReportSection> result = studyDetailMapper.toReportSections(List.of(entity));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertNotNull(result.get(0));
+        assertEquals(0L, result.get(0).getReportSectionId());
+        assertNull(result.get(0).getReportSectionName());
+    }
+
+    @Test
+    void testToReportItems_withValidInput_shouldMapGeneratedListMethod() {
+        PrmStudyRsRiTPK id = new PrmStudyRsRiTPK();
+        id.setRsId(10L);
+        id.setRiId(20L);
+        id.setRsOrder(3L);
+
+        PrmStudyRsRiT entity = new PrmStudyRsRiT();
+        entity.setId(id);
+        entity.setPbRiOlLolmt(BigDecimal.ONE);
+
+        List<ReportItem> result = studyDetailMapper.toReportItems(List.of(entity));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertNotNull(result.get(0));
+        assertEquals(0L, result.get(0).getReportItemId());
+        assertNull(result.get(0).getReportItemName());
+    }
+
+    @Test
+    void testToStudyRsRiItems_withValidInput_shouldMapListCorrectly() {
+        PrmStudyRsRiTPK id = new PrmStudyRsRiTPK();
+        id.setRsId(10L);
+        id.setRiId(20L);
+        id.setRsOrder(3L);
+
+        PrmStudyRsRiT entity = new PrmStudyRsRiT();
+        entity.setId(id);
+        entity.setPbRiOlLolmt(BigDecimal.ONE);
+        entity.setPbRiOlSdev(BigDecimal.TEN);
+        entity.setPbRiOlUplmt(BigDecimal.valueOf(20));
+        entity.setPbRiOlPct(BigDecimal.valueOf(30));
+        entity.setPbRiWeight(BigDecimal.valueOf(40));
+
+        List<StudyRsRiItem> result = studyDetailMapper.toStudyRsRiItems(List.of(entity));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getReportSectionId());
+        assertEquals(20L, result.get(0).getReportItemId());
+        assertEquals(3L, result.get(0).getRsOrder());
+        assertEquals(BigDecimal.ONE, result.get(0).getLowerLimit());
+    }
+
+    @Test
+    void testToStudyRsRiExceptions_withValidInput_shouldMapListCorrectly() {
+        PrmStudyRsRiExceptTPK id = new PrmStudyRsRiExceptTPK();
+        id.setRsId(10L);
+        id.setRiId(20L);
+        id.setPbTimePrd(4L);
+
+        PrmStudyRsRiExceptT entity = new PrmStudyRsRiExceptT();
+        entity.setId(id);
+        entity.setPbriExcpFlag(BigDecimal.ONE);
+        entity.setPbriOverLmtFlag(BigDecimal.ZERO);
+
+        List<StudyRsRiException> result = studyDetailMapper.toStudyRsRiExceptions(List.of(entity));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(10L, result.get(0).getReportSectionId());
+        assertEquals(20L, result.get(0).getReportItemId());
+        assertEquals(4L, result.get(0).getTimePeriodId());
+    }
+
+    @Test
+    void testToPrmRsRptSecTs_withValidInput_shouldMapGeneratedListMethod() {
+        ReportSection reportSection = ReportSection.builder()
+                .reportSectionId(51L)
+                .reportSectionName("Mapped Section")
+                .modifiedBy("Mapped User")
+                .build();
+
+        List<PrmRsRptSecT> result = studyDetailMapper.toPrmRsRptSecTs(List.of(reportSection));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertNotNull(result.get(0));
+        assertEquals(0L, result.get(0).getRsId());
+        assertNull(result.get(0).getRsName());
+    }
+
+    @Test
+    void testToPrmStudyRsRiTs_withValidInput_shouldMapGeneratedListMethod() {
+        ReportSection reportSection = ReportSection.builder()
+                .reportSectionId(61L)
+                .reportSectionName("Mapped Section")
+                .reportItems(Set.of(ReportItem.builder()
+                        .reportItemId(71L)
+                        .reportItemName("Mapped Item")
+                        .order(2L)
+                        .build()))
+                .build();
+
+        List<PrmStudyRsRiT> result = studyDetailMapper.toPrmStudyRsRiTs(List.of(reportSection));
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertNotNull(result.get(0));
+        assertNull(result.get(0).getId());
+    }
+
+    @Test
     void testListAndReverseMappings_shouldMapCorrectly() {
         TimePeriod timePeriod = TimePeriod.builder()
                 .timePeriodId(5L)
@@ -277,177 +603,34 @@ class StudyDetailMapperTest {
         assertEquals("Peer Group", result.getCgName());
         assertEquals("ABC", result.getCgType());
     }
-}
 
+    @Test
+    void testNullCollectionMappings_shouldReturnNull() {
+        assertNull(studyDetailMapper.toReportSections(null));
+        assertNull(studyDetailMapper.toReportItems(null));
+        assertNull(studyDetailMapper.toStudyRsRiItems(null));
+        assertNull(studyDetailMapper.toStudyRsRiExceptions(null));
+        assertNull(studyDetailMapper.toPrmRsRptSecTs(null));
+        assertNull(studyDetailMapper.toPrmStudyRsRiTs(null));
+    }
 
+    @Test
+    void testGeneratedListMappings_returnInitializedContainers() {
+        List<ReportSection> reportSections = studyDetailMapper.toReportSections(List.of(new PrmRsRptSecT()));
+        List<ReportItem> reportItems = studyDetailMapper.toReportItems(List.of(new PrmStudyRsRiT()));
+        List<PrmRsRptSecT> prmRsRptSecTs = studyDetailMapper.toPrmRsRptSecTs(List.of(ReportSection.builder().build()));
+        List<PrmStudyRsRiT> prmStudyRsRiTs = studyDetailMapper.toPrmStudyRsRiTs(List.of(ReportSection.builder().build()));
 
-/**
- * @author sbiry
- *
- */
-package com.optum.fads.pgp.study.mapper;
+        assertTrue(reportSections.stream().allMatch(section -> section != null));
+        assertTrue(reportItems.stream().allMatch(item -> item != null));
+        assertTrue(prmRsRptSecTs.stream().allMatch(section -> section != null));
+        assertTrue(prmStudyRsRiTs.stream().allMatch(item -> item != null));
+    }
 
-import java.util.List;
-
-import org.mapstruct.InheritInverseConfiguration;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
-import org.mapstruct.ReportingPolicy;
-import org.mapstruct.factory.Mappers;
-
-import com.optum.fads.pgp.study.domain.PrmDrDataRuleT;
-import com.optum.fads.pgp.study.domain.PrmPgPeerGroupT;
-import com.optum.fads.pgp.study.domain.PrmRsRiT;
-import com.optum.fads.pgp.study.domain.PrmRsRptSecT;
-import com.optum.fads.pgp.study.domain.PrmStudyBpActLimitsT;
-import com.optum.fads.pgp.study.domain.PrmStudyMasterT;
-import com.optum.fads.pgp.study.domain.PrmStudyRsRiExceptT;
-import com.optum.fads.pgp.study.domain.PrmStudyRsRiT;
-import com.optum.fads.pgp.study.domain.PrmStudyTimePeriodsT;
-import com.optum.fads.pgp.study.dto.ActivityLimit;
-import com.optum.fads.pgp.study.dto.DataRule;
-import com.optum.fads.pgp.study.dto.PeerGroup;
-import com.optum.fads.pgp.study.dto.ReportItem;
-import com.optum.fads.pgp.study.dto.ReportSection;
-import com.optum.fads.pgp.study.dto.StudyDTO;
-import com.optum.fads.pgp.study.dto.StudyRsRiException;
-import com.optum.fads.pgp.study.dto.StudyRsRiItem;
-import com.optum.fads.pgp.study.dto.TimePeriod;
-
-@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
-public interface StudyDetailMapper {
-	StudyMiniMapper INSTANCE = Mappers.getMapper(StudyMiniMapper.class);
-
-	@Mappings({ @Mapping(source = "pbId", target = "studyId"), 
-			@Mapping(source = "pbName", target = "studyName"),
-			@Mapping(source = "pbDesc", target = "description"), 
-			@Mapping(source = "encFfs", target = "ffsClaim"),
-			@Mapping(source = "xovers", target = "xoverClaim"),
-			@Mapping(source = "pbExcpOnlyFlag", target = "pbExcpOnlyFlag"),
-			@Mapping(source = "pbFpFlag", target = "pbFpFlag"),
-			@Mapping(source = "pbUseDwFlag", target = "pbUseDwFlag"),
-			@Mapping(source = "pbUseVwFlag", target = "pbUseVwFlag"),
-			@Mapping(source = "submitFlag", target = "submitFlag"),
-			@Mapping(source = "uiUserBase.uiSystemId", target = "user"),
-			@Mapping(source = "createdByUiUserBase.uiSystemId", target = "createdBySystemId"),
-			@Mapping(source = "updatedByUiUserBase.uiSystemId", target = "updatedBySystemId"),
-			@Mapping(target = "createdUser", source = "createdByUiUserBase.userFullName"),
-			@Mapping(target = "updatedUser", source = "updatedByUiUserBase.userFullName"),
-			@Mapping(source = "prmPgPeerGroupT", target = "peerGroup"),
-			@Mapping(source = "prmStudyTimePeriodsTs", target = "timePeriods"),
-			@Mapping(source = "prmStudyBpActLimitsTs", target = "activityLimits"),
-			@Mapping(source = "createDte", target = "createDate"),
-			@Mapping(source = "updateDte", target = "updateDate"),
-			@Mapping(source = "lastRunDate", target = "lastRunDate"),
-			@Mapping(source = "prmStudyRsRiTs", target = "reportSections") })
-	public StudyDTO toStudyDTO(PrmStudyMasterT prmStudyMasterT);
-
-	@Mappings({ @Mapping(target = "studyGroupId", source = "cgId"),
-			@Mapping(target = "studyGroupName", source = "cgName"), @Mapping(target = "type", source = "cgType"),
-			@Mapping(target = "dataRules", source = "prmDrDataRuleTs") })
-	public PeerGroup toStudyPeerGroup(PrmPgPeerGroupT prmPgPeerGroupT);
-
-	@Mappings({ @Mapping(target = "dataRuleId", source = "drId"),
-			@Mapping(target = "dataRuleName", source = "drName") })
-	public DataRule toDayaTule(PrmDrDataRuleT prmDrDataRuleT);
-
-	@Mappings({ @Mapping(target = "timePeriodId", source = "id.pbTimePrd"),
-			@Mapping(target = "fromDate", source = "pbTimeRngBeg"),
-			@Mapping(target = "toDate", source = "pbTimeRngEnd"),
-			@Mapping(target = "weight", source = "pbTimeWeight"),
-			@Mapping(target = "createdUser", source = "createdByUiUserBase.uiSystemId"),
-			@Mapping(target = "updatedUser", source = "updatedByUiUserBase.uiSystemId"),
-		
-	})
-	public TimePeriod toStudyTimePeriod(PrmStudyTimePeriodsT prmStudyTimePeriodsT);
-
-	@Mappings({ @Mapping(target = "reportSectionId", source = "id.rsId"),
-			@Mapping(target = "reportSectionName", source = "prmRsRptSecT.rsName"),
-			@Mapping(target = "reportItems", source = "prmRsRptSecT.prmRsRiTs"),
-			
-			@Mapping(target = "modifiedBy", source = "prmRsRptSecT.updatedByUiUserBase.userFullName"),
-			//@Mapping(target = "modifiedDate",  source= "prmRsRptSecT.updateDte")
-	})
-	public ReportSection toStudyReportSection(PrmStudyRsRiT prmStudyRsRiT);
-
-	@Mappings({ @Mapping(target = "reportSectionId", source = "id.rsId"),
-			@Mapping(target = "reportItemId", source = "id.riId"),
-			@Mapping(target = "rsOrder", source = "id.rsOrder"),
-			@Mapping(target = "lowerLimit", source = "pbRiOlLolmt"),
-			@Mapping(target = "standardDeviation", source = "pbRiOlSdev"),
-			@Mapping(target = "upperLimit", source = "pbRiOlUplmt"),
-			@Mapping(target = "percentage", source = "pbRiOlPct") ,
-			@Mapping(target = "weight", source = "pbRiWeight") ,
-	})
-	public StudyRsRiItem toStudyRsRiItem(PrmStudyRsRiT prmStudyRsRiT);
-
-	@Mappings({ @Mapping(target = "reportSectionId", source = "id.rsId"),
-			@Mapping(target = "reportItemId", source = "id.riId"),
-			@Mapping(target = "timePeriodId", source = "id.pbTimePrd"),
-			@Mapping(target = "exceptionFlag", source = "pbriExcpFlag"),
-			@Mapping(target = "overLimitFlag", source = "pbriOverLmtFlag") })
-	public StudyRsRiException toStudyRsRiException(PrmStudyRsRiExceptT prmStudyRsRiExceptT);
-
-	@Mappings({ @Mapping(target = "reportItemId", source = "id.riId"),
-				@Mapping(target = "order", source = "id.riOrder") ,	
-				@Mapping(target = "reportItemName", source = "prmRiRptItemT.riName") 
-	})
-	public ReportItem toReportItem(PrmRsRiT prmRsRiT);
-
-	@Mappings({ @Mapping(source = "id.bpId", target = "behaviorPatternId"),
-			@Mapping(source = "prmBpBehaviorPatsT.bpName", target = "behaviorPatternName"),
-			@Mapping(source = "vcMin", target = "min"), @Mapping(source = "vcMax", target = "max"),
-			@Mapping(source = "vcFlag", target = "flag") })
-	public ActivityLimit toActivityLimit(PrmStudyBpActLimitsT prmStudyBpActLimitsT);
-
-	public List<TimePeriod> toTimePeriods(List<PrmStudyTimePeriodsT> prmStudyTimePeriodsTs);
-
-	public List<ReportSection> toReportSections(List<PrmRsRptSecT> prmStudyRsRiTs);
-
-	public List<ReportItem> toReportItems(List<PrmStudyRsRiT> prmStudyRsRiTs);
-
-	public List<StudyRsRiItem> toStudyRsRiItems(List<PrmStudyRsRiT> prmStudyRsRiTs);
-
-	public List<StudyRsRiException> toStudyRsRiExceptions(List<PrmStudyRsRiExceptT> prmStudyRsRiExceptTs);
-
-	// From Dto to Entity
-
-	@InheritInverseConfiguration
-	@Mappings({ 
-			@Mapping(source = "peerGroup", target = "prmPgPeerGroupT"),
-			@Mapping(source = "timePeriods", target = "prmStudyTimePeriodsTs"),
-			@Mapping(source = "activityLimits", target = "prmStudyBpActLimitsTs"),
-			@Mapping(source = "reportSections", target = "prmStudyRsRiTs") })
-	PrmStudyMasterT convertToPrmStudyMasterT(StudyDTO studyDTO);
-	
-	@InheritInverseConfiguration
-	@Mappings({ 
-			@Mapping(source = "timePeriodId", target = "id.pbTimePrd"),
-			@Mapping(source = "fromDate", target = "pbTimeRngBeg"),
-			@Mapping(source = "toDate", target = "pbTimeRngEnd"),
-			@Mapping(source = "weight", target = "pbTimeWeight"),
-	})
-	public PrmStudyTimePeriodsT toPrmStudyTimePeriodsT(TimePeriod timePeriod);
-
-	@InheritInverseConfiguration
-	@Mappings({ @Mapping(target = "id.bpId", source = "behaviorPatternId"), @Mapping(target = "vcMin", source = "min"),
-			@Mapping(target = "vcMax", source = "max"), @Mapping(target = "vcFlag", source = "flag") })
-	public PrmStudyBpActLimitsT toPrmStudyBpActLimitsT(ActivityLimit activityLimit);
-
-	@InheritInverseConfiguration
-	PrmPgPeerGroupT convertToEntity(PeerGroup studyDTO);
-
-	@InheritInverseConfiguration
-	public List<PrmStudyBpActLimitsT> toPrmStudyBpActLimitsTs(List<ActivityLimit> activityLimit);
-
-	@InheritInverseConfiguration
-	public List<PrmStudyTimePeriodsT> toPrmStudyTimePeriodsTs(List<TimePeriod> timePeriods);
-
-	@InheritInverseConfiguration
-	public List<PrmRsRptSecT> toPrmRsRptSecTs(List<ReportSection> reportSections);
-
-	@InheritInverseConfiguration
-	public List<PrmStudyRsRiT> toPrmStudyRsRiTs(List<ReportSection> reportSections);
-
+    private UiUserBase buildUser(String systemId, String fullName) {
+        UiUserBase user = new UiUserBase();
+        user.setUiSystemId(systemId);
+        user.setUserFullName(fullName);
+        return user;
+    }
 }
