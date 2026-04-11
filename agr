@@ -1,139 +1,334 @@
-04-12T00:41:49.965+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
-[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.211 s -- in com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Errors:
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+package com.optum.fads.caseentrybatch.api.service;
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+import java.time.LocalDateTime;
+import java.util.Date;
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.modelmapper.ModelMapper;
+import org.springframework.test.util.ReflectionTestUtils;
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaGeneralT;
+import com.optum.fads.caseentrybatch.api.domain.CaIntelligentKeyT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseTPK;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.CaseBaseInfo;
+import com.optum.fads.caseentrybatch.api.dto.CaseProviderDTO;
+import com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO;
+import com.optum.fads.caseentrybatch.api.repo.CaIntelligentKeyRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaMetaBaseRepository;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseRepository;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchIndividualService;
+import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
+import com.optum.fads.caseentrybatch.api.util.ClaimsCorrectionsHistAssist;
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+@RunWith(MockitoJUnitRunner.class)
+public class CaseBatchIndividualServiceTests {
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Mock
+    private CaUniverseRepository caUniverseRepository;
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+    @Mock
+    private CaIntelligentKeyRepository caIntelligentKeyRepository;
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Mock
+    private DmClaimDrugRepository dmClaimDrugRepository;
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Mock
+    private CaMetaBaseRepository caMetaBaseRepository;
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+    @Mock
+    private ClaimsCorrectionsHistAssist claimsCorrectionsHistAssist;
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Mock
+    private CaseBatchEmailService caseBatchEmailService;
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Mock
+    private CaseBatchUtil caseBatchUtil;
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+    @InjectMocks
+    private CaseBatchIndividualService caseBatchIndividualService;
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Before
+    public void setUp() {
+        ReflectionTestUtils.setField(caseBatchIndividualService, "modelMapper", createConfiguredModelMapper());
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void getCaseIndValueUsesRepositoryValuesWhenPresent() {
+        when(caIntelligentKeyRepository.getNextCaseId()).thenReturn(42);
+        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(7);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        CaseBaseInfo result = caseBatchIndividualService.getCaseIndValue("PAU", 2024, "P100");
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+        assertEquals(Integer.valueOf(42), result.getCaseId());
+        assertEquals(Integer.valueOf(7), result.getSequenceId());
+        assertEquals("PAU-2024-00007", result.getCaseIdStr());
+        assertEquals("P100", result.getParticpantId());
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void getCaseIndValueFallsBackToOneWhenRepositoryReturnsNull() {
+        when(caIntelligentKeyRepository.getNextCaseId()).thenReturn(null);
+        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(null);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        CaseBaseInfo result = caseBatchIndividualService.getCaseIndValue("PAU", 2024, "P100");
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+        assertEquals(Integer.valueOf(1), result.getCaseId());
+        assertEquals(Integer.valueOf(1), result.getSequenceId());
+        assertEquals("PAU-2024-00001", result.getCaseIdStr());
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void saveCaIntelligentKeyTentryDelegatesToRepository() {
+        CaIntelligentKeyT caIntelligentKeyT = CaIntelligentKeyT.builder().caseId(88).build();
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        caseBatchIndividualService.saveCaIntelligentKeyTentry(caIntelligentKeyT);
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+        verify(caIntelligentKeyRepository).save(caIntelligentKeyT);
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void createCaGeneralTentryBuildsTrackingDataWithoutCaseSource() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(55).build();
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setCaseSourceCd(null);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        CaGeneralT result = caseBatchIndividualService.createCaGeneralTentry(key, "PART-1", "John Smith", caUniverseT);
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+        assertEquals(Integer.valueOf(55), result.getCaseId());
+        assertEquals("PART-1", result.getParticipantId());
+        assertEquals("John Smith", result.getParticipantName());
+        assertEquals(CaseEntryConstants.BATCH_CASE + 10, result.getTrackingId());
+        assertEquals("ACTIVE", result.getProtectStatus());
+        assertNull(result.getCaLuCaseSourceT());
+        assertSame(key, result.getCaIntelligentKeyT());
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void createCaGeneralTentryAddsCaseSourceWhenProvided() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(56).build();
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setCaseSourceCd("SRC");
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        CaGeneralT result = caseBatchIndividualService.createCaGeneralTentry(key, "PART-2", "Jane Doe", caUniverseT);
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+        assertEquals("SRC", result.getCaLuCaseSourceT().getSourceCd());
+        assertSame(key, result.getCaIntelligentKeyT());
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void createProviderEntryMapsProviderFieldsAndLinksCase() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(70).build();
+        CaseProviderDTO provider = new CaseProviderDTO();
+        provider.setParticipantId("PV-1");
+        provider.setParticipantName("Provider Name");
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        var result = caseBatchIndividualService.createProviderEntry(key, provider);
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+        assertEquals(Integer.valueOf(70), result.getCaseId());
+        assertSame(key, result.getCaIntelligentKeyT());
+    }
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+    @Test
+    public void createRecipientEntryMapsRecipientFieldsAndLinksCase() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(71).build();
+        CaseRecipientDTO recipient = new CaseRecipientDTO();
+        recipient.setParticipantId("MB-1");
+        recipient.setParticipantName("Member Name");
+        var result = caseBatchIndividualService.createRecipientEntry(key, recipient);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        assertEquals(Integer.valueOf(71), result.getCaseId());
+        assertSame(key, result.getCaIntelligentKeyT());
+    }
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Test
+    public void createinvstPrFsEntryBuildsPreliminaryStructuresIncludingIssue() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(80).build();
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        caUniverseT.setCaseStatusCd("OPEN");
+        caUniverseT.setIssueCd("ISSUE1");
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+        caseBatchIndividualService.createinvstPrFsEntry(key, caUniverseT);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        assertNotNull(key.getCaInvstPreliminaryT());
+        assertEquals("OPEN", key.getCaInvstPreliminaryT().getCaseStatusCd());
+        assertEquals(1, key.getCaInvstPrHistTs().size());
+        assertEquals(1, key.getCaInvstPrStatusHistTs().size());
+        assertEquals(1, key.getCaInvstPrIssueTs().size());
+        assertNotNull(key.getCaInvstPrIssueHistTs());
+    }
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Test
+    public void createinvstPrFsEntryBuildsFullscaleStructuresIncludingIssue() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(81).build();
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setInvstTypeCd("FS");
+        caUniverseT.setCaseStatusCd("OPEN");
+        caUniverseT.setIssueCd("ISSUE2");
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+        caseBatchIndividualService.createinvstPrFsEntry(key, caUniverseT);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        assertNotNull(key.getCaInvstFullscaleT());
+        assertEquals("OPEN", key.getCaInvstFullscaleT().getCaseStatusCd());
+        assertEquals(1, key.getCaInvstFsHistTs().size());
+        assertEquals(1, key.getCaInvstFsStatusHistTs().size());
+        assertEquals(1, key.getCaInvstFsIssueTs().size());
+        assertEquals(1, key.getCaInvstFsIssueHistTs().size());
+    }
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Test
+    public void createinvstPrFsAssignEntryBuildsPreliminaryAssignmentStructures() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(82).build();
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        caUniverseT.setAssignSectionCd("PRELIM");
+        caUniverseT.setAssignUsr("WA54321");
 
-1 error
-[ERROR]   CaseBatchIndividualServiceTests.setUp:69->createConfiguredModelMapper:329 » Configuration ModelMapper configuration errors:
+        caseBatchIndividualService.createinvstPrFsAssignEntry(key, 1, caUniverseT);
 
-1) The destination property com.optum.fads.caseentrybatch.api.domain.CaRecipientT.setCaseId() matches multiple source property hierarchies:
+        assertEquals(1, key.getCaInvstPrAssignTs().size());
+        assertEquals(1, key.getCaInvstPrAssignHistTs().size());
+    }
 
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getParticipantId()
-        com.optum.fads.caseentrybatch.api.dto.CaseRecipientDTO.getHouseholdId()
+    @Test
+    public void createinvstPrFsAssignEntryBuildsFullscaleAssignmentStructures() {
+        CaIntelligentKeyT key = CaIntelligentKeyT.builder().caseId(83).build();
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setInvstTypeCd("FS");
+        caUniverseT.setAssignSectionCd("FULL");
+        caUniverseT.setAssignUsr("WA67890");
 
-1 error
-[INFO]
-[ERROR] Tests run: 37, Failures: 0, Errors: 15, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  36.256 s
-[INFO] Finished at: 2026-04-12T00:41:50+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch:
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-case-entry-batch\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+        caseBatchIndividualService.createinvstPrFsAssignEntry(key, 1, caUniverseT);
+
+        assertEquals(1, key.getCaInvstFsAssignTs().size());
+        assertEquals(1, key.getCaInvstFsAssignHistTs().size());
+    }
+
+    @Test
+    public void getSequenceIdFromCaIntelligentKeyReturnsRepositoryValue() {
+        CaUniverseT caUniverseT = createUniverse();
+        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(9);
+
+        Integer result = caseBatchIndividualService.getSequenceIdFromCaIntelligentKey(caUniverseT);
+
+        assertEquals(Integer.valueOf(9), result);
+    }
+
+    @Test
+    public void getSequenceIdFromCaIntelligentKeyFallsBackToOne() {
+        CaUniverseT caUniverseT = createUniverse();
+        when(caIntelligentKeyRepository.getNextSequenceId("PAU", (short) 2024)).thenReturn(null);
+
+        Integer result = caseBatchIndividualService.getSequenceIdFromCaIntelligentKey(caUniverseT);
+
+        assertEquals(Integer.valueOf(1), result);
+    }
+
+    @Test
+    public void createIntGenPrRpInvstEntriesBuildsProviderCaseAndInvestigationData() {
+        CaseBatchIndividualService spyService = org.mockito.Mockito.spy(caseBatchIndividualService);
+        ReflectionTestUtils.setField(spyService, "modelMapper", createConfiguredModelMapper());
+
+        CaseBaseInfo caseInfo = new CaseBaseInfo();
+        caseInfo.setCaseId(90);
+        caseInfo.setSequenceId(12);
+        caseInfo.setParticpantId("PV-100");
+
+        CaseProviderDTO provider = new CaseProviderDTO();
+        provider.setParticipantId("PV-100");
+        provider.setParticipantName("Provider Test");
+        org.mockito.Mockito.doReturn(provider).when(spyService).findCaseProvider(CaseEntryConstants.PROVIDER, "PV-100");
+
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setCaseTypeCd(CaseEntryConstants.PROVIDER);
+        caUniverseT.setParticipantId("PV-100");
+        caUniverseT.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+
+        CaIntelligentKeyT result = spyService.createIntGenPrRpInvstEntries(caseInfo, LocalDateTime.now(), caUniverseT);
+
+        assertNotNull(result.getCaGeneralT());
+        assertNotNull(result.getCaProviderT());
+        assertNull(result.getCaRecipientT());
+        assertNotNull(result.getCaInvstPreliminaryT());
+        assertEquals("Provider Test", result.getCaGeneralT().getParticipantName());
+    }
+
+    @Test
+    public void createIntGenPrRpInvstEntriesBuildsRecipientCaseAndAssignmentData() {
+        CaseBatchIndividualService spyService = org.mockito.Mockito.spy(caseBatchIndividualService);
+        ReflectionTestUtils.setField(spyService, "modelMapper", createConfiguredModelMapper());
+
+        CaseBaseInfo caseInfo = new CaseBaseInfo();
+        caseInfo.setCaseId(91);
+        caseInfo.setSequenceId(13);
+        caseInfo.setParticpantId("MB-100");
+
+        CaseRecipientDTO recipient = new CaseRecipientDTO();
+        recipient.setParticipantId("MB-100");
+        recipient.setParticipantName("Member Test");
+        org.mockito.Mockito.doReturn(recipient).when(spyService).findCaseRecipient(CaseEntryConstants.MEMBER, "MB-100");
+
+        CaUniverseT caUniverseT = createUniverse();
+        caUniverseT.setCaseTypeCd(CaseEntryConstants.MEMBER);
+        caUniverseT.setParticipantId("MB-100");
+        caUniverseT.setInvstTypeCd("FS");
+
+        CaIntelligentKeyT result = spyService.createIntGenPrRpInvstEntries(caseInfo, LocalDateTime.now(), caUniverseT);
+
+        assertNotNull(result.getCaGeneralT());
+        assertNull(result.getCaProviderT());
+        assertNotNull(result.getCaRecipientT());
+        assertNotNull(result.getCaInvstFullscaleT());
+        assertEquals(1, result.getCaInvstFsAssignTs().size());
+        assertEquals("Member Test", result.getCaGeneralT().getParticipantName());
+    }
+
+    private CaUniverseT createUniverse() {
+        CaUniverseTPK id = new CaUniverseTPK();
+        id.setCtBatchId(10);
+
+        UiUserBase userBase = new UiUserBase();
+        userBase.setUiSystemId("WA123456");
+
+        CaUniverseT caUniverseT = new CaUniverseT();
+        caUniverseT.setId(id);
+        caUniverseT.setUiUserBase(userBase);
+        caUniverseT.setCaPrmNodeCd("PAU");
+        caUniverseT.setCaYearId(2024);
+        caUniverseT.setProjectStatus("ACTIVE");
+        caUniverseT.setAssignUsr("WA123456");
+        caUniverseT.setAssignSectionCd("PR");
+        caUniverseT.setAssignDate(new Date());
+        caUniverseT.setCaseStatusCd("OPEN");
+        caUniverseT.setCaseStatusDt(new Date());
+        caUniverseT.setCaseTypeCd(CaseEntryConstants.PROVIDER);
+        return caUniverseT;
+    }
+
+    private ModelMapper createConfiguredModelMapper() {
+        ModelMapper modelMapper = new ModelMapper();
+        modelMapper.getConfiguration().setAmbiguityIgnored(true);
+        modelMapper.typeMap(CaseProviderDTO.class, com.optum.fads.caseentrybatch.api.domain.CaProviderT.class)
+                .addMappings(mapper -> mapper.skip(com.optum.fads.caseentrybatch.api.domain.CaProviderT::setCaseId));
+        modelMapper.typeMap(CaseRecipientDTO.class, com.optum.fads.caseentrybatch.api.domain.CaRecipientT.class)
+                .addMappings(mapper -> mapper.skip(com.optum.fads.caseentrybatch.api.domain.CaRecipientT::setCaseId));
+        return modelMapper;
+    }
+}
