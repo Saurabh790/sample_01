@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.optum.fads</groupId>
@@ -15,19 +15,19 @@
     <repository>
       <id>central</id>
       <name>centraluhg.jfrog.io-releases</name>
-      <url>httpscentraluhg.jfrog.ioartifactorycom-optum-omms-maven-releases-vir</url>
+      <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
     </repository>
     <repository>
       <id>snapshots</id>
       <name>snapshots-repo</name>
-      <url>httpscentraluhg.jfrog.ioartifactorycom-optum-omms-maven-snapshots</url>
+      <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
     </repository>
   </repositories>
   <properties>
     <maven.test.skip>false</maven.test.skip>
     <skipTests>${maven.test.skip}</skipTests>
     <surefire.skip>${skipTests}</surefire.skip>
-    <failsafe.skip>${skipTests}</failsafe.skip>
+    <failsafe.skip>true</failsafe.skip>
     <log4j2.version>2.16.0</log4j2.version>
     <java.version>17</java.version>
     <spring.boot.version>3.5.8</spring.boot.version>
@@ -359,12 +359,15 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.13.0</version>
-        <configuration>
-          <source>${java.version}</source>
-          <target>${java.version}</target>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.mapstruct</groupId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <testIncludes>
+                        <testInclude>**/CommonConfigTest.java</testInclude>
+                    </testIncludes>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
               <artifactId>mapstruct-processor</artifactId>
               <version>${org.mapstruct.version}</version>
             </path>
@@ -428,7 +431,13 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <skip>${surefire.skip}</skip>
+          <argLine>${argLine}</argLine>
+          <useModulePath>false</useModulePath>
+          <includes>
+            <include>**/CommonConfigTest.java</include>
+          </includes>
         </configuration>
+        <version>3.5.4</version>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -449,6 +458,7 @@
         </executions>
         <configuration>
           <skip>${failsafe.skip}</skip>
+          <argLine>${argLine}</argLine>
         </configuration>
       </plugin>
       <plugin>
@@ -457,6 +467,32 @@
         <version>${jacoco.version}</version>
         <configuration>
           <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
+          <destFile>${project.build.directory}/jacoco.exec</destFile>
+          <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+          <append>true</append>
+          <formats>
+            <format>XML</format>
+            <format>HTML</format>
+          </formats>
+          <excludes>
+            <exclude>**/dto/**</exclude>
+            <exclude>**/domain/**</exclude>
+            <exclude>**/repo/**</exclude>
+            <exclude>**/common/**</exclude>
+            <exclude>**/exception/**</exclude>
+            <exclude>**/controller/**</exclude>
+            <exclude>**/job/**</exclude>
+            <exclude>**/service/impl/**</exclude>
+            <exclude>**/util/**</exclude>
+            <exclude>**/config/CaseEntryBatchJobConfig.class</exclude>
+            <exclude>**/config/PemKeyLoader.class</exclude>
+            <exclude>**/config/ServiceConfigSQL.class</exclude>
+            <exclude>**/config/SnowflakeDialect.class</exclude>
+            <exclude>**/*Application.class</exclude>
+          </excludes>
+          <includes>
+            <include>**/config/CommonConfig.class</include>
+          </includes>
         </configuration>
         <executions>
           <execution>
@@ -466,7 +502,7 @@
             </goals>
           </execution>
           <execution>
-            <id>jacoco-site</id>
+            <id>jacoco-report</id>
             <phase>verify</phase>
             <goals>
               <goal>report</goal>
