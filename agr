@@ -1,2 +1,427 @@
+package com.optum.fads.pgp.study.api.mapper;
+
+import com.optum.fads.pgp.study.domain.*;
+import com.optum.fads.pgp.study.dto.*;
+import com.optum.fads.pgp.study.mapper.StudyDetailMapper;
+import org.junit.jupiter.api.Test;
+import org.mapstruct.factory.Mappers;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-assertNotNull(obj);
+
+class StudyDetailMapperTest {
+
+    private final StudyDetailMapper studyDetailMapper = Mappers.getMapper(StudyDetailMapper.class);
+
+    @Test
+    void testToStudyDTO_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        PrmStudyMasterT prmStudyMasterT = new PrmStudyMasterT();
+        prmStudyMasterT.setPbId(1L);
+        prmStudyMasterT.setPbName("Study Name");
+        prmStudyMasterT.setPbDesc("Study Description");
+
+        // Act
+        StudyDTO result = studyDetailMapper.toStudyDTO(prmStudyMasterT);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getStudyId());
+        assertEquals("Study Name", result.getStudyName());
+        assertEquals("Study Description", result.getDescription());
+
+    }
+
+    @Test
+    void testToStudyPeerGroup_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        PrmPgPeerGroupT prmPgPeerGroupT = new PrmPgPeerGroupT();
+        prmPgPeerGroupT.setCgId(1L);
+        prmPgPeerGroupT.setCgName("Peer Group Name");
+        prmPgPeerGroupT.setCgType("Type");
+
+        // Act
+        PeerGroup result = studyDetailMapper.toStudyPeerGroup(prmPgPeerGroupT);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Peer Group Name", result.getStudyGroupName());
+        assertEquals("Type", result.getType());
+    }
+
+    @Test
+    void testToDayaTule_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        PrmDrDataRuleT prmDrDataRuleT = new PrmDrDataRuleT();
+        prmDrDataRuleT.setDrId(1L);
+        prmDrDataRuleT.setDrName("Data Rule Name");
+
+        // Act
+        DataRule result = studyDetailMapper.toDayaTule(prmDrDataRuleT);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals("Data Rule Name", result.getDataRuleName());
+    }
+
+    @Test
+    void testToStudyTimePeriod_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        PrmStudyTimePeriodsT prmStudyTimePeriodsT = new PrmStudyTimePeriodsT();
+        PrmStudyTimePeriodsTPK id = new PrmStudyTimePeriodsTPK();
+        id.setPbTimePrd(1L);
+        prmStudyTimePeriodsT.setId(id);
+        prmStudyTimePeriodsT.setPbTimeRngBeg(LocalDate.parse("2023-01-01"));
+        prmStudyTimePeriodsT.setPbTimeRngEnd(LocalDate.parse("2023-12-31"));
+        prmStudyTimePeriodsT.setPbTimeWeight(BigDecimal.valueOf(0.5));
+
+        // Act
+        TimePeriod result = studyDetailMapper.toStudyTimePeriod(prmStudyTimePeriodsT);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getTimePeriodId());
+        assertEquals(LocalDate.parse("2023-01-01"), result.getFromDate());
+        assertEquals(LocalDate.parse("2023-12-31"), result.getToDate());
+        assertEquals(BigDecimal.valueOf(0.5), result.getWeight());
+    }
+
+    @Test
+    void testToStudyReportSection_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        PrmStudyRsRiT prmStudyRsRiT = new PrmStudyRsRiT();
+        PrmStudyRsRiTPK id = new PrmStudyRsRiTPK();
+        id.setPbId(1L);
+        prmStudyRsRiT.setId(id);
+
+        PrmRsRptSecT prmRsRptSecT = new PrmRsRptSecT();
+        prmRsRptSecT.setRsName("Report Section Name");
+        prmStudyRsRiT.setPrmRsRptSecT(prmRsRptSecT);
+
+        // Act
+        ReportSection result = studyDetailMapper.toStudyReportSection(prmStudyRsRiT);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(0, result.getReportSectionId());
+        assertEquals("Report Section Name", result.getReportSectionName());
+    }
+
+    @Test
+    void testToActivityLimit_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        PrmStudyBpActLimitsT prmStudyBpActLimitsT = new PrmStudyBpActLimitsT();
+        prmStudyBpActLimitsT.setVcMin(BigDecimal.valueOf(10));
+        prmStudyBpActLimitsT.setVcMax(BigDecimal.valueOf(20));
+
+
+        // Act
+        ActivityLimit result = studyDetailMapper.toActivityLimit(prmStudyBpActLimitsT);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(BigDecimal.valueOf(10), result.getMin());
+        assertEquals(BigDecimal.valueOf(20), result.getMax());
+
+    }
+
+    @Test
+    void testToPrmStudyMasterT_withValidInput_shouldMapCorrectly() {
+        // Arrange
+        StudyDTO studyDTO = new StudyDTO();
+        studyDTO.setStudyId(1L);
+        studyDTO.setStudyName("Study Name");
+        studyDTO.setDescription("Study Description");
+
+        // Act
+        PrmStudyMasterT result = studyDetailMapper.convertToPrmStudyMasterT(studyDTO);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getPbId());
+        assertEquals("Study Name", result.getPbName());
+        assertEquals("Study Description", result.getPbDesc());
+    }
+
+    @Test
+    void testToStudyRsRiItem_withValidInput_shouldMapCorrectly() {
+        PrmStudyRsRiTPK id = new PrmStudyRsRiTPK();
+        id.setRsId(10L);
+        id.setRiId(20L);
+        id.setRsOrder(3L);
+
+        PrmStudyRsRiT entity = new PrmStudyRsRiT();
+        entity.setId(id);
+        entity.setPbRiOlLolmt(BigDecimal.ONE);
+        entity.setPbRiOlSdev(BigDecimal.TEN);
+        entity.setPbRiOlUplmt(BigDecimal.valueOf(20));
+        entity.setPbRiOlPct(BigDecimal.valueOf(30));
+        entity.setPbRiWeight(BigDecimal.valueOf(40));
+
+        StudyRsRiItem result = studyDetailMapper.toStudyRsRiItem(entity);
+
+        assertNotNull(result);
+        assertEquals(10L, result.getReportSectionId());
+        assertEquals(20L, result.getReportItemId());
+        assertEquals(3L, result.getRsOrder());
+        assertEquals(BigDecimal.ONE, result.getLowerLimit());
+        assertEquals(BigDecimal.TEN, result.getStandardDeviation());
+        assertEquals(BigDecimal.valueOf(20), result.getUpperLimit());
+        assertEquals(BigDecimal.valueOf(30), result.getPercentage());
+        assertEquals(BigDecimal.valueOf(40), result.getWeight());
+    }
+
+    @Test
+    void testToStudyRsRiException_withValidInput_shouldMapCorrectly() {
+        PrmStudyRsRiExceptTPK id = new PrmStudyRsRiExceptTPK();
+        id.setRsId(10L);
+        id.setRiId(20L);
+        id.setPbTimePrd(4L);
+
+        PrmStudyRsRiExceptT entity = new PrmStudyRsRiExceptT();
+        entity.setId(id);
+        entity.setPbriExcpFlag(BigDecimal.ONE);
+        entity.setPbriOverLmtFlag(BigDecimal.ZERO);
+
+        StudyRsRiException result = studyDetailMapper.toStudyRsRiException(entity);
+
+        assertNotNull(result);
+        assertEquals(10L, result.getReportSectionId());
+        assertEquals(20L, result.getReportItemId());
+        assertEquals(4L, result.getTimePeriodId());
+        assertEquals(BigDecimal.ONE, result.getExceptionFlag());
+        assertEquals(BigDecimal.ZERO, result.getOverLimitFlag());
+    }
+
+    @Test
+    void testToReportItem_withValidInput_shouldMapCorrectly() {
+        PrmRsRiTPK id = new PrmRsRiTPK();
+        id.setRiId(25L);
+        id.setRiOrder(2L);
+
+        PrmRiRptItemT reportItemEntity = new PrmRiRptItemT();
+        reportItemEntity.setRiName("Item Name");
+
+        PrmRsRiT entity = new PrmRsRiT();
+        entity.setId(id);
+        entity.setPrmRiRptItemT(reportItemEntity);
+
+        ReportItem result = studyDetailMapper.toReportItem(entity);
+
+        assertNotNull(result);
+        assertEquals(25L, result.getReportItemId());
+        assertEquals(2L, result.getOrder());
+        assertEquals("Item Name", result.getReportItemName());
+    }
+
+    @Test
+    void testListAndReverseMappings_shouldMapCorrectly() {
+        TimePeriod timePeriod = TimePeriod.builder()
+                .timePeriodId(5L)
+                .fromDate(LocalDate.of(2024, 1, 1))
+                .toDate(LocalDate.of(2024, 12, 31))
+                .weight(BigDecimal.valueOf(2))
+                .build();
+
+        ActivityLimit activityLimit = ActivityLimit.builder()
+                .behaviorPatternId(7L)
+                .min(BigDecimal.valueOf(11))
+                .max(BigDecimal.valueOf(22))
+                .flag(BigDecimal.ONE)
+                .build();
+
+        PrmStudyTimePeriodsT timePeriodEntity = studyDetailMapper.toPrmStudyTimePeriodsT(timePeriod);
+        PrmStudyBpActLimitsT activityLimitEntity = studyDetailMapper.toPrmStudyBpActLimitsT(activityLimit);
+
+        assertNotNull(timePeriodEntity);
+        assertEquals(5L, timePeriodEntity.getId().getPbTimePrd());
+        assertEquals(LocalDate.of(2024, 1, 1), timePeriodEntity.getPbTimeRngBeg());
+        assertEquals(LocalDate.of(2024, 12, 31), timePeriodEntity.getPbTimeRngEnd());
+        assertEquals(BigDecimal.valueOf(2), timePeriodEntity.getPbTimeWeight());
+
+        assertNotNull(activityLimitEntity);
+        assertEquals(7L, activityLimitEntity.getId().getBpId());
+        assertEquals(BigDecimal.valueOf(11), activityLimitEntity.getVcMin());
+        assertEquals(BigDecimal.valueOf(22), activityLimitEntity.getVcMax());
+        assertEquals(BigDecimal.ONE, activityLimitEntity.getVcFlag());
+
+        List<TimePeriod> timePeriods = studyDetailMapper.toTimePeriods(List.of(timePeriodEntity));
+        List<PrmStudyTimePeriodsT> timePeriodEntities = studyDetailMapper.toPrmStudyTimePeriodsTs(List.of(timePeriod));
+        List<PrmStudyBpActLimitsT> activityLimitEntities =
+                studyDetailMapper.toPrmStudyBpActLimitsTs(List.of(activityLimit));
+
+        assertEquals(1, timePeriods.size());
+        assertEquals(5L, timePeriods.get(0).getTimePeriodId());
+        assertEquals(1, timePeriodEntities.size());
+        assertEquals(5L, timePeriodEntities.get(0).getId().getPbTimePrd());
+        assertEquals(1, activityLimitEntities.size());
+        assertEquals(7L, activityLimitEntities.get(0).getId().getBpId());
+    }
+
+    @Test
+    void testConvertToEntity_withPeerGroup_shouldMapCorrectly() {
+        PeerGroup peerGroup = PeerGroup.builder()
+                .studyGroupId(9)
+                .studyGroupName("Peer Group")
+                .type("ABC")
+                .build();
+
+        PrmPgPeerGroupT result = studyDetailMapper.convertToEntity(peerGroup);
+
+        assertNotNull(result);
+        assertEquals(9L, result.getCgId());
+        assertEquals("Peer Group", result.getCgName());
+        assertEquals("ABC", result.getCgType());
+    }
+}
+package com.optum.fads.pgp.study.api.repo;
+
+import com.optum.fads.pgp.study.domain.FadsConfigT;
+import com.optum.fads.pgp.study.domain.FadsLuValueT;
+import com.optum.fads.pgp.study.domain.FadsLuValueTPK;
+import com.optum.fads.pgp.study.domain.PrmPgPeerGroupT;
+import com.optum.fads.pgp.study.domain.PrmStudyMasterT;
+import com.optum.fads.pgp.study.domain.UiUserBase;
+import com.optum.fads.pgp.study.repo.FadsConfigRepository;
+import com.optum.fads.pgp.study.repo.LuValuesRepository;
+import com.optum.fads.pgp.study.repo.StudyRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+@DataJpaTest(properties = "spring.jpa.hibernate.ddl-auto=create-drop")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+class StudyRepositoryTest {
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private StudyRepository studyRepository;
+
+    @Autowired
+    private FadsConfigRepository fadsConfigRepository;
+
+    @Autowired
+    private LuValuesRepository luValuesRepository;
+
+    @Test
+    void getNextStudyId_returnsNextValueFromPersistedStudies() {
+        UiUserBase user = persistUser("user-1");
+        PrmPgPeerGroupT peerGroup = persistPeerGroup(100L, user);
+
+        entityManager.persist(buildStudy(10L, "Study A", user, peerGroup));
+        entityManager.persist(buildStudy(20L, "Study B", user, peerGroup));
+        entityManager.flush();
+
+        Long nextStudyId = studyRepository.getNextStudyId();
+
+        assertEquals(21L, nextStudyId);
+    }
+
+    @Test
+    void fadsConfigRepository_persistsAndReadsEntity() {
+        FadsConfigT config = FadsConfigT.builder()
+                .optionCode(1L)
+                .optionValue("Y")
+                .description("enabled")
+                .build();
+
+        FadsConfigT saved = fadsConfigRepository.saveAndFlush(config);
+
+        assertNotNull(saved);
+        assertEquals("Y", fadsConfigRepository.findById(1L).orElseThrow().getOptionValue());
+    }
+
+    @Test
+    void luValuesRepository_findsValuesByFieldId() {
+        FadsLuValueT first = buildLuValue("FIELD_A", "001", "One");
+        FadsLuValueT second = buildLuValue("FIELD_A", "002", "Two");
+        FadsLuValueT third = buildLuValue("FIELD_B", "003", "Three");
+
+        entityManager.persist(first);
+        entityManager.persist(second);
+        entityManager.persist(third);
+        entityManager.flush();
+
+        List<FadsLuValueT> results = luValuesRepository.findByIdFieldId("FIELD_A");
+
+        assertEquals(2, results.size());
+        assertEquals("FIELD_A", results.get(0).getId().getFieldId());
+    }
+
+    private UiUserBase persistUser(String systemId) {
+        UiUserBase user = UiUserBase.builder()
+                .uiSystemId(systemId)
+                .uiEMailAddress(systemId + "@optum.com")
+                .uiUserId(systemId)
+                .uiFirstName("Test")
+                .uiLastName("User")
+                .uiCreatedBy(systemId)
+                .uiCreatedDt(LocalDateTime.now())
+                .uiUserInactive("N")
+                .build();
+        entityManager.persist(user);
+        return user;
+    }
+
+    private PrmPgPeerGroupT persistPeerGroup(long groupId, UiUserBase user) {
+        PrmPgPeerGroupT peerGroup = PrmPgPeerGroupT.builder()
+                .cgId(groupId)
+                .cgName("Peer Group " + groupId)
+                .cgType("TYP")
+                .createDte(LocalDateTime.now())
+                .updateDte(LocalDateTime.now())
+                .createdByUiUserBase(user)
+                .updatedByUiUserBase(user)
+                .build();
+        entityManager.persist(peerGroup);
+        return peerGroup;
+    }
+
+    private PrmStudyMasterT buildStudy(long studyId, String studyName, UiUserBase user, PrmPgPeerGroupT peerGroup) {
+        return PrmStudyMasterT.builder()
+                .pbId(studyId)
+                .pbName(studyName)
+                .pbDesc("description")
+                .encFfs(BigDecimal.ONE)
+                .pbExcpOnlyFlag(BigDecimal.ZERO)
+                .pbFpFlag(BigDecimal.ZERO)
+                .pbUseDwFlag(BigDecimal.ONE)
+                .pbUseVwFlag(BigDecimal.ONE)
+                .submitFlag(BigDecimal.ONE)
+                .xovers(BigDecimal.ZERO)
+                .uiUserBase(user)
+                .createdByUiUserBase(user)
+                .updatedByUiUserBase(user)
+                .createDte(LocalDateTime.now())
+                .updateDte(LocalDateTime.now())
+                .prmPgPeerGroupT(peerGroup)
+                .build();
+    }
+
+    private FadsLuValueT buildLuValue(String fieldId, String luValue, String label) {
+        FadsLuValueTPK id = FadsLuValueTPK.builder()
+                .fieldId(fieldId)
+                .luValue(luValue)
+                .build();
+
+        FadsLuValueT value = new FadsLuValueT();
+        value.setId(id);
+        value.setLuLabel(label);
+        return value;
+    }
+}
