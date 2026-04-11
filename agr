@@ -1,77 +1,28 @@
-package com.optum.fads.caseentrybatch.api.config;
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Errors:
+[ERROR]   ServiceConfigSQLTest.fadsSQLDataSourceBuildsDriverManagerDataSourceFromSecrets:51 » IllegalArgument Could not find field 'driverClassName' on target object [org.springframework.jdbc.datasource.DriverManagerDataSource@69c53b72] or target class [class org.springframework.jdbc.datasource.DriverManagerDataSource]
+[ERROR]   ServiceConfigSQLTest.sqlEntityManagerFactoryUsesConfiguredDataSourceAndPackages:64 » IllegalArgument Could not find field 'packagesToScan' on target object [org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean@33acec5e] or target class [class org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean]
+[INFO]
+[ERROR] Tests run: 46, Failures: 0, Errors: 2, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  38.718 s
+[INFO] Finished at: 2026-04-12T00:59:30+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch:
+[ERROR]
+[ERROR] See C:\Users\sgupt664\BE_Projects\fads-case-entry-batch\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import javax.sql.DataSource;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
-
-import jakarta.persistence.EntityManagerFactory;
-
-public class ServiceConfigSQLTest {
-
-    private SecretClient secretClient;
-    private ServiceConfigSQL serviceConfigSQL;
-
-    @Before
-    public void setUp() {
-        secretClient = mock(SecretClient.class);
-        serviceConfigSQL = new ServiceConfigSQL(secretClient);
-
-        ReflectionTestUtils.setField(serviceConfigSQL, "userName", "sql-username-secret");
-        ReflectionTestUtils.setField(serviceConfigSQL, "password", "sql-password-secret");
-        ReflectionTestUtils.setField(serviceConfigSQL, "url", "jdbc:sqlserver://localhost:1433;databaseName=testdb");
-        ReflectionTestUtils.setField(serviceConfigSQL, "driverClassName", "com.microsoft.sqlserver.jdbc.SQLServerDriver");
-
-        when(secretClient.getSecret("sql-username-secret")).thenReturn(new KeyVaultSecret("sql-username-secret", "db_user"));
-        when(secretClient.getSecret("sql-password-secret")).thenReturn(new KeyVaultSecret("sql-password-secret", "db_password"));
-    }
-
-    @Test
-    public void fadsSQLDataSourceBuildsDriverManagerDataSourceFromSecrets() {
-        DataSource dataSource = serviceConfigSQL.fadsSQLDataSource();
-
-        assertNotNull(dataSource);
-        assertTrue(dataSource instanceof DriverManagerDataSource);
-
-        DriverManagerDataSource driverManagerDataSource = (DriverManagerDataSource) dataSource;
-        assertEquals("com.microsoft.sqlserver.jdbc.SQLServerDriver",
-                ReflectionTestUtils.getField(driverManagerDataSource, "driverClassName"));
-        assertEquals("db_user", driverManagerDataSource.getUsername());
-        assertEquals("db_password", driverManagerDataSource.getPassword());
-        assertEquals("jdbc:sqlserver://localhost:1433;databaseName=testdb", driverManagerDataSource.getUrl());
-    }
-
-    @Test
-    public void sqlEntityManagerFactoryUsesConfiguredDataSourceAndPackages() {
-        LocalContainerEntityManagerFactoryBean entityManagerFactoryBean = serviceConfigSQL.sqlEntityManagerFactory();
-
-        assertNotNull(entityManagerFactoryBean);
-        assertNotNull(entityManagerFactoryBean.getDataSource());
-        assertNotNull(entityManagerFactoryBean.getJpaVendorAdapter());
-        String[] packagesToScan = (String[]) ReflectionTestUtils.getField(entityManagerFactoryBean, "packagesToScan");
-        assertNotNull(packagesToScan);
-        assertEquals("com.optum.fads.caseentrybatch.api.domain", packagesToScan[0]);
-    }
-
-    @Test
-    public void txManagerSQLReturnsJpaTransactionManager() {
-        EntityManagerFactory entityManagerFactory = mock(EntityManagerFactory.class);
-
-        JpaTransactionManager transactionManager = (JpaTransactionManager) serviceConfigSQL.txManagerSQL(entityManagerFactory);
-
-        assertNotNull(transactionManager);
-    }
-}
+C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>
