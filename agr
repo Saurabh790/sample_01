@@ -1,98 +1,34 @@
-package com.optum.fads.caseentrybatch.api.config;
 
-import javax.sql.DataSource;
-
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
-import org.springframework.orm.jpa.JpaTransactionManager;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-
-import com.azure.security.keyvault.secrets.SecretClient;
-
-import jakarta.persistence.EntityManagerFactory;
-
-/**
- * @author sbajaj8
- *
- */
-@Configuration
-@EnableAutoConfiguration(exclude={DataSourceAutoConfiguration.class})
-@EnableTransactionManagement
-@EnableJpaRepositories(entityManagerFactoryRef = "sqlEntityManagerFactory",
-						transactionManagerRef = "txManagerSQL",
-						basePackages = "com.optum.fads.caseentrybatch.api.repo" )
-		public class ServiceConfigSQL 
-		{
-			@Value("${spring.datasource.sql.userName}")
-			private String userName;
-
-			@Value("${spring.datasource.sql.password}")
-			private String password;
-
-			@Value("${spring.datasource.sql.jdbcUrl}")
-			private String url;
-
-			@Value("${spring.datasource.sql.driverClassName}")
-			private String driverClassName;
-
-			private final SecretClient secretClient;
-
-			public ServiceConfigSQL(SecretClient secretClient) {
-				this.secretClient = secretClient;
-			}
-
-			@Primary
-			@Bean(name = "fadsSQLDataSource")
-			public DataSource fadsSQLDataSource() {
-				String userNameValue = secretClient.getSecret(userName).getValue();
-				String passwordValue = secretClient.getSecret(password).getValue();
-
-				DriverManagerDataSource dataSource = new DriverManagerDataSource();
-				dataSource.setDriverClassName(driverClassName);
-				dataSource.setUsername(userNameValue);
-				dataSource.setPassword(passwordValue);
-				dataSource.setUrl(url);
-
-				return dataSource;
-			}
-	
-			@Bean(name = "sqlEntityManagerFactory")
-				public LocalContainerEntityManagerFactoryBean sqlEntityManagerFactory()
-					{
-						LocalContainerEntityManagerFactoryBean em
-								= new LocalContainerEntityManagerFactoryBean();
-						em.setDataSource(fadsSQLDataSource());
-						em.setPackagesToScan(
-								new String[] { "com.optum.fads.caseentrybatch.api.domain" });
-						HibernateJpaVendorAdapter vendorAdapter
-							= new HibernateJpaVendorAdapter();
-						em.setJpaVendorAdapter(vendorAdapter);
-					return em;
-					}
-	 
-	 
-	 @Bean(name = "txManagerSQL")
-	 public PlatformTransactionManager txManagerSQL(@Qualifier("sqlEntityManagerFactory")EntityManagerFactory sqlEntityManagerFactory)
-	 {
-		 JpaTransactionManager txManager = new JpaTransactionManager();
-	        txManager.setEntityManagerFactory(sqlEntityManagerFactory().getObject());
-	        return txManager;
-	 }
-	 
-	}
-
-
-	
-
+[INFO] Running com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests
+2026-04-12T00:53:55.131+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Run Case Batch
+2026-04-12T00:53:55.132+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Next Batch Id = 10
+2026-04-12T00:53:55.133+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 10
+2026-04-12T00:53:55.147+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
+2026-04-12T00:53:55.149+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Delete caUniverseBatchT entries in Batch ID 10
+2026-04-12T00:53:55.182+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Run Case Batch
+2026-04-12T00:53:55.190+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 10
+2026-04-12T00:53:55.191+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.194 s -- in com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests
+[INFO]
+[INFO] Results:
+[INFO]
+[ERROR] Failures:
+[ERROR]   CaseBatchEmailServiceTests.setEmailSubjTextBuildsAssignmentNotificationText:138 expected:<..., PAU-2024-00011 on [12/31/1969]> but was:<..., PAU-2024-00011 on [01-01-1970]>
+[INFO]
+[ERROR] Tests run: 43, Failures: 1, Errors: 0, Skipped: 0
+[INFO]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  42.734 s
+[INFO] Finished at: 2026-04-12T00:53:55+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch: There are test failures.
+[ERROR]
+[ERROR] See C:\Users\sgupt664\BE_Projects\fads-case-entry-batch\target\surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
