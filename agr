@@ -1,14 +1,104 @@
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:testCompile (default-testCompile) on project fads-case-entry-batch: Compilation failure
-[ERROR] /C:/Users/sgupt664/BE_Projects/fads-case-entry-batch/src/test/java/com/optum/fads/caseentrybatch/api/repo/specs/CaseEntryBatchSpecificationTest.java:[90,41] no suitable method found for thenReturn(jakarta.persistence.criteria.Expression<java.lang.Integer>)
-[ERROR]     method org.mockito.stubbing.OngoingStubbing.thenReturn(jakarta.persistence.criteria.Expression<java.lang.Number>) is not applicable
-[ERROR]       (argument mismatch; jakarta.persistence.criteria.Expression<java.lang.Integer> cannot be converted to jakarta.persistence.criteria.Expression<java.lang.Number>)
-[ERROR]     method org.mockito.stubbing.OngoingStubbing.thenReturn(jakarta.persistence.criteria.Expression<java.lang.Number>,jakarta.persistence.criteria.Expression<java.lang.Number>...) is not applicable
-[ERROR]       (argument mismatch; jakarta.persistence.criteria.Expression<java.lang.Integer> cannot be converted to jakarta.persistence.criteria.Expression<java.lang.Number>)
-[ERROR]
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible 
+package com.optum.fads.caseentrybatch.api.repo.specs;
+
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
+
+import org.junit.Test;
+
+import com.optum.fads.caseentrybatch.api.domain.CaIntelligentKeyT;
+import com.optum.fads.caseentrybatch.api.domain.CaMetaBaseNoticeT;
+
+public class CaseEntryBatchSpecificationTest {
+
+    @Test
+    public void findMetaBaseNoticeSpecificationBuildsCombinedPredicate() {
+        @SuppressWarnings("unchecked")
+        Root<CaMetaBaseNoticeT> root = org.mockito.Mockito.mock(Root.class);
+        @SuppressWarnings("unchecked")
+        CriteriaQuery<CaMetaBaseNoticeT> query = org.mockito.Mockito.mock(CriteriaQuery.class);
+        CriteriaBuilder criteriaBuilder = org.mockito.Mockito.mock(CriteriaBuilder.class);
+        Path<Object> tableNamePath = org.mockito.Mockito.mock(Path.class);
+        Path<Object> columnNamePath = org.mockito.Mockito.mock(Path.class);
+        Predicate tablePredicate = org.mockito.Mockito.mock(Predicate.class);
+        Predicate columnPredicate = org.mockito.Mockito.mock(Predicate.class);
+        Predicate finalPredicate = org.mockito.Mockito.mock(Predicate.class);
+
+        when(root.get("tableName")).thenReturn(tableNamePath);
+        when(root.get("columnName")).thenReturn(columnNamePath);
+        when(criteriaBuilder.equal(tableNamePath, "TABLE_A")).thenReturn(tablePredicate);
+        when(criteriaBuilder.equal(columnNamePath, "COLUMN_A")).thenReturn(columnPredicate);
+        when(criteriaBuilder.and(tablePredicate, columnPredicate)).thenReturn(finalPredicate);
+        when(query.where(finalPredicate)).thenReturn(query);
+        when(query.getRestriction()).thenReturn(finalPredicate);
+
+        Predicate result = CaseEntryBatchSpecification
+                .findMetaBaseNoticeSpecification("TABLE_A", "COLUMN_A")
+                .toPredicate(root, query, criteriaBuilder);
+
+        assertNotNull(result);
+        verify(criteriaBuilder).and(tablePredicate, columnPredicate);
+        verify(query).where(finalPredicate);
+    }
+
+    @Test
+    public void findMaxSequenceIdSpecificationBuildsSequencePredicate() {
+        @SuppressWarnings("unchecked")
+        Root<CaIntelligentKeyT> root = org.mockito.Mockito.mock(Root.class);
+        @SuppressWarnings("unchecked")
+        CriteriaQuery<CaIntelligentKeyT> criteriaQuery = org.mockito.Mockito.mock(CriteriaQuery.class);
+        CriteriaBuilder criteriaBuilder = org.mockito.Mockito.mock(CriteriaBuilder.class);
+        @SuppressWarnings("unchecked")
+        CriteriaQuery<CaIntelligentKeyT> innerQuery = org.mockito.Mockito.mock(CriteriaQuery.class);
+        @SuppressWarnings("unchecked")
+        Subquery<Integer> subquery = org.mockito.Mockito.mock(Subquery.class);
+        @SuppressWarnings("unchecked")
+        Root<CaIntelligentKeyT> subRoot = org.mockito.Mockito.mock(Root.class);
+        Path<Object> prmNodePath = org.mockito.Mockito.mock(Path.class);
+        Path<Object> nodeCdPath = org.mockito.Mockito.mock(Path.class);
+        Path<Object> caseYearPath = org.mockito.Mockito.mock(Path.class);
+        Path<Object> sequencePath = org.mockito.Mockito.mock(Path.class);
+        Path<Object> subSequencePath = org.mockito.Mockito.mock(Path.class);
+        Predicate prmNodePredicate = org.mockito.Mockito.mock(Predicate.class);
+        Predicate yearPredicate = org.mockito.Mockito.mock(Predicate.class);
+        Predicate resultPredicate = org.mockito.Mockito.mock(Predicate.class);
+        @SuppressWarnings("unchecked")
+        Expression<Number> maxExpression = org.mockito.Mockito.mock(Expression.class);
+
+        when(criteriaBuilder.createQuery(CaIntelligentKeyT.class)).thenReturn(innerQuery);
+        when(innerQuery.subquery(Integer.class)).thenReturn(subquery);
+        when(subquery.from(CaIntelligentKeyT.class)).thenReturn(subRoot);
+
+        when(root.get("caLuPrmNodeT")).thenReturn(prmNodePath);
+        when(prmNodePath.get("nodeCd")).thenReturn(nodeCdPath);
+        when(root.get("caYearId")).thenReturn(caseYearPath);
+        when(root.get("caSequenceId")).thenReturn(sequencePath);
+        when(subRoot.get("caSequenceId")).thenReturn(subSequencePath);
+
+        when(criteriaBuilder.equal(nodeCdPath, "PAU")).thenReturn(prmNodePredicate);
+        when(criteriaBuilder.equal(caseYearPath, (short) 2024)).thenReturn(yearPredicate);
+        when(criteriaBuilder.max(any())).thenReturn(maxExpression);
+        when(subquery.select(maxExpression)).thenReturn(subquery);
+        when(subquery.where(any(Predicate[].class))).thenReturn(subquery);
+        when(criteriaBuilder.equal(sequencePath, subquery)).thenReturn(resultPredicate);
+
+        Predicate result = CaseEntryBatchSpecification
+                .findMaxSequenceIdSpecification("PAU", (short) 2024)
+                .toPredicate(root, criteriaQuery, criteriaBuilder);
+
+        assertNotNull(result);
+        verify(criteriaBuilder).equal(nodeCdPath, "PAU");
+        verify(criteriaBuilder).equal(caseYearPath, (short) 2024);
+        verify(criteriaBuilder).equal(sequencePath, subquery);
+    }
+}
