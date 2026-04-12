@@ -88,7 +88,9 @@ public class CaseEntryBatchSpecificationTest {
         when(criteriaBuilder.equal(nodeCdPath, "PAU")).thenReturn(prmNodePredicate);
         when(criteriaBuilder.equal(caseYearPath, (short) 2024)).thenReturn(yearPredicate);
         when(criteriaBuilder.max(any())).thenReturn(maxExpression);
-        when(subquery.select(maxExpression)).thenReturn(subquery);
+        @SuppressWarnings("unchecked")
+        Expression<Integer> integerMaxExpression = (Expression<Integer>) (Expression<?>) maxExpression;
+        when(subquery.select(integerMaxExpression)).thenReturn(subquery);
         when(subquery.where(any(Predicate[].class))).thenReturn(subquery);
         when(criteriaBuilder.equal(sequencePath, subquery)).thenReturn(resultPredicate);
 
