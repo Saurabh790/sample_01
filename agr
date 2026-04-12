@@ -1,39 +1,34 @@
-Open Code, not Actions
-In the repo file search, search for:
-mapper/**
-repo/**
-jacoco
-argLine
-sonar.coverage.exclusions
-Then also do this in GitHub global/repo search:
+You’re currently using the file picker search, which only searches files inside the current repo/folder tree. That’s why java-maven-ci.yml shows no match.
 
-org.jacoco.maven.AgentMojo
-**/mapper/**
-**/repo/**
-java-maven-ci.yml
-Best places to look:
+Use these instead:
 
-.github/workflows/
-.mvn/
-pom.xml
-any custom build scripts like:
-scripts/
-build/
-ci/
-Since we already know the local pom.xml and az-deployment.yml are not the cause, the most likely place is the shared repo:
+Option 1: GitHub global/repo code search
 
-uhg-pipelines/ci-workflows
-file: .github/workflows/java-maven-ci.yml
-If you can access GitHub org search, search exactly:
+Click the big search bar at the top of GitHub page.
+Search:
+repo:uhg-pipelines/ci-workflows java-maven-ci.yml
+or
 
 repo:uhg-pipelines/ci-workflows mapper/** jacoco
-repo:uhg-pipelines/ci-workflows argLine jacoco
-repo:uhg-pipelines/ci-workflows repo/** mapper/**
-If org search is restricted, another practical route is:
+Option 2: Direct URL
+Paste this in the browser:
 
-Open the study workflow run
-Click Workflow file for this run
-Click the referenced reusable workflow link uhg-pipelines/ci-workflows/...
-If clickable, open it from there
-If you want the shortest search string, use this first:
-mapper/**
+https://github.com/uhg-pipelines/ci-workflows
+Then open:
+
+.github/workflows/java-maven-ci.yml
+Option 3: Search inside current repo for suspicious config
+In your current repo top search bar, search:
+
+repo:optum-sgs/fads-pgp-study-api jacoco
+then:
+
+repo:optum-sgs/fads-pgp-study-api mapper/**
+Important
+The small search box in the left “Files” panel is only for:
+
+filenames
+current repo tree
+It will not find files from another repo like uhg-pipelines/ci-workflows.
+
+If you want, I can give you the exact 3 search strings to paste one by one.
