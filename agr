@@ -1,4 +1,547 @@
-https://github.com/uhg-pipelines/epl-maven
-https://github.com/uhg-pipelines/epl-maven/blob/v3/action.yml
-https://github.com/uhg-pipelines/epl-maven/blob/v3/action.yaml
-https://github.com/uhg-pipelines/epl-maven/blob/v3/action.yml
+name: maven-build-scan
+description: 'This action performs a Maven build and executes SonarQube scans with specific configurations for Maven projects.'
+
+inputs:
+  github-token:
+    required: false
+    description: The github token for the JFrog plugin to use to publish reports to the PR
+    default: ''
+    type: string
+  enable-sonar:
+    required: false
+    description: Set to true to run Sonar scans
+    default: 'true'
+    type: string
+
+  #Jfrog Parameters
+  jfrog-audit:
+    description: 'Flag to enable or disable JFrog audit'
+    required: false
+    default: 'true'
+    type: string
+  jfrog-central-server-name:
+    description: 'The name of the central server to configure'
+    required: false
+    default: 'jfrog-central'
+  jfrog-contextual-scan:
+    description: 'Enable or disable JFrog Xray scan'
+    required: false
+    default: 'true'
+  jfrog-edge-server-name:
+    description: 'The name of the edge server to configure'
+    required: false
+    default: 'jfrog-core-edge'
+  jfrog-build-name:
+    required: false
+    description: The name of the build to be used in Artifactory - if not set, will use the repository and workflow name
+    default: ''
+    type: string
+  jfrog-build-number:
+    required: false
+    description: The number of the build to be used in Artifactory - if not set, will use the build and run number
+    default: ''
+    type: string
+  jfrog-project-key:
+    required: false
+    description: The Artifactory project key if you are leveraging the JFrog SaaS
+  jfrog-rt-server-id-resolve:
+    required: false
+    description: A label for the local server for artifact resolution (see jf mvn-config)
+    default: 'epl-maven-build-scan-server'
+    type: string
+  jfrog-rt-server-id-deploy:
+    required: false
+    description: A label for the local server for artifact deployment (see jf mvn-config)
+    default: 'epl-maven-build-scan-server'
+    type: string
+  jfrog-rt-repo-releases-resolve:
+    required: false
+    description: Repository name in main Artifactory instance for release artifact resolution (see jf mvn-config)
+    default: 'libs-releases'
+    type: string
+  jfrog-rt-repo-snapshots-resolve:
+    required: false
+    description: Repository name in main Artifactory instance for snapshot artifact resolution (see jf mvn-config)
+    default: 'libs-snapshots'
+    type: string
+  jfrog-rt-repo-releases-deploy:
+    required: false
+    description: Repository name in main Artifactory instance for release artifact deployment (see jf mvn-config)
+    default: 'UHG-Releases'
+    type: string
+  jfrog-rt-repo-snapshots-deploy:
+    required: false
+    description: Repository name in main Artifactory instance for snapshot artifact deployment (see jf mvn-config)
+    default: 'UHG-Snapshots'
+    type: string
+  jfrog-username:
+    description: "The username to use for the JFrog Artifactory plugin. Can be the OIDC subject output by uhg-pipelines/epl-jf/saas-setup"
+    required: false
+    default: ""
+  jfrog-password:
+    description: "The password to use for the JFrog Artifactory plugin"
+    required: false
+    default: ""
+
+  # Maven Parameters
+  enable-cache:
+    description: 'Flag to enable or disable caching'
+    required: false
+    default: 'true'
+    type: string
+  maven-command:
+    description: Used to override the parameters for the call to 'mvn' that builds/tests your project
+    default: "-B -U clean verify -Dartifactory.publish.artifacts=false -Dmaven.repo.local=/home/runner/.m2/repository"
+    type: string
+  maven-sonar-command:
+    description: Used to override the parameters for the call to 'mvn' that executes the sonar scan
+    default: "-B -U -DskipTests -DskipIT verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dmaven.repo.local=/home/runner/.m2/repository"
+    type: string
+  maven-deploy:
+    description: If true, will deploy the artifacts to the Artifactory instance
+    required: false
+    default: 'false'
+    type: string
+  maven-deploy-command:
+    description: Used to override the parameters for the call to 'mvn' that deploys your project to Artifactory
+    default: "-B -U -DskipTests -DskipIT deploy -Dmaven.repo.local=/home/runner/.m2/repository"
+    type: string
+  maven-deploy-version:
+    description: The version of the artifact to deploy, if set, will use mvn versions:set to set the version
+    required: false
+    default: ''
+    type: string
+  maven-versions-set-options:
+    description: Additional options to pass to the mvn versions:set command (e.g. -DprocessAllModules=true)
+    required: false
+    default: ''
+    type: string
+  maven-use-wrapper:
+    description: Used to determine whether or not to use the maven wrapper, will auto detect the maven wrapper file by default. (true false autodetect)
+    required: false
+    default: autodetect
+    type: string
+  publish-version:
+    description: "The version to use for the deployed artifact. If not set, the version in the Maven project version will be used."
+    required: false
+    default: ""
+  publish-version-suffix:
+    description: "The version suffix to use for the deployed artifact. If not set, the version in the Maven project version will be used."
+    required: false
+    default: ""
+
+  # Sonar Parameters
+  sonar-continue-on-error:
+    description: "Whether or not to have the sonar can continue on error or not"
+    required: false
+    default: "false"
+
+  sonar-quality-gate-wait:
+    description: 'Whether to wait for Sonar pass/fail scan to finish before returning results'
+    required: false
+    default: ''
+  sonar-exclusions:
+    description: 'Patterns used to exclude some source files from analysis'
+    required: false
+    default: ''
+  sonar-coverage-exclusions:
+    description: 'Patterns used to exclude some files from coverage report'
+    required: false
+    default: ''
+  sonar-quality-gate-timeout:
+    description: 'The maximum time to wait for the Sonar quality gate to pass'
+    required: false
+    default: 300
+    type: string
+  sonar-url:
+    description: URL of the SonarQube server
+    required: false
+    default: https://sonar.optum.com
+    type: string
+  sonar-token:
+    description: If set, will replace default token for SonarQube communication
+    required: false
+    default: '' 
+    type: string
+  sonar-project-key:
+    description: The project key for the sonarqube scan
+    required: false
+    default: ''
+    type: string
+  prm-sonar-token-lookup:
+    description: 'Set to true to enable PRM lookup for sonar token. When false, the default sonar token is used.'
+    required: false
+    default: 'false'
+    type: string
+
+  #Prm parameters
+  prm-base-url:
+    required: false
+    description: 'The base URL for the prm instance to use'
+    default: 'https://prm.optum.com'
+
+  working-directory:
+    required: false
+    description: Directory where the Maven project is located
+    default: .
+    type: string
+
+outputs:
+  sonar-scan-url:
+    description: The URL of the SonarQube scan results
+    value: ${{ steps.sonar-scan.outputs.scan-url }}
+  sonar-outcome:
+    description: "The  sonar step's outcome"
+    value: ${{ steps.sonar-scan.outcome }}
+
+runs:
+  using: composite
+  steps:
+    - name: Conditional Caching
+      if: ${{ inputs.enable-cache == 'true' }}
+      uses: actions/cache@v4
+      with:
+        path: /home/runner/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+    - name: Find settings.xml
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      id: settings-file
+      run: |
+        # Find settings.xml
+        echo "::group::Find settings.xml"
+        # Put the path to the settings.xml file in an environment variable
+        if [ -f ./settings.xml ]; then
+          _settings_file_option='--settings=./settings.xml'
+          _settings_file_option_set=true
+        elif [ -f .mvn/settings.xml ]; then
+          _settings_file_option='--settings=.mvn/settings.xml'
+          _settings_file_option_set=true
+        elif [ -f /etc/settings.xml ]; then
+          _settings_file_option='--settings=/etc/settings.xml'
+          _settings_file_option_set=true
+        else
+          _settings_file_option_set=false
+        fi
+        if [ "$_settings_file_option_set" = true ]; then
+          echo "SETTINGS_FILE_OPTION='$_settings_file_option'"
+          echo "SETTINGS_FILE_OPTION=$_settings_file_option" >> $GITHUB_ENV
+        else
+          echo "No settings.xml file found, proceeding without it"
+        fi
+        echo "::endgroup::"
+    - name: Configure Maven Tool
+      id: maven-tool
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        MAVEN_USE_WRAPPER: ${{ inputs.maven-use-wrapper }}
+        MVNW_PASSWORD: ${{ inputs.jfrog-password }}
+        MVNW_USERNAME: ${{ inputs.jfrog-username }}
+      run: |
+        # Configure Maven Tool
+        echo "::group::Configure Maven Tool"
+        _wrapper_path="";
+        MVN_TOOL="mvn";
+        
+        if [[ "${MAVEN_USE_WRAPPER}" == "true" || "${MAVEN_USE_WRAPPER}" == "autodetect" ]]; then
+          echo "Autodetecting Maven wrapper...";
+          _git_toplevel=$(git rev-parse --show-toplevel);
+          if [ -f ./mvnw ]; then
+            chmod +x ./mvnw;
+            _wrapper_path=./mvnw;
+          elif [ -f "$_git_toplevel/mvnw" ]; then
+            echo "Maven wrapper found in git root directory, linking to working directory";
+            ln -s "$_git_toplevel/mvnw" ./mvnw;
+            ln -s "$_git_toplevel/.mvn" .;
+            chmod +x ./mvnw;
+            _wrapper_path=./mvnw;
+          fi;
+        fi;
+        
+        if [[ -n "$_wrapper_path" ]]; then
+          echo "Maven wrapper detected at: '$_wrapper_path'";
+          MVN_TOOL="$_wrapper_path";
+        else
+          echo "No Maven wrapper detected. Using system-installed Maven.";
+        fi;
+        
+        if command -v $MVN_TOOL &> /dev/null; then
+          echo "Maven is installed and found on the path. Version Info:";
+          $MVN_TOOL --version;
+          MVN_TOOL_CONFIGURED=true;
+        else
+          echo "::error:: Maven is not installed or not found on the path.";
+          echo "TIP: Add a wrapper by running: 'mvn wrapper:wrapper -Dmaven=3.9.9' and commit the changes.";
+          exit 9;
+        fi;
+        
+        MVN_WRAPPER_ENABLED=$([[ "$MVN_TOOL" != "mvn" ]] && echo "true" || echo "false");
+        
+        # Exporting environment variables
+        echo "MVN_TOOL_CONFIGURED=$MVN_TOOL_CONFIGURED" >> "$GITHUB_ENV";
+        echo "MVN_TOOL_CONFIGURED=$MVN_TOOL_CONFIGURED" >> "$GITHUB_OUTPUT";
+        echo "MVN_WRAPPER_ENABLED=$MVN_WRAPPER_ENABLED" >> "$GITHUB_ENV";
+        echo "MVN_WRAPPER_ENABLED=$MVN_WRAPPER_ENABLED" >> "$GITHUB_OUTPUT";
+        echo "MVN_TOOL=$MVN_TOOL" >> "$GITHUB_ENV";
+        echo "MVN_TOOL=$MVN_TOOL" >> "$GITHUB_OUTPUT";
+        
+        echo "MVN_TOOL_CONFIGURED=$MVN_TOOL_CONFIGURED, MVN_WRAPPER_ENABLED=$MVN_WRAPPER_ENABLED, MVN_WRAPPER_REPOSITORY_ROOT_ENABLED=$MVN_WRAPPER_REPOSITORY_ROOT_ENABLED. Using MVN_TOOL=$MVN_TOOL for the rest of the run.";
+        echo "::endgroup::"
+
+    - name: JF config and audit
+      if: ${{ inputs.jfrog-project-key != '' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        JFROG_AUDIT: ${{ inputs.jfrog-audit }}
+        JFROG_CENTRAL_SERVER_NAME: ${{ inputs.jfrog-central-server-name }}
+        JFROG_EDGE_SERVER_NAME: ${{ inputs.jfrog-edge-server-name }}
+        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
+      run: |
+        # JF config and audit
+        echo "::group::JF config"
+        # output each command as it's ran
+        set -x
+        jf --version
+        
+        jf mvn-config \
+          --server-id-resolve $JFROG_EDGE_SERVER_NAME \
+          --server-id-deploy $JFROG_CENTRAL_SERVER_NAME \
+          --repo-resolve-releases "$JFROG_PROJECT_KEY-maven-releases-vir" \
+          --repo-resolve-snapshots "$JFROG_PROJECT_KEY-maven-snapshots-vir" \
+          --repo-deploy-releases "$JFROG_PROJECT_KEY-maven-np-releases-loc" \
+          --repo-deploy-snapshots "$JFROG_PROJECT_KEY-maven-np-snapshots-loc" \
+          --use-wrapper=${MVN_WRAPPER_ENABLED} 
+
+        cat .jfrog/projects/maven.yaml
+        jf config show
+        jf config use $JFROG_EDGE_SERVER_NAME
+        jf rt ping
+        jf config use $JFROG_CENTRAL_SERVER_NAME
+        jf rt ping
+        echo "::endgroup::"
+        if [ "$JFROG_AUDIT" == "true" ]; then
+          echo "::group::JF audit"
+          jf audit --mvn --extended-table=true --format=simple-json --project="$JFROG_PROJECT_KEY" --use-wrapper=${MVN_WRAPPER_ENABLED}
+          echo "::endgroup::"
+        fi
+
+    - name: Determine set Maven version with versions:set
+      id: set-up-artifact
+      if: ${{ inputs.publish-version != '' || inputs.maven-deploy-version != '' || inputs.publish-version-suffix != '' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
+        MAVEN_DEPLOY_VERSION: ${{ inputs.maven-deploy-version }}
+        MAVEN_VERSIONS_SET_OPTIONS: ${{ inputs.maven-versions-set-options }}
+        PUBLISH_VERSION: ${{ inputs.publish-version }}
+        PUBLISH_VERSION_SUFFIX: ${{ inputs.publish-version-suffix }}
+      run: |
+        if [[ "$PUBLISH_VERSION" != "" ]]; then
+          version="$PUBLISH_VERSION"
+        elif [[ "$MAVEN_DEPLOY_VERSION" != "" ]]; then
+          version="$MAVEN_DEPLOY_VERSION"
+        else
+          if [ "$JFROG_PROJECT_KEY" != "" ]; then
+            echo "Getting version with JFrog SaaS"
+            version=$(jf mvn help:evaluate -Dexpression=project.version -q -DforceStdout 2>&1 | tail -n 1)
+            echo "Version from JFrog SaaS: $version"
+          else
+            echo "Getting version for Repo1"
+            version=$(${{ steps.maven-tool.outputs.MVN_TOOL }} help:evaluate -Dexpression=project.version -q -DforceStdout 2>&1 | tail -n 1)
+            echo "Version from Repo1: $version"
+          fi
+        fi
+        if [[ "$PUBLISH_VERSION_SUFFIX" != "" ]]; then
+          echo "Adding suffix to version"
+          version="${version}$PUBLISH_VERSION_SUFFIX"
+        fi
+        echo "Using version: $version"
+        if [ "$JFROG_PROJECT_KEY" != "" ]; then
+          # Set the version of the artifact if it was provided - JFrog SaaS
+          echo "Setting version for JFrog SaaS"
+          jf mvn versions:set -DnewVersion="${version}" $MAVEN_VERSIONS_SET_OPTIONS --batch-mode
+        else
+          # Set the version of the artifact if it was provided - Repo1
+          echo "Setting version for Repo1"
+          ${{ steps.maven-tool.outputs.MVN_TOOL }} versions:set -DnewVersion="${version}" $MAVEN_VERSIONS_SET_OPTIONS --batch-mode $SETTINGS_FILE_COMMAND
+        fi
+
+    - name: Build Maven with jf wrapper
+      if: ${{ inputs.jfrog-project-key != '' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        JFROG_BUILD_NAME: ${{ inputs.jfrog-build-name }}
+        JFROG_BUILD_NUMBER: ${{ inputs.jfrog-build-number }}
+        JFROG_CENTRAL_SERVER_NAME: ${{ inputs.jfrog-central-server-name }}
+        JFROG_CONTEXTUAL_SCAN: ${{ inputs.jfrog-contextual-scan }}
+        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
+        MAVEN_COMMAND: ${{ inputs.maven-command }}
+      run: |
+        jf config use $JFROG_CENTRAL_SERVER_NAME
+        jf mvn --scan=$JFROG_CONTEXTUAL_SCAN \
+          --build-name="$JFROG_BUILD_NAME" \
+          --build-number="$JFROG_BUILD_NUMBER" \
+          --project="$JFROG_PROJECT_KEY" \
+          $MAVEN_COMMAND
+
+    # Repo1 Specific Build
+    - name: Build Maven
+      if: ${{ inputs.jfrog-project-key == '' }}
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        MAVEN_COMMAND: ${{ inputs.maven-command }}
+        MVN_TOOL: ${{ steps.maven-tool.outputs.MVN_TOOL }}
+      run: |
+        # Build with mvn
+        echo "::group::Build maven"
+        echo "Running command: $MVN_TOOL $SETTINGS_FILE_OPTION $MAVEN_COMMAND"
+        $MVN_TOOL $SETTINGS_FILE_OPTION $MAVEN_COMMAND
+        echo "::endgroup::"
+      shell: bash
+
+    - name: Resolve Sonar Project Key
+      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
+      id: sonar-setup
+      uses: uhg-pipelines/epl-prm/get-sonar-project-key@v4
+      with:
+        sonar-project-key: ${{ inputs.sonar-project-key }}
+        tech-type: java-maven-ci
+        working-directory: ${{ inputs.working-directory }}
+
+    - name: Set sonar project key
+      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
+      shell: bash
+      env:
+        RESOLVED_SONAR_PROJECT_KEY: ${{ steps.sonar-setup.outputs.sonar-project-key }}
+        RESOLUTION_METHOD: ${{ steps.sonar-setup.outputs.resolution-method }}
+      run: |
+        echo "Sonar project key resolved via: $RESOLUTION_METHOD"
+        echo "SONAR_PROJECT_KEY=$RESOLVED_SONAR_PROJECT_KEY" >> "$GITHUB_ENV"
+
+    - name: Get Sonar Token from PRM
+      id: get-sonar-token-composite
+      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
+      uses: uhg-pipelines/epl-prm/get-sonar-token-composite@v4
+      with:
+        sonar-project-key: ${{ steps.sonar-setup.outputs.sonar-project-key }}
+        sonar-token: ${{ inputs.sonar-token }}
+        prm-url: ${{ inputs.prm-base-url }}
+        prm-sonar-token-lookup: ${{ inputs.prm-sonar-token-lookup }}
+
+    - name: Set sonar token
+      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
+      shell: bash
+      env:
+        RESOLVED_SONAR_TOKEN: ${{ steps.get-sonar-token-composite.outputs.sonar-token }}
+      run: |
+        echo "SONAR_TOKEN=$(echo "$RESOLVED_SONAR_TOKEN" | tr -d '\n\r')" >> "$GITHUB_ENV"
+
+    - name: SonarQube Scan
+      id: sonar-scan
+      working-directory: ${{ inputs.working-directory }}
+      if: ${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}
+      continue-on-error: ${{ fromJSON(env.CONTINUE_ON_ERROR) }}
+      env:
+        JFROG_BUILD_NAME: ${{ inputs.jfrog-build-name }}
+        JFROG_BUILD_NUMBER: ${{ inputs.jfrog-build-number }}
+        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
+        MAVEN_SONAR_COMMAND: ${{ inputs.maven-sonar-command }}
+        MVN_TOOL: ${{ steps.maven-tool.outputs.MVN_TOOL }}
+        SONAR_COVERAGE_EXCLUSIONS: ${{ inputs.sonar-coverage-exclusions }}
+        SONAR_EXCLUSIONS: ${{ inputs.sonar-exclusions }}
+        SONAR_HOST_URL: ${{ inputs.sonar-url }}
+        SONAR_QUALITY_GATE_TIMEOUT: ${{ inputs.sonar-quality-gate-timeout }}
+        SONAR_QUALITY_GATE_WAIT: ${{ inputs.sonar-quality-gate-wait }}
+        CONTINUE_ON_ERROR: ${{ inputs.sonar-continue-on-error }}
+      run: |
+        # SonarQube Scan
+        echo "::group::SonarQube Scan: setup sonar_commands"
+        
+        echo "Configured timeout: $SONAR_QUALITY_GATE_TIMEOUT seconds"
+        sonar_commands="$SETTINGS_FILE_OPTION $MAVEN_SONAR_COMMAND -Dsonar.links.ci=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID -Dsonar.links.scm=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git -Dsonar.login=$SONAR_TOKEN"
+  
+        if [[ "$SONAR_QUALITY_GATE_WAIT" == "true" ]]; then
+          sonar_commands+=" -Dsonar.qualitygate.wait=true"
+        elif [[ "$SONAR_QUALITY_GATE_WAIT" == "false" ]]; then
+          sonar_commands+=" -Dsonar.qualitygate.wait=false"
+        fi
+        if [[ "$SONAR_EXCLUSIONS" != "" ]]; then
+          sonar_commands+=" -Dsonar.exclusions=$SONAR_EXCLUSIONS"
+        fi
+        if [[ "$SONAR_COVERAGE_EXCLUSIONS" != "" ]]; then
+          sonar_commands+=" -Dsonar.coverage.exclusions=$SONAR_COVERAGE_EXCLUSIONS"
+        fi
+        if [[ "$SONAR_PROJECT_KEY" != "" ]]; then
+          sonar_commands+=" -Dsonar.projectKey=$SONAR_PROJECT_KEY"
+        fi
+        sonar_commands+=" -Dsonar.qualitygate.timeout=$SONAR_QUALITY_GATE_TIMEOUT"
+        echo "Final sonar_commands: $sonar_commands"
+        echo "::endgroup::"
+        if [[ "$JFROG_PROJECT_KEY" != "" ]]; then
+          echo "::group::SonarQube Scan: using jf wrapper"
+          echo "Running command 'jf mvn --build-name="$JFROG_BUILD_NAME" --build-number="$JFROG_BUILD_NUMBER" --project="$JFROG_PROJECT_KEY" $sonar_commands'"
+          OUTPUT=$(jf mvn --build-name="$JFROG_BUILD_NAME" --build-number="$JFROG_BUILD_NUMBER" --project="$JFROG_PROJECT_KEY" $sonar_commands 2>&1 | tee /dev/fd/2; exit ${PIPESTATUS[0]})
+          echo "::endgroup::"
+        else
+          echo "::group::SonarQube Scan: using mvn"
+          OUTPUT=$($MVN_TOOL $sonar_commands | tee /dev/fd/2; exit ${PIPESTATUS[0]})
+          echo "::endgroup::"
+        fi
+        SCAN_URL=$(echo $OUTPUT | grep -o -e "$SONAR_HOST_URL\S*" | head -n 1)
+        echo "scan-url=$SCAN_URL" >> $GITHUB_OUTPUT
+        echo "## Sonar Summary" >> $GITHUB_STEP_SUMMARY
+        echo "Sonar scan results available at <$SCAN_URL>" >> $GITHUB_STEP_SUMMARY
+      shell: bash
+      
+    - name: Sonar Summary
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SONAR_RESULT: ${{ steps.sonar-scan.outcome }}
+      shell: bash
+      run: |
+        if [[ "$SONAR_RESULT" == "success" ]]; then
+          echo "Sonar Result: $SONAR_RESULT ✅" >> "$GITHUB_STEP_SUMMARY"
+        elif [[ "$SONAR_RESULT" == "failure" ]];
+        then
+          echo "Sonar Result: $SONAR_RESULT 🚨" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "Sonar Result: $SONAR_RESULT ⚠️" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        echo "# " >> "$GITHUB_STEP_SUMMARY"
+
+    # Optionally deploy
+    - name: Deploy to JFrog SaaS
+      if: ${{ (inputs.maven-deploy == 'true' || inputs.maven-deploy == true) && inputs.jfrog-project-key != '' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        JFROG_BUILD_NAME: ${{ inputs.jfrog-build-name }}
+        JFROG_BUILD_NUMBER: ${{ inputs.jfrog-build-number }}
+        JFROG_CENTRAL_SERVER_NAME: ${{ inputs.jfrog-central-server-name }}
+        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
+        MAVEN_DEPLOY_COMMAND: ${{ inputs.maven-deploy-command }}
+      run: |
+        # Deploy to JFrog SaaS
+        echo "::group::Deploy to JFrog SaaS"
+        jf config use $JFROG_CENTRAL_SERVER_NAME
+        jf mvn --build-name="$JFROG_BUILD_NAME" --build-number="$JFROG_BUILD_NUMBER" --project="$JFROG_PROJECT_KEY" $MAVEN_DEPLOY_COMMAND
+        echo "::endgroup::"
+
+    - name: Deploy to Repo1
+      if: ${{ (inputs.maven-deploy == 'true' || inputs.maven-deploy == true) && inputs.jfrog-project-key == '' }}
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        MAVEN_DEPLOY_COMMAND: ${{ inputs.maven-deploy-command }}
+        MAVEN_TOOL: ${{ steps.maven-tool.outputs.MVN_TOOL }}
+      run: |
+        # Deploy to Repo1
+        echo "::group::Deploy to Repo1"
+        $MAVEN_TOOL $SETTINGS_FILE_OPTION $MAVEN_DEPLOY_COMMAND
+        echo "::endgroup::"
