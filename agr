@@ -1,71 +1,184 @@
-2026-04-12T14:40:45.736+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Next Batch Id = 10
-2026-04-12T14:40:45.762+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 10
-2026-04-12T14:40:45.784+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
-2026-04-12T14:40:45.785+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Delete caUniverseBatchT entries in Batch ID 10
-2026-04-12T14:40:45.793+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  :  Run Case Batch
-2026-04-12T14:40:45.800+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : Start Create CaUniverseT list in Batch ID 10
-2026-04-12T14:40:45.800+05:30  INFO  --- [           main] c.o.f.c.a.service.impl.CaseBatchService  : End Create CaUniverseT list in Batch ID 10
-[ERROR] Tests run: 5, Failures: 1, Errors: 0, Skipped: 0, Time elapsed: 0.461 s <<< FAILURE! -- in com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests
-[ERROR] com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests.createBatchCaseSavesInvalidRowsAndSendsInvalidMailWhenUniverseListShrinks -- Time elapsed: 0.354 s <<< FAILURE!
-org.mockito.exceptions.verification.TooManyActualInvocations:
+package com.optum.fads.caseentrybatch.api.service;
 
-caseBatchEmailService.postBatchProcessMail(
-    <any com.optum.fads.caseentrybatch.api.dto.EmailData>,
-    <any com.optum.fads.caseentrybatch.api.dto.EmailSpecification>
-);
-Wanted 1 time:
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService.postBatchProcessMail(CaseBatchEmailService.java:86)
-But was 3 times:
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.sendInvalidClaimsMail(CaseBatchService.java:180)
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCaseEntries(CaseBatchService.java:143)
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCaseEntries(CaseBatchService.java:145)
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
+import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 
-        at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService.postBatchProcessMail(CaseBatchEmailService.java:86)
-        at com.optum.fads.caseentrybatch.api.service.CaseBatchServiceTests.createBatchCaseSavesInvalidRowsAndSendsInvalidMailWhenUniverseListShrinks(CaseBatchServiceTests.java:122)
-        at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-        at org.mockito.internal.runners.DefaultInternalRunner$1$1.evaluate(DefaultInternalRunner.java:55)
-        at org.mockito.internal.runners.DefaultInternalRunner$1.run(DefaultInternalRunner.java:100)
-        at org.mockito.internal.runners.DefaultInternalRunner.run(DefaultInternalRunner.java:107)
-        at org.mockito.internal.runners.StrictRunner.run(StrictRunner.java:42)
-        at org.mockito.junit.MockitoJUnitRunner.run(MockitoJUnitRunner.java:163)
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 
-[INFO]
-[INFO] Results:
-[INFO]
-[ERROR] Failures:
-[ERROR]   CaseBatchServiceTests.createBatchCaseSavesInvalidRowsAndSendsInvalidMailWhenUniverseListShrinks:122
-caseBatchEmailService.postBatchProcessMail(
-    <any com.optum.fads.caseentrybatch.api.dto.EmailData>,
-    <any com.optum.fads.caseentrybatch.api.dto.EmailSpecification>
-);
-Wanted 1 time:
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService.postBatchProcessMail(CaseBatchEmailService.java:86)
-But was 3 times:
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.sendInvalidClaimsMail(CaseBatchService.java:180)
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCaseEntries(CaseBatchService.java:143)
--> at com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService.createBatchCaseEntries(CaseBatchService.java:145)
+import com.optum.fads.caseentrybatch.api.common.CaseEntryConstants;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchT;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseBatchTPK;
+import com.optum.fads.caseentrybatch.api.domain.CaUniverseT;
+import com.optum.fads.caseentrybatch.api.domain.UiUserBase;
+import com.optum.fads.caseentrybatch.api.dto.EmailData;
+import com.optum.fads.caseentrybatch.api.dto.EmailSpecification;
+import com.optum.fads.caseentrybatch.api.repo.CaUniverseBatchRepository;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchEmailService;
+import com.optum.fads.caseentrybatch.api.service.impl.CaseBatchService;
+import com.optum.fads.caseentrybatch.api.snowflakeDomain.DmClaimDrugT;
+import com.optum.fads.caseentrybatch.api.snowflakeRepo.DmClaimDrugRepository;
+import com.optum.fads.caseentrybatch.api.util.CaseBatchUtil;
 
+@RunWith(MockitoJUnitRunner.class)
+public class CaseBatchServiceTests {
 
-[INFO]
-[ERROR] Tests run: 58, Failures: 1, Errors: 0, Skipped: 0
-[INFO]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD FAILURE
-[INFO] ------------------------------------------------------------------------
-[INFO] Total time:  49.940 s
-[INFO] Finished at: 2026-04-12T14:40:46+05:30
-[INFO] ------------------------------------------------------------------------
-[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch: There are test failures.
-[ERROR]
-[ERROR] See C:\Users\sgupt664\BE_Projects\fads-case-entry-batch\target\surefire-reports for the individual test results.
-[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
-[ERROR] -> [Help 1]
-[ERROR]
-[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
-[ERROR] Re-run Maven using the -X switch to enable full debug logging.
-[ERROR]
-[ERROR] For more information about the errors and possible solutions, please read the following articles:
-[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+    @Mock
+    private CaUniverseBatchRepository caUniverseBatchRepository;
 
-C:\Users\sgupt664\BE_Projects\fads-case-entry-batch>
+    @Mock
+    private CaseBatchEmailService caseBatchEmailService;
+
+    @Mock
+    private ICaseBatchIndividualService caseBatchIndividualService;
+
+    @Mock
+    private CaseBatchUtil caseBatchUtil;
+
+    @Mock
+    private DmClaimDrugRepository dmClaimDrugRepository;
+
+    @InjectMocks
+    private CaseBatchService caseBatchService;
+
+    @Test
+    public void createBatchCaseReturnsSuccessWhenNoPendingBatchIdsExist() {
+        when(caUniverseBatchRepository.findDistinctBatchIds()).thenReturn(Collections.emptyList());
+
+        String result = caseBatchService.createBatchCase();
+
+        assertEquals(CaseEntryConstants.SUCCESS_MESSAGE, result);
+        verify(caUniverseBatchRepository, never()).findAllByBatchId(any(Integer.class));
+    }
+
+    @Test
+    public void createBatchCaseProcessesSingleBatchAndDeletesItWhenSuccessful() {
+        CaUniverseBatchT batchRow = createBatchRow("TCN-1", "1", "PART-1");
+        DmClaimDrugT claimDrug = createClaimDrug("PART-1");
+
+        when(caUniverseBatchRepository.findDistinctBatchIds()).thenReturn(Collections.singletonList(10));
+        when(caUniverseBatchRepository.findAllByBatchId(10)).thenReturn(Collections.singletonList(batchRow));
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(dmClaimDrugRepository.findClaimDrugTbyId(eq("TCN-1"), eq("1"), any())).thenReturn(claimDrug);
+
+        String result = caseBatchService.createBatchCase();
+
+        assertEquals(CaseEntryConstants.SUCCESS_MESSAGE, result);
+        verify(caseBatchIndividualService).createIndBatchCaseEntries(any(List.class));
+        verify(caUniverseBatchRepository).deleteByBatchId(10);
+    }
+
+    @Test
+    public void createCaUniverseTListMarksDuplicateClaimsAndReturnsEmptyList() {
+        CaUniverseBatchT first = createBatchRow("TCN-1", "1", "PART-1");
+        CaUniverseBatchT second = createBatchRow("TCN-1", "1", "PART-1");
+        when(caseBatchUtil.getZoneId()).thenReturn(ZoneId.of("UTC"));
+
+        List<CaUniverseT> result = caseBatchService.createCaUniverseTList(Arrays.asList(first, second));
+
+        assertTrue(result.isEmpty());
+        assertEquals(CaseEntryConstants.DUPLICATE, first.getRecMatchInd());
+        verify(dmClaimDrugRepository, never()).findClaimDrugTbyId(any(), any(), any());
+    }
+
+    @Test
+    public void createBatchCaseSavesInvalidRowsAndSendsInvalidMailWhenUniverseListShrinks() {
+        CaseBatchService spyService = org.mockito.Mockito.spy(caseBatchService);
+        CaUniverseBatchT first = createBatchRow("TCN-1", "1", "PART-1");
+        CaUniverseBatchT second = createBatchRow("TCN-2", "1", "PART-2");
+        first.setRecMatchInd(CaseEntryConstants.NO);
+        second.setRecMatchInd(CaseEntryConstants.DUPLICATE);
+
+        CaUniverseT caUniverseT = new CaUniverseT();
+        doReturn(Collections.singletonList(caUniverseT)).when(spyService).createCaUniverseTList(any(List.class));
+        when(caUniverseBatchRepository.findDistinctBatchIds()).thenReturn(Collections.singletonList(10));
+        when(caUniverseBatchRepository.findAllByBatchId(10)).thenReturn(Arrays.asList(first, second));
+        when(caseBatchUtil.getEmailSpecs()).thenReturn(new EmailSpecification());
+        when(caUniverseBatchRepository.saveAll(any(List.class))).thenReturn(Arrays.asList(first, second));
+
+        String result = spyService.createBatchCase();
+
+        assertEquals(CaseEntryConstants.SUCCESS_MESSAGE, result);
+        verify(caUniverseBatchRepository).saveAll(Arrays.asList(first, second));
+        verify(caUniverseBatchRepository).flush();
+        verify(caseBatchEmailService).postBatchProcessMail(any(EmailData.class), any(EmailSpecification.class));
+        verify(caUniverseBatchRepository, never()).deleteByBatchId(10);
+        verify(caseBatchIndividualService, never()).createIndBatchCaseEntries(any(List.class));
+    }
+
+    @Test
+    public void createBatchCaseSendsFailureNotificationsWhenExceptionOccurs() {
+        CaseBatchService spyService = org.mockito.Mockito.spy(caseBatchService);
+        CaUniverseBatchT batchRow = createBatchRow("TCN-1", "1", "PART-1");
+        RuntimeException failure = new RuntimeException("batch failure");
+
+        doThrow(failure).when(spyService).createCaUniverseTList(any(List.class));
+        when(caUniverseBatchRepository.findDistinctBatchIds()).thenReturn(Collections.singletonList(10));
+        when(caUniverseBatchRepository.findAllByBatchId(10)).thenReturn(Collections.singletonList(batchRow));
+        when(caseBatchUtil.getEmailSpecs()).thenReturn(new EmailSpecification());
+
+        String result = spyService.createBatchCase();
+
+        assertEquals(CaseEntryConstants.SUCCESS_MESSAGE, result);
+        verify(caseBatchEmailService, org.mockito.Mockito.times(2))
+                .postBatchProcessMail(any(EmailData.class), any(EmailSpecification.class));
+        verify(caUniverseBatchRepository, never()).deleteByBatchId(10);
+    }
+
+    private CaUniverseBatchT createBatchRow(String hdrClmTcn, String liNum, String participantId) {
+        CaUniverseBatchTPK id = new CaUniverseBatchTPK();
+        id.setCtBatchId(10);
+        id.setCtBatchDate(new Date());
+
+        UiUserBase userBase = new UiUserBase();
+        userBase.setUiSystemId("WA123456");
+
+        CaUniverseBatchT row = new CaUniverseBatchT();
+        row.setId(id);
+        row.setUiUserBase(userBase);
+        row.setHdrClmTcn(hdrClmTcn);
+        row.setLiNum(liNum);
+        row.setHdrClmPdDt(new Date());
+        row.setParticipantId(participantId);
+        row.setCaseTypeCd("PV");
+        row.setProvRole(CaseEntryConstants.PROVIDER_ROLE_BILLING);
+        row.setCaPrmNodeCd("PAU");
+        row.setCaYearId(2024);
+        row.setProjectStatus("N");
+        row.setInvstTypeCd(CaseEntryConstants.INVESTIGATION_TYPE_PRELIMINARY);
+        row.setLiDrugValidClmInd("Y");
+        row.setAssignUsr("WA123456");
+        return row;
+    }
+
+    private DmClaimDrugT createClaimDrug(String participantId) {
+        DmClaimDrugT claimDrug = new DmClaimDrugT();
+        claimDrug.setHdrPayToProvId(participantId);
+        claimDrug.setHdrPrescrProvId(participantId);
+        claimDrug.setHdrRecipOrigId(participantId);
+        claimDrug.setHdrRecipFullNm("John Smith");
+        claimDrug.setHdrPdAmt(BigDecimal.TEN);
+        claimDrug.setLiPdAmt(BigDecimal.ONE);
+        claimDrug.setLiBillAmt(BigDecimal.ONE);
+        claimDrug.setHdrBillAmt(BigDecimal.ONE);
+        return claimDrug;
+    }
+}
