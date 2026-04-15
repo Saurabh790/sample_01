@@ -1,547 +1,805 @@
-name: maven-build-scan
-description: 'This action performs a Maven build and executes SonarQube scans with specific configurations for Maven projects.'
 
-inputs:
-  github-token:
-    required: false
-    description: The github token for the JFrog plugin to use to publish reports to the PR
-    default: ''
-    type: string
-  enable-sonar:
-    required: false
-    description: Set to true to run Sonar scans
-    default: 'true'
-    type: string
+        <?xml version="1.0" encoding="utf-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.optum.fads</groupId>
+  <artifactId>fads-case-entry-batch</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.5.8</version>
+    <relativePath />
+  </parent>
+  <repositories>
+    <repository>
+      <id>central</id>
+      <name>centraluhg.jfrog.io-releases</name>
+      <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir</url>
+    </repository>
+    <repository>
+      <id>snapshots</id>
+      <name>snapshots-repo</name>
+      <url>https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-snapshots</url>
+    </repository>
+  </repositories>
+  <properties>
+    <maven.test.skip>false</maven.test.skip>
+    <skipTests>${maven.test.skip}</skipTests>
+    <surefire.skip>${skipTests}</surefire.skip>
+    <failsafe.skip>true</failsafe.skip>
+    <log4j2.version>2.16.0</log4j2.version>
+    <java.version>17</java.version>
+    <spring.boot.version>3.5.8</spring.boot.version>
+    <spring.cloud.version>2025.0.0</spring.cloud.version>
+    <jasypt.version>3.0.5</jasypt.version>
+    <jwt.version>4.4.0</jwt.version>
+    <cloudsdk.version>4.2.0-RELEASE</cloudsdk.version>
+    <modelmapper.version>3.2.2</modelmapper.version>
+    <jacoco.version>0.8.12</jacoco.version>
+    <springrunner.version>0.1.0</springrunner.version>
+    <guava.version>32.1.2-jre</guava.version>
+    <logback.encoder.version>7.4</logback.encoder.version>
+    <lombok.version>1.18.28</lombok.version>
+    <restassured.version>5.5.0</restassured.version>
+    <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
+    <org.mapstruct.version>1.5.4.Final</org.mapstruct.version>
+    <bcp.version>1.67</bcp.version>
+    <netty.version>4.1.129.Final</netty.version>
+  </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.azure.spring</groupId>
+        <artifactId>spring-cloud-azure-dependencies</artifactId>
+        <version>6.1.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.24.3</version>
+        <scope>import</scope>
+        <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring.boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring.cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>com.microsoft.azure</groupId>
+        <artifactId>msal4j</artifactId>
+        <version>1.17.2</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>1.5.25</version>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.5.25</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-codec-http2</artifactId>
+      <version>${netty.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.azure.spring</groupId>
+      <artifactId>spring-cloud-azure-starter-keyvault-secrets</artifactId>
+    </dependency>
+    <!-- Spring Boot Dependencies  -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!-- httpsmvnrepository.comartifactorg.springframework.bootspring-boot-starter-mail  -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-mail</artifactId>
+    </dependency>
+    <!-- httpsmvnrepository.comartifactorg.apache.commonscommons-email  -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-email</artifactId>
+      <version>1.5</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.18.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.hibernate.javax.persistence</groupId>
+      <artifactId>hibernate-jpa-2.1-api</artifactId>
+      <version>1.0.2.Final</version>
+    </dependency>
+    <!-- Micrometer Prometheus registry   -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <!-- Password Encryption  -->
+    <dependency>
+      <groupId>com.github.ulisesbocchio</groupId>
+      <artifactId>jasypt-spring-boot-starter</artifactId>
+      <version>${jasypt.version}</version>
+    </dependency>
+    <!-- JWT  -->
+    <dependency>
+      <groupId>com.auth0</groupId>
+      <artifactId>java-jwt</artifactId>
+      <version>${jwt.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.jsonwebtoken</groupId>
+      <artifactId>jjwt</artifactId>
+      <version>0.12.6</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpclient</artifactId>
+      <version>4.5.14</version>
+    </dependency>
+    <!-- Model Mapper  -->
+    <dependency>
+      <groupId>org.modelmapper</groupId>
+      <artifactId>modelmapper</artifactId>
+      <version>${modelmapper.version}</version>
+    </dependency>
+    <!-- MapStruct  -->
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-jdk8</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.mapstruct</groupId>
+      <artifactId>mapstruct-processor</artifactId>
+      <version>${org.mapstruct.version}</version>
+    </dependency>
+    <!-- Jackson  -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- Used in GetterSetter Verifier @NonNull   -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+    </dependency>
+    <!-- Lombok  -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- JSON logging -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+      <version>${logback.encoder.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.janino</groupId>
+      <artifactId>janino</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+    <!-- httpsmvnrepository.comartifactorg.codehaus.jettisonjettison  -->
+    <dependency>
+      <groupId>org.codehaus.jettison</groupId>
+      <artifactId>jettison</artifactId>
+      <version>1.5.4</version>
+    </dependency>
+    <!-- Testing  -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.vintage</groupId>
+      <artifactId>junit-vintage-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-quartz</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>5.2.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Before After Spring Test Runner  -->
+    <dependency>
+      <groupId>org.jacoco</groupId>
+      <artifactId>jacoco-maven-plugin</artifactId>
+      <version>${jacoco.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <version>${restassured.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.data</groupId>
+      <artifactId>spring-data-commons</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-test</artifactId>
+    </dependency>
+    <!-- Quartz-Java dependency Remediation Upgrade   -->
+    <dependency>
+      <groupId>org.quartz-scheduler</groupId>
+      <artifactId>quartz</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>13.2.1.jre11</version>
+    </dependency>
+    <dependency>
+      <groupId>org.hibernate</groupId>
+      <artifactId>hibernate-core</artifactId>
+      <version>6.2.3.Final</version>
+    </dependency>
+    <!-- Snowflake dependency  -->
+    <dependency>
+      <groupId>net.snowflake</groupId>
+      <artifactId>snowflake-jdbc</artifactId>
+      <version>${snowflake-jdbc.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-ext-jdk15on</artifactId>
+      <version>${bcp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>${bcp.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>nimbus-jose-jwt</artifactId>
+      <version>9.37.4</version>
+    </dependency>
+  </dependencies>
+  <build>
+    <finalName>${project.artifactId}</finalName>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.projectlombok</groupId>
+          <artifactId>lombok-maven-plugin</artifactId>
+          <version>${lombok.version}</version>
+          <dependencies>
+            <dependency>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+              <artifactId>mapstruct-processor</artifactId>
+              <version>${org.mapstruct.version}</version>
+            </path>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.0.0-M2</version>
+        <executions>
+          <execution>
+            <id>enforce-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>3.3.9</version>
+                </requireMavenVersion>
+              </rules>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>${spring.boot.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>pl.project13.maven</groupId>
+        <artifactId>git-commit-id-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <generateGitPropertiesFile>true</generateGitPropertiesFile>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>revision</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <skip>${surefire.skip}</skip>
+          <argLine>${argLine}</argLine>
+          <useModulePath>false</useModulePath>
+          <includes>
+            <include>**/*Test.java</include>
+            <include>**/*Tests.java</include>
+            <include>**/*TestCase.java</include>
+          </includes>
+        </configuration>
+        <version>3.5.4</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>integration-test</id>
+            <goals>
+              <goal>integration-test</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>verify</id>
+            <goals>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>${failsafe.skip}</skip>
+          <argLine>${argLine}</argLine>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <configuration>
+          <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
+          <destFile>${project.build.directory}/jacoco.exec</destFile>
+          <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+          <append>true</append>
+          <formats>
+            <format>XML</format>
+            <format>HTML</format>
+          </formats>
+          <excludes>
+            <exclude>**/dto/**</exclude>
+            <exclude>**/domain/**</exclude>
+            <exclude>**/common/**</exclude>
+            <exclude>**/util/**</exclude>
+            <exclude>**/snowflakeDomain/**</exclude>
+            <exclude>**/snowflakeRepo/**</exclude>
+            <exclude>**/config/PemKeyLoader.class</exclude>
+          </excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>jacoco-initialize</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>jacoco-report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
 
-  #Jfrog Parameters
-  jfrog-audit:
-    description: 'Flag to enable or disable JFrog audit'
-    required: false
-    default: 'true'
-    type: string
-  jfrog-central-server-name:
-    description: 'The name of the central server to configure'
-    required: false
-    default: 'jfrog-central'
-  jfrog-contextual-scan:
-    description: 'Enable or disable JFrog Xray scan'
-    required: false
-    default: 'true'
-  jfrog-edge-server-name:
-    description: 'The name of the edge server to configure'
-    required: false
-    default: 'jfrog-core-edge'
-  jfrog-build-name:
-    required: false
-    description: The name of the build to be used in Artifactory - if not set, will use the repository and workflow name
-    default: ''
-    type: string
-  jfrog-build-number:
-    required: false
-    description: The number of the build to be used in Artifactory - if not set, will use the build and run number
-    default: ''
-    type: string
-  jfrog-project-key:
-    required: false
-    description: The Artifactory project key if you are leveraging the JFrog SaaS
-  jfrog-rt-server-id-resolve:
-    required: false
-    description: A label for the local server for artifact resolution (see jf mvn-config)
-    default: 'epl-maven-build-scan-server'
-    type: string
-  jfrog-rt-server-id-deploy:
-    required: false
-    description: A label for the local server for artifact deployment (see jf mvn-config)
-    default: 'epl-maven-build-scan-server'
-    type: string
-  jfrog-rt-repo-releases-resolve:
-    required: false
-    description: Repository name in main Artifactory instance for release artifact resolution (see jf mvn-config)
-    default: 'libs-releases'
-    type: string
-  jfrog-rt-repo-snapshots-resolve:
-    required: false
-    description: Repository name in main Artifactory instance for snapshot artifact resolution (see jf mvn-config)
-    default: 'libs-snapshots'
-    type: string
-  jfrog-rt-repo-releases-deploy:
-    required: false
-    description: Repository name in main Artifactory instance for release artifact deployment (see jf mvn-config)
-    default: 'UHG-Releases'
-    type: string
-  jfrog-rt-repo-snapshots-deploy:
-    required: false
-    description: Repository name in main Artifactory instance for snapshot artifact deployment (see jf mvn-config)
-    default: 'UHG-Snapshots'
-    type: string
-  jfrog-username:
-    description: "The username to use for the JFrog Artifactory plugin. Can be the OIDC subject output by uhg-pipelines/epl-jf/saas-setup"
-    required: false
-    default: ""
-  jfrog-password:
-    description: "The password to use for the JFrog Artifactory plugin"
-    required: false
-    default: ""
 
-  # Maven Parameters
-  enable-cache:
-    description: 'Flag to enable or disable caching'
-    required: false
-    default: 'true'
-    type: string
-  maven-command:
-    description: Used to override the parameters for the call to 'mvn' that builds/tests your project
-    default: "-B -U clean verify -Dartifactory.publish.artifacts=false -Dmaven.repo.local=/home/runner/.m2/repository"
-    type: string
-  maven-sonar-command:
-    description: Used to override the parameters for the call to 'mvn' that executes the sonar scan
-    default: "-B -U -DskipTests -DskipIT verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dmaven.repo.local=/home/runner/.m2/repository"
-    type: string
-  maven-deploy:
-    description: If true, will deploy the artifacts to the Artifactory instance
-    required: false
-    default: 'false'
-    type: string
-  maven-deploy-command:
-    description: Used to override the parameters for the call to 'mvn' that deploys your project to Artifactory
-    default: "-B -U -DskipTests -DskipIT deploy -Dmaven.repo.local=/home/runner/.m2/repository"
-    type: string
-  maven-deploy-version:
-    description: The version of the artifact to deploy, if set, will use mvn versions:set to set the version
-    required: false
-    default: ''
-    type: string
-  maven-versions-set-options:
-    description: Additional options to pass to the mvn versions:set command (e.g. -DprocessAllModules=true)
-    required: false
-    default: ''
-    type: string
-  maven-use-wrapper:
-    description: Used to determine whether or not to use the maven wrapper, will auto detect the maven wrapper file by default. (true false autodetect)
-    required: false
-    default: autodetect
-    type: string
-  publish-version:
-    description: "The version to use for the deployed artifact. If not set, the version in the Maven project version will be used."
-    required: false
-    default: ""
-  publish-version-suffix:
-    description: "The version suffix to use for the deployed artifact. If not set, the version in the Maven project version will be used."
-    required: false
-    default: ""
 
-  # Sonar Parameters
-  sonar-continue-on-error:
-    description: "Whether or not to have the sonar can continue on error or not"
-    required: false
-    default: "false"
 
-  sonar-quality-gate-wait:
-    description: 'Whether to wait for Sonar pass/fail scan to finish before returning results'
-    required: false
-    default: ''
-  sonar-exclusions:
-    description: 'Patterns used to exclude some source files from analysis'
-    required: false
-    default: ''
-  sonar-coverage-exclusions:
-    description: 'Patterns used to exclude some files from coverage report'
-    required: false
-    default: ''
-  sonar-quality-gate-timeout:
-    description: 'The maximum time to wait for the Sonar quality gate to pass'
-    required: false
-    default: 300
-    type: string
-  sonar-url:
-    description: URL of the SonarQube server
-    required: false
-    default: https://sonar.optum.com
-    type: string
-  sonar-token:
-    description: If set, will replace default token for SonarQube communication
-    required: false
-    default: '' 
-    type: string
-  sonar-project-key:
-    description: The project key for the sonarqube scan
-    required: false
-    default: ''
-    type: string
-  prm-sonar-token-lookup:
-    description: 'Set to true to enable PRM lookup for sonar token. When false, the default sonar token is used.'
-    required: false
-    default: 'false'
-    type: string
 
-  #Prm parameters
-  prm-base-url:
-    required: false
-    description: 'The base URL for the prm instance to use'
-    default: 'https://prm.optum.com'
+[main] INFO org.apache.maven.cli.transfer.Slf4jMavenTransferListener - Downloaded from artifactory-release: https://centraluhg.jfrog.io/artifactory/com-optum-osgp-maven-releases-vir/org/junit/platform/junit-platform-launcher/1.12.2/junit-platform-launcher-1.12.2.jar (208 kB at 246 kB/s)
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - 
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - -------------------------------------------------------
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo -  T E S T S
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - -------------------------------------------------------
+Exception in thread "main" java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at java.instrument/sun.instrument.InstrumentationImpl.loadClassAndStartAgent(InstrumentationImpl.java:491)
+	at java.instrument/sun.instrument.InstrumentationImpl.loadClassAndCallPremain(InstrumentationImpl.java:503)
+Caused by: java.lang.reflect.InvocationTargetException
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.jacoco.agent.rt.internal_4a7f17c.core.runtime.InjectedClassRuntime$Lookup.defineClass(InjectedClassRuntime.java:134)
+	at org.jacoco.agent.rt.internal_4a7f17c.core.runtime.InjectedClassRuntime.startup(InjectedClassRuntime.java:54)
+	at org.jacoco.agent.rt.internal_4a7f17c.PreMain.premain(PreMain.java:50)
+	... 6 more
+Caused by: java.lang.LinkageError: loader 'bootstrap' attempted duplicate class definition for java.lang.$JaCoCo. (java.lang.$JaCoCo is in module java.base of loader 'bootstrap')
+	at java.base/java.lang.ClassLoader.defineClass0(Native Method)
+	at java.base/java.lang.System$2.defineClass(System.java:2324)
+	at java.base/java.lang.invoke.MethodHandles$Lookup$ClassDefiner.defineClass(MethodHandles.java:2439)
+	at java.base/java.lang.invoke.MethodHandles$Lookup$ClassDefiner.defineClass(MethodHandles.java:2416)
+	at java.base/java.lang.invoke.MethodHandles$Lookup.defineClass(MethodHandles.java:1843)
+	... 13 more
+*** java.lang.instrument ASSERTION FAILED ***: "!errorOutstanding" with message Outstanding error when calling method in invokeJavaAgentMainMethod at src/java.instrument/share/native/libinstrument/JPLISAgent.c line: 619
+*** java.lang.instrument ASSERTION FAILED ***: "success" with message invokeJavaAgentMainMethod failed at src/java.instrument/share/native/libinstrument/JPLISAgent.c line: 459
+*** java.lang.instrument ASSERTION FAILED ***: "result" with message agent load/premain call failed at src/java.instrument/share/native/libinstrument/JPLISAgent.c line: 422
+Aborted
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - 
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - Results:
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - 
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - Tests run: 0, Failures: 0, Errors: 0, Skipped: 0
+[main] INFO org.apache.maven.plugin.surefire.SurefireMojo - 
+[main] WARNING org.apache.maven.plugin.surefire.SurefireMojo - Corrupted channel by directly writing to native stream in forked JVM 1. See FAQ web page and the dump file /home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire-reports/2026-04-15T12-42-41_677-jvmRun1.dumpstream
+[main] INFO org.apache.maven.cli.event.ExecutionEventLogger - ------------------------------------------------------------------------
+[main] INFO org.apache.maven.cli.event.ExecutionEventLogger - BUILD FAILURE
+[main] INFO org.apache.maven.cli.event.ExecutionEventLogger - ------------------------------------------------------------------------
+[main] INFO org.apache.maven.cli.event.ExecutionEventLogger - Total time:  08:32 min
+[main] INFO org.apache.maven.cli.event.ExecutionEventLogger - Finished at: 2026-04-15T12:42:49Z
+[main] INFO org.apache.maven.cli.event.ExecutionEventLogger - ------------------------------------------------------------------------
+[main] ERROR org.apache.maven.cli.MavenCli - Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch: 
+[main] ERROR org.apache.maven.cli.MavenCli - 
+[main] ERROR org.apache.maven.cli.MavenCli - See /home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire-reports for the individual test results.
+[main] ERROR org.apache.maven.cli.MavenCli - See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[main] ERROR org.apache.maven.cli.MavenCli - The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+[main] ERROR org.apache.maven.cli.MavenCli - Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+[main] ERROR org.apache.maven.cli.MavenCli - Error occurred in starting fork, check output in log
+[main] ERROR org.apache.maven.cli.MavenCli - Process Exit Code: 134
+[main] ERROR org.apache.maven.cli.MavenCli - org.apache.maven.surefire.booter.SurefireBooterForkException: The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+[main] ERROR org.apache.maven.cli.MavenCli - Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+[main] ERROR org.apache.maven.cli.MavenCli - Error occurred in starting fork, check output in log
+[main] ERROR org.apache.maven.cli.MavenCli - Process Exit Code: 134
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.fork(ForkStarter.java:643)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:285)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:250)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeProvider(AbstractSurefireMojo.java:1337)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked(AbstractSurefireMojo.java:1135)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute(AbstractSurefireMojo.java:969)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo(DefaultBuildPluginManager.java:126)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2(MojoExecutor.java:328)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute(MojoExecutor.java:316)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:212)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:174)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor.access$000(MojoExecutor.java:75)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor$1.run(MojoExecutor.java:162)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute(DefaultMojosExecutionStrategy.java:39)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:159)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:105)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:73)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build(SingleThreadedBuilder.java:53)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.lifecycle.internal.LifecycleStarter.execute(LifecycleStarter.java:118)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:261)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:173)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.DefaultMaven.execute(DefaultMaven.java:101)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.cli.MavenCli.execute(MavenCli.java:906)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.cli.MavenCli.doMain(MavenCli.java:283)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.apache.maven.cli.MavenCli.main(MavenCli.java:206)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced(Launcher.java:255)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.codehaus.plexus.classworlds.launcher.Launcher.launch(Launcher.java:201)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode(Launcher.java:361)
+[main] ERROR org.apache.maven.cli.MavenCli - 	at org.codehaus.plexus.classworlds.launcher.Launcher.main(Launcher.java:314)
+[main] ERROR org.apache.maven.cli.MavenCli - -> [Help 1]
+org.apache.maven.lifecycle.LifecycleExecutionException: Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.5.4:test (default-test) on project fads-case-entry-batch: 
 
-  working-directory:
-    required: false
-    description: Directory where the Maven project is located
-    default: .
-    type: string
+See /home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire-reports for the individual test results.
+See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+Error occurred in starting fork, check output in log
+Process Exit Code: 134
+org.apache.maven.surefire.booter.SurefireBooterForkException: The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+Error occurred in starting fork, check output in log
+Process Exit Code: 134
+	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.fork(ForkStarter.java:643)
+	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:285)
+	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:250)
+	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeProvider(AbstractSurefireMojo.java:1337)
+	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked(AbstractSurefireMojo.java:1135)
+	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute(AbstractSurefireMojo.java:969)
+	at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo(DefaultBuildPluginManager.java:126)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2(MojoExecutor.java:328)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute(MojoExecutor.java:316)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:212)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:174)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.access$000(MojoExecutor.java:75)
+	at org.apache.maven.lifecycle.internal.MojoExecutor$1.run(MojoExecutor.java:162)
+	at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute(DefaultMojosExecutionStrategy.java:39)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:159)
+	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:105)
+	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:73)
+	at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build(SingleThreadedBuilder.java:53)
+	at org.apache.maven.lifecycle.internal.LifecycleStarter.execute(LifecycleStarter.java:118)
+	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:261)
+	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:173)
+	at org.apache.maven.DefaultMaven.execute(DefaultMaven.java:101)
+	at org.apache.maven.cli.MavenCli.execute(MavenCli.java:906)
+	at org.apache.maven.cli.MavenCli.doMain(MavenCli.java:283)
+	at org.apache.maven.cli.MavenCli.main(MavenCli.java:206)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced(Launcher.java:255)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.launch(Launcher.java:201)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode(Launcher.java:361)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.main(Launcher.java:314)
 
-outputs:
-  sonar-scan-url:
-    description: The URL of the SonarQube scan results
-    value: ${{ steps.sonar-scan.outputs.scan-url }}
-  sonar-outcome:
-    description: "The  sonar step's outcome"
-    value: ${{ steps.sonar-scan.outcome }}
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:333)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
+    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
+    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
+    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
+    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
+    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
+    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
+    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
+    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
+    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0 (Native Method)
+    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke (NativeMethodAccessorImpl.java:77)
+    at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke (DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke (Method.java:569)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
+Caused by: org.apache.maven.plugin.MojoExecutionException: 
 
-runs:
-  using: composite
-  steps:
-    - name: Conditional Caching
-      if: ${{ inputs.enable-cache == 'true' }}
-      uses: actions/cache@v4
-      with:
-        path: /home/runner/.m2/repository
-        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-        restore-keys: |
-          ${{ runner.os }}-maven-
-    - name: Find settings.xml
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      id: settings-file
-      run: |
-        # Find settings.xml
-        echo "::group::Find settings.xml"
-        # Put the path to the settings.xml file in an environment variable
-        if [ -f ./settings.xml ]; then
-          _settings_file_option='--settings=./settings.xml'
-          _settings_file_option_set=true
-        elif [ -f .mvn/settings.xml ]; then
-          _settings_file_option='--settings=.mvn/settings.xml'
-          _settings_file_option_set=true
-        elif [ -f /etc/settings.xml ]; then
-          _settings_file_option='--settings=/etc/settings.xml'
-          _settings_file_option_set=true
-        else
-          _settings_file_option_set=false
-        fi
-        if [ "$_settings_file_option_set" = true ]; then
-          echo "SETTINGS_FILE_OPTION='$_settings_file_option'"
-          echo "SETTINGS_FILE_OPTION=$_settings_file_option" >> $GITHUB_ENV
-        else
-          echo "No settings.xml file found, proceeding without it"
-        fi
-        echo "::endgroup::"
-    - name: Configure Maven Tool
-      id: maven-tool
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      env:
-        MAVEN_USE_WRAPPER: ${{ inputs.maven-use-wrapper }}
-        MVNW_PASSWORD: ${{ inputs.jfrog-password }}
-        MVNW_USERNAME: ${{ inputs.jfrog-username }}
-      run: |
-        # Configure Maven Tool
-        echo "::group::Configure Maven Tool"
-        _wrapper_path="";
-        MVN_TOOL="mvn";
-        
-        if [[ "${MAVEN_USE_WRAPPER}" == "true" || "${MAVEN_USE_WRAPPER}" == "autodetect" ]]; then
-          echo "Autodetecting Maven wrapper...";
-          _git_toplevel=$(git rev-parse --show-toplevel);
-          if [ -f ./mvnw ]; then
-            chmod +x ./mvnw;
-            _wrapper_path=./mvnw;
-          elif [ -f "$_git_toplevel/mvnw" ]; then
-            echo "Maven wrapper found in git root directory, linking to working directory";
-            ln -s "$_git_toplevel/mvnw" ./mvnw;
-            ln -s "$_git_toplevel/.mvn" .;
-            chmod +x ./mvnw;
-            _wrapper_path=./mvnw;
-          fi;
-        fi;
-        
-        if [[ -n "$_wrapper_path" ]]; then
-          echo "Maven wrapper detected at: '$_wrapper_path'";
-          MVN_TOOL="$_wrapper_path";
-        else
-          echo "No Maven wrapper detected. Using system-installed Maven.";
-        fi;
-        
-        if command -v $MVN_TOOL &> /dev/null; then
-          echo "Maven is installed and found on the path. Version Info:";
-          $MVN_TOOL --version;
-          MVN_TOOL_CONFIGURED=true;
-        else
-          echo "::error:: Maven is not installed or not found on the path.";
-          echo "TIP: Add a wrapper by running: 'mvn wrapper:wrapper -Dmaven=3.9.9' and commit the changes.";
-          exit 9;
-        fi;
-        
-        MVN_WRAPPER_ENABLED=$([[ "$MVN_TOOL" != "mvn" ]] && echo "true" || echo "false");
-        
-        # Exporting environment variables
-        echo "MVN_TOOL_CONFIGURED=$MVN_TOOL_CONFIGURED" >> "$GITHUB_ENV";
-        echo "MVN_TOOL_CONFIGURED=$MVN_TOOL_CONFIGURED" >> "$GITHUB_OUTPUT";
-        echo "MVN_WRAPPER_ENABLED=$MVN_WRAPPER_ENABLED" >> "$GITHUB_ENV";
-        echo "MVN_WRAPPER_ENABLED=$MVN_WRAPPER_ENABLED" >> "$GITHUB_OUTPUT";
-        echo "MVN_TOOL=$MVN_TOOL" >> "$GITHUB_ENV";
-        echo "MVN_TOOL=$MVN_TOOL" >> "$GITHUB_OUTPUT";
-        
-        echo "MVN_TOOL_CONFIGURED=$MVN_TOOL_CONFIGURED, MVN_WRAPPER_ENABLED=$MVN_WRAPPER_ENABLED, MVN_WRAPPER_REPOSITORY_ROOT_ENABLED=$MVN_WRAPPER_REPOSITORY_ROOT_ENABLED. Using MVN_TOOL=$MVN_TOOL for the rest of the run.";
-        echo "::endgroup::"
+See /home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire-reports for the individual test results.
+See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+Error occurred in starting fork, check output in log
+Process Exit Code: 134
+org.apache.maven.surefire.booter.SurefireBooterForkException: The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+Error occurred in starting fork, check output in log
+Process Exit Code: 134
+	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.fork(ForkStarter.java:643)
+	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:285)
+	at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run(ForkStarter.java:250)
+	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeProvider(AbstractSurefireMojo.java:1337)
+	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked(AbstractSurefireMojo.java:1135)
+	at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute(AbstractSurefireMojo.java:969)
+	at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo(DefaultBuildPluginManager.java:126)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2(MojoExecutor.java:328)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute(MojoExecutor.java:316)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:212)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:174)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.access$000(MojoExecutor.java:75)
+	at org.apache.maven.lifecycle.internal.MojoExecutor$1.run(MojoExecutor.java:162)
+	at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute(DefaultMojosExecutionStrategy.java:39)
+	at org.apache.maven.lifecycle.internal.MojoExecutor.execute(MojoExecutor.java:159)
+	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:105)
+	at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject(LifecycleModuleBuilder.java:73)
+	at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build(SingleThreadedBuilder.java:53)
+	at org.apache.maven.lifecycle.internal.LifecycleStarter.execute(LifecycleStarter.java:118)
+	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:261)
+	at org.apache.maven.DefaultMaven.doExecute(DefaultMaven.java:173)
+	at org.apache.maven.DefaultMaven.execute(DefaultMaven.java:101)
+	at org.apache.maven.cli.MavenCli.execute(MavenCli.java:906)
+	at org.apache.maven.cli.MavenCli.doMain(MavenCli.java:283)
+	at org.apache.maven.cli.MavenCli.main(MavenCli.java:206)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced(Launcher.java:255)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.launch(Launcher.java:201)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode(Launcher.java:361)
+	at org.codehaus.plexus.classworlds.launcher.Launcher.main(Launcher.java:314)
 
-    - name: JF config and audit
-      if: ${{ inputs.jfrog-project-key != '' }}
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      env:
-        JFROG_AUDIT: ${{ inputs.jfrog-audit }}
-        JFROG_CENTRAL_SERVER_NAME: ${{ inputs.jfrog-central-server-name }}
-        JFROG_EDGE_SERVER_NAME: ${{ inputs.jfrog-edge-server-name }}
-        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
-      run: |
-        # JF config and audit
-        echo "::group::JF config"
-        # output each command as it's ran
-        set -x
-        jf --version
-        
-        jf mvn-config \
-          --server-id-resolve $JFROG_EDGE_SERVER_NAME \
-          --server-id-deploy $JFROG_CENTRAL_SERVER_NAME \
-          --repo-resolve-releases "$JFROG_PROJECT_KEY-maven-releases-vir" \
-          --repo-resolve-snapshots "$JFROG_PROJECT_KEY-maven-snapshots-vir" \
-          --repo-deploy-releases "$JFROG_PROJECT_KEY-maven-np-releases-loc" \
-          --repo-deploy-snapshots "$JFROG_PROJECT_KEY-maven-np-snapshots-loc" \
-          --use-wrapper=${MVN_WRAPPER_ENABLED} 
+    at org.apache.maven.plugin.surefire.SurefireHelper.reportExecution (SurefireHelper.java:154)
+    at org.apache.maven.plugin.surefire.SurefireMojo.handleSummary (SurefireMojo.java:547)
+    at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked (AbstractSurefireMojo.java:1147)
+    at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute (AbstractSurefireMojo.java:969)
+    at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo (DefaultBuildPluginManager.java:126)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:328)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
+    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
+    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
+    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
+    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
+    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
+    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
+    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
+    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
+    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0 (Native Method)
+    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke (NativeMethodAccessorImpl.java:77)
+    at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke (DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke (Method.java:569)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
+Caused by: org.apache.maven.surefire.booter.SurefireBooterForkException: The forked VM terminated without properly saying goodbye. VM crash or System.exit called?
+Command was /bin/sh -c cd '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch' && '/home/runner/_work/_tool/Java_Temurin-Hotspot_jdk/17.0.18-8/x64/bin/java' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-javaagent:/home/runner/.m2/repository/org/jacoco/org.jacoco.agent/0.8.10/org.jacoco.agent-0.8.10-runtime.jar=destfile=/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/jacoco.exec,append=true,excludes=**/dto/**:**/domain/**:**/common/**:**/util/**:**/snowflakeDomain/**:**/snowflakeRepo/**:**/config/PemKeyLoader.class' '-jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire/surefirebooter-20260415124248757_3.jar' '/home/runner/_work/fads-case-entry-batch/fads-case-entry-batch/target/surefire' '2026-04-15T12-42-41_677-jvmRun1' 'surefire-20260415124248757_1tmp' 'surefire_0-20260415124248757_2tmp'
+Error occurred in starting fork, check output in log
+Process Exit Code: 134
+    at org.apache.maven.plugin.surefire.booterclient.ForkStarter.fork (ForkStarter.java:643)
+    at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run (ForkStarter.java:285)
+    at org.apache.maven.plugin.surefire.booterclient.ForkStarter.run (ForkStarter.java:250)
+    at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeProvider (AbstractSurefireMojo.java:1337)
+    at org.apache.maven.plugin.surefire.AbstractSurefireMojo.executeAfterPreconditionsChecked (AbstractSurefireMojo.java:1135)
+    at org.apache.maven.plugin.surefire.AbstractSurefireMojo.execute (AbstractSurefireMojo.java:969)
+    at org.apache.maven.plugin.DefaultBuildPluginManager.executeMojo (DefaultBuildPluginManager.java:126)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute2 (MojoExecutor.java:328)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.doExecute (MojoExecutor.java:316)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:212)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:174)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.access$000 (MojoExecutor.java:75)
+    at org.apache.maven.lifecycle.internal.MojoExecutor$1.run (MojoExecutor.java:162)
+    at org.apache.maven.plugin.DefaultMojosExecutionStrategy.execute (DefaultMojosExecutionStrategy.java:39)
+    at org.apache.maven.lifecycle.internal.MojoExecutor.execute (MojoExecutor.java:159)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:105)
+    at org.apache.maven.lifecycle.internal.LifecycleModuleBuilder.buildProject (LifecycleModuleBuilder.java:73)
+    at org.apache.maven.lifecycle.internal.builder.singlethreaded.SingleThreadedBuilder.build (SingleThreadedBuilder.java:53)
+    at org.apache.maven.lifecycle.internal.LifecycleStarter.execute (LifecycleStarter.java:118)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:261)
+    at org.apache.maven.DefaultMaven.doExecute (DefaultMaven.java:173)
+    at org.apache.maven.DefaultMaven.execute (DefaultMaven.java:101)
+    at org.apache.maven.cli.MavenCli.execute (MavenCli.java:906)
+    at org.apache.maven.cli.MavenCli.doMain (MavenCli.java:283)
+    at org.apache.maven.cli.MavenCli.main (MavenCli.java:206)
+    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke0 (Native Method)
+    at jdk.internal.reflect.NativeMethodAccessorImpl.invoke (NativeMethodAccessorImpl.java:77)
+    at jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke (DelegatingMethodAccessorImpl.java:43)
+    at java.lang.reflect.Method.invoke (Method.java:569)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launchEnhanced (Launcher.java:255)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.launch (Launcher.java:201)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.mainWithExitCode (Launcher.java:361)
+    at org.codehaus.plexus.classworlds.launcher.Launcher.main (Launcher.java:314)
+[main] ERROR org.apache.maven.cli.MavenCli - 
+[main] ERROR org.apache.maven.cli.MavenCli - Re-run Maven using the -X switch to enable full debug logging.
+[main] ERROR org.apache.maven.cli.MavenCli - 
+[main] ERROR org.apache.maven.cli.MavenCli - For more information about the errors and possible solutions, please read the following articles:
+[main] ERROR org.apache.maven.cli.MavenCli - [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+12:42:49 [Info] Trace ID for JFrog Platform logs: aab67bd6011ac676
+Error: 9 [Error] exit status 1
+Error: Process completed with exit code 1.
 
-        cat .jfrog/projects/maven.yaml
-        jf config show
-        jf config use $JFROG_EDGE_SERVER_NAME
-        jf rt ping
-        jf config use $JFROG_CENTRAL_SERVER_NAME
-        jf rt ping
-        echo "::endgroup::"
-        if [ "$JFROG_AUDIT" == "true" ]; then
-          echo "::group::JF audit"
-          jf audit --mvn --extended-table=true --format=simple-json --project="$JFROG_PROJECT_KEY" --use-wrapper=${MVN_WRAPPER_ENABLED}
-          echo "::endgroup::"
-        fi
 
-    - name: Determine set Maven version with versions:set
-      id: set-up-artifact
-      if: ${{ inputs.publish-version != '' || inputs.maven-deploy-version != '' || inputs.publish-version-suffix != '' }}
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      env:
-        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
-        MAVEN_DEPLOY_VERSION: ${{ inputs.maven-deploy-version }}
-        MAVEN_VERSIONS_SET_OPTIONS: ${{ inputs.maven-versions-set-options }}
-        PUBLISH_VERSION: ${{ inputs.publish-version }}
-        PUBLISH_VERSION_SUFFIX: ${{ inputs.publish-version-suffix }}
-      run: |
-        if [[ "$PUBLISH_VERSION" != "" ]]; then
-          version="$PUBLISH_VERSION"
-        elif [[ "$MAVEN_DEPLOY_VERSION" != "" ]]; then
-          version="$MAVEN_DEPLOY_VERSION"
-        else
-          if [ "$JFROG_PROJECT_KEY" != "" ]; then
-            echo "Getting version with JFrog SaaS"
-            version=$(jf mvn help:evaluate -Dexpression=project.version -q -DforceStdout 2>&1 | tail -n 1)
-            echo "Version from JFrog SaaS: $version"
-          else
-            echo "Getting version for Repo1"
-            version=$(${{ steps.maven-tool.outputs.MVN_TOOL }} help:evaluate -Dexpression=project.version -q -DforceStdout 2>&1 | tail -n 1)
-            echo "Version from Repo1: $version"
-          fi
-        fi
-        if [[ "$PUBLISH_VERSION_SUFFIX" != "" ]]; then
-          echo "Adding suffix to version"
-          version="${version}$PUBLISH_VERSION_SUFFIX"
-        fi
-        echo "Using version: $version"
-        if [ "$JFROG_PROJECT_KEY" != "" ]; then
-          # Set the version of the artifact if it was provided - JFrog SaaS
-          echo "Setting version for JFrog SaaS"
-          jf mvn versions:set -DnewVersion="${version}" $MAVEN_VERSIONS_SET_OPTIONS --batch-mode
-        else
-          # Set the version of the artifact if it was provided - Repo1
-          echo "Setting version for Repo1"
-          ${{ steps.maven-tool.outputs.MVN_TOOL }} versions:set -DnewVersion="${version}" $MAVEN_VERSIONS_SET_OPTIONS --batch-mode $SETTINGS_FILE_COMMAND
-        fi
-
-    - name: Build Maven with jf wrapper
-      if: ${{ inputs.jfrog-project-key != '' }}
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      env:
-        JFROG_BUILD_NAME: ${{ inputs.jfrog-build-name }}
-        JFROG_BUILD_NUMBER: ${{ inputs.jfrog-build-number }}
-        JFROG_CENTRAL_SERVER_NAME: ${{ inputs.jfrog-central-server-name }}
-        JFROG_CONTEXTUAL_SCAN: ${{ inputs.jfrog-contextual-scan }}
-        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
-        MAVEN_COMMAND: ${{ inputs.maven-command }}
-      run: |
-        jf config use $JFROG_CENTRAL_SERVER_NAME
-        jf mvn --scan=$JFROG_CONTEXTUAL_SCAN \
-          --build-name="$JFROG_BUILD_NAME" \
-          --build-number="$JFROG_BUILD_NUMBER" \
-          --project="$JFROG_PROJECT_KEY" \
-          $MAVEN_COMMAND
-
-    # Repo1 Specific Build
-    - name: Build Maven
-      if: ${{ inputs.jfrog-project-key == '' }}
-      working-directory: ${{ inputs.working-directory }}
-      env:
-        MAVEN_COMMAND: ${{ inputs.maven-command }}
-        MVN_TOOL: ${{ steps.maven-tool.outputs.MVN_TOOL }}
-      run: |
-        # Build with mvn
-        echo "::group::Build maven"
-        echo "Running command: $MVN_TOOL $SETTINGS_FILE_OPTION $MAVEN_COMMAND"
-        $MVN_TOOL $SETTINGS_FILE_OPTION $MAVEN_COMMAND
-        echo "::endgroup::"
-      shell: bash
-
-    - name: Resolve Sonar Project Key
-      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
-      id: sonar-setup
-      uses: uhg-pipelines/epl-prm/get-sonar-project-key@v4
-      with:
-        sonar-project-key: ${{ inputs.sonar-project-key }}
-        tech-type: java-maven-ci
-        working-directory: ${{ inputs.working-directory }}
-
-    - name: Set sonar project key
-      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
-      shell: bash
-      env:
-        RESOLVED_SONAR_PROJECT_KEY: ${{ steps.sonar-setup.outputs.sonar-project-key }}
-        RESOLUTION_METHOD: ${{ steps.sonar-setup.outputs.resolution-method }}
-      run: |
-        echo "Sonar project key resolved via: $RESOLUTION_METHOD"
-        echo "SONAR_PROJECT_KEY=$RESOLVED_SONAR_PROJECT_KEY" >> "$GITHUB_ENV"
-
-    - name: Get Sonar Token from PRM
-      id: get-sonar-token-composite
-      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
-      uses: uhg-pipelines/epl-prm/get-sonar-token-composite@v4
-      with:
-        sonar-project-key: ${{ steps.sonar-setup.outputs.sonar-project-key }}
-        sonar-token: ${{ inputs.sonar-token }}
-        prm-url: ${{ inputs.prm-base-url }}
-        prm-sonar-token-lookup: ${{ inputs.prm-sonar-token-lookup }}
-
-    - name: Set sonar token
-      if: "${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}"
-      shell: bash
-      env:
-        RESOLVED_SONAR_TOKEN: ${{ steps.get-sonar-token-composite.outputs.sonar-token }}
-      run: |
-        echo "SONAR_TOKEN=$(echo "$RESOLVED_SONAR_TOKEN" | tr -d '\n\r')" >> "$GITHUB_ENV"
-
-    - name: SonarQube Scan
-      id: sonar-scan
-      working-directory: ${{ inputs.working-directory }}
-      if: ${{ inputs.enable-sonar == 'true' || inputs.enable-sonar == true }}
-      continue-on-error: ${{ fromJSON(env.CONTINUE_ON_ERROR) }}
-      env:
-        JFROG_BUILD_NAME: ${{ inputs.jfrog-build-name }}
-        JFROG_BUILD_NUMBER: ${{ inputs.jfrog-build-number }}
-        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
-        MAVEN_SONAR_COMMAND: ${{ inputs.maven-sonar-command }}
-        MVN_TOOL: ${{ steps.maven-tool.outputs.MVN_TOOL }}
-        SONAR_COVERAGE_EXCLUSIONS: ${{ inputs.sonar-coverage-exclusions }}
-        SONAR_EXCLUSIONS: ${{ inputs.sonar-exclusions }}
-        SONAR_HOST_URL: ${{ inputs.sonar-url }}
-        SONAR_QUALITY_GATE_TIMEOUT: ${{ inputs.sonar-quality-gate-timeout }}
-        SONAR_QUALITY_GATE_WAIT: ${{ inputs.sonar-quality-gate-wait }}
-        CONTINUE_ON_ERROR: ${{ inputs.sonar-continue-on-error }}
-      run: |
-        # SonarQube Scan
-        echo "::group::SonarQube Scan: setup sonar_commands"
-        
-        echo "Configured timeout: $SONAR_QUALITY_GATE_TIMEOUT seconds"
-        sonar_commands="$SETTINGS_FILE_OPTION $MAVEN_SONAR_COMMAND -Dsonar.links.ci=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID -Dsonar.links.scm=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY.git -Dsonar.login=$SONAR_TOKEN"
-  
-        if [[ "$SONAR_QUALITY_GATE_WAIT" == "true" ]]; then
-          sonar_commands+=" -Dsonar.qualitygate.wait=true"
-        elif [[ "$SONAR_QUALITY_GATE_WAIT" == "false" ]]; then
-          sonar_commands+=" -Dsonar.qualitygate.wait=false"
-        fi
-        if [[ "$SONAR_EXCLUSIONS" != "" ]]; then
-          sonar_commands+=" -Dsonar.exclusions=$SONAR_EXCLUSIONS"
-        fi
-        if [[ "$SONAR_COVERAGE_EXCLUSIONS" != "" ]]; then
-          sonar_commands+=" -Dsonar.coverage.exclusions=$SONAR_COVERAGE_EXCLUSIONS"
-        fi
-        if [[ "$SONAR_PROJECT_KEY" != "" ]]; then
-          sonar_commands+=" -Dsonar.projectKey=$SONAR_PROJECT_KEY"
-        fi
-        sonar_commands+=" -Dsonar.qualitygate.timeout=$SONAR_QUALITY_GATE_TIMEOUT"
-        echo "Final sonar_commands: $sonar_commands"
-        echo "::endgroup::"
-        if [[ "$JFROG_PROJECT_KEY" != "" ]]; then
-          echo "::group::SonarQube Scan: using jf wrapper"
-          echo "Running command 'jf mvn --build-name="$JFROG_BUILD_NAME" --build-number="$JFROG_BUILD_NUMBER" --project="$JFROG_PROJECT_KEY" $sonar_commands'"
-          OUTPUT=$(jf mvn --build-name="$JFROG_BUILD_NAME" --build-number="$JFROG_BUILD_NUMBER" --project="$JFROG_PROJECT_KEY" $sonar_commands 2>&1 | tee /dev/fd/2; exit ${PIPESTATUS[0]})
-          echo "::endgroup::"
-        else
-          echo "::group::SonarQube Scan: using mvn"
-          OUTPUT=$($MVN_TOOL $sonar_commands | tee /dev/fd/2; exit ${PIPESTATUS[0]})
-          echo "::endgroup::"
-        fi
-        SCAN_URL=$(echo $OUTPUT | grep -o -e "$SONAR_HOST_URL\S*" | head -n 1)
-        echo "scan-url=$SCAN_URL" >> $GITHUB_OUTPUT
-        echo "## Sonar Summary" >> $GITHUB_STEP_SUMMARY
-        echo "Sonar scan results available at <$SCAN_URL>" >> $GITHUB_STEP_SUMMARY
-      shell: bash
-      
-    - name: Sonar Summary
-      working-directory: ${{ inputs.working-directory }}
-      env:
-        SONAR_RESULT: ${{ steps.sonar-scan.outcome }}
-      shell: bash
-      run: |
-        if [[ "$SONAR_RESULT" == "success" ]]; then
-          echo "Sonar Result: $SONAR_RESULT ✅" >> "$GITHUB_STEP_SUMMARY"
-        elif [[ "$SONAR_RESULT" == "failure" ]];
-        then
-          echo "Sonar Result: $SONAR_RESULT 🚨" >> "$GITHUB_STEP_SUMMARY"
-        else
-          echo "Sonar Result: $SONAR_RESULT ⚠️" >> "$GITHUB_STEP_SUMMARY"
-        fi
-        echo "# " >> "$GITHUB_STEP_SUMMARY"
-
-    # Optionally deploy
-    - name: Deploy to JFrog SaaS
-      if: ${{ (inputs.maven-deploy == 'true' || inputs.maven-deploy == true) && inputs.jfrog-project-key != '' }}
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      env:
-        JFROG_BUILD_NAME: ${{ inputs.jfrog-build-name }}
-        JFROG_BUILD_NUMBER: ${{ inputs.jfrog-build-number }}
-        JFROG_CENTRAL_SERVER_NAME: ${{ inputs.jfrog-central-server-name }}
-        JFROG_PROJECT_KEY: ${{ inputs.jfrog-project-key }}
-        MAVEN_DEPLOY_COMMAND: ${{ inputs.maven-deploy-command }}
-      run: |
-        # Deploy to JFrog SaaS
-        echo "::group::Deploy to JFrog SaaS"
-        jf config use $JFROG_CENTRAL_SERVER_NAME
-        jf mvn --build-name="$JFROG_BUILD_NAME" --build-number="$JFROG_BUILD_NUMBER" --project="$JFROG_PROJECT_KEY" $MAVEN_DEPLOY_COMMAND
-        echo "::endgroup::"
-
-    - name: Deploy to Repo1
-      if: ${{ (inputs.maven-deploy == 'true' || inputs.maven-deploy == true) && inputs.jfrog-project-key == '' }}
-      working-directory: ${{ inputs.working-directory }}
-      shell: bash
-      env:
-        MAVEN_DEPLOY_COMMAND: ${{ inputs.maven-deploy-command }}
-        MAVEN_TOOL: ${{ steps.maven-tool.outputs.MVN_TOOL }}
-      run: |
-        # Deploy to Repo1
-        echo "::group::Deploy to Repo1"
-        $MAVEN_TOOL $SETTINGS_FILE_OPTION $MAVEN_DEPLOY_COMMAND
-        echo "::endgroup::"
+any guess why its failing in sonar portal 
