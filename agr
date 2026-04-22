@@ -1,35 +1,786 @@
-@Override
-public List<FadsModElemConfigDto> findAllFadsModElemConfigValues() {
-    log.debug("finding all fads mod elem config instances");
-    List<FadsModElemConfigDto> configDtos = new ArrayList<>();
-    Session session = getCurrentSession();
+package com.optum.fads.security.dao.impl;
 
-    try {
-        String hql = "from FadsModElemConfig";
-        Query<FadsModElemConfig> queryObject = session.createQuery(hql, FadsModElemConfig.class);
+import static org.hibernate.criterion.Example.create;
 
-        try {
-            List<FadsModElemConfig> configs = queryObject.list();
-            for (FadsModElemConfig fadsModElemConfig : configs) {
-                FadsModElemConfigDto dto = new FadsModElemConfigDto();
-                dto.setElementCd(fadsModElemConfig.getElementCd());
-                dto.setElementId(fadsModElemConfig.getElementId());
-                dto.setElementName(fadsModElemConfig.getElementName());
-                dto.setElementUrl(fadsModElemConfig.getElementUrl());
-                if (fadsModElemConfig.getSeFadsModule() != null) {
-                    dto.setParentModuleId(fadsModElemConfig.getSeFadsModule().getFadsModuleId());
-                    dto.setParentModuleName(fadsModElemConfig.getSeFadsModule().getFadsModuleName());
-                }
-                configDtos.add(dto);
-            }
-        } catch (Exception ex) {
-            log.error("loadFadsModConfigValues", ex);
-        }
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
 
-        log.debug("loadFadsModConfigValues() done :: ");
-        return configDtos;
-    } catch (RuntimeException re) {
-        log.error("find all failed", re);
-        throw re;
-    }
+import org.hibernate.HibernateException;
+import org.hibernate.LockOptions;
+import org.hibernate.query.Query;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.transform.AliasToBeanResultTransformer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Repository;
+
+import com.optum.fads.security.dao.SeCaseGrpDAO;
+import com.optum.fads.security.domain.SeCaseAccess;
+import com.optum.fads.security.domain.SeCaseGrp;
+import com.optum.fads.security.domain.SeCaseGrpModAccess;
+import com.optum.fads.security.domain.SeCaseGrpModAccessId;
+import com.optum.fads.security.domain.SeCaseGrpNodeAccess;
+import com.optum.fads.security.domain.SeCaseGrpNodeAccessId;
+import com.optum.fads.security.dto.CaseGroup;
+import com.optum.fads.security.dto.CaseModule;
+import com.optum.fads.security.dto.CaseNode;
+
+/**
+ * A data access object (DAO) providing persistence and search support for
+ * SeCaseGrp entities. Transaction control of the save(), update() and delete()
+ * operations can directly support Spring container-managed transactions or they
+ * can be augmented to handle user-managed Spring transactions. Each of these
+ * methods provides additional information for how to configure it for the
+ * desired type of transaction control.
+ * 
+ * @see com.optum.fads.security.domain.SeCaseGrp
+ *  @author Shyam Biry
+ */
+@Repository
+public class SeCaseGrpDAOImpl implements SeCaseGrpDAO {
+	private static final Logger log = LoggerFactory
+			.getLogger(SeCaseGrpDAOImpl.class);
+	// property constants
+	public static final String GRP_NAME = "grpName";
+	@Autowired
+	private SessionFactory sessionFactory;
+
+	public void setSessionFactory(SessionFactory sessionFactory) {
+		this.sessionFactory = sessionFactory;
+	}
+
+	private Session getCurrentSession() {
+		return sessionFactory.getCurrentSession();
+	}
+
+	protected void initDao() {
+		// do nothing
+	}
+
+	/* (non-Javadoc)
+	 * @see com.optum.fads.security.dao.impl.SeCaseGrpDAO#save(com.optum.fads.security.domain.SeCaseGrp)
+	 */
+	@Override
+	public void save(SeCaseGrp transientInstance) {
+		log.debug("saving SeCaseGrp instance");
+		try {
+			getCurrentSession().save(transientInstance);
+			log.debug("save successful");
+		} catch (RuntimeException re) {
+			log.error("save failed", re);
+			throw re;
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see com.optum.fads.security.dao.impl.SeCaseGrpDAO#delete(com.optum.fads.security.domain.SeCaseGrp)
+	 */
+	@Override
+	public void delete(SeCaseGrp persistentInstance) {
+		log.debug("deleting SeCaseGrp instance");
+		try {
+			getCurrentSession().delete(persistentInstance);
+			log.debug("delete successful");
+		} catch (RuntimeException re) {
+			log.error("delete failed", re);
+			throw re;
+		}
+	}
+
+	@Override
+	public SeCaseGrp findById(java.lang.Integer id) {
+		log.debug("getting SeCaseGrp instance with id: " + id);
+		try {
+			SeCaseGrp instance = (SeCaseGrp) getCurrentSession().get(
+					"com.optum.fads.security.domain.SeCaseGrp", id);
+			return instance;
+		} catch (RuntimeException re) {
+			log.error("get failed", re);
+			throw re;
+		}
+	}
+
+	public List<SeCaseGrp> findByExample(SeCaseGrp instance) {
+		log.debug("finding SeCaseGrp instance by example");
+		try {
+			List<SeCaseGrp> results = (List<SeCaseGrp>) getCurrentSession()
+					.createCriteria(
+							"com.optum.fads.security.domain.SeCaseGrp")
+					.add(create(instance)).list();
+			log.debug("find by example successful, result size: "
+					+ results.size());
+			return results;
+		} catch (RuntimeException re) {
+			log.error("find by example failed", re);
+			throw re;
+		}
+	}
+
+	public List findByProperty(String propertyName, Object value) {
+		try {
+			/*String text = "from SeCaseGrp as model where model."
+					+ propertyName + "= ?";*/
+			
+			StringBuilder queryStr = new StringBuilder();
+			queryStr.append("from SeCaseGrp as model where model.");
+			queryStr.append(propertyName);
+			queryStr.append("=:propertyName");
+			
+			Query queryObject = getCurrentSession().createQuery(queryStr.toString());
+			queryObject.setParameter(0, value);
+			return queryObject.list();
+		} catch (RuntimeException re) {
+			log.error("find by property name failed", re);
+			throw re;
+		}
+	}
+
+	public List<SeCaseGrp> findByGrpName(Object grpName) {
+		return findByProperty(GRP_NAME, grpName);
+	}
+
+	/* (non-Javadoc)
+	 * @see com.optum.fads.security.dao.impl.SeCaseGrpDAO#findAll()
+	 */
+	@Override
+	public List<CaseGroup> findAll() {
+		log.debug("finding all SeCaseGrp instances");
+		try {
+			StringBuilder sb = new StringBuilder();
+			sb.append(" select a.caseGrpId as groupId, ");
+			sb.append(" a.caseGrpName as groupName ");
+			//sb.append(" from SeCaseGrp a order by a.caseGrpId desc ");
+			sb.append(" from SeCaseGrp a order by a.caseGrpName asc ");
+
+			String text = sb.toString(); // "from SeCaseGrp";
+			Query queryObject = getCurrentSession().createQuery(text);
+			queryObject.setResultTransformer(new AliasToBeanResultTransformer(CaseGroup.class));
+			return queryObject.list();
+		} catch (RuntimeException re) {
+			log.error("find all failed", re);
+			throw re;
+		}
+	}
+
+	/* (non-Javadoc)
+	 * @see com.optum.fads.security.dao.impl.SeCaseGrpDAO#merge(com.optum.fads.security.domain.SeCaseGrp)
+	 */
+	@Override
+	public SeCaseGrp merge(SeCaseGrp detachedInstance) {
+		log.debug("merging SeCaseGrp instance");
+		try {
+			SeCaseGrp result = (SeCaseGrp) getCurrentSession().merge(
+					detachedInstance);
+			log.debug("merge successful");
+			return result;
+		} catch (RuntimeException re) {
+			log.error("merge failed", re);
+			throw re;
+		}
+	}
+	@Override
+	public void attachDirty(SeCaseGrp instance) {
+		log.debug("attaching dirty SeCaseGrp instance");
+		try {
+			getCurrentSession().saveOrUpdate(instance);
+			log.debug("attach successful");
+		} catch (RuntimeException re) {
+			log.error("attach failed", re);
+			throw re;
+		}
+	}
+
+	public void attachClean(SeCaseGrp instance) {
+		log.debug("attaching clean SeCaseGrp instance");
+		try {
+			getCurrentSession().buildLockRequest(LockOptions.NONE).lock(
+					instance);
+			log.debug("attach successful");
+		} catch (RuntimeException re) {
+			log.error("attach failed", re);
+			throw re;
+		}
+	}
+	
+	@Override
+	public CaseGroup saveNewCaseGroup(CaseGroup caseGroupDto) {
+		log.debug("saving SeCaseGrp instance");
+		CaseGroup instance=null;
+		try {
+		
+			Session session= getCurrentSession();
+			
+		//	Transaction tx = null;
+			try {
+			//    tx = session.beginTransaction();
+				int groupId =  (Integer) session.createQuery(" select max(model.grpId)+1 from SeCaseGrp model ").uniqueResult();
+			     SeCaseGrp seCaseGrp= new SeCaseGrp();
+			     seCaseGrp.setCaseGrpId(groupId);
+			     seCaseGrp.setCaseGrpName(caseGroupDto.getGroupName());
+			     session.save(seCaseGrp);
+			     Collection<CaseModule> modules=caseGroupDto.getModules();
+			     
+			     for (Iterator<CaseModule> it = modules.iterator(); it.hasNext();) {/*
+			    	 	CaseModule caseModuleDto = it.next();
+			    	 	String moduleId=caseModuleDto.getModuleId();
+			    	 	String caseType=caseModuleDto.getCaseType();
+						
+						String access=caseModuleDto.getModuleAccess();
+						SeCaseGrpModAccessId seCaseGrpModAccessId= new SeCaseGrpModAccessId(groupId,caseType,moduleId);
+						SeCaseGrpModAccess seCaseGrpModAccess= new SeCaseGrpModAccess();
+						seCaseGrpModAccess.setId(seCaseGrpModAccessId);
+						
+						SeCaseAccess seCaseAccess=new SeCaseAccess();
+						seCaseAccess.setAccessId(access);
+						seCaseGrpModAccess.setSeCaseAccess(seCaseAccess);
+						session.save(seCaseGrpModAccess);
+					*/}
+				
+			     
+			     Collection<CaseNode> nodes=caseGroupDto.getNodes();
+			     for (Iterator<CaseNode> it = nodes.iterator(); it.hasNext();) {
+			    	 CaseNode caseNodeDto = it.next();
+			    	 	String nodeId=caseNodeDto.getNodeId();
+			    	 	
+			    	 	SeCaseGrpNodeAccessId seCaseGrpNodeAccessId=new SeCaseGrpNodeAccessId(groupId,nodeId);
+			    	 	
+			    	 	SeCaseGrpNodeAccess seCaseGrpNodeAccess=new SeCaseGrpNodeAccess();
+			    	 	seCaseGrpNodeAccess.setId(seCaseGrpNodeAccessId);
+			    	 	
+			    	 	SeCaseAccess  seCaseAccess=new SeCaseAccess();
+			    	 	seCaseAccess.setAccessId(caseNodeDto.getNodeAccess());
+			    	 	seCaseGrpNodeAccess.setSeCaseAccess(seCaseAccess);
+			    	 /*	seCaseGrpNodeAccess.setDeleteAccessType(caseNodeDto.getDeleteAccess());
+			    	 	seCaseGrpNodeAccess.setRestrAccessType(caseNodeDto.getRestrictAccess());
+			    	 */
+						session.save(seCaseGrpNodeAccess);
+					}
+			     
+			 //    tx.commit();
+			     caseGroupDto.setGroupId(groupId);
+			     instance=caseGroupDto;
+			   
+			}catch(HibernateException he) {
+				//System.out.println(he);
+				log.error("Exception in CaseDetailDAO :: saveCaseDetail()",he);
+			//	if (tx != null) tx.rollback();
+				
+			}
+			catch (RuntimeException e) {
+			 //   if (tx != null) tx.rollback();
+			    throw e; // or display error message
+			}
+			finally {
+			//	session.close();
+			}
+			
+		} catch (RuntimeException re) {
+			log.error("save failed", re);
+			throw re;
+		}
+		  return instance;
+	}
+
+
+	public static SeCaseGrpDAO getFromApplicationContext(ApplicationContext ctx) {
+		return (SeCaseGrpDAO) ctx.getBean("SeCaseGrpDAO");
+	}
 }
+
+
+] Finished at: 2026-04-22T14:33:25+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project fads-base: Compilation failure: Compilation failure:
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeCaseGrpDAOImpl.java:[159,32] variable sb is already defined in method findAll()
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeCaseGrpDAOImpl.java:[160,64] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeCaseGrpModAccessDAOImpl.java:[198,30] variable sb is already defined in method findAllByGroupId(java.lang.Integer)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeCaseGrpModAccessDAOImpl.java:[200,73] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeCaseGrpNodeAccessDAOImpl.java:[222,30] variable sb is already defined in method findAllByGroupId(java.lang.Integer)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeCaseGrpNodeAccessDAOImpl.java:[224,73] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeFadsGrpDAOImpl.java:[44,32] variable sb is already defined in method findAll()
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeFadsGrpDAOImpl.java:[45,64] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeSurGrpDAOImpl.java:[207,38] variable sb is already defined in method findAll()
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeSurGrpDAOImpl.java:[208,58] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeSurGrpModAccessDAOImpl.java:[206,30] variable sb is already defined in method findAllByGroupId(java.lang.Integer)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeSurGrpModAccessDAOImpl.java:[208,73] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeUsrGrpDAOImpl.java:[190,30] variable sb is already defined in method findAllSurUsersByGroupId(java.lang.Integer)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeUsrGrpDAOImpl.java:[193,73] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeUsrGrpDAOImpl.java:[227,30] variable sb is already defined in method findAllCaseByGroupId(java.lang.Integer)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeUsrGrpDAOImpl.java:[228,73] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeUsrGrpDAOImpl.java:[252,39] variable sb is already defined in method updateCaseGroup(java.lang.String,java.lang.Integer)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/SeUsrGrpDAOImpl.java:[254,90] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[145,31] variable sb is already defined in method findBySystemId(java.lang.String)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[147,65] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[621,38] variable sb is already defined in method findAllUsersWithGroups()
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[622,81] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[698,38] variable sb is already defined in method findAllUsers(java.util.Map<java.lang.String,java.lang.String>,java.util.Map<java.lang.String,java.lang.String>,int,int,java.lang.String)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[878,38] variable sb is already defined in method findStateUsers(java.util.Map<java.lang.String,java.lang.String>,java.util.Map<java.lang.String,java.lang.String>,int,int,java.lang.String)
+[ERROR] /C:/Users/sgupt664/BE_Projects/fads-ui-components/fads-base/src/main/java/com/optum/fads/security/dao/impl/UiUserBaseDAOImpl.java:[882,66] no suitable method found for createQuery(java.lang.StringBuilder)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.query.QueryProducer.<R>createQuery(java.lang.String,java.lang.Class<R>) is not applicable
+[ERROR]       (cannot infer type-variable(s) R
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.query.QueryProducer.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.query.QueryProducer.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method javax.persistence.EntityManager.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR]     method javax.persistence.EntityManager.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.SharedSessionContract.createQuery(java.lang.String) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to java.lang.String)
+[ERROR]     method org.hibernate.Session.<T>createQuery(java.lang.String,java.lang.Class<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (actual and formal argument lists differ in length))
+[ERROR]     method org.hibernate.Session.<T>createQuery(javax.persistence.criteria.CriteriaQuery<T>) is not applicable
+[ERROR]       (cannot infer type-variable(s) T
+[ERROR]         (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaQuery<T>))
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaUpdate) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaUpdate)
+[ERROR]     method org.hibernate.Session.createQuery(javax.persistence.criteria.CriteriaDelete) is not applicable
+[ERROR]       (argument mismatch; java.lang.StringBuilder cannot be converted to javax.persistence.criteria.CriteriaDelete)
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+[ERROR]
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :fads-base
+
+C:\Users\sgupt664\BE_Projects\fads-ui-components>git reset --hard
+HEAD is now at 91f066a7 Merge pull request #73 from agupt255_uhg/azure-demo
+
+C:\Users\sgupt664\BE_Projects\fads-ui-components>mvn clean install
+[INFO] Scanning for projects...
+[ERROR] [ERROR] Some problems were encountered while processing the POMs:
+[FATAL] Non-resolvable parent POM for com.optum.fads:fads:8.3.0-SNAPSHOT: The following artifacts could not be resolved: com.optum:ParentPom:pom:1.0.4 (absent): com.optum:ParentPom:pom:1.0.4 was not found in https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir during a previous attempt. This failure was cached in the local repository and resolution is not reattempted until the update interval of jfrog has elapsed or updates are forced and 'parent.relativePath' points at wrong local POM @ line 6, column 10
+ @
+[ERROR] The build could not read 1 project -> [Help 1]
+[ERROR]
+[ERROR]   The project com.optum.fads:fads:8.3.0-SNAPSHOT (C:\Users\sgupt664\BE_Projects\fads-ui-components\pom.xml) has 1 error
+[ERROR]     Non-resolvable parent POM for com.optum.fads:fads:8.3.0-SNAPSHOT: The following artifacts could not be resolved: com.optum:ParentPom:pom:1.0.4 (absent): com.optum:ParentPom:pom:1.0.4 was not found in https://centraluhg.jfrog.io/artifactory/com-optum-omms-maven-releases-vir during a previous attempt. This failure was cached in the local repository and resolution is not reattempted until the update interval of jfrog has elapsed or updates are forced and 'parent.relativePath' points at wrong local POM @ line 6, column 10 -> [Help 2]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/ProjectBuildingException
+[ERROR] [Help 2] http://cwiki.apache.org/confluence/display/MAVEN/UnresolvableModelException
+
+C:\Users\sgupt664\BE_Projects\fads-ui-components>
