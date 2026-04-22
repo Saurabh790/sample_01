@@ -1,26 +1,17 @@
-package com.optum.fads.pgp.behavior.api.repo;
+{
+    "update.showReleaseNotes": false,
+    "extensions.autoCheckUpdates": false,
+    "update.enableWindowsBackgroundUpdates": false,
+    "update.mode": "none",
+    "extensions.autoUpdate": false,
+    "git.openRepositoryInParentFolders": "never",
+    "explorer.confirmDelete": false,
+	
+  "http.proxy": "http://a10-ep_proxy-ply-vip.uhc.com:8080",
+  "http.proxyStrictSSL": false,
+  "http.proxyAuthorization": null,
 
-import java.util.List;
-
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
-
-import com.optum.fads.pgp.behavior.api.domain.PrmDrDataRuleT;
-
-@Transactional
-@Repository
-public interface DataRulesRepository extends JpaRepository<PrmDrDataRuleT, Integer> {
-
-    @Query(" FROM PrmDrDataRuleT dr WHERE dr.drId not in "
-            + "(Select erdr.id.drId FROM PrmErDrT erdr WHERE erdr.id.erId = :extractRuleId) order by dr.drId")
-    List<PrmDrDataRuleT> getAvailableDataRules(@Param("extractRuleId") Integer extractRuleId);
-
-    @Query("select pd from PrmDrDataRuleT pd, PrmErDrT pe WHERE pe.id.erId = :extractRuleId AND pe.id.drId = pd.drId ORDER BY pd.drId")
-    List<PrmDrDataRuleT> getDataRulesByErId(@Param("extractRuleId") Integer extractRuleId);
-
-    @Query(" FROM PrmDrDataRuleT pd where pd.drId in :dataruleIds ORDER BY pd.drId")
-    List<PrmDrDataRuleT> retrieveDataRulesByIds(@Param("dataruleIds") List<Integer> dataruleIds);
+    "security.allowedUNCHosts": [
+        "ms.ds.uhc.com"
+    ]
 }
