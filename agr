@@ -1,418 +1,238 @@
-<%--
 
-    Copyright (c) Optum 2015 - All Rights Reserved.
+Type Exception Report
 
---%>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
-<!DOCTYPE html>
-<html ng-app="loginApp" lang="en">
-<head>
-	<title>Sign In - FADS</title>
-	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+Message Could not open Hibernate Session for transaction; nested exception is org.hibernate.exception.GenericJDBCException: Unable to acquire JDBC Connection
 
-	<link rel="icon" href="app/images/favicon.ico" type="image/x-icon" />
-	<link rel="shortcut icon" href="app/images/favicon.ico" type="image/x-icon" />	
-		
-	<link rel="stylesheet" href="bower_components/uitk-min/uitk.min.css" />	
-	<link rel="stylesheet" type="text/css" href="css/consumer.css">
-	
-	<!--[if lt IE 9]>
-		<script src="uitk-core/js/uitk/console-polyfill.js"></script>		
-	<![endif]-->
-	<%--<script type="text/javascript" src="uitk-core\browser-detection\js\bowser.min.js"></script>--%>
-	<%--<script type="text/javascript" src="uitk-core\browser-detection\js\detectSupportedBrowsers.js"></script>--%>
+Description The server encountered an unexpected condition that prevented it from fulfilling the request.
 
-	<!--[if lte IE 9]>
-		<script src="uitk-core/js/uitk/console-polyfill.js"></script>
-	<![endif]-->
-		
-</head>
-<body>
-<div class="tk-wrapper" ng-cloak ng-controller="loginFormController">
-	<%--
-		<uitk:global-navigation id="GlobalNavigationMenu">
-			<uitk-help></uitk-help>
-		</uitk:global-navigation>
-	--%>
-	<uitk:global-navigation model="globalNavModel"></uitk:global-navigation>
-	<uitk-header logo="./images/optum-fads-logo.png" alt-text="Optum FADS" url="#/"></uitk-header>
+Exception
 
-	<div style="margin:0px auto;" role="main">
-		<form name='login_form' method="post" novalidate ng-submit="loginForm($event)">
-			<div class="tk-sip-margin">
-			<table class="tk-tabl-form-sip" role="presentation">
-				<tbody>
-					<tr>
-						<td colspan="2" class="tk-tabl-form-sip-nopad">
-						<h1 tabindex="-1">Sign In</h1>
-						<div class="tk-form-required tk-margin-bottom-1t">All fields required</div>
-						
-							<uitk:message model="clientErrorMessageModel"></uitk:message>
-							<uitk:message model="serverErrorMessageModel"></uitk:message>
-							<div class="tk-tabl-form-sip-message">Username and password are <span id="loginField_inputTip">case sensitive.</span></div>
-						</td>
-					</tr>
+org.springframework.transaction.CannotCreateTransactionException: Could not open Hibernate Session for transaction; nested exception is org.hibernate.exception.GenericJDBCException: Unable to acquire JDBC Connection
+	org.springframework.orm.hibernate5.HibernateTransactionManager.doBegin(HibernateTransactionManager.java:598)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:400)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:373)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.createTransactionIfNecessary(TransactionAspectSupport.java:595)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:382)
+	org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:215)
+	com.sun.proxy.$Proxy89.findUser(Unknown Source)
+	com.optum.fads.web.security.authentication.FadsAuthenticationProvider.authenticate(FadsAuthenticationProvider.java:59)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:182)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:201)
+	org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.attemptAuthentication(UsernamePasswordAuthenticationFilter.java:85)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:223)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:213)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.FadsSessionManagementFilter.doFilter(FadsSessionManagementFilter.java:46)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:103)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:89)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.CsrfTokenGeneratorFilter.doFilterInternal(CsrfTokenGeneratorFilter.java:54)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:117)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
+	org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:110)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:80)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:55)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:221)
+	org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:186)
+	org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:354)
+	org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:267)
+Root Cause
 
-                    <%-- Username --%>
-                    <tr ng-init="userNameError=false">
-                        <td class="tk-tabl-form-sip-username">
-                            <uitk:label for="usernameId_input">Username</uitk:label>
-                        </td>
+org.hibernate.exception.GenericJDBCException: Unable to acquire JDBC Connection
+	org.hibernate.exception.internal.StandardSQLExceptionConverter.convert(StandardSQLExceptionConverter.java:42)
+	org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:113)
+	org.hibernate.engine.jdbc.spi.SqlExceptionHelper.convert(SqlExceptionHelper.java:99)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.acquireConnectionIfNeeded(LogicalConnectionManagedImpl.java:111)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.getPhysicalConnection(LogicalConnectionManagedImpl.java:138)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.getConnectionForTransactionManagement(LogicalConnectionManagedImpl.java:276)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.begin(LogicalConnectionManagedImpl.java:284)
+	org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl$TransactionDriverControlImpl.begin(JdbcResourceLocalTransactionCoordinatorImpl.java:246)
+	org.hibernate.engine.transaction.internal.TransactionImpl.begin(TransactionImpl.java:83)
+	org.hibernate.internal.AbstractSharedSessionContract.beginTransaction(AbstractSharedSessionContract.java:503)
+	org.springframework.orm.hibernate5.HibernateTransactionManager.doBegin(HibernateTransactionManager.java:557)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:400)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:373)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.createTransactionIfNecessary(TransactionAspectSupport.java:595)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:382)
+	org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:215)
+	com.sun.proxy.$Proxy89.findUser(Unknown Source)
+	com.optum.fads.web.security.authentication.FadsAuthenticationProvider.authenticate(FadsAuthenticationProvider.java:59)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:182)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:201)
+	org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.attemptAuthentication(UsernamePasswordAuthenticationFilter.java:85)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:223)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:213)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.FadsSessionManagementFilter.doFilter(FadsSessionManagementFilter.java:46)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:103)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:89)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.CsrfTokenGeneratorFilter.doFilterInternal(CsrfTokenGeneratorFilter.java:54)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:117)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
+	org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:110)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:80)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:55)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:221)
+	org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:186)
+	org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:354)
+	org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:267)
+Root Cause
 
-                        <td class="tk-rfrm-group"
-                            ng-class="{'tk-rfrm-has-error' : userNameError || (login_form.username.$invalid && login_form.submitted)}">
+java.sql.SQLException: Cannot create PoolableConnectionFactory (ORA-01017: invalid username/password; logon denied
+)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.createPoolableConnectionFactory(BasicDataSource.java:648)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.createDataSource(BasicDataSource.java:551)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.getConnection(BasicDataSource.java:726)
+	org.hibernate.engine.jdbc.connections.internal.DatasourceConnectionProviderImpl.getConnection(DatasourceConnectionProviderImpl.java:122)
+	org.hibernate.internal.NonContextualJdbcConnectionAccess.obtainConnection(NonContextualJdbcConnectionAccess.java:38)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.acquireConnectionIfNeeded(LogicalConnectionManagedImpl.java:108)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.getPhysicalConnection(LogicalConnectionManagedImpl.java:138)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.getConnectionForTransactionManagement(LogicalConnectionManagedImpl.java:276)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.begin(LogicalConnectionManagedImpl.java:284)
+	org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl$TransactionDriverControlImpl.begin(JdbcResourceLocalTransactionCoordinatorImpl.java:246)
+	org.hibernate.engine.transaction.internal.TransactionImpl.begin(TransactionImpl.java:83)
+	org.hibernate.internal.AbstractSharedSessionContract.beginTransaction(AbstractSharedSessionContract.java:503)
+	org.springframework.orm.hibernate5.HibernateTransactionManager.doBegin(HibernateTransactionManager.java:557)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:400)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:373)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.createTransactionIfNecessary(TransactionAspectSupport.java:595)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:382)
+	org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:215)
+	com.sun.proxy.$Proxy89.findUser(Unknown Source)
+	com.optum.fads.web.security.authentication.FadsAuthenticationProvider.authenticate(FadsAuthenticationProvider.java:59)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:182)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:201)
+	org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.attemptAuthentication(UsernamePasswordAuthenticationFilter.java:85)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:223)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:213)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.FadsSessionManagementFilter.doFilter(FadsSessionManagementFilter.java:46)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:103)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:89)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.CsrfTokenGeneratorFilter.doFilterInternal(CsrfTokenGeneratorFilter.java:54)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:117)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
+	org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:110)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:80)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:55)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:221)
+	org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:186)
+	org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:354)
+	org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:267)
+Root Cause
 
-                            <div class="tk-rfrm-field-validation-container" ng-init="userNameError=false">
-                                <div class="tk-rfrm-columnar-container">
-                                    <div class="tk-rfrm-error-container">
-										<span class="tk-rfrm-field-container">
-										<uitk:input tk-type="text" model="userName" id="usernameId"
-                                                    on-blur="browserACFix();onBlur(login_form.username);onUsernameKeyup();"
-                                                    on-keyup="onUsernameKeyup();" ng-click="onUsernameKeyup();"
-                                                    tk-error-class="userNameError || (login_form.submitted  && login_form.username.$invalid)"
-                                                    name="username"
-                                                    check-field-validation="false"
-                                                    tk-required="true"
-                                                    tk-aria-describedby="loginField_inputTip Username_errormessage"></uitk:input>
-							 			</span>
-										<span class="tk-rfrm-validation"
-                                              id="Username_errormessage"
-                                              ng-if="userNameError || (login_form.submitted  && login_form.username.$invalid)">
-											Username is required.
-										</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                    <%-- Ends username --%>
-					
-					<%-- Password --%>
-					<tr ng-init="passwordError=false">
-						<td class="tk-tabl-form-sip-password">
-							<uitk:label for="pwd_input">Password</uitk:label>
-						</td>
-						
-						<td class="tk-rfrm-group"
-							ng-class="{'tk-rfrm-has-error' : passwordError || (login_form.password.$invalid && login_form.submitted)}">
-						
-							<div class="tk-rfrm-field-validation-container" ng-init="passwordError=false">
-								<div class="tk-rfrm-columnar-container">
-									<div class="tk-rfrm-error-container">
-										<span class="tk-rfrm-field-container">
-										<uitk-input tk-type="password" model="password" id="pwd"
-                                            on-blur="onBlur(login_form.password);onPasswordKeyup();"
-                                            on-keyup="onPasswordKeyup();" ng-click="onPasswordKeyup();"
-											tk-error-class="passwordError || (login_form.submitted  && login_form.password.$invalid)"
-											name="password" 
-							 				tk-required="true"
-                                            tk-aria-describedby="loginField_inputTip Password_errormessage"></uitk-input>
-							 			</span>
-										<span class="tk-rfrm-validation"
-											id="Password_errormessage"
-											ng-if="passwordError || (login_form.submitted  && login_form.password.$invalid)">
-											Password is required.
-										</span>
-									</div>
-								</div>
-							</div>
-						</td>
-					</tr>
-					<%-- Ends password --%>
-					
-					<tr>
-						<td></td>
-						<td>
-							<uitk-button class="tk-margin-left-min" value="Sign In" enable-default="true" type="submit"></uitk-button>
-						</td>
-					</tr>
-				</tbody>
-			</table>
-			</div>
-			<%-- new request: do not show browser detect popup
-			<div class="tk-detectSupportedBrowserScope"></div>
-			<uitk:dialog dialog-id='uitkPopupId1' dialog-role='dialog' header-text='Browser Compatibility' show='showBrowserDialog' ng-if="showBrowserDialog" default-width='45%' default-height="40%">
-				<div>
-					<uitk:message model="warningMessageModel"></uitk:message>
-					<div class="tk-margin-top-1t">Recommended browsers are:</div>
-					<ul class="tk-list-content-ul tk-margin-top-1t">
-						<li>Internet Explorer 11</li>
-					</ul>									
-				</div>					
-	
-				<div class="tk-margin-top-1t">				
-					<input type="checkbox" id="chkshowid1" name="chkshow"
-                               aria-label="Do not show this message again"
-                               aria-labelledby="Do not show this message again"> Do not show this message again.
-				</div>
-					
-				<div>
-					<uitk:button type="button" id="submitbtn" value="Continue" enable-default="true" onclick="if(document.getElementById('chkshowid1').checked) {createBrowserDetectionCookie();document.getElementById('uitkPopupId1_closeLink').click();} else {document.getElementById('uitkPopupId1_closeLink').click();}"
-					  	custom-class='uitk-width-6t uitk-btn-close-dialog'></uitk:button>
-				</div>
-			</uitk:dialog>
-			<uitk:browser-detection show-template="false" template-url="uitk-core/browser-detection/html/browserDetection.html" unsupported-browser-url="/uitk-core/browser-detection/html/unsupportedBrowser.html"></uitk:browser-detection>
-			--%>
-			</form>
-		</div>
-	</div>
+java.sql.SQLException: ORA-01017: invalid username/password; logon denied
 
-	<div ng-cloak>
-	<uitk:footer>
-		<uitk:footer-links>
-			<%--
-			<uitk:footer-link tk-label="Copyright & License information" url="license"></uitk:footer-link>
-			<uitk:footer-link tk-label="Privacy Policy" url="privacypolicy"></uitk:footer-link>
-			<uitk:footer-link tk-label="Terms of Use" url="termsofuse"></uitk:footer-link>
-			<uitk:footer-link tk-label="Contact Us" url="contactus"></uitk:footer-link>
-			--%>
-		</uitk:footer-links>
-	</uitk:footer>
-	</div>
-	
-	<script type="text/javascript" src="bower_components/jquery/dist/jquery.min.js"></script>
-	<script type="text/javascript" src="bower_components/lodash/lodash.min.js"></script>
-	<script type="text/javascript" src="bower_components/angular/angular.min.js"></script>
-	<script type="text/javascript" src="bower_components/angular-translate/angular-translate.min.js"></script>
-	<script type="text/javascript" src="bower_components/uitk-min/uitk.min.js"></script>
-	
-	<script>
-		if(!window.console) {
-			var console = {
-				log : function(){},
-				warn : function(){},
-				error : function(){},
-				time : function(){},
-				timeEnd : function(){}
-			}
-		}
+	oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:494)
+	oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:441)
+	oracle.jdbc.driver.T4CTTIoer11.processError(T4CTTIoer11.java:436)
+	oracle.jdbc.driver.T4CTTIfun.processError(T4CTTIfun.java:1061)
+	oracle.jdbc.driver.T4CTTIoauthenticate.processError(T4CTTIoauthenticate.java:550)
+	oracle.jdbc.driver.T4CTTIfun.receive(T4CTTIfun.java:623)
+	oracle.jdbc.driver.T4CTTIfun.doRPC(T4CTTIfun.java:252)
+	oracle.jdbc.driver.T4CTTIoauthenticate.doOAUTH(T4CTTIoauthenticate.java:499)
+	oracle.jdbc.driver.T4CTTIoauthenticate.doOAUTH(T4CTTIoauthenticate.java:1279)
+	oracle.jdbc.driver.T4CConnection.logon(T4CConnection.java:663)
+	oracle.jdbc.driver.PhysicalConnection.connect(PhysicalConnection.java:688)
+	oracle.jdbc.driver.T4CDriverExtension.getConnection(T4CDriverExtension.java:39)
+	oracle.jdbc.driver.OracleDriver.connect(OracleDriver.java:691)
+	org.apache.tomcat.dbcp.dbcp2.DriverConnectionFactory.createConnection(DriverConnectionFactory.java:52)
+	org.apache.tomcat.dbcp.dbcp2.PoolableConnectionFactory.makeObject(PoolableConnectionFactory.java:478)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.validateConnectionFactory(BasicDataSource.java:113)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.createPoolableConnectionFactory(BasicDataSource.java:644)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.createDataSource(BasicDataSource.java:551)
+	org.apache.tomcat.dbcp.dbcp2.BasicDataSource.getConnection(BasicDataSource.java:726)
+	org.hibernate.engine.jdbc.connections.internal.DatasourceConnectionProviderImpl.getConnection(DatasourceConnectionProviderImpl.java:122)
+	org.hibernate.internal.NonContextualJdbcConnectionAccess.obtainConnection(NonContextualJdbcConnectionAccess.java:38)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.acquireConnectionIfNeeded(LogicalConnectionManagedImpl.java:108)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.getPhysicalConnection(LogicalConnectionManagedImpl.java:138)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.getConnectionForTransactionManagement(LogicalConnectionManagedImpl.java:276)
+	org.hibernate.resource.jdbc.internal.LogicalConnectionManagedImpl.begin(LogicalConnectionManagedImpl.java:284)
+	org.hibernate.resource.transaction.backend.jdbc.internal.JdbcResourceLocalTransactionCoordinatorImpl$TransactionDriverControlImpl.begin(JdbcResourceLocalTransactionCoordinatorImpl.java:246)
+	org.hibernate.engine.transaction.internal.TransactionImpl.begin(TransactionImpl.java:83)
+	org.hibernate.internal.AbstractSharedSessionContract.beginTransaction(AbstractSharedSessionContract.java:503)
+	org.springframework.orm.hibernate5.HibernateTransactionManager.doBegin(HibernateTransactionManager.java:557)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.startTransaction(AbstractPlatformTransactionManager.java:400)
+	org.springframework.transaction.support.AbstractPlatformTransactionManager.getTransaction(AbstractPlatformTransactionManager.java:373)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.createTransactionIfNecessary(TransactionAspectSupport.java:595)
+	org.springframework.transaction.interceptor.TransactionAspectSupport.invokeWithinTransaction(TransactionAspectSupport.java:382)
+	org.springframework.transaction.interceptor.TransactionInterceptor.invoke(TransactionInterceptor.java:119)
+	org.springframework.aop.framework.ReflectiveMethodInvocation.proceed(ReflectiveMethodInvocation.java:186)
+	org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.java:215)
+	com.sun.proxy.$Proxy89.findUser(Unknown Source)
+	com.optum.fads.web.security.authentication.FadsAuthenticationProvider.authenticate(FadsAuthenticationProvider.java:59)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:182)
+	org.springframework.security.authentication.ProviderManager.authenticate(ProviderManager.java:201)
+	org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.attemptAuthentication(UsernamePasswordAuthenticationFilter.java:85)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:223)
+	org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter.doFilter(AbstractAuthenticationProcessingFilter.java:213)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.FadsSessionManagementFilter.doFilter(FadsSessionManagementFilter.java:46)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:103)
+	org.springframework.security.web.authentication.logout.LogoutFilter.doFilter(LogoutFilter.java:89)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	com.optum.fads.web.security.filter.CsrfTokenGeneratorFilter.doFilterInternal(CsrfTokenGeneratorFilter.java:54)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.csrf.CsrfFilter.doFilterInternal(CsrfFilter.java:117)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.header.HeaderWriterFilter.doHeadersAfter(HeaderWriterFilter.java:90)
+	org.springframework.security.web.header.HeaderWriterFilter.doFilterInternal(HeaderWriterFilter.java:75)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:110)
+	org.springframework.security.web.context.SecurityContextPersistenceFilter.doFilter(SecurityContextPersistenceFilter.java:80)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter.doFilterInternal(WebAsyncManagerIntegrationFilter.java:55)
+	org.springframework.web.filter.OncePerRequestFilter.doFilter(OncePerRequestFilter.java:117)
+	org.springframework.security.web.FilterChainProxy$VirtualFilterChain.doFilter(FilterChainProxy.java:346)
+	org.springframework.security.web.FilterChainProxy.doFilterInternal(FilterChainProxy.java:221)
+	org.springframework.security.web.FilterChainProxy.doFilter(FilterChainProxy.java:186)
+	org.springframework.web.filter.DelegatingFilterProxy.invokeDelegate(DelegatingFilterProxy.java:354)
+	org.springframework.web.filter.DelegatingFilterProxy.doFilter(DelegatingFilterProxy.java:267)
+Note The full stack trace of the root cause is available in the server logs.
 
-		angular.module('loginApp', [
-			'uitk.component.uitkGlobalNavigation',
-			'uitk.component.header',
-			'uitk.component.uitkTextField',
-			'uitk.component.uitkLabel',
-			'uitk.component.uitkButton',
-			'uitk.component.uitkDialog',
-			'uitk.component.uitkMessage',
-			'uitk.component.uitkFooter',
-			'uitk.component.uitkCopyright',
-			'uitk.component.uitkHelp',
-			'uitk.component.browserDetection',
-			'uitk.uitkConfigs',
-			'pascalprecht.translate'
-		])
-		.config(['$translateProvider', function ($translateProvider) {
-			$translateProvider.useSanitizeValueStrategy('escaped');
-		}])
-		.config(['uitkConsumerConfigsProvider', function (uitkConsumerConfigsProvider) {
-			var supportedBrowsers = {
-				'Internet Explorer': [11],
-				'Chrome': [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62],
-				'Firefox': [38, 45, 47, 52, 53, 54, 55, 56, 57, 58, 59, 60],
-				'iPad': [1,2,3,4,5,6,7,8,9,10.1,10.2,10.3,11],
-				'Opera': [28],
-				'Safari': [8, 9, 9.1, 10, 10.1]
-			};
-			var unsupportedBrowsers = {
-				'Internet Explorer': [4,5,6,7,8,9,10],
-				'Safari': [4]
-			};
-			uitkConsumerConfigsProvider.setBrowsers(supportedBrowsers, unsupportedBrowsers);
-		}])
-		.controller('loginFormController', function($scope, $timeout, HelpObj) {
-			var help = {url:'webHelp/Default_CSH.htm#Components/About Sign-In and Sign-Out.htm'};
-			HelpObj.setHelpObj(help);
-					
-			$scope.enableErrorMesg = false;
-			var errorList = [];
-
-			if(window.location.search.toString().indexOf('error') > 0){
-				$scope.enableErrorMesg = true;
-			}
-
-			$scope.globalNavModel = {
-				id: 'GlobalNavigationMenu',
-				links: [
-					{
-						help: false
-					}
-				]
-			};
-
-			$scope.browserACFix = function() {
-				var pass = $("input[name=password]").val();
-				if(pass){
-					$scope.passwordError = false;
-					$scope.password = pass;
-				}
-			};
-
-			var firstVisitToUsername = true;
-			$scope.onUsernameKeyup = function(){
-				if($scope.login_form.username){
-					if(firstVisitToUsername && (!$scope.login_form.username.$viewValue || $scope.login_form.username.$viewValue.length===0)) {
-						firstVisitToUsername = false;
-					} else {
-						$scope.userNameError = ($scope.login_form.username.$dirty && $scope.login_form.username.$invalid) ? true : false;
-					}
-				}
-			}
-
-			var firstVisitToPassword = true;
-			$scope.onPasswordKeyup = function(){
-				if($scope.login_form.password){
-					if(firstVisitToPassword && (!$scope.login_form.password.$viewValue || $scope.login_form.password.$viewValue.length===0)) {
-						firstVisitToPassword = false;
-					} else {
-						$scope.passwordError = ($scope.login_form.password.$dirty && $scope.login_form.password.$invalid) ? true : false
-					}
-				}
-			}
-					
-			$scope.onBlur = function(formField) {
-				formField.$dirty=true;
-			}
-					
-			$scope.$watch('userName', function(newVal, oldVal) {
-				if ( newVal !== undefined || newVal !== '' ){
-					$scope.userNameError = false;
-				}
-			});
-					
-			$scope.$watch('password', function(newVal, oldVal) {
-				if(newVal !== undefined || newVal !== ''){
-					$scope.passwordError = false;
-				}
-			});
-					
-			var newURL = window.location.href;
-			newURL = newURL.replace("login", "");
-				
-			var scrollV, scrollH, loc = window.location;
-			if ("pushState" in history) {
-				history.pushState("", document.title, loc.pathname + loc.search);
-			}
-			else {
-				scrollV = document.body.scrollTop;
-				scrollH = document.body.scrollLeft;
-				loc.hash = "";
-				document.body.scrollTop = scrollV;
-				document.body.scrollLeft = scrollH;
-			}
-					
-			$scope.loginForm = function(e) { 
-				if(_.isEmpty($scope.login_form.$error)){
-					$scope.serverErrorMessageModel.visible = false;	
-				}
-						
-				$scope.password = document.querySelector("input[type=password]").value;
-
-				$timeout(function(){
-					if ($scope.login_form.$valid) {
-						document.forms[0].action ="login";
-						document.forms[0].submit();
-					}
-					else{
-						$scope.login_form.submitted = true;
-						$scope.$apply();
-						if($scope.login_form.$error){
-							$scope.serverErrorMessageModel.visible = false;
-							$scope.clientErrorMessageModel.visible = true;
-							$scope.clientErrorMessageModel.activeItem = angular.element("input[type='submit']",e.target);
-							$scope.login_form.$setDirty();
-							$scope.login_form.$setPristine();
-
-							errorList = [];
-
-							angular.forEach($scope.login_form.$error, function(val){ 
-								if(angular.isArray(val)) {
-									val.forEach(function(value){
-										errorList.push(value.$name);
-									});
-								}
-							});
-
-						}
-						else{
-							$scope.clientErrorMessageModel.visible = false;
-						}
-					}
-				});
-			};
-					
-			$scope.modalphoneno = '555-555-5555';
-			$scope.modalemail = '<a href="" title = "Link does not go anywhere">admin@optum.com</a>';
-			$scope.showBrowserDialog = false;
-					
-			$scope.serverErrorMessageModel = {
-				id : 'ServerError',
-				messageType : 'error',
-				content : '<span><c:out value="${sessionScope.SPRING_SECURITY_LAST_EXCEPTION.message}"/></span>',
-				visible : false,
-				messageRole : 'alert'
-			};
-			$scope.clientErrorMessageModel = {
-				id : 'ClientError',
-				messageType : 'error',
-				content : '<span>Review the form and correct highlighted fields.</span>',
-				visible : false,
-				messageRole : 'alert'
-			};
-					
-			if($scope.enableErrorMesg){
-				$scope.serverErrorMessageModel.visible = true;	
-			}
-					
-			$scope.$watch('login_form.$dirty',function(newValue, oldValue){
-				if(newValue && $scope.clientErrorMessageModel.visible){
-					var currentErrorList = [];
-					angular.forEach($scope.login_form.$error, function(val){ 
-						if(angular.isArray(val)) {
-							val.forEach(function(value){
-								if(!value.$dirty){
-									currentErrorList.push(value.$name);
-								}
-							});
-						}
-					});
-					if(_.difference(errorList, currentErrorList).length > 0){
-						$scope.clientErrorMessageModel.visible = false;
-					}
-					else{
-						$scope.login_form.$setPristine();	
-					}
-				}
-				else if(newValue && $scope.serverErrorMessageModel.visible){
-					$scope.serverErrorMessageModel.visible = false;
-				}
-			});
-					
-			var messageContent = '<span>The browser you are using may not be fully compatible with this application. If you experience issues, contact your administrator at ' + $scope.modalphoneno + ' or ' + $scope.modalemail + '</span>';
-			$scope.warningMessageModel = {
-				id : 'Warning',
-				messageType : 'warning',
-				content : messageContent,
-				position : 'inline',
-				visible : true,
-				rememberMe : false,
-				messageRole : 'alert',
-				ariaAttributes : true
-			}
-		});
-	</script>
-	
-	<noscript>
-		<style type="text/css">
-		main, .browsersGrid {
-			display: none;
-		}
-		</style>
-		<div class="noscriptmsg">Your web browser does not have JavaScript enabled.
-			FADS needs it to be enabled. Please check your browser
-			settings.</div>
-	</noscript>
-	
-</body>
-</html>
+Apache Tomcat/9.0.117
