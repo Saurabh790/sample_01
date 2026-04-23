@@ -1,0 +1,68 @@
+package com.optum.fads.caseentry.api.security;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.List;
+
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+
+import com.optum.fads.caseentry.api.service.IUserDetailsService;
+
+@SuppressWarnings("unused")
+public class UserJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken>
+{
+
+	private static final String GROUPS_CLAIM = "groups";
+	private static final String ROLE_PREFIX = "ROLE_";
+
+	private final IUserDetailsService userDetailsService;
+	private final List<String> uniqueIdClaims;
+
+
+	public UserJwtAuthenticationConverter(IUserDetailsService userDetailsService, List<String> uniqueIdClaims) {
+		this.userDetailsService = userDetailsService;
+		this.uniqueIdClaims = uniqueIdClaims;
+	}
+
+	@Override
+	public AbstractAuthenticationToken convert(Jwt jwt) {
+		Collection<GrantedAuthority> authorities = extractAuthorities(jwt);
+		
+		
+		return Optional.ofNullable(userDetailsService.loadUserByUsername(getUniqueID(jwt)))
+				.map(u -> new UsernamePasswordAuthenticationToken(u, "n/a", authorities))
+				.orElseThrow(() -> new BadCredentialsException("No user found"));
+	}
+
+	private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+		return this.getGroups(jwt).stream().map(authority -> ROLE_PREFIX + authority.toUpperCase())
+				.map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+	}
+
+	@SuppressWarnings("unchecked")
+	private Collection<String> getGroups(Jwt jwt) {
+		Object groups = jwt.getClaims().get(GROUPS_CLAIM);
+		if (groups instanceof Collection) {
+			return (Collection<String>) groups;
+		}
+
+		return Collections.emptyList();
+	}
+
+    private String getUniqueID(Jwt jwt) {
+        return uniqueIdClaims.stream()
+                .map(jwt::getClaimAsString)
+                .filter(v -> v != null && !v.isBlank())
+                .findFirst()
+                .orElse(null);
+    }
+}

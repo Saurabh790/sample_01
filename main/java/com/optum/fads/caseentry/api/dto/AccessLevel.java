@@ -1,0 +1,21 @@
+/**
+ * 
+ */
+package com.optum.fads.caseentry.api.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+
+/**
+ * @author sbiry
+ *
+ */
+@Data
+@AllArgsConstructor
+public class AccessLevel {
+	
+	private String moduleId;
+	private String moduleCode;
+	private String moduleName;
+	private String access;
+}

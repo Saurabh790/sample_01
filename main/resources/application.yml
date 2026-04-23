@@ -1,0 +1,66 @@
+server:
+  port: 8080
+  servlet:
+    contextPath: /caseentry
+  error:
+    include-binding-errors: always
+    include-message: always
+#quickstart:
+#  generateOrderPeriod: 10s
+#  processOrderPeriod: 30s
+
+spring: 
+  application:
+   name: caseentry
+  mvc:
+    log-resolved-exception: true
+  jpa:
+    database-platform: com.optum.fads.caseentry.api.config.SnowflakeDialect
+    
+  datasource:
+     hikari:
+      maximum-pool-size: ${MAXIMUM_DB_POOL_SIZE:50}
+      minimum-idle: ${MIN_POOL_IDLE:1}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:60000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT:60000}
+      leak-detection-threshold: ${LEAK_DETETCTION_THRESHOLD:0}
+     sql:
+       type: com.zaxxer.hikari.HikariDataSource
+       jdbcUrl: jdbc:sqlserver://wn000054716:1433;databaseName=fadsdb;encrypt=true;trustServerCertificate=true;
+       userName: fads_dev
+       password: 4u5(Aq2]>P(JicAT
+       driverClassName: com.microsoft.sqlserver.jdbc.SQLServerDriver
+       jpa:
+           database-platform: org.hibernate.dialect.SQLServer2016Dialect
+           database: SQL_SERVER 
+           format-sql: true
+           globally_quoted_identifiers: true
+           show-sql: true
+           hibernate:
+              use-new-id-generator-mappings: true
+              globally_quoted_identifiers: true
+              hibernate.allow_update_outside_transaction: true
+              naming:
+                    implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyHbmImpl
+                    physical-strategy: org.springframework.boot.orm.jpa.hibernate.SpringPhysicalNamingStrategy    
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWKS_URL}
+          jws-algorithms: ${JWS_ALG:RS256}
+          unique-id-claims: ${JWT_UNIQUE_ID_CLAIMS:upn,unique_name,email,sub}
+logging:
+#  file:
+#    path: /tmp/portal/app/portal_app.log
+  level:
+    root: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate: INFO
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type: TRACE
